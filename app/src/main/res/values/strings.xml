@@ -413,6 +413,15 @@
     <string name="widget_refresh_sent">小部件刷新请求已发送</string>
     <string name="widget_refresh_failed">刷新失败：%s</string>
     
+    <!-- ==================== 1x1 小部件 ==================== -->
+    <string name="widget_1x1_name">插件快捷方式</string>
+    <string name="widget_1x1_desc">1x1 插件快捷方式，可绑定任意插件</string>
+    <string name="widget_1x1_config_title">选择快捷方式插件</string>
+    <string name="widget_1x1_select_plugin">选择一个插件作为桌面快捷方式</string>
+    <string name="widget_1x1_launch_main">打开主界面（默认）</string>
+    <string name="widget_1x1_open_main">设为默认</string>
+    <string name="widget_1x1_config_saved">快捷方式配置已保存
+    
     <!-- ==================== 无障碍服务 ==================== -->
     <string name="accessibility_service_description">UIN Tool 无障碍服务，用于插件执行自动化操作，如模拟点击、读取屏幕内容等。</string>
     
