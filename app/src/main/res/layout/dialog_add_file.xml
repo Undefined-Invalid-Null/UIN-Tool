@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_lg">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="文件名"
+        style="@style/TextBody"
+        android:layout_marginBottom="@dimen/spacing_sm" />
+
+    <EditText
+        android:id="@+id/et_file_name"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/input_height"
+        android:hint="例如: web/index.html 或 MyClass.java"
+        android:inputType="text"
+        android:background="@drawable/bg_input"
+        android:paddingHorizontal="@dimen/spacing_md"
+        android:layout_marginBottom="@dimen/spacing_lg" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="文件内容"
+        style="@style/TextBody"
+        android:layout_marginBottom="@dimen/spacing_sm" />
+
+    <EditText
+        android:id="@+id/et_file_content"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:gravity="top"
+        android:inputType="textMultiLine"
+        android:fontFamily="monospace"
+        android:textSize="@dimen/text_caption"
+        android:background="@drawable/bg_input"
+        android:padding="@dimen/spacing_md" />
+
+</LinearLayout>

@@ -1,0 +1,76 @@
+package {{PACKAGE_NAME}};
+
+import android.content.Context;
+import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.UIN.Tool.plugin.PluginInterface;
+
+/**
+ * {{PLUGIN_NAME}} - 原生插件
+ * UI 通过 Java 代码动态创建
+ */
+public class {{CLASS_NAME}} implements PluginInterface {
+
+    private Context context;
+
+    @Override
+    public View onCreateView(Context context, ViewGroup container, Bundle savedInstanceState) {
+        this.context = context;
+
+        // 创建根布局
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 50, 50, 50);
+
+        // 标题
+        TextView title = new TextView(context);
+        title.setText("{{PLUGIN_NAME}}");
+        title.setTextSize(24);
+        title.setPadding(0, 0, 0, 20);
+
+        // 描述
+        TextView description = new TextView(context);
+        description.setText("{{PLUGIN_DESCRIPTION}}");
+        description.setTextSize(14);
+        description.setTextColor(0xFF666666);
+        description.setPadding(0, 0, 0, 30);
+
+        // 按钮
+        Button button = new Button(context);
+        button.setText("点击我");
+        button.setOnClickListener(v -> {
+            Toast.makeText(context, "插件运行成功！", Toast.LENGTH_SHORT).show();
+        });
+
+        layout.addView(title);
+        layout.addView(description);
+        layout.addView(button);
+
+        return layout;
+    }
+
+    @Override
+    public void onResume() {}
+
+    @Override
+    public void onPause() {}
+
+    @Override
+    public void onDestroy() {}
+
+    @Override
+    public boolean onBackPressed() { 
+        return false; 
+    }
+
+    @Override
+    public Bundle onSaveInstanceState() { 
+        return null; 
+    }
+}

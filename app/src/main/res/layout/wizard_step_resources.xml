@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_lg">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/resource_files"
+        style="@style/TextSubtitle"
+        android:layout_marginBottom="@dimen/spacing_sm" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/resource_files_desc"
+        style="@style/TextCaption"
+        android:layout_marginBottom="@dimen/spacing_lg" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/added_resources"
+        style="@style/TextBody"
+        android:textStyle="bold"
+        android:layout_marginBottom="@dimen/spacing_sm" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_resources"
+        android:layout_width="match_parent"
+        android:layout_height="160dp"
+        android:background="@color/surface"
+        android:padding="@dimen/spacing_sm" />
+
+    <Button
+        android:id="@+id/btn_add_resource"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/button_height"
+        android:text="@string/btn_add_resource"
+        style="@style/Widget.UIN.Tool.Button"
+        android:layout_marginTop="@dimen/spacing_lg" />
+
+    <Button
+        android:id="@+id/btn_skip_resources"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/button_height"
+        android:text="@string/skip"
+        style="@style/Widget.UIN.Tool.Button.Outlined"
+        android:layout_marginTop="@dimen/spacing_sm" />
+
+</LinearLayout>

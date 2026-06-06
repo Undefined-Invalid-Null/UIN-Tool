@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_lg">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/compile_package"
+        style="@style/TextSubtitle"
+        android:layout_marginBottom="@dimen/spacing_sm" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/compile_package_desc"
+        style="@style/TextCaption"
+        android:layout_marginBottom="@dimen/spacing_lg" />
+
+    <ProgressBar
+        android:id="@+id/compile_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:progressDrawable="@drawable/bg_progress"
+        android:visibility="gone"
+        android:layout_marginBottom="@dimen/spacing_lg" />
+
+    <!-- 修复：确保 ScrollView 有固定高度且可滚动 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:minHeight="300dp">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scrollbars="vertical"
+            android:background="@color/surface"
+            android:padding="@dimen/spacing_md">
+
+            <TextView
+                android:id="@+id/tv_compile_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/wizard_compile_status_ready"
+                style="@style/TextCaption"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="@dimen/spacing_xxs" />
+
+        </ScrollView>
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_compile"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/button_height_medium"
+        android:text="@string/btn_compile"
+        style="@style/Widget.UIN.Tool.Button"
+        android:layout_marginTop="@dimen/spacing_lg" />
+
+    <Button
+        android:id="@+id/btn_open_folder"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/button_height_medium"
+        android:text="@string/btn_open_folder"
+        style="@style/Widget.UIN.Tool.Button.Outlined"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:visibility="gone" />
+
+</LinearLayout>

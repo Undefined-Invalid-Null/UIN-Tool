@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="theme-color" content="#37474F">
+    <title>{{PLUGIN_NAME}} - 测试面板</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="header-icon">🧪</div>
+            <h1>{{PLUGIN_NAME}}</h1>
+            <p class="subtitle">WebView 插件功能测试面板</p>
+            <div class="badge">v{{PLUGIN_VERSION}}</div>
+        </div>
+        
+        <!-- 标签页导航 -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="basic">基础</button>
+            <button class="tab-btn" data-tab="info">信息</button>
+            <button class="tab-btn" data-tab="storage">存储</button>
+            <button class="tab-btn" data-tab="system">系统</button>
+        </div>
+        
+        <!-- 标签页内容 -->
+        <div class="tab-content">
+            <!-- 基础功能标签页 -->
+            <div id="tab-basic" class="tab-pane active">
+                <div class="card">
+                    <h3>📢 提示功能</h3>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="testToast()">短提示</button>
+                        <button class="btn btn-primary" onclick="testLongToast()">长提示</button>
+                        <button class="btn btn-secondary" onclick="testAlert()">弹窗</button>
+                        <button class="btn btn-secondary" onclick="testConfirm()">确认框</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📋 剪贴板功能</h3>
+                    <div class="input-group">
+                        <input type="text" id="copyText" placeholder="输入要复制的文字" class="input">
+                        <button class="btn btn-primary" onclick="testCopy()">复制</button>
+                    </div>
+                    <div class="input-group">
+                        <button class="btn btn-secondary" onclick="testPaste()">粘贴</button>
+                        <input type="text" id="pasteResult" placeholder="粘贴结果显示" class="input" readonly>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📱 设备功能</h3>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="testVibrate()">震动 (100ms)</button>
+                        <button class="btn btn-secondary" onclick="testVibrateLong()">震动 (500ms)</button>
+                        <button class="btn btn-info" onclick="testShare()">分享</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>🔗 链接功能</h3>
+                    <div class="input-group">
+                        <input type="text" id="urlInput" placeholder="输入网址" class="input" value="https://www.baidu.com">
+                        <button class="btn btn-primary" onclick="testOpenUrl()">打开链接</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 信息获取标签页 -->
+            <div id="tab-info" class="tab-pane">
+                <div class="card">
+                    <h3>📦 插件信息</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">名称：</span>
+                            <span class="info-value" id="info-name">{{PLUGIN_NAME}}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">ID：</span>
+                            <span class="info-value mono" id="info-id">{{PLUGIN_ID}}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">版本：</span>
+                            <span class="info-value" id="info-version">{{PLUGIN_VERSION}}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">作者：</span>
+                            <span class="info-value" id="info-author">{{PLUGIN_AUTHOR}}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-info" onclick="testGetPluginInfo()">获取完整插件信息</button>
+                </div>
+                
+                <div class="card">
+                    <h3>📱 设备信息</h3>
+                    <div class="info-grid" id="device-info">
+                        <div class="info-item">
+                            <span class="info-label">品牌：</span>
+                            <span class="info-value" id="device-brand">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">型号：</span>
+                            <span class="info-value" id="device-model">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Android：</span>
+                            <span class="info-value" id="device-android">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">API：</span>
+                            <span class="info-value" id="device-api">-</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-info" onclick="testGetDeviceInfo()">刷新设备信息</button>
+                </div>
+                
+                <div class="card">
+                    <h3>🌐 网络信息</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">网络状态：</span>
+                            <span class="info-value" id="network-status">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">网络类型：</span>
+                            <span class="info-value" id="network-type">-</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-info" onclick="testGetNetworkInfo()">刷新网络状态</button>
+                </div>
+                
+                <div class="card">
+                    <h3>⏰ 时间信息</h3>
+                    <div class="info-item">
+                        <span class="info-label">当前时间：</span>
+                        <span class="info-value mono" id="current-time">-</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="testGetTime()">刷新时间</button>
+                </div>
+            </div>
+            
+            <!-- 存储功能标签页 -->
+            <div id="tab-storage" class="tab-pane">
+                <div class="card">
+                    <h3>💾 数据存储</h3>
+                    <div class="input-group">
+                        <input type="text" id="storageKey" placeholder="键名" class="input">
+                        <input type="text" id="storageValue" placeholder="值" class="input">
+                        <button class="btn btn-primary" onclick="testSetStorage()">保存</button>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="storageGetKey" placeholder="键名" class="input">
+                        <button class="btn btn-secondary" onclick="testGetStorage()">读取</button>
+                        <span id="storageResult" class="result-text"></span>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-danger" onclick="testRemoveStorage()">删除当前键</button>
+                        <button class="btn btn-warning" onclick="testClearStorage()">清空所有</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📁 文件目录</h3>
+                    <button class="btn btn-info" onclick="testGetPluginDir()">获取插件目录</button>
+                    <div id="pluginDirResult" class="result-box"></div>
+                </div>
+            </div>
+            
+            <!-- 系统功能标签页 -->
+            <div id="tab-system" class="tab-pane">
+                <div class="card">
+                    <h3>⚙️ 系统设置</h3>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="testOpenSettings()">打开系统设置</button>
+                        <button class="btn btn-secondary" onclick="testOpenAppSettings()">打开应用设置</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>🖥️ 界面控制</h3>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="testSetTitle()">修改标题</button>
+                        <button class="btn btn-secondary" onclick="testResetTitle()">重置标题</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📊 控制台</h3>
+                    <div class="log-container" id="logContainer">
+                        <div class="log-entry system">📱 Web 插件测试面板已启动</div>
+                        <div class="log-entry system">🎨 版本：{{PLUGIN_VERSION}}</div>
+                        <div class="log-entry system">📦 插件ID：{{PLUGIN_ID}}</div>
+                    </div>
+                    <button class="btn btn-warning" onclick="clearLog()">清空日志</button>
+                </div>
+                
+                <div class="card">
+                    <h3>🧪 测试区域</h3>
+                    <button class="btn btn-danger" onclick="testClose()">关闭插件</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部状态栏 -->
+        <div class="footer">
+            <span>UIN Tool WebView 测试面板</span>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

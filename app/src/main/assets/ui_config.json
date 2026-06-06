@@ -1,0 +1,76 @@
+{
+  "theme": {
+    "name": "默认主题",
+    "version": 1,
+    "primaryColor": "#1E3A5F",
+    "primaryDarkColor": "#152A45",
+    "primaryLightColor": "#3A5A8A",
+    "accentColor": "#4A90E2",
+    "successColor": "#2ECC71",
+    "warningColor": "#F39C12",
+    "errorColor": "#E74C3C",
+    "infoColor": "#3498DB",
+    "backgroundColor": "#F0F2F5",
+    "surfaceColor": "#FFFFFF",
+    "textPrimaryColor": "#1A1A2E",
+    "textSecondaryColor": "#6C757D",
+    "textHintColor": "#ADB5BD",
+    "dividerColor": "#E9ECEF"
+  },
+  "shape": {
+    "cornerRadiusSmall": 8,
+    "cornerRadiusMedium": 12,
+    "cornerRadiusLarge": 16,
+    "cornerRadiusExtraLarge": 24,
+    "buttonCornerRadius": 12,
+    "cardCornerRadius": 16,
+    "dialogCornerRadius": 20
+  },
+  "elevation": {
+    "cardElevation": 2,
+    "cardElevationPressed": 6,
+    "buttonElevation": 2,
+    "fabElevation": 6,
+    "dialogElevation": 8
+  },
+  "typography": {
+    "fontFamily": "sans-serif",
+    "titleSize": 24,
+    "subtitleSize": 18,
+    "bodySize": 14,
+    "captionSize": 12,
+    "buttonSize": 14,
+    "enableBoldTitles": true
+  },
+  "animation": {
+    "durationShort": 150,
+    "durationMedium": 300,
+    "durationLong": 500,
+    "enableAnimations": true,
+    "enableRipple": true
+  },
+  "glassmorphism": {
+    "enabled": true,
+    "blurRadius": 10,
+    "opacity": 0.85
+  },
+  "neumorphism": {
+    "enabled": false,
+    "lightShadow": "#FFFFFF",
+    "darkShadow": "#D1D9E6"
+  },
+  "background": {
+    "type": "solid",
+    "gradientStart": "#1E3A5F",
+    "gradientEnd": "#3A5A8A",
+    "gradientAngle": 135,
+    "wallpaperPath": ""
+  },
+  "customStyles": {
+    "enableGlassCards": true,
+    "enableGradientButtons": true,
+    "enableIconTinting": true,
+    "enableRoundedSearchBar": true,
+    "bottomNavStyle": "modern"
+  }
+}

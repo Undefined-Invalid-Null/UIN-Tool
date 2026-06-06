@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 基础颜色 -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- 主色调 -->
+    <color name="primary">#FF37474F</color>
+    <color name="primary_dark">#FF263238</color>
+    <color name="primary_light">#FF546E7A</color>
+    <color name="accent">#FF607D8B</color>
+    
+    <!-- 辅助色 -->
+    <color name="success">#FF4CAF50</color>
+    <color name="warning">#FFFF9800</color>
+    <color name="error">#FFF44336</color>
+    <color name="info">#FF2196F3</color>
+    
+    <!-- 文本颜色 -->
+    <color name="text_primary">#FF212121</color>
+    <color name="text_secondary">#FF757575</color>
+    <color name="text_hint">#FFBDBDBD</color>
+    <color name="text_disabled">#FF9E9E9E</color>
+    
+    <!-- 背景色 -->
+    <color name="background">#FFF8F8F8</color>
+    <color name="background_card">#FFFFFFFF</color>
+    <color name="background_dark">#FFE0E0E0</color>
+    
+    <!-- 表面色 -->
+    <color name="surface">#FFFFFFFF</color>
+    <color name="surface_variant">#FFFAFAFA</color>
+    <color name="surface_card">#FFFFFFFF</color>
+    
+    <!-- 边框和分割线 -->
+    <color name="divider">#FFE0E0E0</color>
+    <color name="border">#FFD0D0D0</color>
+    
+    <!-- 渐变 -->
+    <color name="gradient_start">#FF37474F</color>
+    <color name="gradient_end">#FF546E7A</color>
+    <color name="gradient_accent_start">#FF607D8B</color>
+    <color name="gradient_accent_end">#FF78909C</color>
+    
+    <!-- 导航栏 -->
+    <color name="nav_item_selected">#FF37474F</color>
+    <color name="nav_item_unselected">#FFBDBDBD</color>
+    
+    <!-- 卡片 -->
+    <color name="card_shadow">#1A000000</color>
+    <color name="card_ripple">#0D37474F</color>
+    
+    <!-- 玻璃效果 -->
+    <color name="glass_background">#E6FFFFFF</color>
+    <color name="glass_border">#40FFFFFF</color>
+    <color name="glass_shadow">#20000000</color>
+    
+    <!-- 叠加色 -->
+    <color name="overlay_light">#0D000000</color>
+    <color name="overlay_medium">#1A000000</color>
+    <color name="overlay_dark">#33000000</color>
+    
+    <!-- 灰色调 -->
+    <color name="gray_light">#FFF5F5F5</color>
+    <color name="gray_medium">#FFEEEEEE</color>
+    <color name="gray_dark">#FF9E9E9E</color>
+    <color name="gray_text">#FF616161</color>
+</resources>

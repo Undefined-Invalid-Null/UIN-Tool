@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="file" path="plugins/" />
+    <include domain="sharedpref" path="uin_tool_prefs.xml" />
+    <include domain="file" path="logs/" />
+</full-backup-content>

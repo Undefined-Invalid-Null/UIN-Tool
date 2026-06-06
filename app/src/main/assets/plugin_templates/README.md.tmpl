@@ -1,0 +1,142 @@
+# {{PLUGIN_NAME}} - 插件开发项目
+
+## 项目信息
+
+| 属性 | 值 |
+|------|-----|
+| 插件ID | `{{PLUGIN_ID}}` |
+| 名称 | {{PLUGIN_NAME}} |
+| 版本 | {{PLUGIN_VERSION_NAME}} ({{PLUGIN_VERSION}}) |
+| 作者 | {{PLUGIN_AUTHOR}} |
+| UI类型 | {{UI_TYPE}} |
+
+---
+
+## 目录结构
+
+```
+
+{{PLUGIN_NAME}}/
+├── plugin.json          # 插件配置文件
+├── icon.png             # 插件图标
+├── src/                 # Java 源码目录
+│   └── {{MAIN_CLASS_PATH}}.java
+{{WEB_SECTION}}└── res/                 # 资源文件目录（可选）
+
+```
+
+{{WEB_SECTION_DETAIL}}
+
+---
+
+## 开发说明
+
+{{DEVELOPMENT_GUIDE}}
+
+---
+
+## 编译打包
+
+### 环境要求
+
+- JDK 8 或更高版本
+- Android SDK (包含 d8 工具)
+- host-sdk.jar (从 UIN Tool 导出)
+
+### 编译命令
+
+```bash
+# 1. 编译 Java 源码
+javac -d . -cp host-sdk.jar src/**/*.java
+
+# 2. 打包为 JAR
+jar cvf plugin.jar com/
+
+# 3. 转换为 DEX
+d8 --lib android.jar --min-api 21 --output . plugin.jar
+
+# 4. 重命名
+mv classes.dex plugin.dex
+```
+
+打包为 TPK
+
+将以下文件打包为 ZIP，重命名为 .tpk：
+
+· plugin.dex
+· plugin.json
+· icon.png
+  {{EXTRA_FILES}}
+
+---
+
+导入运行
+
+1. 打开 UIN Tool App
+2. 点击底部「管理」
+3. 点击「导入插件」
+4. 选择生成的 .tpk 文件
+5. 在「工具」中运行插件
+
+---
+
+调试技巧
+
+查看日志
+
+在 UIN Tool 的「管理」->「运行日志」中查看：
+
+· 插件加载日志
+· 错误和异常
+· 自定义日志输出
+
+在代码中输出日志
+
+```java
+// Java 中
+com.UIN.Tool.utils.LogUtils.i("{{PLUGIN_ID}}", "调试信息");
+```
+
+```javascript
+// Web 插件 JS 中
+UINPlugin.callHost('log', '调试信息');
+```
+
+---
+
+常见问题
+
+Q: 编译时找不到 host-sdk.jar？
+
+从 UIN Tool 导出模板时会包含 host-sdk.jar，或者从工作目录的 sdk/ 中获取。
+
+Q: d8 命令找不到？
+
+d8 是 Android SDK 的一部分，请确保 Android SDK 已安装并配置环境变量。
+
+Q: 插件导入后不显示？
+
+· 检查 plugin.json 格式是否正确
+· 检查 plugin.dex 是否存在
+· 查看运行日志中的错误信息
+
+---
+
+更新日志
+
+v{{PLUGIN_VERSION_NAME}} ({{PLUGIN_VERSION}})
+
+· 初始版本
+
+---
+
+许可证
+
+本项目采用 MIT 许可证。
+
+---
+
+联系方式
+
+· 作者：{{PLUGIN_AUTHOR}}
+· 插件ID：{{PLUGIN_ID}

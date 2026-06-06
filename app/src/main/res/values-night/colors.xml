@@ -1,0 +1,63 @@
+<resources>
+    <!-- 主色调 - 深色模式 -->
+    <color name="primary">#FF546E7A</color>
+    <color name="primary_dark">#FF37474F</color>
+    <color name="primary_light">#FF78909C</color>
+    <color name="accent">#FF607D8B</color>
+    
+    <!-- 辅助色 -->
+    <color name="success">#FF66BB6A</color>
+    <color name="warning">#FFFFA726</color>
+    <color name="error">#FFEF5350</color>
+    <color name="info">#FF42A5F5</color>
+    
+    <!-- 文本颜色 -->
+    <color name="text_primary">#FFEEEEEE</color>
+    <color name="text_secondary">#FFBDBDBD</color>
+    <color name="text_hint">#FF757575</color>
+    <color name="text_disabled">#FF616161</color>
+    
+    <!-- 背景色 -->
+    <color name="background">#FF121212</color>
+    <color name="background_card">#FF1E1E1E</color>
+    <color name="background_dark">#FF0A0A0A</color>
+    
+    <!-- 表面色 -->
+    <color name="surface">#FF1E1E1E</color>
+    <color name="surface_variant">#FF2A2A2A</color>
+    <color name="surface_card">#FF2D2D2D</color>
+    
+    <!-- 边框和分割线 -->
+    <color name="divider">#FF333333</color>
+    <color name="border">#FF404040</color>
+    
+    <!-- 渐变 -->
+    <color name="gradient_start">#FF546E7A</color>
+    <color name="gradient_end">#FF78909C</color>
+    <color name="gradient_accent_start">#FF607D8B</color>
+    <color name="gradient_accent_end">#FF78909C</color>
+    
+    <!-- 导航栏 -->
+    <color name="nav_item_selected">#FF78909C</color>
+    <color name="nav_item_unselected">#FF757575</color>
+    
+    <!-- 卡片 -->
+    <color name="card_shadow">#1AFFFFFF</color>
+    <color name="card_ripple">#0D78909C</color>
+    
+    <!-- 玻璃效果 -->
+    <color name="glass_background">#E61E1E1E</color>
+    <color name="glass_border">#40FFFFFF</color>
+    <color name="glass_shadow">#20000000</color>
+    
+    <!-- 叠加色 -->
+    <color name="overlay_light">#0DFFFFFF</color>
+    <color name="overlay_medium">#1AFFFFFF</color>
+    <color name="overlay_dark">#33FFFFFF</color>
+    
+    <!-- 灰色调 -->
+    <color name="gray_light">#FF2C2C2C</color>
+    <color name="gray_medium">#FF3D3D3D</color>
+    <color name="gray_dark">#FF616161</color>
+    <color name="gray_text">#FFBDBDBD</color>
+</resources>

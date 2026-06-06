@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/spacing_lg">
+
+    <TextView
+        android:id="@+id/tv_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/TextTitle"
+        android:layout_marginBottom="@dimen/spacing_sm" />
+
+    <TextView
+        android:id="@+id/tv_id"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/TextCaption"
+        android:layout_marginBottom="@dimen/spacing_xxs" />
+
+    <TextView
+        android:id="@+id/tv_version"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/TextCaption"
+        android:layout_marginBottom="@dimen/spacing_xxs" />
+
+    <TextView
+        android:id="@+id/tv_author"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/TextCaption"
+        android:layout_marginBottom="@dimen/spacing_xxs" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="@dimen/spacing_md">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/plugin_field_category"
+            style="@style/TextCaption" />
+
+        <TextView
+            android:id="@+id/tv_category"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/TextCaption"
+            android:textColor="@color/primary" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider"
+        android:layout_marginVertical="@dimen/spacing_md" />
+
+    <TextView
+        android:id="@+id/tv_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/TextBody"
+        android:layout_marginBottom="@dimen/spacing_lg" />
+
+    <!-- 按钮网格布局 2x2 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="@dimen/spacing_sm">
+
+            <Button
+                android:id="@+id/btn_run"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height_medium"
+                android:layout_weight="1"
+                android:text="@string/btn_run"
+                style="@style/Widget.UIN.Tool.Button"
+                android:layout_marginEnd="@dimen/spacing_sm"
+                android:paddingStart="@dimen/spacing_sm"
+                android:paddingEnd="@dimen/spacing_sm"
+                android:textSize="@dimen/text_caption"
+                android:lines="1" />
+
+            <Button
+                android:id="@+id/btn_shortcut"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height_medium"
+                android:layout_weight="1"
+                android:text="@string/btn_create_shortcut"
+                style="@style/Widget.UIN.Tool.Button"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:paddingStart="@dimen/spacing_sm"
+                android:paddingEnd="@dimen/spacing_sm"
+                android:textSize="@dimen/text_caption"
+                android:lines="1" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_change_category"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height_medium"
+                android:layout_weight="1"
+                android:text="@string/btn_change_category"
+                style="@style/Widget.UIN.Tool.Button.Outlined"
+                android:layout_marginEnd="@dimen/spacing_sm"
+                android:paddingStart="@dimen/spacing_sm"
+                android:paddingEnd="@dimen/spacing_sm"
+                android:textSize="@dimen/text_caption"
+                android:lines="1" />
+
+            <Button
+                android:id="@+id/btn_uninstall"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height_medium"
+                android:layout_weight="1"
+                android:text="@string/btn_uninstall"
+                style="@style/Widget.UIN.Tool.Button.Error"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:paddingStart="@dimen/spacing_sm"
+                android:paddingEnd="@dimen/spacing_sm"
+                android:textSize="@dimen/text_caption"
+                android:lines="1" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

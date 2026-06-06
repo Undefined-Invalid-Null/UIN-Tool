@@ -1,0 +1,23 @@
+# 敏感文件（重要！）
+local.properties
+keystore.jks
+google-services.json
+
+# 构建输出
+*.apk
+*.aab
+*.dex
+*.class
+*.py
+*.bak
+build/
+app/build/
+.gradle/
+
+# IDE 文件
+.idea/
+*.iml
+.vscode/
+
+# 日志
+*.log
