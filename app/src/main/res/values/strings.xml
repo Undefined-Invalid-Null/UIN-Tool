@@ -420,7 +420,7 @@
     <string name="widget_1x1_select_plugin">选择一个插件作为桌面快捷方式</string>
     <string name="widget_1x1_launch_main">打开主界面（默认）</string>
     <string name="widget_1x1_open_main">设为默认</string>
-    <string name="widget_1x1_config_saved">快捷方式配置已保存
+    <string name="widget_1x1_config_saved">快捷方式配置已保存</string>
     
     <!-- ==================== 无障碍服务 ==================== -->
     <string name="accessibility_service_description">UIN Tool 无障碍服务，用于插件执行自动化操作，如模拟点击、读取屏幕内容等。</string>
