@@ -176,6 +176,15 @@
             android:exported="true"
             android:theme="@style/Theme.UIN.Tool" />
         <activity
+            android:name=".ui.widget.Widget1x1ConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/widget_1x1_config_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".widget.WidgetClickActivity"
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -197,6 +206,20 @@
             android:name=".widget.UINWidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <!-- ==================== 1x1 桌面小部件 ==================== -->
+        <receiver
+            android:name=".widget.Widget1x1Provider"
+            android:exported="true"
+            android:label="@string/widget_1x1_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.UIN.Tool.REFRESH_WIDGET_1x1" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_1x1_info" />
+        </receiver>
+
         <receiver
             android:name=".widget.SystemEventReceiver"
             android:exported="true">

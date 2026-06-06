@@ -35,6 +35,7 @@ public class SystemEventReceiver extends BroadcastReceiver {
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     LogUtils.i(TAG, "Refreshing widgets after system event: " + action);
                     UINWidgetProvider.sendIntentToRefreshAllWidgets(context);
+                    Widget1x1Provider.sendRefreshIntent(context);
                 }, 5000);
                 break;
 
