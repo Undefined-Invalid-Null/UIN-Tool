@@ -12,4 +12,3 @@
     android:configure="com.UIN.Tool.ui.widget.Widget1x1ConfigureActivity"
     android:targetCellWidth="1"
     android:targetCellHeight="1" />
-</appwidget-provider>
