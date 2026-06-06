@@ -1185,11 +1185,7 @@ try {
 
 技术支持
 
-· 📧 邮箱：support@uin-tool.com
-· 📖 文档：https://docs.uin-tool.com
-· 🐛 问题反馈：https://github.com/uin-tool/issues
-· 💬 开发者社区：https://community.uin-tool.com
-
+· 📧 邮箱：undefinedinvalidnull@outlook.com
 ---
 
 更新日志
@@ -1205,5 +1201,5 @@ v1.0.0 (2024-01-01)
 ---
 
 文档版本: 1.0.0
-最后更新: 2024-01-01
+最后更新: 2026-06-06
 

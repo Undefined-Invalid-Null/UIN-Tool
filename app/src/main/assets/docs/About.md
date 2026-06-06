@@ -252,18 +252,12 @@ SOFTWARE.
 
 | 渠道 | 地址 |
 |------|------|
-| 官方网站 | https://uin-tool.com |
-| GitHub | https://github.com/uin-tool/uin-tool |
-| 问题反馈 | https://github.com/uin-tool/uin-tool/issues |
-| 开发文档 | https://docs.uin-tool.com |
-| 电子邮箱 | contact@uin-tool.com |
-| 技术支持 | support@uin-tool.com |
+| GitHub | https://github.com/Undefined-Invalid-Null/UIN-Tool |
+| 电子邮箱 | undefinedinvalidnull@outlook.com |
 
 ### 社区交流
 
-- QQ 群：123456789
-- Discord：https://discord.gg/uin-tool
-- Telegram：https://t.me/uin_tool
+- QQ 群：511875883
 
 ---
 
@@ -281,7 +275,7 @@ SOFTWARE.
 
 ```
 
-© 2024 UIN Team. All rights reserved.
+© 2026 UIN Team. All rights reserved.
 
 本软件及其文档的版权归 UIN Team 所有。未经授权，不得复制、修改、分发或
 用于商业用途。UIN Tool 名称和标志是 UIN Team 的商标。
@@ -301,7 +295,7 @@ SOFTWARE.
 
 ## 更新日志
 
-### v1.0.0 (2024-06-01) - 首次正式发布
+### v1.0.0 (2026-06-06) - 首次正式发布
 
 #### 🎉 新增功能
 
@@ -356,17 +350,6 @@ SOFTWARE.
 
 - 初始版本无修复记录
 
----
-
-### 版本规划
-
-| 版本 | 预计时间 | 主要功能 |
-|------|----------|----------|
-| v1.1.0 | 2024 Q3 | 插件商店、自动更新 |
-| v1.2.0 | 2024 Q4 | 更多主题、调试工具 |
-| v2.0.0 | 2025 Q1 | Compose UI 支持、性能监控 |
-| v2.1.0 | 2025 Q2 | 插件社区 |
-| v3.0.0 | 2025 Q4 | 脚本插件支持 |
 
 ---
 
@@ -394,6 +377,6 @@ SOFTWARE.
 
 ## 最后更新
 
-本文档最后更新于：2024年6月
+本文档最后更新于：2026年6月
 
-© 2024 UIN Team. All Rights Reserved.
+© 2026 UIN Team. All Rights Reserved.

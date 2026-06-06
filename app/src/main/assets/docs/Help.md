@@ -635,11 +635,9 @@ Web插件 主要取决于资源文件
 联系支持
 
 渠道 联系方式
-📧 邮箱 support@uin-tool.com
-🌐 官网 https://uin-tool.com
-📖 文档 https://docs.uin-tool.com
-🐛 反馈 https://github.com/uin-tool/issues
-💬 社区 https://forum.uin-tool.com
+📧 邮箱 undefinedinvalidnull@outlook.com
+🌐 Github https://github.com/Undefined-Invalid-Null/UIN-Tool
+💬 QQ 511875883
 
 ---
 
