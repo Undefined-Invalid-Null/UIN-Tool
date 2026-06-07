@@ -33,6 +33,7 @@ public class RepoAdapter extends RecyclerView.Adapter<RepoAdapter.ViewHolder> {
     public interface OnPluginActionListener {
         void onInstall(RepoPluginInfo plugin, int position);
         void onOpen(RepoPluginInfo plugin);
+        void onShowDetail(RepoPluginInfo plugin);
     }
 
     public RepoAdapter(Context context, OnPluginActionListener listener) {
@@ -81,25 +82,25 @@ public class RepoAdapter extends RecyclerView.Adapter<RepoAdapter.ViewHolder> {
         holder.tvPluginId.setText(plugin.getPluginId());
         
         // 版本信息
-        String versionText = "版本: " + plugin.getVersionName();
+        String versionText = context.getString(R.string.version) + ": " + plugin.getVersionName();
         holder.tvVersion.setText(versionText);
         
         // 文件大小
         String sizeText;
         if (plugin.getSize() > 0) {
-            sizeText = "大小: " + plugin.getFormattedSize();
+            sizeText = context.getString(R.string.file_size) + ": " + plugin.getFormattedSize();
         } else {
-            sizeText = "大小: 未知";
+            sizeText = context.getString(R.string.file_size) + ": " + context.getString(R.string.unknown);
         }
         holder.tvSize.setText(sizeText);
         
         // 更新日期
-        String dateText = "更新: " + plugin.getFormattedDate();
+        String dateText = context.getString(R.string.update) + ": " + plugin.getFormattedDate();
         holder.tvDate.setText(dateText);
 
         // 作者信息
         if (plugin.getAuthor() != null && !plugin.getAuthor().isEmpty()) {
-            holder.tvAuthor.setText(plugin.getAuthor());
+            holder.tvAuthor.setText(context.getString(R.string.author) + ": " + plugin.getAuthor());
             holder.tvAuthor.setVisibility(View.VISIBLE);
         } else {
             holder.tvAuthor.setVisibility(View.GONE);
@@ -124,11 +125,11 @@ public class RepoAdapter extends RecyclerView.Adapter<RepoAdapter.ViewHolder> {
             holder.btnAction.setEnabled(true);
             
             if (isInstalled) {
-                holder.btnAction.setText("打开");
+                holder.btnAction.setText(context.getString(R.string.open));
                 holder.btnAction.setBackgroundTintList(
                     androidx.core.content.ContextCompat.getColorStateList(context, R.color.success));
             } else {
-                holder.btnAction.setText("安装");
+                holder.btnAction.setText(context.getString(R.string.install));
                 holder.btnAction.setBackgroundTintList(
                     androidx.core.content.ContextCompat.getColorStateList(context, R.color.primary));
             }
@@ -149,9 +150,18 @@ public class RepoAdapter extends RecyclerView.Adapter<RepoAdapter.ViewHolder> {
             }
         });
 
-        // 点击卡片显示简单提示
+        // 点击卡片显示详情
         holder.itemView.setOnClickListener(v -> {
-            Toast.makeText(context, plugin.getName() + "\n" + plugin.getPluginId(), Toast.LENGTH_SHORT).show();
+            if (listener != null) {
+                listener.onShowDetail(plugin);
+            }
+        });
+        
+        holder.itemView.setOnLongClickListener(v -> {
+            if (listener != null) {
+                listener.onShowDetail(plugin);
+            }
+            return true;
         });
     }
 

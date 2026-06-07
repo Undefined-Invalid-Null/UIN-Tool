@@ -6,43 +6,43 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    background: #f5f7fa;
-    color: #333;
-    line-height: 1.6;
+    background: #f5f5f5;
+    line-height: 1.5;
 }
 
 .app-container {
     max-width: 800px;
     margin: 0 auto;
+    background: #f5f5f5;
     min-height: 100vh;
-    background: #f5f7fa;
+    display: flex;
+    flex-direction: column;
 }
 
-/* 头部样式 */
+/* ==================== 头部样式 ==================== */
 .header {
     background: linear-gradient(135deg, #37474F 0%, #263238 100%);
     color: white;
-    padding: 32px 20px;
+    padding: 24px 20px;
     text-align: center;
     border-radius: 0 0 24px 24px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 16px;
 }
 
 .header-icon {
     font-size: 48px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .header h1 {
-    font-size: 28px;
-    margin-bottom: 8px;
-    font-weight: 600;
+    font-size: 24px;
+    margin-bottom: 4px;
 }
 
 .subtitle {
     font-size: 14px;
-    opacity: 0.85;
-    margin-bottom: 12px;
+    opacity: 0.8;
+    margin-bottom: 8px;
 }
 
 .badge {
@@ -53,48 +53,38 @@ body {
     font-size: 12px;
 }
 
-/* 标签页导航 */
+/* ==================== 标签页样式 ==================== */
 .tabs {
     display: flex;
     background: white;
-    padding: 0 16px;
-    margin-top: -8px;
-    border-radius: 16px;
-    margin-left: 16px;
-    margin-right: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 0 8px;
+    border-bottom: 1px solid #e0e0e0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-wrap: wrap;
 }
 
 .tab-btn {
     flex: 1;
-    padding: 12px 0;
-    background: none;
+    min-width: 60px;
+    padding: 12px 8px;
     border: none;
-    font-size: 14px;
-    font-weight: 500;
-    color: #757575;
+    background: transparent;
+    font-size: 13px;
     cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
+    transition: all 0.3s;
+    color: #666;
+    font-weight: 500;
 }
 
 .tab-btn.active {
     color: #37474F;
+    border-bottom: 2px solid #37474F;
 }
 
-.tab-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 20%;
-    width: 60%;
-    height: 2px;
-    background: #37474F;
-    border-radius: 2px;
-}
-
-/* 标签页内容 */
 .tab-content {
+    flex: 1;
     padding: 16px;
 }
 
@@ -104,52 +94,40 @@ body {
 
 .tab-pane.active {
     display: block;
-    animation: fadeIn 0.3s ease;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* 卡片样式 */
+/* ==================== 卡片样式 ==================== */
 .card {
     background: white;
     border-radius: 16px;
-    padding: 20px;
+    padding: 16px;
     margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .card h3 {
     font-size: 16px;
     margin-bottom: 16px;
     color: #37474F;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    border-left: 3px solid #37474F;
+    padding-left: 12px;
 }
 
-/* 按钮样式 */
+/* ==================== 按钮样式 ==================== */
 .button-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
 }
 
 .btn {
-    padding: 8px 16px;
+    padding: 10px 20px;
     border: none;
-    border-radius: 24px;
-    font-size: 13px;
-    font-weight: 500;
+    border-radius: 8px;
+    font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
+    font-weight: 500;
 }
 
 .btn-primary {
@@ -159,17 +137,15 @@ body {
 
 .btn-primary:hover {
     background: #263238;
-    transform: scale(1.02);
 }
 
 .btn-secondary {
-    background: #f0f0f0;
+    background: #e0e0e0;
     color: #333;
 }
 
 .btn-secondary:hover {
-    background: #e0e0e0;
-    transform: scale(1.02);
+    background: #ccc;
 }
 
 .btn-info {
@@ -181,131 +157,225 @@ body {
     background: #1976D2;
 }
 
-.btn-warning {
-    background: #FF9800;
-    color: white;
-}
-
-.btn-warning:hover {
-    background: #F57C00;
-}
-
 .btn-danger {
-    background: #F44336;
+    background: #dc3545;
     color: white;
 }
 
 .btn-danger:hover {
-    background: #D32F2F;
+    background: #c82333;
 }
 
-/* 输入框 */
+.btn-warning {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #fb8c00;
+}
+
+/* ==================== 输入框样式 ==================== */
 .input-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
     margin-bottom: 12px;
-    align-items: center;
 }
 
 .input {
-    flex: 1;
-    padding: 8px 12px;
+    width: 100%;
+    padding: 10px 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: monospace;
+    resize: vertical;
+}
+
+.file-list {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-top: 8px;
     font-size: 13px;
-    background: white;
-    transition: border-color 0.2s;
 }
 
-.input:focus {
-    outline: none;
-    border-color: #37474F;
-}
-
-/* 信息网格 */
+/* ==================== 信息网格样式 ==================== */
 .info-grid {
     display: grid;
-    gap: 12px;
+    grid-template-columns: 1fr 2fr;
+    gap: 8px;
     margin-bottom: 16px;
 }
 
 .info-item {
     display: flex;
-    flex-wrap: wrap;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .info-label {
-    width: 80px;
     font-weight: 500;
     color: #666;
 }
 
 .info-value {
-    flex: 1;
     color: #333;
-    word-break: break-all;
 }
 
-.info-value.mono {
+.mono {
     font-family: monospace;
-    font-size: 11px;
+    font-size: 12px;
 }
 
-/* 结果展示 */
-.result-text {
-    flex: 1;
-    padding: 8px 12px;
-    background: #f5f5f5;
+/* ==================== 结果区域样式 ==================== */
+.result-box {
+    background: #f8f9fa;
+    padding: 12px;
     border-radius: 8px;
     font-size: 12px;
-    color: #666;
-    word-break: break-all;
-}
-
-.result-box {
-    margin-top: 12px;
-    padding: 12px;
-    background: #f5f5f5;
-    border-radius: 8px;
-    font-size: 11px;
     font-family: monospace;
+    margin-top: 12px;
+    white-space: pre-wrap;
     word-break: break-all;
-    max-height: 150px;
+    max-height: 200px;
     overflow-y: auto;
 }
 
-/* 日志容器 */
+.result-scrollable {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.result-text {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 13px;
+    color: #666;
+}
+
+/* ==================== 传感器样式 ==================== */
+.sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.sensor-btn {
+    padding: 12px;
+    background: #607D8B;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.sensor-btn:hover {
+    background: #455A64;
+}
+
+.sensor-btn-danger {
+    padding: 12px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.sensor-data-box {
+    background: #1e1e1e;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 150px;
+}
+
+.sensor-placeholder {
+    color: #888;
+    text-align: center;
+    padding: 20px;
+}
+
+.sensor-loading {
+    color: #ff9800;
+    text-align: center;
+    padding: 20px;
+}
+
+.sensor-error {
+    color: #dc3545;
+    text-align: center;
+    padding: 20px;
+}
+
+.sensor-data {
+    color: #00ff00;
+    font-family: monospace;
+}
+
+.sensor-title {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #ff9800;
+}
+
+.sensor-values {
+    font-size: 20px;
+}
+
+.sensor-value {
+    color: #00ff00;
+    font-weight: bold;
+}
+
+.sensor-timestamp {
+    font-size: 10px;
+    color: #666;
+    margin-top: 8px;
+}
+
+/* ==================== 日志容器样式 ==================== */
 .log-container {
     background: #1e1e1e;
     border-radius: 8px;
     padding: 12px;
     height: 200px;
     overflow-y: auto;
-    margin-bottom: 12px;
     font-family: monospace;
     font-size: 11px;
+    margin-bottom: 12px;
 }
 
 .log-entry {
     padding: 4px 0;
-    color: #d4d4d4;
     border-bottom: 1px solid #333;
-    word-break: break-all;
+    color: #ccc;
 }
 
 .log-entry.success {
-    color: #4CAF50;
+    color: #4caf50;
 }
 
 .log-entry.error {
-    color: #F44336;
+    color: #f44336;
 }
 
 .log-entry.warning {
-    color: #FF9800;
+    color: #ff9800;
 }
 
 .log-entry.info {
@@ -313,35 +383,81 @@ body {
 }
 
 .log-entry.system {
-    color: #9E9E9E;
-    font-style: italic;
+    color: #9e9e9e;
 }
 
-/* 底部 */
+.log-time {
+    color: #666;
+    margin-right: 8px;
+}
+
+/* ==================== 底部样式 ==================== */
 .footer {
+    background: white;
+    padding: 12px;
     text-align: center;
-    padding: 16px;
-    font-size: 11px;
+    font-size: 10px;
     color: #999;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #e0e0e0;
 }
 
-/* 响应式 */
+/* ==================== 响应式设计 ==================== */
 @media (max-width: 600px) {
-    .app-container {
-        max-width: 100%;
+    .header {
+        padding: 16px;
     }
     
-    .tabs {
-        margin-left: 12px;
-        margin-right: 12px;
+    .header h1 {
+        font-size: 20px;
     }
     
-    .tab-content {
-        padding: 12px;
+    .header-icon {
+        font-size: 36px;
+    }
+    
+    .tab-btn {
+        font-size: 11px;
+        padding: 10px 4px;
     }
     
     .card {
-        padding: 16px;
+        padding: 12px;
     }
+    
+    .button-group {
+        gap: 6px;
+    }
+    
+    .btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+    
+    .sensor-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    }
+    
+    .sensor-btn {
+        padding: 8px;
+        font-size: 11px;
+    }
+}
+
+/* ==================== 动画效果 ==================== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tab-pane.active {
+    animation: fadeIn 0.3s ease;
+}
+
+.btn:active {
+    transform: scale(0.98);
 }

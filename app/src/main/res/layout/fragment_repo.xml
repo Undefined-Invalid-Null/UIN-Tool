@@ -6,27 +6,49 @@
     android:orientation="vertical"
     android:background="@color/background">
 
+    <!-- 搜索栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/spacing_lg"
         android:background="@color/surface"
-        android:elevation="2dp"
-        android:paddingHorizontal="@dimen/spacing_lg"
-        android:paddingVertical="@dimen/spacing_md">
+        android:elevation="2dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="插件仓库"
-            style="@style/TextDisplayLarge" />
+        <EditText
+            android:id="@+id/et_search"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/input_height"
+            android:layout_weight="1"
+            android:hint="@string/search_plugins"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingHorizontal="@dimen/spacing_md"
+            android:background="@drawable/bg_input"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_hint" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="从 GitHub 官方仓库浏览和安装插件"
-            style="@style/TextCaption"
-            android:layout_marginTop="@dimen/spacing_xxs" />
+        <ImageButton
+            android:id="@+id/btn_search"
+            android:layout_width="@dimen/icon_xlarge"
+            android:layout_height="@dimen/icon_xlarge"
+            android:layout_marginStart="@dimen/spacing_sm"
+            android:src="@drawable/ic_search"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@color/primary"
+            android:contentDescription="@string/search" />
+
+        <ImageButton
+            android:id="@+id/btn_clear_search"
+            android:layout_width="@dimen/icon_xlarge"
+            android:layout_height="@dimen/icon_xlarge"
+            android:layout_marginStart="@dimen/spacing_sm"
+            android:src="@drawable/ic_close"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@color/text_hint"
+            android:contentDescription="@string/clear_search"
+            android:visibility="gone" />
 
     </LinearLayout>
 
@@ -45,8 +67,7 @@
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="4dp"
-            android:progressDrawable="@drawable/bg_progress"
-            android:progress="0" />
+            android:progressDrawable="@drawable/bg_progress" />
 
         <TextView
             android:id="@+id/download_progress_text"
@@ -60,6 +81,7 @@
 
     </LinearLayout>
 
+    <!-- 刷新布局 -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"
@@ -90,7 +112,7 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:padding="@dimen/spacing_xxl"
-                android:text="暂无可用插件"
+                android:text="@string/repo_no_plugins"
                 android:textSize="@dimen/text_body"
                 android:textColor="@color/text_hint"
                 android:visibility="gone" />

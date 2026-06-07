@@ -1,6 +1,7 @@
 package com.UIN.Tool.ui.repo;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
@@ -8,9 +9,16 @@ import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -24,6 +32,9 @@ import com.UIN.Tool.plugin.PluginInfo;
 import com.UIN.Tool.plugin.PluginManager;
 import com.UIN.Tool.ui.common.BaseFragment;
 import com.UIN.Tool.utils.LogUtils;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -51,9 +62,12 @@ public class RepoFragment extends BaseFragment {
     private FragmentRepoBinding binding;
     private RepoAdapter adapter;
     private PluginManager pluginManager;
-    private List<RepoPluginInfo> plugins = new ArrayList<>();
+    private List<RepoPluginInfo> allPlugins = new ArrayList<>();
+    private List<RepoPluginInfo> filteredPlugins = new ArrayList<>();
     private OkHttpClient unsafeHttpClient;
     private Handler mainHandler;
+    private String currentKeyword = "";
+    private boolean isDownloading = false;
     
     // GitHub 镜像站列表
     private static final String[] GITHUB_MIRRORS = {
@@ -67,7 +81,6 @@ public class RepoFragment extends BaseFragment {
     };
     
     private String currentMirror = "";
-    private boolean isDownloading = false;
 
     @Nullable
     @Override
@@ -81,7 +94,6 @@ public class RepoFragment extends BaseFragment {
         LogUtils.enter(TAG, "initViews");
         
         mainHandler = new Handler(Looper.getMainLooper());
-        
         unsafeHttpClient = getUnsafeOkHttpClient();
 
         adapter = new RepoAdapter(requireContext(), new RepoAdapter.OnPluginActionListener() {
@@ -106,6 +118,11 @@ public class RepoFragment extends BaseFragment {
                     pluginManager.openPlugin(plugin.getPluginId(), requireContext());
                 }
             }
+            
+            @Override
+            public void onShowDetail(RepoPluginInfo plugin) {
+                showPluginDetailDialog(plugin);
+            }
         });
 
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -113,7 +130,117 @@ public class RepoFragment extends BaseFragment {
         
         pluginManager = PluginManager.getInstance(requireContext());
         
+        binding.tvEmpty.setText(getString(R.string.repo_no_plugins));
+        
         LogUtils.exit(TAG, "initViews", System.currentTimeMillis());
+    }
+
+    @Override
+    protected void initData() {
+        LogUtils.enter(TAG, "initData");
+        testMirrors();
+        loadPluginsFromRepo();
+        LogUtils.exit(TAG, "initData", System.currentTimeMillis());
+    }
+
+    @Override
+    protected void setupListeners() {
+        // 下拉刷新
+        binding.swipeRefreshLayout.setOnRefreshListener(() -> {
+            if (!isFragmentAttached()) {
+                binding.swipeRefreshLayout.setRefreshing(false);
+                return;
+            }
+            LogUtils.action(TAG, "下拉刷新", "刷新插件列表");
+            loadPluginsFromRepo();
+        });
+        
+        // 搜索框文本变化监听
+        binding.etSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                performSearch(s.toString());
+            }
+            
+            @Override
+            public void afterTextChanged(Editable s) {
+                // 显示/清除按钮
+                if (s.length() > 0) {
+                    binding.btnClearSearch.setVisibility(View.VISIBLE);
+                } else {
+                    binding.btnClearSearch.setVisibility(View.GONE);
+                }
+            }
+        });
+        
+        // 搜索按钮点击
+        binding.btnSearch.setOnClickListener(v -> {
+            // 搜索已经在文本变化时执行，这里只是确保键盘收起
+            binding.etSearch.clearFocus();
+        });
+        
+        // 清除搜索按钮
+        binding.btnClearSearch.setOnClickListener(v -> {
+            binding.etSearch.setText("");
+            performSearch("");
+            binding.etSearch.requestFocus();
+        });
+        
+        // 键盘搜索键
+        binding.etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                binding.etSearch.clearFocus();
+                return true;
+            }
+            return false;
+        });
+    }
+    
+    private void performSearch(String keyword) {
+        currentKeyword = keyword == null ? "" : keyword.trim().toLowerCase();
+        
+        filteredPlugins.clear();
+        
+        if (currentKeyword.isEmpty()) {
+            filteredPlugins.addAll(allPlugins);
+        } else {
+            for (RepoPluginInfo plugin : allPlugins) {
+                if (matchesSearch(plugin, currentKeyword)) {
+                    filteredPlugins.add(plugin);
+                }
+            }
+        }
+        
+        updateUiOnMainThread(() -> {
+            if (isFragmentAttached() && adapter != null) {
+                adapter.setPlugins(filteredPlugins);
+                
+                if (filteredPlugins.isEmpty()) {
+                    binding.tvEmpty.setVisibility(View.VISIBLE);
+                    if (!currentKeyword.isEmpty()) {
+                        binding.tvEmpty.setText(getString(R.string.no_search_results, currentKeyword));
+                    } else {
+                        binding.tvEmpty.setText(getString(R.string.repo_no_plugins));
+                    }
+                } else {
+                    binding.tvEmpty.setVisibility(View.GONE);
+                }
+            }
+        });
+        
+        LogUtils.i(TAG, "搜索: \"" + keyword + "\", 找到 " + filteredPlugins.size() + " 个插件");
+    }
+    
+    private boolean matchesSearch(RepoPluginInfo plugin, String keyword) {
+        if (keyword.isEmpty()) return true;
+        
+        return (plugin.getName() != null && plugin.getName().toLowerCase().contains(keyword)) ||
+               (plugin.getPluginId() != null && plugin.getPluginId().toLowerCase().contains(keyword)) ||
+               (plugin.getDescription() != null && plugin.getDescription().toLowerCase().contains(keyword)) ||
+               (plugin.getAuthor() != null && plugin.getAuthor().toLowerCase().contains(keyword));
     }
 
     private OkHttpClient getUnsafeOkHttpClient() {
@@ -151,26 +278,6 @@ public class RepoFragment extends BaseFragment {
                     .writeTimeout(60, TimeUnit.SECONDS)
                     .build();
         }
-    }
-
-    @Override
-    protected void initData() {
-        LogUtils.enter(TAG, "initData");
-        testMirrors();
-        loadPluginsFromRepo();
-        LogUtils.exit(TAG, "initData", System.currentTimeMillis());
-    }
-
-    @Override
-    protected void setupListeners() {
-        binding.swipeRefreshLayout.setOnRefreshListener(() -> {
-            if (!isFragmentAttached()) {
-                binding.swipeRefreshLayout.setRefreshing(false);
-                return;
-            }
-            LogUtils.action(TAG, "下拉刷新", "刷新插件列表");
-            loadPluginsFromRepo();
-        });
     }
 
     private void testMirrors() {
@@ -258,8 +365,8 @@ public class RepoFragment extends BaseFragment {
                     binding.progressBar.setVisibility(View.GONE);
                     binding.swipeRefreshLayout.setRefreshing(false);
                     binding.tvEmpty.setVisibility(View.VISIBLE);
-                    binding.tvEmpty.setText("网络不可用\n\n请检查网络连接后下拉刷新");
-                    Toast.makeText(requireContext(), "网络不可用，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    binding.tvEmpty.setText(getString(R.string.repo_load_failed));
+                    Toast.makeText(requireContext(), getString(R.string.repo_load_failed), Toast.LENGTH_SHORT).show();
                 }
             });
             LogUtils.exit(TAG, "loadPluginsFromRepo", System.currentTimeMillis());
@@ -301,34 +408,19 @@ public class RepoFragment extends BaseFragment {
                 
                 LogUtils.param(TAG, "获取到插件数量", fetchedPlugins.size());
                 
-                List<String> installedIds = new ArrayList<>();
-                if (pluginManager != null) {
-                    List<PluginInfo> installedPlugins = pluginManager.getInstalledPlugins();
-                    for (PluginInfo info : installedPlugins) {
-                        installedIds.add(info.pluginId);
-                    }
-                }
-
-                final List<String> finalInstalledIds = installedIds;
+                allPlugins.clear();
+                allPlugins.addAll(fetchedPlugins);
+                
+                performSearch(currentKeyword);
+                refreshInstalledStatus();
                 
                 updateUiOnMainThread(() -> {
                     if (isFragmentAttached()) {
-                        plugins.clear();
-                        plugins.addAll(fetchedPlugins);
-                        adapter.setPlugins(plugins);
-                        adapter.setInstalledPlugins(finalInstalledIds);
                         binding.progressBar.setVisibility(View.GONE);
                         binding.swipeRefreshLayout.setRefreshing(false);
-
-                        if (plugins.isEmpty()) {
-                            binding.tvEmpty.setVisibility(View.VISIBLE);
-                            binding.tvEmpty.setText("暂无可用插件\n\n请确保 GitHub 组织中有已发布的插件");
-                        } else {
-                            binding.tvEmpty.setVisibility(View.GONE);
-                            LogUtils.success(TAG, "成功加载 " + plugins.size() + " 个插件");
-                        }
                     }
                 });
+                
             } catch (Exception e) {
                 LogUtils.e(TAG, "加载插件列表失败", e);
                 updateUiOnMainThread(() -> {
@@ -336,8 +428,8 @@ public class RepoFragment extends BaseFragment {
                         binding.progressBar.setVisibility(View.GONE);
                         binding.swipeRefreshLayout.setRefreshing(false);
                         binding.tvEmpty.setVisibility(View.VISIBLE);
-                        binding.tvEmpty.setText("加载失败: " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
-                        Toast.makeText(requireContext(), "加载失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        binding.tvEmpty.setText(getString(R.string.repo_load_failed));
+                        Toast.makeText(requireContext(), getString(R.string.repo_load_failed), Toast.LENGTH_LONG).show();
                     }
                 });
             }
@@ -347,39 +439,22 @@ public class RepoFragment extends BaseFragment {
 
     private void parseReposFromJson(String json, List<RepoPluginInfo> resultList) {
         try {
-            int pos = 0;
-            while (true) {
-                int startIdx = json.indexOf("\"name\":", pos);
-                if (startIdx == -1) break;
-                
-                int nameStart = json.indexOf("\"", startIdx + 7) + 1;
-                int nameEnd = json.indexOf("\"", nameStart);
-                if (nameStart == 0 || nameEnd == -1) break;
-                String repoName = json.substring(nameStart, nameEnd);
+            JSONArray repos = new JSONArray(json);
+            for (int i = 0; i < repos.length(); i++) {
+                JSONObject repo = repos.getJSONObject(i);
+                String repoName = repo.getString("name");
                 
                 if (repoName.equals(".github") || repoName.equals("Docs") || repoName.equals("docs")) {
-                    pos = nameEnd + 1;
                     continue;
                 }
                 
-                int descStartIdx = json.indexOf("\"description\":", nameEnd);
-                String description = "";
-                if (descStartIdx != -1) {
-                    int descStart = json.indexOf("\"", descStartIdx + 13) + 1;
-                    if (descStart > 0 && descStart < json.length()) {
-                        int descEnd = json.indexOf("\"", descStart);
-                        if (descEnd > descStart) {
-                            description = json.substring(descStart, descEnd);
-                        }
-                    }
-                }
+                String description = repo.optString("description", "");
                 
                 RepoPluginInfo plugin = fetchLatestReleaseForRepo(repoName);
                 if (plugin != null) {
                     plugin.setName(description.isEmpty() ? repoName : description);
                     resultList.add(plugin);
                 }
-                pos = nameEnd + 1;
             }
         } catch (Exception e) {
             LogUtils.e(TAG, "解析 JSON 失败", e);
@@ -410,31 +485,44 @@ public class RepoFragment extends BaseFragment {
 
     private RepoPluginInfo parseReleaseToPlugin(String repoName, String json) {
         try {
+            JSONObject release = new JSONObject(json);
             RepoPluginInfo plugin = new RepoPluginInfo();
             plugin.setPluginId(repoName);
             
-            String tagName = extractJsonValue(json, "tag_name");
-            if (tagName != null && tagName.contains("-")) {
+            String tagName = release.optString("tag_name", "");
+            if (tagName.contains("-")) {
                 String[] parts = tagName.split("-", 2);
                 plugin.setVersion(parts[0]);
                 plugin.setVersionName(parts.length > 1 ? parts[1] : parts[0]);
             } else {
                 plugin.setVersion("1");
-                plugin.setVersionName(tagName != null ? tagName : "1.0.0");
+                plugin.setVersionName(tagName.isEmpty() ? "1.0.0" : tagName);
             }
             
-            plugin.setUpdateLog(extractJsonValue(json, "body"));
-            plugin.setLastUpdate(extractJsonValue(json, "published_at"));
-            plugin.setRepositoryUrl(extractJsonValue(json, "html_url"));
+            plugin.setUpdateLog(release.optString("body", ""));
+            plugin.setLastUpdate(release.optString("published_at", ""));
+            plugin.setRepositoryUrl(release.optString("html_url", ""));
             
-            String downloadUrl = extractDownloadUrlFromAssets(json);
-            if (downloadUrl != null) {
-                plugin.setDownloadUrl(downloadUrl);
-                plugin.setSize(extractFileSizeFromAssets(json, downloadUrl));
-            } else {
+            JSONArray assets = release.getJSONArray("assets");
+            String downloadUrl = null;
+            long size = 0;
+            
+            for (int i = 0; i < assets.length(); i++) {
+                JSONObject asset = assets.getJSONObject(i);
+                String assetName = asset.getString("name");
+                if (assetName.endsWith(".tpk")) {
+                    downloadUrl = asset.getString("browser_download_url");
+                    size = asset.getLong("size");
+                    break;
+                }
+            }
+            
+            if (downloadUrl == null) {
                 return null;
             }
             
+            plugin.setDownloadUrl(downloadUrl);
+            plugin.setSize(size);
             plugin.setAuthor("UIN 社区");
             plugin.setDescription("UIN Tool 插件");
             
@@ -443,64 +531,6 @@ public class RepoFragment extends BaseFragment {
             LogUtils.e(TAG, "解析 Release 失败: " + repoName, e);
             return null;
         }
-    }
-
-    private String extractDownloadUrlFromAssets(String json) {
-        try {
-            String searchStr = ".tpk\"";
-            int idx = 0;
-            while (true) {
-                int found = json.indexOf(searchStr, idx);
-                if (found == -1) break;
-                
-                int urlStart = json.lastIndexOf("\"browser_download_url\":", found);
-                if (urlStart != -1) {
-                    int urlValueStart = json.indexOf("\"", urlStart + 23) + 1;
-                    int urlValueEnd = json.indexOf("\"", urlValueStart);
-                    if (urlValueStart > 0 && urlValueEnd > urlValueStart) {
-                        return json.substring(urlValueStart, urlValueEnd);
-                    }
-                }
-                idx = found + 5;
-            }
-        } catch (Exception e) {
-            LogUtils.e(TAG, "提取下载 URL 失败", e);
-        }
-        return null;
-    }
-
-    private long extractFileSizeFromAssets(String json, String downloadUrl) {
-        try {
-            int urlIdx = json.indexOf(downloadUrl);
-            if (urlIdx == -1) return 0;
-            
-            int sizeStart = json.lastIndexOf("\"size\":", urlIdx);
-            if (sizeStart != -1) {
-                int sizeValueStart = sizeStart + 6;
-                int sizeValueEnd = json.indexOf(",", sizeValueStart);
-                if (sizeValueEnd == -1 || sizeValueEnd > urlIdx) {
-                    sizeValueEnd = json.indexOf("}", sizeValueStart);
-                }
-                return Long.parseLong(json.substring(sizeValueStart, sizeValueEnd).trim());
-            }
-        } catch (Exception e) {
-            LogUtils.e(TAG, "提取文件大小失败", e);
-        }
-        return 0;
-    }
-
-    private String extractJsonValue(String json, String key) {
-        String searchKey = "\"" + key + "\":";
-        int keyIdx = json.indexOf(searchKey);
-        if (keyIdx == -1) return null;
-        
-        int valueStart = json.indexOf("\"", keyIdx + searchKey.length()) + 1;
-        if (valueStart == 0 || valueStart >= json.length()) return null;
-        
-        int valueEnd = json.indexOf("\"", valueStart);
-        if (valueEnd == -1) return null;
-        
-        return json.substring(valueStart, valueEnd);
     }
 
     private void downloadAndInstall(RepoPluginInfo plugin, int position) {
@@ -575,17 +605,14 @@ public class RepoFragment extends BaseFragment {
                             long now = System.currentTimeMillis();
                             if (now - lastUpdateTime > 200 && contentLength > 0) {
                                 final int progress = (int) (totalBytesRead * 100 / contentLength);
-                                final long downloaded = totalBytesRead;
                                 lastUpdateTime = now;
                                 
+                                final int finalProgress = progress;
                                 updateUiOnMainThread(() -> {
                                     if (isFragmentAttached()) {
-                                        binding.downloadProgressBar.setProgress(progress);
+                                        binding.downloadProgressBar.setProgress(finalProgress);
                                         binding.downloadProgressText.setText(
-                                            String.format("正在下载: %d%% (%.2f MB / %.2f MB)", 
-                                                progress, 
-                                                downloaded / (1024.0 * 1024.0),
-                                                contentLength / (1024.0 * 1024.0)));
+                                            String.format("正在下载: %d%%", finalProgress));
                                     }
                                 });
                             }
@@ -632,6 +659,57 @@ public class RepoFragment extends BaseFragment {
         }).start();
     }
 
+    private void showPluginDetailDialog(RepoPluginInfo plugin) {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_repo_plugin_detail, null);
+        
+        TextView tvName = dialogView.findViewById(R.id.tv_detail_name);
+        TextView tvPluginId = dialogView.findViewById(R.id.tv_detail_plugin_id);
+        TextView tvVersion = dialogView.findViewById(R.id.tv_detail_version);
+        TextView tvSize = dialogView.findViewById(R.id.tv_detail_size);
+        TextView tvAuthor = dialogView.findViewById(R.id.tv_detail_author);
+        TextView tvDate = dialogView.findViewById(R.id.tv_detail_date);
+        TextView tvDescription = dialogView.findViewById(R.id.tv_detail_description);
+        TextView tvUpdateLog = dialogView.findViewById(R.id.tv_detail_update_log);
+        Button btnInstall = dialogView.findViewById(R.id.btn_detail_install);
+        Button btnOpen = dialogView.findViewById(R.id.btn_detail_open);
+        
+        tvName.setText(plugin.getName());
+        tvPluginId.setText(plugin.getPluginId());
+        tvVersion.setText(plugin.getVersionName());
+        tvSize.setText(plugin.getFormattedSize());
+        tvAuthor.setText(plugin.getAuthor());
+        tvDate.setText(plugin.getFormattedDate());
+        tvDescription.setText(plugin.getDescription() != null ? plugin.getDescription() : "无描述");
+        tvUpdateLog.setText(plugin.getUpdateLog() != null ? plugin.getUpdateLog() : "无更新日志");
+        
+        boolean isInstalled = pluginManager.getPluginInfo(plugin.getPluginId()) != null;
+        if (isInstalled) {
+            btnInstall.setVisibility(View.GONE);
+            btnOpen.setVisibility(View.VISIBLE);
+        } else {
+            btnInstall.setVisibility(View.VISIBLE);
+            btnOpen.setVisibility(View.GONE);
+        }
+        
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .setPositiveButton(R.string.close, null)
+                .create();
+        
+        btnInstall.setOnClickListener(v -> {
+            int position = filteredPlugins.indexOf(plugin);
+            downloadAndInstall(plugin, position);
+            dialog.dismiss();
+        });
+        
+        btnOpen.setOnClickListener(v -> {
+            pluginManager.openPlugin(plugin.getPluginId(), requireContext());
+            dialog.dismiss();
+        });
+        
+        dialog.show();
+    }
+
     private void refreshInstalledStatus() {
         if (!isFragmentAttached()) return;
         
@@ -646,7 +724,7 @@ public class RepoFragment extends BaseFragment {
             }
             
             updateUiOnMainThread(() -> {
-                if (isFragmentAttached()) {
+                if (isFragmentAttached() && adapter != null) {
                     adapter.setInstalledPlugins(installedIds);
                 }
             });
