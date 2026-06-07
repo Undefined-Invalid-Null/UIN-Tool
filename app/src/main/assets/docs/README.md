@@ -248,10 +248,9 @@ layout.addView(centerText);
 layout.addView(bottomButton);
 ```
 
-列表视图（RecyclerView）
+列表视图（ListView）
 
 ```java
-// 需要在 plugin.json 中添加依赖或使用简单列表
 ListView listView = new ListView(context);
 String[] items = {"选项1", "选项2", "选项3"};
 ArrayAdapter<String> adapter = new ArrayAdapter<>(context, 
@@ -767,7 +766,7 @@ getCurrentTime - 获取当前时间
 
 ```javascript
 const time = UINPlugin.getCurrentTime();
-console.log(time); // 2024-01-01 12:00:00
+console.log(time); // 2026-06-07 12:00:00
 ```
 
 setTitle - 设置标题
@@ -925,25 +924,6 @@ plugin.tpk
 ```
 
 plugin.json 完整字段
-
-```json
-{
-    "pluginId": "com.example.myplugin",
-    "version": 1,
-    "versionName": "1.0.0",
-    "minHostVersion": 1,
-    "name": "插件名称",
-    "author": "作者",
-    "description": "插件描述",
-    "icon": "icon.png",
-    "mainClass": "com.example.MainPlugin",
-    "updateUrl": "https://example.com/update.json",
-    "apiLevel": 21,
-    "category": "工具",
-    "uiType": "native",
-    "entry": "web/index.html"
-}
-```
 
 字段 类型 说明
 pluginId string 唯一标识符，必填
@@ -1117,6 +1097,21 @@ Q10: 如何分享插件？
 3. 选择导出位置
 4. 分享生成的 ZIP 文件
 
+Q11: 如何管理插件分类？
+
+在插件详情弹窗中点击「修改分类」：
+
+· 选择已有分类
+· 选择「新建分类」创建新分类
+· 在分类管理对话框中可长按删除自定义分类
+
+Q12: 小部件不显示插件？
+
+· 检查小部件是否已配置插件
+· 尝试重新配置小部件
+· 检查是否有已安装插件
+· 刷新小部件列表
+
 ---
 
 最佳实践
@@ -1186,11 +1181,23 @@ try {
 技术支持
 
 · 📧 邮箱：undefinedinvalidnull@outlook.com
+· 🌐 GitHub：https://github.com/Undefined-Invalid-Null/UIN-Tool
+· 💬 QQ群：511875883
+
 ---
 
 更新日志
 
-v1.0.0 (2024-01-01)
+v1.1.0 (2026-06-07)
+
+新增内容：
+
+· 分类管理 API 说明
+· 长按菜单功能说明
+· 1x1 小部件开发说明
+· 更新日志查看功能
+
+v1.0.0 (2024-06-01)
 
 · 初始版本发布
 · 支持原生插件和 Web插件
@@ -1200,6 +1207,5 @@ v1.0.0 (2024-01-01)
 
 ---
 
-文档版本: 1.0.0
-最后更新: 2026-06-06
-
+文档版本: 1.1.0
+最后更新: 2026-06-07

@@ -75,6 +75,7 @@ public class DevFragment extends BaseFragment {
         String[] docs = {
             getString(R.string.doc_type_dev),
             getString(R.string.doc_type_help),
+            getString(R.string.doc_type_changelog),
             getString(R.string.doc_type_about),
             getString(R.string.doc_type_contributors)
         };
@@ -92,10 +93,14 @@ public class DevFragment extends BaseFragment {
                             intent.putExtra("title", getString(R.string.doc_type_help));
                             break;
                         case 2:
+                            intent.putExtra("doc_type", "changelog");
+                            intent.putExtra("title", getString(R.string.doc_type_changelog));
+                            break;
+                        case 3:
                             intent.putExtra("doc_type", "about");
                             intent.putExtra("title", getString(R.string.doc_type_about));
                             break;
-                        case 3:
+                        case 4:
                             intent.putExtra("doc_type", "contributors");
                             intent.putExtra("title", getString(R.string.doc_type_contributors));
                             break;
@@ -123,6 +128,7 @@ public class DevFragment extends BaseFragment {
             exportAssetToFile("docs/Help.md", new File(docsDir, "Help.md"));
             exportAssetToFile("docs/About.md", new File(docsDir, "About.md"));
             exportAssetToFile("docs/CONTRIBUTORS.md", new File(docsDir, "CONTRIBUTORS.md"));
+            exportAssetToFile("docs/CHANGELOG.md", new File(docsDir, "CHANGELOG.md"));
 
             showLongToast(getString(R.string.template_exported, workFolder));
 
@@ -156,7 +162,7 @@ public class DevFragment extends BaseFragment {
                 "    \"apiLevel\": 21,\n" +
                 "    \"uiType\": \"web\",\n" +
                 "    \"entry\": \"web/index.html\"\n" +
-                "}";
+                "}\n";
         
         // 写入 plugin.json
         writeStringToFile(new File(tempDir, "plugin.json"), pluginJson);

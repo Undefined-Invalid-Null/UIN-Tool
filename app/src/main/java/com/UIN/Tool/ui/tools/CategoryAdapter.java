@@ -24,6 +24,7 @@ public class CategoryAdapter extends BaseExpandableListAdapter {
 
     public interface OnPluginClickListener {
         void onPluginClick(PluginInfo plugin);
+        void onPluginLongClick(PluginInfo plugin);
     }
 
     public CategoryAdapter(Context context, List<String> categories,
@@ -90,6 +91,14 @@ public class CategoryAdapter extends BaseExpandableListAdapter {
         
         String category = categories.get(groupPosition);
         holder.tvTitle.setText(category);
+        
+        // 获取该分类下的插件数量
+        List<PluginInfo> plugins = categoryMap.get(category);
+        int count = plugins != null ? plugins.size() : 0;
+        if (count > 0 && !category.equals(context.getString(R.string.all_category))) {
+            holder.tvTitle.setText(category + " (" + count + ")");
+        }
+        
         holder.ivIndicator.setImageResource(isExpanded ? R.drawable.ic_chevron_down : R.drawable.ic_chevron_right);
         holder.ivIndicator.setColorFilter(context.getColor(R.color.text_secondary));
         
@@ -115,12 +124,18 @@ public class CategoryAdapter extends BaseExpandableListAdapter {
         PluginInfo plugin = (PluginInfo) getChild(groupPosition, childPosition);
         if (plugin != null) {
             holder.tvName.setText(plugin.name);
-            holder.tvDescription.setText(plugin.description != null && !plugin.description.isEmpty()
-                    ? plugin.description : context.getString(R.string.plugin_no_description));
+            String description = plugin.description != null && !plugin.description.isEmpty()
+                    ? plugin.description : context.getString(R.string.plugin_no_description);
+            holder.tvDescription.setText(description);
             IconHelper.loadPluginIcon(holder.ivIcon, plugin);
 
             convertView.setOnClickListener(v -> {
                 if (listener != null) listener.onPluginClick(plugin);
+            });
+            
+            convertView.setOnLongClickListener(v -> {
+                if (listener != null) listener.onPluginLongClick(plugin);
+                return true;
             });
         }
 

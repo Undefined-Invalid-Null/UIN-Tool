@@ -71,6 +71,7 @@ public class ManageFragment extends BaseFragment {
         String[] docs = {
             getString(R.string.doc_type_help),
             getString(R.string.doc_type_dev),
+            getString(R.string.doc_type_changelog),
             getString(R.string.doc_type_about),
             getString(R.string.doc_type_contributors)
         };
@@ -88,10 +89,14 @@ public class ManageFragment extends BaseFragment {
                             intent.putExtra("title", getString(R.string.doc_type_dev));
                             break;
                         case 2:
+                            intent.putExtra("doc_type", "changelog");
+                            intent.putExtra("title", getString(R.string.doc_type_changelog));
+                            break;
+                        case 3:
                             intent.putExtra("doc_type", "about");
                             intent.putExtra("title", getString(R.string.doc_type_about));
                             break;
-                        case 3:
+                        case 4:
                             intent.putExtra("doc_type", "contributors");
                             intent.putExtra("title", getString(R.string.doc_type_contributors));
                             break;
