@@ -1,8 +1,10 @@
 package com.UIN.Tool.plugin;
 
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -15,6 +17,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.UIN.Tool.utils.LogUtils;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PluginHostActivity extends AppCompatActivity {
     public static final String EXTRA_PLUGIN_ID = "plugin_id";
@@ -25,6 +29,9 @@ public class PluginHostActivity extends AppCompatActivity {
     private WebView webView;
     private PluginManager pluginManager;
     private String currentTitle = "";
+    
+    // 存储 onActivityResult 的结果等待
+    private Map<String, ActivityResultCallback> pendingActivityResults = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,13 +60,11 @@ public class PluginHostActivity extends AppCompatActivity {
             return;
         }
 
-        // 设置默认标题
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(pluginInfo.name);
             currentTitle = pluginInfo.name;
         }
 
-        // 根据 UI 类型选择加载方式
         if ("web".equals(pluginInfo.uiType)) {
             loadWebPlugin(pluginManager, pluginInfo);
         } else {
@@ -75,6 +80,12 @@ public class PluginHostActivity extends AppCompatActivity {
                     getSupportActionBar().setTitle(title);
                 }
             });
+        }
+    }
+    
+    public void evaluateJs(String script) {
+        if (webView != null) {
+            webView.evaluateJavascript(script, null);
         }
     }
     
@@ -145,6 +156,11 @@ public class PluginHostActivity extends AppCompatActivity {
                     .show();
                 return true;
             }
+            
+            @Override
+            public void onConsoleMessage(String message, int lineNumber, String sourceID) {
+                LogUtils.d("WebView", "Console: " + message + " (line " + lineNumber + ")");
+            }
         });
         
         webView.setWebViewClient(new WebViewClient() {
@@ -152,9 +168,16 @@ public class PluginHostActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 LogUtils.success("PluginHostActivity", "WebView 页面加载完成: " + url);
-                view.evaluateJavascript("console.log('UINPlugin available:', typeof UINPlugin !== 'undefined');", null);
                 
-                // 恢复标题
+                // 注入回调管理脚本
+                String initScript = 
+                    "if(typeof window.UINPluginCallbacks === 'undefined') {" +
+                    "    window.UINPluginCallbacks = {};" +
+                    "}" +
+                    "console.log('UINPlugin available:', typeof UINPlugin !== 'undefined');" +
+                    "console.log('Plugin info:', UINPlugin.getPluginInfo());";
+                view.evaluateJavascript(initScript, null);
+                
                 if (currentTitle != null && !currentTitle.isEmpty() && getSupportActionBar() != null) {
                     getSupportActionBar().setTitle(currentTitle);
                 }
@@ -188,6 +211,38 @@ public class PluginHostActivity extends AppCompatActivity {
         
         container.addView(webView);
         LogUtils.success("PluginHostActivity", "Web 插件已加载: " + pluginInfo.name);
+    }
+
+    // 添加 onActivityResult 转发
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        // 转发给原生插件
+        PluginInterface plugin = pluginManager.getPluginInstance(currentPluginId);
+        if (plugin != null) {
+            plugin.onActivityResult(requestCode, resultCode, data);
+        }
+        
+        // 转发给 Web 插件（通过 JavaScript 回调）
+        String callbackKey = "activity_result_" + requestCode;
+        ActivityResultCallback callback = pendingActivityResults.remove(callbackKey);
+        if (callback != null) {
+            callback.onResult(resultCode, data);
+        }
+        
+        // 也可以通过 evaluateJavascript 通知 Web 端
+        if (webView != null) {
+            String js = String.format(
+                "if(window.onActivityResult) {" +
+                "    window.onActivityResult(%d, %d, %s);" +
+                "}",
+                requestCode, resultCode, data != null ? "'" + data.toString().replace("'", "\\'") + "'" : "null"
+            );
+            webView.evaluateJavascript(js, null);
+        }
+        
+        LogUtils.d("PluginHostActivity", "onActivityResult 已转发: requestCode=" + requestCode);
     }
 
     @Override
@@ -249,5 +304,16 @@ public class PluginHostActivity extends AppCompatActivity {
         if (!handled) {
             super.onBackPressed();
         }
+    }
+    
+    // 添加回调接口
+    public interface ActivityResultCallback {
+        void onResult(int resultCode, Intent data);
+    }
+    
+    public void startActivityForResultWithCallback(Intent intent, int requestCode, ActivityResultCallback callback) {
+        String key = "activity_result_" + requestCode;
+        pendingActivityResults.put(key, callback);
+        startActivityForResult(intent, requestCode);
     }
 }

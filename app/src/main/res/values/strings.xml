@@ -492,8 +492,11 @@
 <string name="repo_open">打开</string>
 <string name="repo_installed">已安装</string>
 <string name="repo_downloading">下载中...</string>
-<string name="repo_no_plugins">暂无可用插件</string>
+<string name="repo_no_plugins">暂无可用插件\n\n请检查网络连接后下拉刷新</string>
 <string name="repo_load_failed">加载失败，请检查网络</string>
-<string name="repo_install_success">安装成功</string>
 <string name="repo_install_failed">安装失败</string>
+<!-- 仓库页面字符串 -->
+<string name="file_size">大小</string>
+<string name="author">作者</string>
+<string name="unknown">未知</string>
 </resources>

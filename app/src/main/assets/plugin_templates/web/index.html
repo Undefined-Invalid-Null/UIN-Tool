@@ -22,12 +22,14 @@
             <button class="tab-btn active" data-tab="basic">基础</button>
             <button class="tab-btn" data-tab="info">信息</button>
             <button class="tab-btn" data-tab="storage">存储</button>
+            <button class="tab-btn" data-tab="network">网络</button>
+            <button class="tab-btn" data-tab="sensor">传感器</button>
             <button class="tab-btn" data-tab="system">系统</button>
         </div>
         
         <!-- 标签页内容 -->
         <div class="tab-content">
-            <!-- 基础功能标签页 -->
+            <!-- ==================== 基础功能标签页 ==================== -->
             <div id="tab-basic" class="tab-pane active">
                 <div class="card">
                     <h3>📢 提示功能</h3>
@@ -42,7 +44,7 @@
                 <div class="card">
                     <h3>📋 剪贴板功能</h3>
                     <div class="input-group">
-                        <input type="text" id="copyText" placeholder="输入要复制的文字" class="input">
+                        <input type="text" id="copyText" placeholder="输入要复制的文字" class="input" value="Hello from Web Plugin!">
                         <button class="btn btn-primary" onclick="testCopy()">复制</button>
                     </div>
                     <div class="input-group">
@@ -69,7 +71,7 @@
                 </div>
             </div>
             
-            <!-- 信息获取标签页 -->
+            <!-- ==================== 信息获取标签页 ==================== -->
             <div id="tab-info" class="tab-pane">
                 <div class="card">
                     <h3>📦 插件信息</h3>
@@ -92,6 +94,7 @@
                         </div>
                     </div>
                     <button class="btn btn-info" onclick="testGetPluginInfo()">获取完整插件信息</button>
+                    <div id="pluginInfoResult" class="result-box"></div>
                 </div>
                 
                 <div class="card">
@@ -113,6 +116,14 @@
                             <span class="info-label">API：</span>
                             <span class="info-value" id="device-api">-</span>
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">屏幕：</span>
+                            <span class="info-value" id="device-screen">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">密度：</span>
+                            <span class="info-value" id="device-density">-</span>
+                        </div>
                     </div>
                     <button class="btn btn-info" onclick="testGetDeviceInfo()">刷新设备信息</button>
                 </div>
@@ -128,6 +139,14 @@
                             <span class="info-label">网络类型：</span>
                             <span class="info-value" id="network-type">-</span>
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">WiFi：</span>
+                            <span class="info-value" id="network-wifi">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">移动网络：</span>
+                            <span class="info-value" id="network-mobile">-</span>
+                        </div>
                     </div>
                     <button class="btn btn-info" onclick="testGetNetworkInfo()">刷新网络状态</button>
                 </div>
@@ -140,12 +159,21 @@
                     </div>
                     <button class="btn btn-secondary" onclick="testGetTime()">刷新时间</button>
                 </div>
+                
+                <div class="card">
+                    <h3>🔧 应用信息</h3>
+                    <div class="info-item">
+                        <span class="info-label">宿主版本：</span>
+                        <span class="info-value mono" id="app-version">-</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="testGetAppVersion()">获取宿主版本</button>
+                </div>
             </div>
             
-            <!-- 存储功能标签页 -->
+            <!-- ==================== 存储功能标签页 ==================== -->
             <div id="tab-storage" class="tab-pane">
                 <div class="card">
-                    <h3>💾 数据存储</h3>
+                    <h3>💾 SharedPreferences 存储</h3>
                     <div class="input-group">
                         <input type="text" id="storageKey" placeholder="键名" class="input">
                         <input type="text" id="storageValue" placeholder="值" class="input">
@@ -163,13 +191,102 @@
                 </div>
                 
                 <div class="card">
-                    <h3>📁 文件目录</h3>
+                    <h3>📁 文件系统操作</h3>
+                    <div class="input-group">
+                        <input type="text" id="fileName" placeholder="文件名" class="input" value="test.txt">
+                        <textarea id="fileContent" placeholder="文件内容" class="textarea" rows="3">这是一个测试文件内容。
+可以通过文件系统 API 读写。
+支持中文和特殊字符！</textarea>
+                        <button class="btn btn-primary" onclick="testWriteFile()">写入文件</button>
+                        <button class="btn btn-secondary" onclick="testReadFile()">读取文件</button>
+                        <button class="btn btn-danger" onclick="testDeleteFile()">删除文件</button>
+                    </div>
+                    <div class="input-group">
+                        <button class="btn btn-info" onclick="testListFiles()">列出所有文件</button>
+                        <select id="fileList" class="file-list" size="4" onchange="loadSelectedFile()">
+                            <option>-- 点击列出文件 --</option>
+                        </select>
+                    </div>
+                    <div id="fileResult" class="result-box"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>📂 插件目录</h3>
                     <button class="btn btn-info" onclick="testGetPluginDir()">获取插件目录</button>
                     <div id="pluginDirResult" class="result-box"></div>
                 </div>
             </div>
             
-            <!-- 系统功能标签页 -->
+            <!-- ==================== 网络请求标签页 ==================== -->
+            <div id="tab-network" class="tab-pane">
+                <div class="card">
+                    <h3>🌐 HTTP GET 请求</h3>
+                    <div class="input-group">
+                        <input type="text" id="getUrl" placeholder="GET URL" class="input" value="https://api.github.com/orgs/UIN-Tool-Plugins/repos">
+                        <button class="btn btn-primary" onclick="testHttpGet()">发送 GET</button>
+                    </div>
+                    <div id="getResult" class="result-box result-scrollable"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>📤 HTTP POST 请求</h3>
+                    <div class="input-group">
+                        <input type="text" id="postUrl" placeholder="POST URL" class="input" value="https://httpbin.org/post">
+                        <textarea id="postData" placeholder='{"key": "value"}' class="textarea" rows="3">{"test": "Hello World", "timestamp": "{{TIMESTAMP}}"}</textarea>
+                        <button class="btn btn-primary" onclick="testHttpPost()">发送 POST</button>
+                    </div>
+                    <div id="postResult" class="result-box result-scrollable"></div>
+                </div>
+                
+                <div class="card">
+                    <h3>📡 API 测试</h3>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="testGitHubAPI()">测试 GitHub API</button>
+                        <button class="btn btn-secondary" onclick="testHttpBin()">测试 HttpBin</button>
+                        <button class="btn btn-secondary" onclick="testIPAPI()">获取 IP 地址</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ==================== 传感器标签页 ==================== -->
+            <div id="tab-sensor" class="tab-pane">
+                <div class="card">
+                    <h3>📡 传感器状态</h3>
+                    <div class="info-grid" id="sensor-status">
+                        <div class="info-item">
+                            <span class="info-label">可用传感器：</span>
+                            <span class="info-value" id="available-sensors">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">当前传感器：</span>
+                            <span class="info-value" id="current-sensor">未启动</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-info" onclick="testGetAvailableSensors()">检测可用传感器</button>
+                </div>
+                
+                <div class="card">
+                    <h3>🎯 传感器控制</h3>
+                    <div class="sensor-grid">
+                        <button class="sensor-btn" data-sensor="accelerometer" onclick="startSensor('accelerometer')">📊 加速度计</button>
+                        <button class="sensor-btn" data-sensor="gyroscope" onclick="startSensor('gyroscope')">🔄 陀螺仪</button>
+                        <button class="sensor-btn" data-sensor="magnetic" onclick="startSensor('magnetic')">🧲 磁场计</button>
+                        <button class="sensor-btn" data-sensor="light" onclick="startSensor('light')">💡 光线传感器</button>
+                        <button class="sensor-btn" data-sensor="proximity" onclick="startSensor('proximity')">📏 接近传感器</button>
+                        <button class="sensor-btn" data-sensor="pressure" onclick="startSensor('pressure')">📊 压力传感器</button>
+                        <button class="sensor-btn-danger" onclick="stopAllSensors()">⏹️ 停止所有</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📊 实时数据</h3>
+                    <div id="sensorData" class="sensor-data-box">
+                        <div class="sensor-placeholder">点击上方按钮启动传感器</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ==================== 系统功能标签页 ==================== -->
             <div id="tab-system" class="tab-pane">
                 <div class="card">
                     <h3>⚙️ 系统设置</h3>
@@ -184,29 +301,43 @@
                     <div class="button-group">
                         <button class="btn btn-secondary" onclick="testSetTitle()">修改标题</button>
                         <button class="btn btn-secondary" onclick="testResetTitle()">重置标题</button>
+                        <button class="btn btn-secondary" onclick="testSetFullscreen()">全屏模式</button>
+                        <button class="btn btn-secondary" onclick="testExitFullscreen()">退出全屏</button>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h3>📊 控制台</h3>
+                    <h3>📊 控制台日志</h3>
                     <div class="log-container" id="logContainer">
                         <div class="log-entry system">📱 Web 插件测试面板已启动</div>
                         <div class="log-entry system">🎨 版本：{{PLUGIN_VERSION}}</div>
                         <div class="log-entry system">📦 插件ID：{{PLUGIN_ID}}</div>
+                        <div class="log-entry system">✅ 所有功能已就绪</div>
                     </div>
-                    <button class="btn btn-warning" onclick="clearLog()">清空日志</button>
+                    <div class="button-group">
+                        <button class="btn btn-warning" onclick="clearLog()">清空日志</button>
+                        <button class="btn btn-info" onclick="testConsoleLog()">测试控制台输出</button>
+                    </div>
                 </div>
                 
                 <div class="card">
                     <h3>🧪 测试区域</h3>
-                    <button class="btn btn-danger" onclick="testClose()">关闭插件</button>
+                    <div class="info-item">
+                        <span class="info-label">测试计数器：</span>
+                        <span class="info-value" id="counter">0</span>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="incrementCounter()">+1</button>
+                        <button class="btn btn-secondary" onclick="resetCounter()">重置</button>
+                        <button class="btn btn-danger" onclick="testClose()">关闭插件</button>
+                    </div>
                 </div>
             </div>
         </div>
         
         <!-- 底部状态栏 -->
         <div class="footer">
-            <span>UIN Tool WebView 测试面板</span>
+            <span>UIN Tool WebView 测试面板 | 支持网络请求 · 文件系统 · 传感器</span>
         </div>
     </div>
     
