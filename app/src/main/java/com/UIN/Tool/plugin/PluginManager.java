@@ -20,10 +20,12 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import com.UIN.Tool.R;
 import com.UIN.Tool.utils.FileUtils;
 import com.UIN.Tool.utils.LogUtils;
 import com.UIN.Tool.utils.PreferencesUtils;
 import com.UIN.Tool.widget.UINWidgetProvider;
+import com.UIN.Tool.widget.Widget1x1Provider;
 
 import dalvik.system.DexClassLoader;
 
@@ -85,6 +87,7 @@ public class PluginManager {
             PackageInfo pi = pm.getPackageInfo(appContext.getPackageName(), 0);
             return pi.versionName;
         } catch (Exception e) {
+            LogUtils.e("PluginManager", "获取版本失败", e);
             return "1.0";
         }
     }
@@ -122,7 +125,7 @@ public class PluginManager {
             return true;
             
         } catch (Exception e) {
-            LogUtils.e("PluginManager", "签名验证异常: " + e.getMessage());
+            LogUtils.e("PluginManager", "签名验证异常: " + e.getMessage(), e);
             return false;
         }
     }
@@ -144,7 +147,7 @@ public class PluginManager {
             }
             return hexString.toString();
         } catch (Exception e) {
-            LogUtils.e("PluginManager", "计算哈希失败: " + e.getMessage());
+            LogUtils.e("PluginManager", "计算哈希失败: " + e.getMessage(), e);
             return null;
         }
     }
@@ -336,7 +339,7 @@ public class PluginManager {
                 in.close();
                 out.close();
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PluginManager", "复制文件失败: " + e.getMessage(), e);
             }
         }
     }
@@ -371,6 +374,7 @@ public class PluginManager {
             
             return hasValidEntry;
         } catch (Exception e) {
+            LogUtils.e("PluginManager", "解压失败: " + e.getMessage(), e);
             return false;
         }
     }
@@ -450,8 +454,6 @@ public class PluginManager {
             settings.setMediaPlaybackRequiresUserGesture(false);
             settings.setDefaultTextEncodingName("UTF-8");
             settings.setSupportMultipleWindows(false);
-            
-            settings.setCacheMode(WebSettings.LOAD_DEFAULT);
             
             String databasePath = context.getDir("database", Context.MODE_PRIVATE).getPath();
             settings.setDatabasePath(databasePath);
@@ -683,9 +685,11 @@ public class PluginManager {
                 if (jsonFile.exists()) {
                     String json = FileUtils.readFileToString(jsonFile);
                     PluginInfo info = PluginInfo.fromJson(json);
-                    if (info != null) {
+                    if (info != null && info.pluginId != null) {
                         list.add(info);
                         loadedPlugins.put(info.pluginId, info);
+                    } else {
+                        LogUtils.w("PluginManager", "无效的插件目录: " + pluginDir.getName());
                     }
                 }
             }
@@ -715,8 +719,10 @@ public class PluginManager {
 
     public List<PluginInfo> getPluginsByCategory(String category) {
         List<PluginInfo> result = new ArrayList<>();
+        String uncategorized = appContext.getString(R.string.uncategorized);
         for (PluginInfo info : getInstalledPlugins()) {
-            if (category.equals(info.category) || (category.equals("未分类") && (info.category == null || info.category.isEmpty()))) {
+            String pluginCategory = (info.category == null || info.category.isEmpty()) ? uncategorized : info.category;
+            if (category.equals(pluginCategory)) {
                 result.add(info);
             }
         }
@@ -725,14 +731,73 @@ public class PluginManager {
 
     public List<String> getAllCategories() {
         List<String> categories = new ArrayList<>();
-        categories.add("全部");
-        categories.add("未分类");
+        String allCategory = appContext.getString(R.string.all_category);
+        String uncategorized = appContext.getString(R.string.uncategorized);
+        
+        categories.add(allCategory);
+        categories.add(uncategorized);
+        
         for (PluginInfo info : getInstalledPlugins()) {
-            if (info.category != null && !info.category.isEmpty() && !categories.contains(info.category)) {
-                categories.add(info.category);
+            String category = (info.category == null || info.category.isEmpty()) ? uncategorized : info.category;
+            if (!categories.contains(category)) {
+                categories.add(category);
             }
         }
         return categories;
+    }
+
+    public List<String> getAllCategoriesWithSystem() {
+        return getAllCategories();
+    }
+
+    public boolean addCategory(String categoryName) {
+        if (categoryName == null || categoryName.trim().isEmpty()) {
+            LogUtils.w("PluginManager", "分类名称不能为空");
+            return false;
+        }
+        
+        String trimmed = categoryName.trim();
+        List<String> existing = getAllCategories();
+        
+        if (existing.contains(trimmed)) {
+            LogUtils.w("PluginManager", "分类已存在: " + trimmed);
+            return false;
+        }
+        
+        LogUtils.action("PluginManager", "添加分类", trimmed);
+        return true;
+    }
+
+    public boolean deleteCategory(String categoryName) {
+        if (categoryName == null || categoryName.isEmpty()) {
+            return false;
+        }
+        
+        String allCategory = appContext.getString(R.string.all_category);
+        String uncategorized = appContext.getString(R.string.uncategorized);
+        
+        if (categoryName.equals(allCategory) || categoryName.equals(uncategorized)) {
+            LogUtils.w("PluginManager", "不能删除系统分类: " + categoryName);
+            return false;
+        }
+        
+        LogUtils.action("PluginManager", "删除分类", categoryName);
+        
+        List<PluginInfo> pluginsInCategory = getPluginsByCategory(categoryName);
+        boolean success = true;
+        
+        for (PluginInfo info : pluginsInCategory) {
+            if (!updatePluginCategory(info.pluginId, uncategorized)) {
+                success = false;
+                LogUtils.e("PluginManager", "移动插件失败: " + info.name);
+            }
+        }
+        
+        if (success) {
+            LogUtils.success("PluginManager", "分类删除成功: " + categoryName);
+        }
+        
+        return success;
     }
 
     public boolean updatePluginCategory(String pluginId, String newCategory) {
@@ -833,9 +898,10 @@ public class PluginManager {
     private void notifyWidgetsRefresh() {
         try {
             UINWidgetProvider.sendIntentToRefreshAllWidgets(appContext);
+            Widget1x1Provider.sendRefreshIntent(appContext);
             LogUtils.i("PluginManager", "Widgets refresh notification sent");
         } catch (Exception e) {
-            LogUtils.e("PluginManager", "Failed to notify widgets: " + e.getMessage());
+            LogUtils.e("PluginManager", "Failed to notify widgets: " + e.getMessage(), e);
         }
     }
 }

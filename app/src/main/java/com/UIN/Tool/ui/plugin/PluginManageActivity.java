@@ -5,14 +5,17 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
-import android.widget.ProgressBar;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -27,6 +30,7 @@ import com.UIN.Tool.utils.FileUtils;
 import com.UIN.Tool.utils.LogUtils;
 import com.UIN.Tool.utils.PreferencesUtils;
 import com.UIN.Tool.widget.UINWidgetProvider;
+import com.UIN.Tool.widget.Widget1x1Provider;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -95,15 +99,14 @@ public class PluginManageActivity extends BaseActivity {
         binding.btnExportContainer.setOnClickListener(v -> exportSelectedPlugins());
         binding.btnUninstallContainer.setOnClickListener(v -> uninstallSelectedPlugins());
         
-        // TPK 提示点击事件
         binding.tpkHintContainer.setOnClickListener(v -> showTpkHintDialog());
     }
 
     private void showTpkHintDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("📦 关于 TPK 文件")
-                .setMessage("TPK 文件本质上是 ZIP 压缩包。\n\n您可以：\n• 将 .tpk 重命名为 .zip 后解压\n• 修改 web/ 目录下的 HTML/CSS/JS 文件\n• 修改 src/ 目录下的 Java 源文件\n• 重新打包成 ZIP 并改回 .tpk 即可\n\n💡 提示：修改后无需重新签名，直接导入即可生效。")
-                .setPositiveButton("知道了", null)
+                .setMessage(getString(R.string.tpk_hint_message))
+                .setPositiveButton(R.string.ok, null)
                 .setNeutralButton("查看插件目录", (dialog, which) -> openPluginsFolder())
                 .show();
     }
@@ -191,6 +194,7 @@ public class PluginManageActivity extends BaseActivity {
                     else { batchFailCount++; batchFailNames.append(fileName).append("\n"); }
                 } else { batchFailCount++; batchFailNames.append(fileName).append("\n"); }
             } catch (Exception e) {
+                LogUtils.e("PluginManageActivity", "批量导入失败", e);
                 batchFailCount++;
                 batchFailNames.append(fileName).append("\n");
             }
@@ -235,6 +239,7 @@ public class PluginManageActivity extends BaseActivity {
                 zipFile.delete();
                 FileUtils.deleteDir(extractDir);
             } catch (Exception e) {
+                LogUtils.e("PluginManageActivity", "导入插件集失败", e);
                 fail++;
             }
             final int fSuccess = success, fFail = fail;
@@ -284,6 +289,7 @@ public class PluginManageActivity extends BaseActivity {
             showToast(getString(R.string.plugin_manage_export_result, plugins.size(), zipFile.getAbsolutePath()));
             adapter.clearSelection();
         } catch (Exception e) {
+            LogUtils.e("PluginManageActivity", "导出失败", e);
             showToast(getString(R.string.toast_export_failed, e.getMessage()));
         }
     }
@@ -365,6 +371,7 @@ public class PluginManageActivity extends BaseActivity {
     private void refreshWidgets() {
         try {
             UINWidgetProvider.sendIntentToRefreshAllWidgets(this);
+            Widget1x1Provider.sendRefreshIntent(this);
         } catch (Exception e) {
             LogUtils.e("PluginManageActivity", "刷新小部件失败", e);
         }
@@ -400,49 +407,89 @@ public class PluginManageActivity extends BaseActivity {
         tvCategory.setText(info.category != null && !info.category.isEmpty() ? info.category : getString(R.string.plugin_default_category));
         tvDescription.setText(info.description != null && !info.description.isEmpty() ? info.description : getString(R.string.plugin_no_description));
 
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(info.name)
+                .setView(dialogView)
+                .setPositiveButton(R.string.close, null)
+                .create();
+
         btnRun.setOnClickListener(v -> {
             pluginManager.openPlugin(info.pluginId, this);
+            dialog.dismiss();
         });
 
         btnShortcut.setOnClickListener(v -> {
             PluginShortcutHelper.createShortcut(this, info);
             showToast(getString(R.string.creating_shortcut));
+            dialog.dismiss();
         });
 
-        btnChangeCategory.setOnClickListener(v -> showCategoryChangeDialog(info));
+        btnChangeCategory.setOnClickListener(v -> {
+            showCategoryChangeDialog(info);
+            dialog.dismiss();
+        });
 
         btnUninstall.setOnClickListener(v -> {
             DialogHelper.confirmDialog(this, getString(R.string.dialog_title_confirm),
                     getString(R.string.uninstall_plugin_confirm, info.name),
-                    (dialog, which) -> {
+                    (d, w) -> {
                         pluginManager.uninstallPlugin(info.pluginId);
                         loadPlugins();
                         refreshWidgets();
                         showToast(getString(R.string.toast_uninstall_success, info.name));
+                        dialog.dismiss();
                     }).show();
         });
 
-        new AlertDialog.Builder(this)
-                .setTitle(info.name)
-                .setView(dialogView)
-                .setPositiveButton(R.string.close, null)
-                .show();
+        dialog.show();
     }
 
     private void showCategoryChangeDialog(PluginInfo info) {
         List<String> categories = pluginManager.getAllCategories();
         categories.remove(getString(R.string.all_category));
-        String[] categoryArray = categories.toArray(new String[0]);
+        
+        final String NEW_CATEGORY_OPTION = "+ " + getString(R.string.create_new_category);
+        List<String> displayCategories = new ArrayList<>(categories);
+        displayCategories.add(NEW_CATEGORY_OPTION);
+        
+        String[] categoryArray = displayCategories.toArray(new String[0]);
 
         DialogHelper.listDialog(this, getString(R.string.dialog_title_select_category), categoryArray,
                 (dialog, which) -> {
-                    String newCategory = categoryArray[which];
-                    boolean success = pluginManager.updatePluginCategory(info.pluginId, newCategory);
-                    if (success) {
-                        showToast(getString(R.string.category_updated, newCategory));
-                        loadPlugins();
+                    String selected = categoryArray[which];
+                    if (selected.equals(NEW_CATEGORY_OPTION)) {
+                        showSimpleCreateCategoryDialog(info);
+                    } else {
+                        boolean success = pluginManager.updatePluginCategory(info.pluginId, selected);
+                        if (success) {
+                            showToast(getString(R.string.category_updated, selected));
+                            loadPlugins();
+                        }
                     }
                 }).show();
+    }
+
+    private void showSimpleCreateCategoryDialog(PluginInfo info) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final EditText input = new EditText(this);
+        input.setHint(getString(R.string.category_name_hint));
+        input.setPadding(50, 20, 50, 20);
+        
+        builder.setTitle(R.string.category_manager_title)
+                .setView(input)
+                .setPositiveButton(R.string.add_category, (dialog, which) -> {
+                    String newCategory = input.getText().toString().trim();
+                    if (!newCategory.isEmpty()) {
+                        pluginManager.addCategory(newCategory);
+                        pluginManager.updatePluginCategory(info.pluginId, newCategory);
+                        showToast(getString(R.string.category_updated, newCategory));
+                        loadPlugins();
+                    } else {
+                        showToast(getString(R.string.category_name_empty));
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     private class PluginListAdapter extends RecyclerView.Adapter<PluginListAdapter.ViewHolder> {
@@ -474,14 +521,15 @@ public class PluginManageActivity extends BaseActivity {
             notifyDataSetChanged();
         }
 
+        @NonNull
         @Override
-        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view = getLayoutInflater().inflate(R.layout.item_plugin_manage, parent, false);
             return new ViewHolder(view);
         }
 
         @Override
-        public void onBindViewHolder(ViewHolder h, int p) {
+        public void onBindViewHolder(@NonNull ViewHolder h, int p) {
             PluginInfo info = plugins.get(p);
             h.checkBox.setChecked(selectedIds.contains(info.pluginId));
             h.checkBox.setOnCheckedChangeListener(null);
@@ -492,6 +540,10 @@ public class PluginManageActivity extends BaseActivity {
             h.tvName.setText(info.name);
             h.tvId.setText(info.pluginId);
             h.itemView.setOnClickListener(v -> showPluginDetail(info));
+            h.itemView.setOnLongClickListener(v -> {
+                showPluginDetail(info);
+                return true;
+            });
         }
 
         @Override

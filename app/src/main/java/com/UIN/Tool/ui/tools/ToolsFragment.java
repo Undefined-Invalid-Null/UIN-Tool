@@ -1,12 +1,14 @@
 package com.UIN.Tool.ui.tools;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ExpandableListView;
+import android.widget.EditText;
+import android.widget.TextView;  // 添加这个 import
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,11 +18,15 @@ import com.UIN.Tool.databinding.FragmentToolsCategoryBinding;
 import com.UIN.Tool.plugin.PluginInfo;
 import com.UIN.Tool.plugin.PluginManager;
 import com.UIN.Tool.ui.common.BaseFragment;
+import com.UIN.Tool.ui.common.DialogHelper;
+import com.UIN.Tool.ui.tools.PluginShortcutHelper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+// ... 其余代码保持不变
 
 public class ToolsFragment extends BaseFragment {
 
@@ -123,16 +129,6 @@ public class ToolsFragment extends BaseFragment {
         } else {
             showListView();
         }
-
-        if (currentPlugins.isEmpty() && !isSearching()) {
-            // 静默处理，不显示 Toast
-        } else if (currentPlugins.isEmpty() && isSearching()) {
-            showToast(getString(R.string.no_search_results, currentKeyword));
-        }
-    }
-
-    private boolean isSearching() {
-        return !currentKeyword.isEmpty();
     }
 
     private void showCategoryView() {
@@ -156,9 +152,17 @@ public class ToolsFragment extends BaseFragment {
         }
 
         categoryAdapter = new CategoryAdapter(requireContext(), categories, categoryMap,
-                pluginInfo -> {
-                    if (pluginManager != null) {
-                        pluginManager.openPlugin(pluginInfo.pluginId, getContext());
+                new CategoryAdapter.OnPluginClickListener() {
+                    @Override
+                    public void onPluginClick(PluginInfo plugin) {
+                        if (pluginManager != null) {
+                            pluginManager.openPlugin(plugin.pluginId, getContext());
+                        }
+                    }
+                    
+                    @Override
+                    public void onPluginLongClick(PluginInfo plugin) {
+                        showPluginDetailDialog(plugin);
                     }
                 });
         binding.expandableListView.setAdapter(categoryAdapter);
@@ -166,6 +170,12 @@ public class ToolsFragment extends BaseFragment {
         for (int i = 0; i < categoryAdapter.getGroupCount(); i++) {
             binding.expandableListView.expandGroup(i);
         }
+        
+        // 设置指示器位置
+        binding.expandableListView.setIndicatorBounds(
+            binding.expandableListView.getWidth() - 50, 
+            binding.expandableListView.getWidth()
+        );
     }
 
     private void showListView() {
@@ -177,13 +187,134 @@ public class ToolsFragment extends BaseFragment {
         categoryMap.put(getString(R.string.all_plugins), currentPlugins);
 
         categoryAdapter = new CategoryAdapter(requireContext(), categories, categoryMap,
-                pluginInfo -> {
-                    if (pluginManager != null) {
-                        pluginManager.openPlugin(pluginInfo.pluginId, getContext());
+                new CategoryAdapter.OnPluginClickListener() {
+                    @Override
+                    public void onPluginClick(PluginInfo plugin) {
+                        if (pluginManager != null) {
+                            pluginManager.openPlugin(plugin.pluginId, getContext());
+                        }
+                    }
+                    
+                    @Override
+                    public void onPluginLongClick(PluginInfo plugin) {
+                        showPluginDetailDialog(plugin);
                     }
                 });
         binding.expandableListView.setAdapter(categoryAdapter);
         binding.expandableListView.expandGroup(0);
+    }
+
+    private boolean isSearching() {
+        return !currentKeyword.isEmpty();
+    }
+
+    private void showPluginDetailDialog(PluginInfo plugin) {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_plugin_detail, null);
+        TextView tvName = dialogView.findViewById(R.id.tv_name);
+        TextView tvId = dialogView.findViewById(R.id.tv_id);
+        TextView tvVersion = dialogView.findViewById(R.id.tv_version);
+        TextView tvAuthor = dialogView.findViewById(R.id.tv_author);
+        TextView tvCategory = dialogView.findViewById(R.id.tv_category);
+        TextView tvDescription = dialogView.findViewById(R.id.tv_description);
+        View btnRun = dialogView.findViewById(R.id.btn_run);
+        View btnShortcut = dialogView.findViewById(R.id.btn_shortcut);
+        View btnChangeCategory = dialogView.findViewById(R.id.btn_change_category);
+        View btnUninstall = dialogView.findViewById(R.id.btn_uninstall);
+
+        tvName.setText(plugin.name);
+        tvId.setText(plugin.pluginId);
+        tvVersion.setText(plugin.versionName + " (" + plugin.version + ")");
+        tvAuthor.setText(plugin.author != null && !plugin.author.isEmpty() ? plugin.author : getString(R.string.plugin_unknown_author));
+        String categoryText = (plugin.category != null && !plugin.category.isEmpty()) ? plugin.category : getString(R.string.plugin_default_category);
+        tvCategory.setText(categoryText);
+        tvDescription.setText(plugin.description != null && !plugin.description.isEmpty() ? plugin.description : getString(R.string.plugin_no_description));
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle(plugin.name)
+                .setView(dialogView)
+                .setPositiveButton(R.string.close, null)
+                .create();
+
+        btnRun.setOnClickListener(v -> {
+            if (pluginManager != null) {
+                pluginManager.openPlugin(plugin.pluginId, getContext());
+            }
+            dialog.dismiss();
+        });
+
+        btnShortcut.setOnClickListener(v -> {
+            PluginShortcutHelper.createShortcut(requireContext(), plugin);
+            showToast(getString(R.string.creating_shortcut));
+            dialog.dismiss();
+        });
+
+        btnChangeCategory.setOnClickListener(v -> {
+            showCategoryChangeDialogForPlugin(plugin);
+            dialog.dismiss();
+        });
+
+        btnUninstall.setOnClickListener(v -> {
+            DialogHelper.confirmDialog(requireContext(), getString(R.string.dialog_title_confirm),
+                    getString(R.string.uninstall_plugin_confirm, plugin.name),
+                    (d, w) -> {
+                        if (pluginManager != null) {
+                            pluginManager.uninstallPlugin(plugin.pluginId);
+                            loadData();
+                            showToast(getString(R.string.toast_uninstall_success, plugin.name));
+                        }
+                        dialog.dismiss();
+                    }).show();
+        });
+
+        dialog.show();
+    }
+
+    private void showCategoryChangeDialogForPlugin(PluginInfo info) {
+        List<String> categories = pluginManager.getAllCategories();
+        categories.remove(getString(R.string.all_category));
+        
+        final String NEW_CATEGORY_OPTION = "+ " + getString(R.string.create_new_category);
+        List<String> displayCategories = new ArrayList<>(categories);
+        displayCategories.add(NEW_CATEGORY_OPTION);
+        
+        String[] categoryArray = displayCategories.toArray(new String[0]);
+
+        DialogHelper.listDialog(requireContext(), getString(R.string.dialog_title_select_category), categoryArray,
+                (dialog, which) -> {
+                    String selected = categoryArray[which];
+                    if (selected.equals(NEW_CATEGORY_OPTION)) {
+                        showCreateCategoryDialogForPlugin(info);
+                    } else {
+                        boolean success = pluginManager.updatePluginCategory(info.pluginId, selected);
+                        if (success) {
+                            showToast(getString(R.string.category_updated, selected));
+                            loadData();
+                        }
+                    }
+                }).show();
+    }
+
+    private void showCreateCategoryDialogForPlugin(PluginInfo info) {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(requireContext());
+        final EditText input = new EditText(requireContext());
+        input.setHint(getString(R.string.category_name_hint));
+        input.setPadding(50, 20, 50, 20);
+        
+        builder.setTitle(R.string.category_manager_title)
+                .setView(input)
+                .setPositiveButton(R.string.add_category, (dialog, which) -> {
+                    String newCategory = input.getText().toString().trim();
+                    if (!newCategory.isEmpty()) {
+                        pluginManager.addCategory(newCategory);
+                        pluginManager.updatePluginCategory(info.pluginId, newCategory);
+                        showToast(getString(R.string.category_updated, newCategory));
+                        loadData();
+                    } else {
+                        showToast(getString(R.string.category_name_empty));
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
     @Override

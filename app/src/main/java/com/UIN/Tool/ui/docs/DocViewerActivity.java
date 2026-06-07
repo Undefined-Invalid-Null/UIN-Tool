@@ -1,4 +1,3 @@
-// app/src/main/java/com/UIN/Tool/ui/docs/DocViewerActivity.java
 package com.UIN.Tool.ui.docs;
 
 import android.os.Bundle;
@@ -57,6 +56,8 @@ public class DocViewerActivity extends BaseActivity {
             fileName = subDir + "README.md";
         } else if ("contributors".equals(docType)) {
             fileName = subDir + "CONTRIBUTORS.md";
+        } else if ("changelog".equals(docType)) {
+            fileName = subDir + "CHANGELOG.md";
         } else {
             fileName = subDir + "README.md";
         }

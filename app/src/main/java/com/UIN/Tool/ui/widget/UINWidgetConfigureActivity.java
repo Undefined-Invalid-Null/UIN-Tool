@@ -1,4 +1,3 @@
-// app/src/main/java/com/UIN/Tool/ui/widget/UINWidgetConfigureActivity.java
 package com.UIN.Tool.ui.widget;
 
 import android.appwidget.AppWidgetManager;
@@ -12,6 +11,7 @@ import com.UIN.Tool.databinding.ActivityWidgetConfigureBinding;
 import com.UIN.Tool.plugin.PluginInfo;
 import com.UIN.Tool.plugin.PluginManager;
 import com.UIN.Tool.ui.common.BaseActivity;
+import com.UIN.Tool.utils.LogUtils;  // 添加这个 import
 import com.UIN.Tool.widget.UINWidgetProvider;
 import com.UIN.Tool.widget.WidgetConfig;
 
@@ -81,6 +81,7 @@ public class UINWidgetConfigureActivity extends BaseActivity {
             binding.spinnerPlugin3.setAdapter(adapter);
 
         } catch (Exception e) {
+            LogUtils.e("UINWidgetConfigure", "加载插件失败", e);
             showToast(getString(R.string.widget_load_plugins_failed));
         }
     }

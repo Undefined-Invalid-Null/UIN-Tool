@@ -468,4 +468,19 @@
     <string name="revoked_all_permissions">已撤销所有权限</string>
     <string name="tpk_hint_title">📦 关于 TPK 文件</string>
 <string name="tpk_hint_message">TPK 文件本质上是 ZIP 压缩包。\n\n您可以：\n• 将 .tpk 重命名为 .zip 后解压\n• 修改 web/ 目录下的 HTML/CSS/JS 文件\n• 修改 src/ 目录下的 Java 源文件\n• 重新打包成 ZIP 并改回 .tpk 即可\n\n💡 提示：修改后无需重新签名，直接导入即可生效。</string>
+<!-- 分类管理 -->
+<string name="uncategorized">未分类</string>
+<string name="create_new_category">新建分类</string>
+<string name="category_exists">分类已存在</string>
+<string name="category_name_empty">分类名称不能为空</string>
+<string name="plugin_detail">插件详情</string>
+<string name="category_manager_title">分类管理</string>
+<string name="category_name_hint">输入新分类名称</string>
+<string name="add_category">添加分类</string>
+<string name="existing_categories">已有分类</string>
+<string name="confirm_delete_category">确定要删除分类 "%s" 吗？\n该分类下的插件将移动到"未分类"</string>
+<string name="category_deleted">分类已删除</string>
+<string name="category_added">分类已添加</string>
+<!-- 文档类型 -->
+<string name="doc_type_changelog">更新日志</string>
 </resources>
