@@ -164,7 +164,22 @@
           "line": 287
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
+      "selection": {
+        "end": {
+          "column": 24,
+          "index": 266,
+          "line": 14
+        },
+        "start": {
+          "column": 24,
+          "index": 266,
+          "line": 14
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/dev/DevFragment.java"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
 }
