@@ -29,7 +29,217 @@
           "line": 14
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateChecker.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 17625,
+          "line": 467
+        },
+        "start": {
+          "column": 1,
+          "index": 17625,
+          "line": 467
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/fragment_manage.xml",
+      "selection": {
+        "end": {
+          "column": 13,
+          "index": 21469,
+          "line": 527
+        },
+        "start": {
+          "column": 13,
+          "index": 21469,
+          "line": 527
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_checking_update.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 745,
+          "line": 22
+        },
+        "start": {
+          "column": 15,
+          "index": 745,
+          "line": 22
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_update_info.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 3554,
+          "line": 104
+        },
+        "start": {
+          "column": 15,
+          "index": 3554,
+          "line": 104
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/ic_update.xml",
+      "selection": {
+        "end": {
+          "column": 9,
+          "index": 312,
+          "line": 8
+        },
+        "start": {
+          "column": 9,
+          "index": 312,
+          "line": 8
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_version_list.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 1710,
+          "line": 49
+        },
+        "start": {
+          "column": 15,
+          "index": 1710,
+          "line": 49
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/item_version.xml",
+      "selection": {
+        "end": {
+          "column": 52,
+          "index": 3837,
+          "line": 97
+        },
+        "start": {
+          "column": 52,
+          "index": 3837,
+          "line": 97
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/bg_badge.xml",
+      "selection": {
+        "end": {
+          "column": 8,
+          "index": 209,
+          "line": 4
+        },
+        "start": {
+          "column": 8,
+          "index": 209,
+          "line": 4
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/manage/ManageFragment.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 23563,
+          "line": 619
+        },
+        "start": {
+          "column": 1,
+          "index": 23563,
+          "line": 619
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateDownloader.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 17686,
+          "line": 472
+        },
+        "start": {
+          "column": 1,
+          "index": 17686,
+          "line": 472
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_download_progress.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 1545,
+          "line": 42
+        },
+        "start": {
+          "column": 15,
+          "index": 1545,
+          "line": 42
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/xml/file_paths.xml",
+      "selection": {
+        "end": {
+          "column": 8,
+          "index": 348,
+          "line": 8
+        },
+        "start": {
+          "column": 8,
+          "index": 348,
+          "line": 8
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
+      "selection": {
+        "end": {
+          "column": 4,
+          "index": 1145,
+          "line": 21
+        },
+        "start": {
+          "column": 4,
+          "index": 1145,
+          "line": 21
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/ic_install.xml",
+      "selection": {
+        "end": {
+          "column": 9,
+          "index": 451,
+          "line": 8
+        },
+        "start": {
+          "column": 9,
+          "index": 451,
+          "line": 8
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateDownloader.java"
 }
