@@ -21,6 +21,7 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.UIN.Tool.ui.dev.DevFragment;
 import com.UIN.Tool.ui.manage.ManageFragment;
+import com.UIN.Tool.ui.repo.RepoFragment;
 import com.UIN.Tool.ui.tools.ToolsFragment;
 import com.UIN.Tool.utils.CrashHandler;
 import com.UIN.Tool.utils.LogUtils;
@@ -32,6 +33,7 @@ import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private FrameLayout fragmentContainer;
     private BottomNavigationView bottomNav;
     private Fragment currentFragment;
@@ -41,10 +43,10 @@ public class MainActivity extends AppCompatActivity {
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (hasManageStoragePermission()) {
-                    LogUtils.success("MainActivity", "存储权限已授予");
+                    LogUtils.success(TAG, "存储权限已授予");
                     checkAndSetWorkFolder();
                 } else {
-                    LogUtils.w("MainActivity", "存储权限被拒绝");
+                    LogUtils.w(TAG, "存储权限被拒绝");
                     Toast.makeText(this, "需要存储权限才能正常使用", Toast.LENGTH_LONG).show();
                 }
             });
@@ -52,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         long startTime = System.currentTimeMillis();
-        LogUtils.enter("MainActivity", "onCreate");
+        LogUtils.enter(TAG, "onCreate");
         
         // 确保应用在最近任务中可见
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -72,11 +74,11 @@ public class MainActivity extends AppCompatActivity {
         CrashHandler.getInstance().init(this);
         LogUtils.init(this);
         
-        LogUtils.separator("MainActivity", "应用启动");
-        LogUtils.param("MainActivity", "版本", getVersionCode());
-        LogUtils.param("MainActivity", "Android版本", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
-        LogUtils.param("MainActivity", "设备", Build.MANUFACTURER + " " + Build.MODEL);
-        LogUtils.param("MainActivity", "当前主题", uiConfig.getCurrentThemeName());
+        LogUtils.separator(TAG, "应用启动");
+        LogUtils.param(TAG, "版本", getVersionCode());
+        LogUtils.param(TAG, "Android版本", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
+        LogUtils.param(TAG, "设备", Build.MANUFACTURER + " " + Build.MODEL);
+        LogUtils.param(TAG, "当前主题", uiConfig.getCurrentThemeName());
 
         fragmentContainer = findViewById(R.id.fragment_container);
         bottomNav = findViewById(R.id.bottom_navigation);
@@ -87,20 +89,26 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             switchToFragment(new ToolsFragment());
             bottomNav.setSelectedItemId(R.id.nav_tools);
+            LogUtils.d(TAG, "初始切换到工具页面");
         }
 
         bottomNav.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
+            LogUtils.d(TAG, "底部导航点击，itemId: " + itemId);
+            
             Fragment newFragment = null;
             if (itemId == R.id.nav_dev) {
                 newFragment = new DevFragment();
-                LogUtils.action("MainActivity", "切换界面", "开发");
+                LogUtils.action(TAG, "切换界面", "开发");
             } else if (itemId == R.id.nav_tools) {
                 newFragment = new ToolsFragment();
-                LogUtils.action("MainActivity", "切换界面", "工具");
+                LogUtils.action(TAG, "切换界面", "工具");
+            } else if (itemId == R.id.nav_repo) {
+                newFragment = new RepoFragment();
+                LogUtils.action(TAG, "切换界面", "仓库");
             } else if (itemId == R.id.nav_manage) {
                 newFragment = new ManageFragment();
-                LogUtils.action("MainActivity", "切换界面", "管理");
+                LogUtils.action(TAG, "切换界面", "管理");
             }
             
             if (newFragment != null) {
@@ -110,18 +118,20 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
         
-        LogUtils.exit("MainActivity", "onCreate", startTime);
+        LogUtils.exit(TAG, "onCreate", startTime);
     }
 
     private int getVersionCode() {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
         } catch (Exception e) {
+            LogUtils.e(TAG, "获取版本号失败", e);
             return 1;
         }
     }
 
     private void setupBottomNavigation() {
+        LogUtils.enter(TAG, "setupBottomNavigation");
         try {
             int selectedColor = uiConfig.getPrimaryColor();
             int unselectedColor = uiConfig.getTextHintColor();
@@ -140,34 +150,36 @@ public class MainActivity extends AppCompatActivity {
             bottomNav.setItemTextColor(colorStateList);
             bottomNav.setBackgroundColor(uiConfig.getSurfaceColor());
             
+            LogUtils.d(TAG, "底部导航颜色设置成功");
         } catch (Exception e) {
-            LogUtils.e("MainActivity", "设置底部导航颜色失败: " + e.getMessage());
+            LogUtils.e(TAG, "设置底部导航颜色失败: " + e.getMessage(), e);
         }
+        LogUtils.exit(TAG, "setupBottomNavigation", System.currentTimeMillis());
     }
 
     private void checkPermissions() {
-        LogUtils.enter("MainActivity", "checkPermissions");
+        LogUtils.enter(TAG, "checkPermissions");
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!hasManageStoragePermission()) {
-                LogUtils.w("MainActivity", "需要管理所有文件权限");
+                LogUtils.w(TAG, "需要管理所有文件权限");
                 showPermissionDialog();
             } else {
-                LogUtils.success("MainActivity", "管理所有文件权限已授予");
+                LogUtils.success(TAG, "管理所有文件权限已授予");
                 checkAndSetWorkFolder();
             }
         } else {
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                LogUtils.w("MainActivity", "需要存储权限");
+                LogUtils.w(TAG, "需要存储权限");
                 showPermissionDialog();
             } else {
-                LogUtils.success("MainActivity", "存储权限已授予");
+                LogUtils.success(TAG, "存储权限已授予");
                 checkAndSetWorkFolder();
             }
         }
         
-        LogUtils.exit("MainActivity", "checkPermissions", System.currentTimeMillis());
+        LogUtils.exit(TAG, "checkPermissions", System.currentTimeMillis());
     }
 
     private boolean hasManageStoragePermission() {
@@ -178,17 +190,24 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showPermissionDialog() {
+        LogUtils.d(TAG, "显示权限请求对话框");
         new AlertDialog.Builder(this)
                 .setTitle("需要存储权限")
                 .setMessage("UIN Tool 需要管理所有文件的权限，以便导入/导出插件。\n\n请点击「授权」并允许权限。")
-                .setPositiveButton("授权", (dialog, which) -> requestManageStoragePermission())
-                .setNegativeButton("退出", (dialog, which) -> finish())
+                .setPositiveButton("授权", (dialog, which) -> {
+                    LogUtils.action(TAG, "用户点击", "授权");
+                    requestManageStoragePermission();
+                })
+                .setNegativeButton("退出", (dialog, which) -> {
+                    LogUtils.action(TAG, "用户点击", "退出");
+                    finish();
+                })
                 .setCancelable(false)
                 .show();
     }
 
     private void requestManageStoragePermission() {
-        LogUtils.i("MainActivity", "请求存储权限");
+        LogUtils.i(TAG, "请求存储权限");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
             intent.setData(Uri.parse("package:" + getPackageName()));
@@ -199,37 +218,41 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkAndSetWorkFolder() {
+        LogUtils.enter(TAG, "checkAndSetWorkFolder");
         try {
             String workFolder = PreferencesUtils.getWorkFolder(this);
-            LogUtils.param("MainActivity", "workFolder", workFolder);
+            LogUtils.param(TAG, "workFolder", workFolder);
             
             if (workFolder == null || workFolder.isEmpty()) {
                 File defaultFolder = new File("/storage/emulated/0/UIN_Tool");
                 if (!defaultFolder.exists()) {
                     defaultFolder.mkdirs();
-                    LogUtils.file("MainActivity", "创建工作目录", defaultFolder);
+                    LogUtils.file(TAG, "创建工作目录", defaultFolder);
                 }
                 PreferencesUtils.setWorkFolder(this, defaultFolder.getAbsolutePath());
-                LogUtils.success("MainActivity", "设置默认工作目录: " + defaultFolder.getAbsolutePath());
+                LogUtils.success(TAG, "设置默认工作目录: " + defaultFolder.getAbsolutePath());
                 Toast.makeText(this, "工作目录: " + defaultFolder.getAbsolutePath(), Toast.LENGTH_LONG).show();
             } else {
                 File folder = new File(workFolder);
                 if (!folder.exists()) {
                     folder.mkdirs();
-                    LogUtils.file("MainActivity", "创建工作目录", folder);
+                    LogUtils.file(TAG, "创建工作目录", folder);
                 }
-                LogUtils.i("MainActivity", "使用已有工作目录: " + workFolder);
+                LogUtils.i(TAG, "使用已有工作目录: " + workFolder);
             }
         } catch (Exception e) {
-            LogUtils.ex("MainActivity", e);
+            LogUtils.ex(TAG, e);
             Toast.makeText(this, "创建工作目录失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+        LogUtils.exit(TAG, "checkAndSetWorkFolder", System.currentTimeMillis());
     }
 
     private void switchToFragment(Fragment fragment) {
         if (currentFragment != null && currentFragment.getClass() == fragment.getClass()) {
+            LogUtils.d(TAG, "Fragment 已是当前页面，跳过切换");
             return;
         }
+        LogUtils.d(TAG, "切换 Fragment: " + fragment.getClass().getSimpleName());
         currentFragment = fragment;
         FragmentManager fm = getSupportFragmentManager();
         FragmentTransaction ft = fm.beginTransaction();
@@ -240,39 +263,54 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        LogUtils.d("MainActivity", "onResume");
+        LogUtils.d(TAG, "onResume");
         uiConfig.applyTheme(this);
         setupBottomNavigation();
+        
+        // 刷新底部导航栏选中状态
+        if (currentFragment instanceof DevFragment) {
+            bottomNav.setSelectedItemId(R.id.nav_dev);
+            LogUtils.d(TAG, "选中开发页面");
+        } else if (currentFragment instanceof ToolsFragment) {
+            bottomNav.setSelectedItemId(R.id.nav_tools);
+            LogUtils.d(TAG, "选中工具页面");
+        } else if (currentFragment instanceof RepoFragment) {
+            bottomNav.setSelectedItemId(R.id.nav_repo);
+            LogUtils.d(TAG, "选中仓库页面");
+        } else if (currentFragment instanceof ManageFragment) {
+            bottomNav.setSelectedItemId(R.id.nav_manage);
+            LogUtils.d(TAG, "选中管理页面");
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        LogUtils.d("MainActivity", "onPause");
+        LogUtils.d(TAG, "onPause");
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        LogUtils.i("MainActivity", "应用退出");
+        LogUtils.i(TAG, "应用退出");
     }
     
     @Override
     public void onBackPressed() {
-        // 按返回键时，将应用移到后台而不是销毁
-        // 这样可以在最近任务中看到应用
+        LogUtils.d(TAG, "onBackPressed - 将应用移到后台");
         moveTaskToBack(true);
     }
     
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        LogUtils.d(TAG, "onRequestPermissionsResult, requestCode: " + requestCode);
         if (requestCode == 100) {
             if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                LogUtils.success("MainActivity", "存储权限已授予");
+                LogUtils.success(TAG, "存储权限已授予");
                 checkAndSetWorkFolder();
             } else {
-                LogUtils.w("MainActivity", "存储权限被拒绝");
+                LogUtils.w(TAG, "存储权限被拒绝");
                 Toast.makeText(this, "需要存储权限才能正常使用", Toast.LENGTH_LONG).show();
                 finish();
             }

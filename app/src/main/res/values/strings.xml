@@ -483,4 +483,17 @@
 <string name="category_added">分类已添加</string>
 <!-- 文档类型 -->
 <string name="doc_type_changelog">更新日志</string>
+<!-- 底部导航栏 -->
+<string name="nav_repo">仓库</string>
+
+<!-- 仓库页面 -->
+<string name="repo_title">插件仓库</string>
+<string name="repo_install">安装</string>
+<string name="repo_open">打开</string>
+<string name="repo_installed">已安装</string>
+<string name="repo_downloading">下载中...</string>
+<string name="repo_no_plugins">暂无可用插件</string>
+<string name="repo_load_failed">加载失败，请检查网络</string>
+<string name="repo_install_success">安装成功</string>
+<string name="repo_install_failed">安装失败</string>
 </resources>
