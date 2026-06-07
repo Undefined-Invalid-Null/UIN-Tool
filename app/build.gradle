@@ -11,8 +11,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 21
         targetSdk 34
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "2.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -46,4 +46,9 @@ dependencies {
     
     // Async
     implementation 'androidx.concurrent:concurrent-futures:1.1.0'
-}
+        implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    
+    // SwipeRefreshLayout
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    
+    }

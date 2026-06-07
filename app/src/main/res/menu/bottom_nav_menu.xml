@@ -9,6 +9,10 @@
         android:icon="@drawable/ic_grid_view"
         android:title="@string/nav_tools" />
     <item
+        android:id="@+id/nav_repo"
+        android:icon="@drawable/ic_repo"
+        android:title="@string/nav_repo" />
+    <item
         android:id="@+id/nav_manage"
         android:icon="@drawable/ic_settings"
         android:title="@string/nav_manage" />

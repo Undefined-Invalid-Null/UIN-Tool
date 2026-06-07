@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:maxHeight="500dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_lg">
+
+        <!-- 插件名称 -->
+        <TextView
+            android:id="@+id/tv_detail_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/TextHeadline"
+            android:textColor="@color/primary"
+            android:layout_marginBottom="@dimen/spacing_sm" />
+
+        <!-- 插件 ID -->
+        <TextView
+            android:id="@+id/tv_detail_plugin_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/TextCaption"
+            android:layout_marginBottom="@dimen/spacing_xxs" />
+
+        <!-- 版本信息行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/spacing_sm">
+
+            <TextView
+                android:id="@+id/tv_detail_version"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                style="@style/TextBody" />
+
+            <TextView
+                android:id="@+id/tv_detail_size"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/TextBody" />
+
+        </LinearLayout>
+
+        <!-- 作者和日期行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/spacing_xxs">
+
+            <TextView
+                android:id="@+id/tv_detail_author"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                style="@style/TextCaption" />
+
+            <TextView
+                android:id="@+id/tv_detail_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/TextCaption" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider"
+            android:layout_marginVertical="@dimen/spacing_md" />
+
+        <!-- 描述 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="描述"
+            style="@style/TextSubtitle"
+            android:layout_marginBottom="@dimen/spacing_sm" />
+
+        <TextView
+            android:id="@+id/tv_detail_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/TextBody"
+            android:layout_marginBottom="@dimen/spacing_lg" />
+
+        <!-- 更新日志 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="更新日志"
+            style="@style/TextSubtitle"
+            android:layout_marginBottom="@dimen/spacing_sm" />
+
+        <TextView
+            android:id="@+id/tv_detail_update_log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/TextCaption"
+            android:lineSpacingExtra="@dimen/spacing_xxs"
+            android:layout_marginBottom="@dimen/spacing_lg" />
+
+        <!-- 按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/spacing_md">
+
+            <Button
+                android:id="@+id/btn_detail_install"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height"
+                android:layout_weight="1"
+                android:text="安装"
+                style="@style/Widget.UIN.Tool.Button"
+                android:layout_marginEnd="@dimen/spacing_sm" />
+
+            <Button
+                android:id="@+id/btn_detail_open"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/button_height"
+                android:layout_weight="1"
+                android:text="打开"
+                style="@style/Widget.UIN.Tool.Button.Success"
+                android:layout_marginStart="@dimen/spacing_sm"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

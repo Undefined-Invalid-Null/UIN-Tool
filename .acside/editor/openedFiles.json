@@ -1,167 +1,17 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/widget/UINWidgetConfigureActivity.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/MainActivity.java",
       "selection": {
         "end": {
           "column": 1,
-          "index": 5017,
-          "line": 141
+          "index": 12013,
+          "line": 318
         },
         "start": {
           "column": 1,
-          "index": 5017,
-          "line": 141
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_category_manager.xml",
-      "selection": {
-        "end": {
-          "column": 15,
-          "index": 1704,
-          "line": 45
-        },
-        "start": {
-          "column": 15,
-          "index": 1704,
-          "line": 45
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
-      "selection": {
-        "end": {
-          "column": 47,
-          "index": 25108,
-          "line": 484
-        },
-        "start": {
-          "column": 47,
-          "index": 25108,
-          "line": 484
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/ErrorHandler.java",
-      "selection": {
-        "end": {
-          "column": 3,
-          "index": 7132,
-          "line": 271
-        },
-        "start": {
-          "column": 3,
-          "index": 7132,
-          "line": 271
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginManager.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 35750,
-          "line": 906
-        },
-        "start": {
-          "column": 1,
-          "index": 35750,
-          "line": 906
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/plugin/PluginManageActivity.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 24693,
-          "line": 569
-        },
-        "start": {
-          "column": 1,
-          "index": 24693,
-          "line": 569
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/tools/ToolsFragment.java",
-      "selection": {
-        "end": {
-          "column": 15,
-          "index": 822,
-          "line": 28
-        },
-        "start": {
-          "column": 15,
-          "index": 822,
-          "line": 28
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/tools/CategoryAdapter.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 5399,
-          "line": 159
-        },
-        "start": {
-          "column": 1,
-          "index": 5399,
-          "line": 159
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/docs/DocViewerActivity.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 3147,
-          "line": 87
-        },
-        "start": {
-          "column": 1,
-          "index": 3147,
-          "line": 87
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/manage/ManageFragment.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 6246,
-          "line": 155
-        },
-        "start": {
-          "column": 1,
-          "index": 6246,
-          "line": 155
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/dev/DevFragment.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 11141,
-          "line": 287
-        },
-        "start": {
-          "column": 1,
-          "index": 11141,
-          "line": 287
+          "index": 12013,
+          "line": 318
         }
       }
     },
@@ -169,17 +19,137 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 24,
-          "index": 266,
+          "column": 22,
+          "index": 264,
           "line": 14
         },
         "start": {
-          "column": 24,
-          "index": 266,
+          "column": 22,
+          "index": 264,
           "line": 14
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
+      "selection": {
+        "end": {
+          "column": 29,
+          "index": 5471,
+          "line": 102
+        },
+        "start": {
+          "column": 29,
+          "index": 5471,
+          "line": 102
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/repo/RepoFragment.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 26937,
+          "line": 670
+        },
+        "start": {
+          "column": 1,
+          "index": 26937,
+          "line": 670
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/fragment_repo.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 3735,
+          "line": 101
+        },
+        "start": {
+          "column": 15,
+          "index": 3735,
+          "line": 101
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/xml/network_security_config.xml",
+      "selection": {
+        "end": {
+          "column": 26,
+          "index": 496,
+          "line": 13
+        },
+        "start": {
+          "column": 26,
+          "index": 496,
+          "line": 13
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/repo/RepoAdapter.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 6307,
+          "line": 186
+        },
+        "start": {
+          "column": 1,
+          "index": 6307,
+          "line": 186
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_repo_plugin_detail.xml",
+      "selection": {
+        "end": {
+          "column": 13,
+          "index": 4988,
+          "line": 140
+        },
+        "start": {
+          "column": 13,
+          "index": 4988,
+          "line": 140
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/item_repo_plugin.xml",
+      "selection": {
+        "end": {
+          "column": 52,
+          "index": 4839,
+          "line": 134
+        },
+        "start": {
+          "column": 52,
+          "index": 4839,
+          "line": 134
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/ic_repo.xml",
+      "selection": {
+        "end": {
+          "column": 9,
+          "index": 395,
+          "line": 8
+        },
+        "start": {
+          "column": 9,
+          "index": 395,
+          "line": 8
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/ic_repo.xml"
 }
