@@ -91,6 +91,9 @@ public class PermissionManagerActivity extends BaseActivity {
         binding.btnPluginPermissionContainer.setOnClickListener(v -> {
             startActivity(new Intent(this, PluginPermissionManagerActivity.class));
         });
+        binding.btnPermissionExplainContainer.setOnClickListener(v -> {
+            startActivity(new Intent(this, PermissionExplainActivity.class));
+        });
     }
 
     private void createAllPermissionItems() {
@@ -165,7 +168,6 @@ public class PermissionManagerActivity extends BaseActivity {
             boolean isSpecial = isSpecialPermission(permission);
             allPermissions.add(new PermissionItem(iconRes, category, permission, isSpecial));
         }
-        // 使用 Handler 延迟更新，避免在 RecyclerView 布局期间修改
         mainHandler.post(() -> {
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
@@ -188,7 +190,6 @@ public class PermissionManagerActivity extends BaseActivity {
     }
 
     private void refreshAllPermissions() {
-        // 使用 Handler 延迟更新，避免在 RecyclerView 布局期间修改
         mainHandler.post(() -> {
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
@@ -288,7 +289,6 @@ public class PermissionManagerActivity extends BaseActivity {
             holder.tvCategory.setText(item.category);
             holder.tvCategory.setTextColor(getColor(R.color.text_secondary));
 
-            // 避免在绑定过程中触发事件
             holder.checkBox.setOnCheckedChangeListener(null);
             holder.checkBox.setChecked(granted);
             holder.checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {

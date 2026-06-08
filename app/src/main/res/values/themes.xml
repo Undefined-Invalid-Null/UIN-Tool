@@ -16,6 +16,13 @@
         <item name="materialCardViewStyle">@style/Widget.UIN.Tool.CardView</item>
     </style>
     
+    <!-- Splash 专用主题 -->
+    <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+    
     <!-- 动画样式 -->
     <style name="Animation.UIN.Tool" parent="@android:style/Animation.Activity">
         <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
@@ -84,18 +91,6 @@
         <item name="android:minHeight">36dp</item>
     </style>
     
-    <!-- 扁平按钮（用于网格按钮） -->
-    <style name="Widget.UIN.Tool.Button.Flat" parent="Widget.MaterialComponents.Button">
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:background">@drawable/bg_button_flat</item>
-        <item name="android:minHeight">0dp</item>
-        <item name="android:minWidth">0dp</item>
-        <item name="android:elevation">0dp</item>
-        <item name="android:stateListAnimator">@null</item>
-        <item name="android:textSize">11sp</item>
-        <item name="cornerRadius">0dp</item>
-    </style>
-    
     <!-- EditText 样式 -->
     <style name="Widget.UIN.Tool.EditText" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
         <item name="android:textColor">@color/text_primary</item>
@@ -137,5 +132,43 @@
         <item name="android:textSize">22sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textColor">@color/text_primary</item>
+    </style>
+    
+    <!-- 扁平按钮容器样式 -->
+    <style name="FlatButtonContainer">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">70dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/bg_button_flat</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+    </style>
+
+    <!-- 统一扁平按钮图标样式 -->
+    <style name="FlatButtonIcon">
+        <item name="android:layout_width">@dimen/icon_large</item>
+        <item name="android:layout_height">@dimen/icon_large</item>
+        <item name="android:layout_marginBottom">@dimen/spacing_xs</item>
+    </style>
+
+    <!-- 统一扁平按钮文字样式 -->
+    <style name="FlatButtonText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">@dimen/text_caption</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <!-- 统一网格行样式 -->
+    <style name="ButtonGridRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:layout_marginBottom">@dimen/spacing_md</item>
     </style>
 </resources>

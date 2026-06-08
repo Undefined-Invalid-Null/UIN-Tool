@@ -6,6 +6,7 @@
     <string name="nav_dev">开发</string>
     <string name="nav_tools">工具</string>
     <string name="nav_manage">管理</string>
+    <string name="nav_repo">仓库</string>
     
     <!-- ==================== 通用文本 ==================== -->
     <string name="confirm">确定</string>
@@ -430,10 +431,46 @@
     <string name="doc_type_help">使用帮助</string>
     <string name="doc_type_about">关于</string>
     <string name="doc_type_contributors">贡献者名单</string>
+    <string name="doc_type_changelog">更新日志</string>
     <string name="doc_loading_failed">无法加载文档：%s</string>
     <string name="doc_empty">文档内容为空</string>
     <string name="documents">文档</string>
     
+    <!-- ==================== 启动页 ==================== -->
+    <string name="splash_slogan">插件化工具平台</string>
+    <string name="app_version_title">版本号：%s</string>
+    
+    <!-- ==================== 引导页 ==================== -->
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_start">开始体验</string>
+    <string name="onboarding_close">关闭</string>
+    <string name="onboarding_icon_desc">引导页图标</string>
+    
+    <!-- 版本更新 -->
+    <string name="onboarding_update_title">🎉 发现新版本</string>
+    <string name="onboarding_update_desc">UIN Tool 已更新到 %s\n\n我们带来了一些新功能，快来看看吧！</string>
+    
+    <!-- 欢迎页 -->
+    <string name="onboarding_welcome_title">👋 欢迎使用 UIN Tool</string>
+    <string name="onboarding_welcome_desc">UIN Tool 是一个强大的插件化工具平台\n\n支持原生 Java 插件和 Web 插件\n让您轻松扩展应用功能</string>
+    
+    <!-- 插件管理 -->
+    <string name="onboarding_plugin_title">📦 插件管理</string>
+    <string name="onboarding_plugin_desc">• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理\n• 创建桌面快捷方式\n• 备份恢复所有数据</string>
+    
+    <!-- 开发工具 -->
+    <string name="onboarding_dev_title">🛠️ 插件开发工具</string>
+    <string name="onboarding_dev_desc">• 可视化插件创建向导\n• 内置代码编辑器\n• Java 源码编译为 DEX\n• 打包为 TPK 文件\n• 导出开发模板</string>
+    
+    <!-- Web 插件 -->
+    <string name="onboarding_web_title">🌐 Web 插件支持</string>
+    <string name="onboarding_web_desc">• 使用 HTML/CSS/JS 开发\n• 无需编译，即改即用\n• JS 桥接调用原生功能\n• 支持导入现有 Web 项目\n• 适合快速开发和 UI 界面</string>
+    
+    <!-- 准备就绪 -->
+    <string name="onboarding_ready_title">✨ 一切就绪</string>
+    <string name="onboarding_ready_desc">现在开始探索 UIN Tool 的更多功能吧！\n\n您可以在「管理」页面\n导入已有的插件\n或在「开发」页面\n创建自己的第一个插件</string>
+
     <!-- ==================== 其他 ==================== -->
     <string name="app_version">版本号：%s</string>
     <string name="copyright">© 2024 UIN Team</string>
@@ -458,6 +495,9 @@
     <string name="file_size_kb">%.2f KB</string>
     <string name="file_size_mb">%.2f MB</string>
     <string name="file_size_gb">%.2f GB</string>
+    <string name="file_size">大小</string>
+    <string name="author">作者</string>
+    <string name="unknown">未知</string>
     
     <!-- 插件权限管理 -->
     <string name="plugin_permissions">插件权限</string>
@@ -467,36 +507,66 @@
     <string name="granted_all_permissions">已授予所有权限</string>
     <string name="revoked_all_permissions">已撤销所有权限</string>
     <string name="tpk_hint_title">📦 关于 TPK 文件</string>
-<string name="tpk_hint_message">TPK 文件本质上是 ZIP 压缩包。\n\n您可以：\n• 将 .tpk 重命名为 .zip 后解压\n• 修改 web/ 目录下的 HTML/CSS/JS 文件\n• 修改 src/ 目录下的 Java 源文件\n• 重新打包成 ZIP 并改回 .tpk 即可\n\n💡 提示：修改后无需重新签名，直接导入即可生效。</string>
-<!-- 分类管理 -->
-<string name="uncategorized">未分类</string>
-<string name="create_new_category">新建分类</string>
-<string name="category_exists">分类已存在</string>
-<string name="category_name_empty">分类名称不能为空</string>
-<string name="plugin_detail">插件详情</string>
-<string name="category_manager_title">分类管理</string>
-<string name="category_name_hint">输入新分类名称</string>
-<string name="add_category">添加分类</string>
-<string name="existing_categories">已有分类</string>
-<string name="confirm_delete_category">确定要删除分类 "%s" 吗？\n该分类下的插件将移动到"未分类"</string>
-<string name="category_deleted">分类已删除</string>
-<string name="category_added">分类已添加</string>
-<!-- 文档类型 -->
-<string name="doc_type_changelog">更新日志</string>
-<!-- 底部导航栏 -->
-<string name="nav_repo">仓库</string>
+    <string name="tpk_hint_message">TPK 文件本质上是 ZIP 压缩包。\n\n您可以：\n• 将 .tpk 重命名为 .zip 后解压\n• 修改 web/ 目录下的 HTML/CSS/JS 文件\n• 修改 src/ 目录下的 Java 源文件\n• 重新打包成 ZIP 并改回 .tpk 即可\n\n💡 提示：修改后无需重新签名，直接导入即可生效。</string>
+    
+    <!-- 分类管理 -->
+    <string name="uncategorized">未分类</string>
+    <string name="create_new_category">新建分类</string>
+    <string name="category_exists">分类已存在</string>
+    <string name="category_name_empty">分类名称不能为空</string>
+    <string name="plugin_detail">插件详情</string>
+    <string name="category_manager_title">分类管理</string>
+    <string name="category_name_hint">输入新分类名称</string>
+    <string name="add_category">添加分类</string>
+    <string name="existing_categories">已有分类</string>
+    <string name="confirm_delete_category">确定要删除分类 "%s" 吗？\n该分类下的插件将移动到"未分类"</string>
+    <string name="category_deleted">分类已删除</string>
+    <string name="category_added">分类已添加</string>
+    
+    <!-- 仓库页面 -->
+    <string name="repo_title">插件仓库</string>
+    <string name="repo_install">安装</string>
+    <string name="repo_open">打开</string>
+    <string name="repo_installed">已安装</string>
+    <string name="repo_downloading">下载中...</string>
+    <string name="repo_no_plugins">暂无可用插件\n\n请检查网络连接后下拉刷新</string>
+    <string name="repo_load_failed">加载失败，请检查网络</string>
+    <string name="repo_install_failed">安装失败</string>
+    <!-- 权限说明 -->
+<string name="permission_explain_title">权限说明</string>
+<string name="btn_permission_explain">权限说明</string>
+<string name="permission_explain_intro">UIN Tool 需要以下权限来正常使用各项功能：</string>
+<string name="permission_storage_title">📁 存储权限</string>
+<string name="permission_storage_desc">• 导入/导出插件文件 (.tpk, .zip)\n• 备份和恢复插件数据\n• 读取和写入工作目录\n• 导出日志文件\n\n💡 提示：我们不会读取您的个人文件，仅操作 UIN_Tool 目录下的文件。</string>
+<string name="permission_network_title">🌐 网络权限</string>
+<string name="permission_network_desc">• 从 GitHub 插件仓库下载插件\n• 检查应用更新\n• 插件网络请求功能\n\n💡 提示：仅用于插件下载和更新功能。</string>
+<string name="permission_camera_mic_title">📷 相机/麦克风权限</string>
+<string name="permission_camera_mic_desc">• 插件可能需要调用相机拍照\n• 插件可能需要录音功能\n\n💡 提示：这些权限仅在您安装的插件需要时才会使用。</string>
+<string name="permission_other_note">其他权限（位置、电话、短信等）仅在插件需要时才会请求使用。</string>
 
-<!-- 仓库页面 -->
-<string name="repo_title">插件仓库</string>
-<string name="repo_install">安装</string>
-<string name="repo_open">打开</string>
-<string name="repo_installed">已安装</string>
-<string name="repo_downloading">下载中...</string>
-<string name="repo_no_plugins">暂无可用插件\n\n请检查网络连接后下拉刷新</string>
-<string name="repo_load_failed">加载失败，请检查网络</string>
-<string name="repo_install_failed">安装失败</string>
-<!-- 仓库页面字符串 -->
-<string name="file_size">大小</string>
-<string name="author">作者</string>
-<string name="unknown">未知</string>
+<!-- 文档浏览器 -->
+<string name="doc_browser_title">文档中心</string>
+<string name="doc_category_help">📖 使用帮助</string>
+<string name="doc_category_dev">🛠️ 开发文档</string>
+<string name="doc_category_about">ℹ️ 关于</string>
+<string name="doc_category_changelog">📝 更新日志</string>
+<string name="doc_category_contributors">👥 贡献者</string>
+<!-- 文档中心 -->
+<string name="doc_center_title">文档中心</string>
+<string name="doc_center_desc">使用帮助、开发文档、更新日志等</string>
+
+<!-- 检查更新 -->
+<string name="check_update">检查更新</string>
+<string name="check_update_desc">检查 GitHub 上的最新版本</string>
+
+<!-- 开发者选项 -->
+<string name="developer_options">开发者选项</string>
+<!-- 文档中心描述 -->
+<string name="doc_help_desc">使用帮助、常见问题解答</string>
+<string name="doc_dev_desc">插件开发文档、API 参考</string>
+<string name="doc_changelog_desc">版本更新历史记录</string>
+<string name="doc_about_desc">关于应用、版本信息</string>
+<string name="doc_contributors_desc">贡献者名单</string>
+<string name="developer_options_desc">签名验证、调试设置等</string>
+
 </resources>

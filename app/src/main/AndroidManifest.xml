@@ -19,7 +19,8 @@
 
     <!-- ==================== 下载相关权限 ==================== -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-        <!-- ==================== 相机/麦克风权限 ==================== -->
+    
+    <!-- ==================== 相机/麦克风权限 ==================== -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -106,6 +107,25 @@
         tools:ignore="GoogleAppIndexingWarning"
         tools:targetApi="33">
 
+        <!-- ==================== 启动页 Activity ==================== -->
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.UIN.Tool.Splash"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ==================== 引导页 Activity ==================== -->
+        <activity
+            android:name=".ui.onboarding.OnboardingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:screenOrientation="portrait" />
+
         <!-- ==================== 主 Activity ==================== -->
         <activity
             android:name=".MainActivity"
@@ -115,12 +135,7 @@
             android:launchMode="singleTask"
             android:excludeFromRecents="false"
             android:taskAffinity=""
-            android:alwaysRetainTaskState="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:alwaysRetainTaskState="true" />
 
         <!-- ==================== 插件相关 Activity ==================== -->
         <activity
@@ -148,6 +163,10 @@
             android:exported="false"
             android:theme="@style/Theme.UIN.Tool" />
         <activity
+            android:name=".ui.docs.DocBrowserActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool" />
+        <activity
             android:name=".ui.help.HelpActivity"
             android:exported="false"
             android:theme="@style/Theme.UIN.Tool" />
@@ -159,6 +178,10 @@
             android:theme="@style/Theme.UIN.Tool" />
         <activity
             android:name=".ui.permission.PluginPermissionManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool" />
+        <activity
+            android:name=".ui.permission.PermissionExplainActivity"
             android:exported="false"
             android:theme="@style/Theme.UIN.Tool" />
         <activity
@@ -256,7 +279,7 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
         
-        <!-- ==================== FileProvider（用于安装 APK 和文件共享） ==================== -->
+        <!-- ==================== FileProvider ==================== -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

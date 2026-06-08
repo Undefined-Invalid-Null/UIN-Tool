@@ -7,7 +7,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
@@ -56,6 +60,17 @@ public class MainActivity extends AppCompatActivity {
         long startTime = System.currentTimeMillis();
         LogUtils.enter(TAG, "onCreate");
         
+        // 设置状态栏颜色
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(ContextCompat.getColor(this, R.color.background));
+            window.setNavigationBarColor(ContextCompat.getColor(this, R.color.background));
+        }
+        
+        // 设置窗口背景色，避免白屏
+        getWindow().setBackgroundDrawableResource(R.color.background);
+        
         // 确保应用在最近任务中可见
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             setTaskDescription(new ActivityManager.TaskDescription(
@@ -84,7 +99,6 @@ public class MainActivity extends AppCompatActivity {
         bottomNav = findViewById(R.id.bottom_navigation);
 
         setupBottomNavigation();
-        checkPermissions();
 
         if (savedInstanceState == null) {
             switchToFragment(new ToolsFragment());
@@ -117,6 +131,11 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
+        
+        // 延迟检查权限，避免影响启动动画
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            checkPermissions();
+        }, 1000);
         
         LogUtils.exit(TAG, "onCreate", startTime);
     }
@@ -267,19 +286,14 @@ public class MainActivity extends AppCompatActivity {
         uiConfig.applyTheme(this);
         setupBottomNavigation();
         
-        // 刷新底部导航栏选中状态
         if (currentFragment instanceof DevFragment) {
             bottomNav.setSelectedItemId(R.id.nav_dev);
-            LogUtils.d(TAG, "选中开发页面");
         } else if (currentFragment instanceof ToolsFragment) {
             bottomNav.setSelectedItemId(R.id.nav_tools);
-            LogUtils.d(TAG, "选中工具页面");
         } else if (currentFragment instanceof RepoFragment) {
             bottomNav.setSelectedItemId(R.id.nav_repo);
-            LogUtils.d(TAG, "选中仓库页面");
         } else if (currentFragment instanceof ManageFragment) {
             bottomNav.setSelectedItemId(R.id.nav_manage);
-            LogUtils.d(TAG, "选中管理页面");
         }
     }
 
