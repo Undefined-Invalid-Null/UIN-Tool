@@ -1,5 +1,15 @@
 # UIN Tool 开发文档
 
+## 版本信息
+
+| 项目 | 信息 |
+|------|------|
+| 文档版本 | 3.0.0 |
+| 对应应用版本 | v3.0.0 (Build 6) |
+| 最后更新 | 2026年6月8日 |
+
+---
+
 ## 目录
 
 - [快速开始](#快速开始)
@@ -1235,7 +1245,8 @@ Web插件结构
 ```
 plugin.tpk
 ├── plugin.json      # 必需
-├── icon.png         # 可选，建议提供└── web/             # 必需
+├── icon.png         # 可选，建议提供
+└── web/             # 必需
     ├── index.html   # 必需
     ├── style.css    # 可选
     └── script.js    # 可选
@@ -1303,11 +1314,11 @@ Release 资产 必须包含 .tpk 文件
 
 1. 创建 GitHub 仓库
 
-1. 登录 GitHub
-2. 在 UIN-Tool-Plugins 组织中创建新仓库（或在自己账号下创建后申请收录）
-3. 仓库名称设置为插件 ID（如 com.example.myplugin）
-4. 仓库描述设置为插件名称
-5. 选择公开仓库
+· 登录 GitHub
+· 在 UIN-Tool-Plugins 组织中创建新仓库（或在自己账号下创建后申请收录）
+· 仓库名称设置为插件 ID（如 com.example.myplugin）
+· 仓库描述设置为插件名称
+· 选择公开仓库
 
 2. 上传插件文件
 
@@ -1327,14 +1338,14 @@ git push
 
 3. 创建 Release
 
-1. 在 GitHub 仓库页面点击 "Releases"
-2. 点击 "Create a new release"
-3. 填写信息：
-   · Tag version: 1-1.0.0（格式：版本代码-版本名称）
-   · Release title: 版本 1.0.0
-   · Description: 更新日志
-4. 上传 .tpk 文件到 Assets
-5. 点击 "Publish release"
+· 在 GitHub 仓库页面点击 "Releases"
+· 点击 "Create a new release"
+· 填写信息：
+  · Tag version: 1-1.0.0（格式：版本代码-版本名称）
+  · Release title: 版本 1.0.0
+  · Description: 更新日志
+· 上传 .tpk 文件到 Assets
+· 点击 "Publish release"
 
 4. 自动验证
 
@@ -1485,7 +1496,6 @@ Q7: Web 插件如何传递复杂数据？
 使用 JSON 格式：
 
 ```javascript
-// 发送
 UINPlugin.callPlugin('processData', JSON.stringify({
     type: 'user',
     data: { name: '张三', age: 18 }
@@ -1653,14 +1663,31 @@ function startWithTimeout() {
 
 技术支持
 
-· 📧 邮箱：undefinedinvalidnull@outlook.com
-· 🌐 GitHub：https://github.com/Undefined-Invalid-Null/UIN-Tool
-· 📦 插件仓库：https://github.com/UIN-Tool-Plugins
-· 💬 QQ群：511875883
+渠道 地址
+📧 邮箱 undefinedinvalidnull@outlook.com
+🌐 GitHub https://github.com/Undefined-Invalid-Null/UIN-Tool
+📦 插件仓库 https://github.com/UIN-Tool-Plugins
+💬 QQ群 511875883
 
 ---
 
 更新日志
+
+v3.0.0 (2026-06-08)
+
+新增内容：
+
+· 文档中心功能说明
+· 权限说明页面说明
+· 引导页系统说明
+· 点状指示器说明
+· 白屏问题修复说明
+
+更新内容：
+
+· 更新版本号至 v3.0.0 (Build 6)
+· 更新常见问题解答
+· 完善文档结构
 
 v2.8.0 (2026-06-08)
 
@@ -1671,11 +1698,6 @@ v2.8.0 (2026-06-08)
 · 应用内下载功能说明
 · 后台下载说明
 · 通知栏下载进度说明
-
-更新内容：
-
-· 完善打包与导入说明
-· 更新常见问题解答
 
 v2.6.0 (2026-06-07)
 
@@ -1688,12 +1710,6 @@ v2.6.0 (2026-06-07)
 · 传感器调试指南
 · 网络请求调试指南
 · Web 插件最佳实践
-
-更新内容：
-
-· 完善 PluginInterface 接口说明（新增 onActivityResult）
-· 更新打包和导入说明
-· 新增常见问题解答
 
 v2.0.0 (2026-06-07)
 
@@ -1725,6 +1741,7 @@ v1.0.0 (2024-06-06)
 
 ---
 
-文档版本: 2.8.0
-最后更新: 2026-06-08
+文档版本: 3.0.0
+最后更新: 2026年6月8日
+对应应用版本: v3.0.0 (Build 6)
 
