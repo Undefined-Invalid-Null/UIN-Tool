@@ -64,14 +64,14 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 4,
-          "index": 1527,
-          "line": 53
+          "column": 21,
+          "index": 241,
+          "line": 13
         },
         "start": {
-          "column": 4,
-          "index": 1527,
-          "line": 53
+          "column": 21,
+          "index": 241,
+          "line": 13
         }
       }
     },
@@ -286,5 +286,5 @@
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UIConfig.java"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
 }
