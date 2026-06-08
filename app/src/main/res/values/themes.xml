@@ -171,4 +171,31 @@
         <item name="android:orientation">horizontal</item>
         <item name="android:layout_marginBottom">@dimen/spacing_md</item>
     </style>
+    <!-- 多行文字按钮样式 -->
+<style name="Widget.UIN.Tool.Button.Multiline" parent="Widget.MaterialComponents.Button">
+    <item name="android:textColor">@android:color/white</item>
+    <item name="backgroundTint">@color/primary</item>
+    <item name="cornerRadius">8dp</item>
+    <item name="android:textSize">12sp</item>
+    <item name="android:paddingStart">8dp</item>
+    <item name="android:paddingEnd">8dp</item>
+    <item name="android:minHeight">52dp</item>
+    <item name="android:maxHeight">60dp</item>
+    <item name="android:gravity">center</item>
+    <item name="android:lineSpacingExtra">-2dp</item>
+</style>
+
+<!-- 多行文字轮廓按钮样式 -->
+<style name="Widget.UIN.Tool.Button.Outlined.Multiline" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <item name="android:textColor">@color/primary</item>
+    <item name="strokeColor">@color/primary</item>
+    <item name="cornerRadius">8dp</item>
+    <item name="android:textSize">12sp</item>
+    <item name="android:paddingStart">8dp</item>
+    <item name="android:paddingEnd">8dp</item>
+    <item name="android:minHeight">52dp</item>
+    <item name="android:maxHeight">60dp</item>
+    <item name="android:gravity">center</item>
+    <item name="android:lineSpacingExtra">-2dp</item>
+</style>
 </resources>

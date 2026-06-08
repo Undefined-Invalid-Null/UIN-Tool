@@ -1,32 +1,47 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/repo/RepoFragment.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.java",
       "selection": {
         "end": {
           "column": 1,
-          "index": 31354,
-          "line": 791
+          "index": 19766,
+          "line": 515
         },
         "start": {
           "column": 1,
-          "index": 31354,
-          "line": 791
+          "index": 19766,
+          "line": 515
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/gradlew.bat",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
       "selection": {
         "end": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 55,
+          "index": 30287,
+          "line": 589
         },
         "start": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 55,
+          "index": 30287,
+          "line": 589
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_download_progress.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 1546,
+          "line": 42
+        },
+        "start": {
+          "column": 15,
+          "index": 1546,
+          "line": 42
         }
       }
     },
@@ -34,17 +49,137 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 68,
+          "index": 1359,
+          "line": 49
         },
         "start": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 68,
+          "index": 1359,
+          "line": 49
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateChecker.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 23145,
+          "line": 591
+        },
+        "start": {
+          "column": 1,
+          "index": 23145,
+          "line": 591
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateDownloader.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 12981,
+          "line": 337
+        },
+        "start": {
+          "column": 1,
+          "index": 12981,
+          "line": 337
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/manage/ManageFragment.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 23374,
+          "line": 609
+        },
+        "start": {
+          "column": 1,
+          "index": 23374,
+          "line": 609
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_update.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 7274,
+          "line": 201
+        },
+        "start": {
+          "column": 15,
+          "index": 7274,
+          "line": 201
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_update_manual.xml",
+      "selection": {
+        "end": {
+          "column": 15,
+          "index": 3199,
+          "line": 95
+        },
+        "start": {
+          "column": 15,
+          "index": 3199,
+          "line": 95
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
+      "selection": {
+        "end": {
+          "column": 8,
+          "index": 9016,
+          "line": 199
+        },
+        "start": {
+          "column": 8,
+          "index": 9016,
+          "line": 199
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/MainActivity.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 12944,
+          "line": 341
+        },
+        "start": {
+          "column": 1,
+          "index": 12944,
+          "line": 341
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
+      "selection": {
+        "end": {
+          "column": 11,
+          "index": 13576,
+          "line": 297
+        },
+        "start": {
+          "column": 11,
+          "index": 13576,
+          "line": 297
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml"
 }

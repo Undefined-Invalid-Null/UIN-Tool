@@ -72,13 +72,11 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setBackgroundDrawableResource(R.color.background);
         
         // 确保应用在最近任务中可见
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            setTaskDescription(new ActivityManager.TaskDescription(
-                getString(R.string.app_name),
-                null,
-                getColor(R.color.primary)
-            ));
-        }
+        setTaskDescription(new ActivityManager.TaskDescription(
+            getString(R.string.app_name),
+            null,
+            getColor(R.color.primary)
+        ));
         
         uiConfig = UIConfig.getInstance(this);
         uiConfig.applyTheme(this);
@@ -219,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("退出", (dialog, which) -> {
                     LogUtils.action(TAG, "用户点击", "退出");
-                    finish();
+                    finishAffinity(); // 使用 finishAffinity 彻底退出
                 })
                 .setCancelable(false)
                 .show();
@@ -311,8 +309,19 @@ public class MainActivity extends AppCompatActivity {
     
     @Override
     public void onBackPressed() {
-        LogUtils.d(TAG, "onBackPressed - 将应用移到后台");
-        moveTaskToBack(true);
+        LogUtils.d(TAG, "onBackPressed");
+        
+        // 显示退出确认对话框
+        new AlertDialog.Builder(this)
+                .setTitle("退出应用")
+                .setMessage("确定要退出 UIN Tool 吗？")
+                .setPositiveButton("退出", (dialog, which) -> {
+                    LogUtils.action(TAG, "用户选择", "退出应用");
+                    // 使用 finishAffinity 彻底退出
+                    finishAffinity();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
     
     @Override
@@ -326,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 LogUtils.w(TAG, "存储权限被拒绝");
                 Toast.makeText(this, "需要存储权限才能正常使用", Toast.LENGTH_LONG).show();
-                finish();
+                finishAffinity();
             }
         }
     }

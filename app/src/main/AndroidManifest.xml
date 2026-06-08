@@ -112,7 +112,9 @@
             android:name=".SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.UIN.Tool.Splash"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:launchMode="singleTask"
+            android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -257,6 +259,7 @@
                 android:resource="@xml/widget_1x1_info" />
         </receiver>
 
+        <!-- ==================== 系统事件接收器 ==================== -->
         <receiver
             android:name=".widget.SystemEventReceiver"
             android:exported="true">
@@ -266,7 +269,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- ==================== 其他组件 ==================== -->
+        <!-- ==================== 无障碍服务 ==================== -->
         <service
             android:name=".service.UinAccessibilityService"
             android:exported="true"
