@@ -1,47 +1,62 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_color_picker_advanced.xml",
       "selection": {
         "end": {
-          "column": 1,
-          "index": 19766,
-          "line": 515
+          "column": 15,
+          "index": 2423,
+          "line": 71
         },
         "start": {
-          "column": 1,
-          "index": 19766,
-          "line": 515
+          "column": 15,
+          "index": 2423,
+          "line": 71
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/widget/ColorPickerView.java",
       "selection": {
         "end": {
-          "column": 57,
-          "index": 30725,
-          "line": 598
+          "column": 14,
+          "index": 4511,
+          "line": 135
         },
         "start": {
-          "column": 57,
-          "index": 30725,
-          "line": 598
+          "column": 14,
+          "index": 4511,
+          "line": 135
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_download_progress.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/settings/UIConfigActivity.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 19080,
+          "line": 471
+        },
+        "start": {
+          "column": 1,
+          "index": 19080,
+          "line": 471
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_seekbar_advanced.xml",
       "selection": {
         "end": {
           "column": 15,
-          "index": 1546,
-          "line": 42
+          "index": 2560,
+          "line": 77
         },
         "start": {
           "column": 15,
-          "index": 1546,
-          "line": 42
+          "index": 2560,
+          "line": 77
         }
       }
     },
@@ -49,104 +64,119 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 68,
-          "index": 1359,
-          "line": 49
+          "column": 4,
+          "index": 1527,
+          "line": 53
         },
         "start": {
-          "column": 68,
-          "index": 1359,
-          "line": 49
+          "column": 4,
+          "index": 1527,
+          "line": 53
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateChecker.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/widget/FullColorPickerView.java",
       "selection": {
         "end": {
           "column": 1,
-          "index": 23145,
-          "line": 591
+          "index": 8271,
+          "line": 228
         },
         "start": {
           "column": 1,
-          "index": 23145,
-          "line": 591
+          "index": 8271,
+          "line": 228
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateDownloader.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 12981,
-          "line": 337
-        },
-        "start": {
-          "column": 1,
-          "index": 12981,
-          "line": 337
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/manage/ManageFragment.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 23587,
-          "line": 618
-        },
-        "start": {
-          "column": 1,
-          "index": 23587,
-          "line": 618
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_update.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/view_full_color_picker.xml",
       "selection": {
         "end": {
           "column": 15,
-          "index": 7274,
-          "line": 201
+          "index": 6295,
+          "line": 188
         },
         "start": {
           "column": 15,
-          "index": 7274,
-          "line": 201
+          "index": 6295,
+          "line": 188
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_update_manual.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/dialog_full_color_picker.xml",
       "selection": {
         "end": {
-          "column": 15,
-          "index": 3199,
-          "line": 95
+          "column": 13,
+          "index": 421,
+          "line": 11
         },
         "start": {
-          "column": 15,
-          "index": 3199,
-          "line": 95
+          "column": 13,
+          "index": 421,
+          "line": 11
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UIConfig.java",
       "selection": {
         "end": {
-          "column": 8,
-          "index": 9016,
-          "line": 199
+          "column": 1,
+          "index": 25288,
+          "line": 666
         },
         "start": {
-          "column": 8,
-          "index": 9016,
-          "line": 199
+          "column": 1,
+          "index": 25288,
+          "line": 666
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/assets/ui_config.json",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 1550,
+          "line": 52
+        },
+        "start": {
+          "column": 1,
+          "index": 1550,
+          "line": 52
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/common/BaseActivity.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 4177,
+          "line": 131
+        },
+        "start": {
+          "column": 1,
+          "index": 4177,
+          "line": 131
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
+      "selection": {
+        "end": {
+          "column": 12,
+          "index": 29656,
+          "line": 572
+        },
+        "start": {
+          "column": 12,
+          "index": 29656,
+          "line": 572
         }
       }
     },
@@ -155,61 +185,106 @@
       "selection": {
         "end": {
           "column": 1,
-          "index": 15408,
-          "line": 423
+          "index": 16201,
+          "line": 449
         },
         "start": {
           "column": 1,
-          "index": 15408,
-          "line": 423
+          "index": 16201,
+          "line": 449
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/common/BaseFragment.java",
       "selection": {
         "end": {
-          "column": 11,
-          "index": 14892,
-          "line": 324
+          "column": 1,
+          "index": 1949,
+          "line": 71
         },
         "start": {
-          "column": 11,
-          "index": 14892,
-          "line": 324
+          "column": 1,
+          "index": 1949,
+          "line": 71
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/xml/shortcuts.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/activity_ui_config.xml",
       "selection": {
         "end": {
-          "column": 12,
-          "index": 2363,
-          "line": 61
+          "column": 0,
+          "index": 0,
+          "line": 0
         },
         "start": {
-          "column": 12,
-          "index": 2363,
-          "line": 61
+          "column": 0,
+          "index": 0,
+          "line": 0
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginManager.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/activity_ui_config_new.xml",
       "selection": {
         "end": {
-          "column": 1,
-          "index": 49497,
-          "line": 1420
+          "column": 15,
+          "index": 15006,
+          "line": 330
         },
         "start": {
-          "column": 1,
-          "index": 49497,
-          "line": 1420
+          "column": 15,
+          "index": 15006,
+          "line": 330
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/item_color_config.xml",
+      "selection": {
+        "end": {
+          "column": 52,
+          "index": 1713,
+          "line": 45
+        },
+        "start": {
+          "column": 52,
+          "index": 1713,
+          "line": 45
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/item_shape_config.xml",
+      "selection": {
+        "end": {
+          "column": 52,
+          "index": 1487,
+          "line": 39
+        },
+        "start": {
+          "column": 52,
+          "index": 1487,
+          "line": 39
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
+      "selection": {
+        "end": {
+          "column": 8,
+          "index": 9395,
+          "line": 207
+        },
+        "start": {
+          "column": 8,
+          "index": 9395,
+          "line": 207
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/MainActivity.java"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UIConfig.java"
 }

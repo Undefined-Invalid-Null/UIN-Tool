@@ -1,8 +1,12 @@
-// app/src/main/java/com/UIN/Tool/ui/common/BaseActivity.java
 package com.UIN.Tool.ui.common;
 
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -12,17 +16,18 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.UIN.Tool.R;
 import com.UIN.Tool.utils.UIConfig;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.card.MaterialCardView;
 
-/**
- * 所有 Activity 的基类
- * 提供统一的主题应用、工具栏设置和通用方法
- */
 public abstract class BaseActivity extends AppCompatActivity {
 
     protected UIConfig uiConfig;
+    protected Toolbar toolbar;
+    protected BottomNavigationView bottomNavigationView;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        // 先初始化 uiConfig
         uiConfig = UIConfig.getInstance(this);
         uiConfig.applyTheme(this);
         super.onCreate(savedInstanceState);
@@ -30,32 +35,19 @@ public abstract class BaseActivity extends AppCompatActivity {
         initViews();
         initData();
         setupListeners();
+        applyThemeToComponents();
     }
 
-    /**
-     * 获取布局资源 ID
-     */
     protected abstract int getLayoutResourceId();
 
-    /**
-     * 初始化视图
-     */
     protected void initViews() {}
 
-    /**
-     * 初始化数据
-     */
     protected void initData() {}
 
-    /**
-     * 设置监听器
-     */
     protected void setupListeners() {}
 
-    /**
-     * 设置工具栏
-     */
     protected void setupToolbar(Toolbar toolbar, String title, boolean showBack) {
+        this.toolbar = toolbar;
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(title);
@@ -63,18 +55,59 @@ public abstract class BaseActivity extends AppCompatActivity {
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
+        if (uiConfig != null && toolbar != null) {
+            uiConfig.applyToolbarTheme(toolbar);
+        }
+    }
+    
+    protected void setupBottomNavigation(BottomNavigationView bottomNav) {
+        this.bottomNavigationView = bottomNav;
+        if (uiConfig != null && bottomNav != null) {
+            uiConfig.applyBottomNavigationTheme(bottomNav);
+        }
+    }
+    
+    protected void applyThemeToComponents() {
+        if (uiConfig == null) return;
+        
+        if (toolbar != null) {
+            uiConfig.applyToolbarTheme(toolbar);
+        }
+        if (bottomNavigationView != null) {
+            uiConfig.applyBottomNavigationTheme(bottomNavigationView);
+        }
+        applyThemeToViewTree(getWindow().getDecorView());
+    }
+    
+    private void applyThemeToViewTree(View view) {
+        if (view == null || uiConfig == null) return;
+        
+        try {
+            if (view instanceof Button) {
+                uiConfig.applyButtonTheme((Button) view);
+            } else if (view instanceof TextView && !(view instanceof Button)) {
+                uiConfig.applyTextViewTheme((TextView) view);
+            } else if (view instanceof ImageView) {
+                uiConfig.applyImageViewTheme((ImageView) view);
+            } else if (view instanceof MaterialCardView) {
+                uiConfig.applyCardTheme((MaterialCardView) view);
+            }
+            
+            if (view instanceof ViewGroup) {
+                ViewGroup viewGroup = (ViewGroup) view;
+                for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                    applyThemeToViewTree(viewGroup.getChildAt(i));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    /**
-     * 显示短提示
-     */
     protected void showToast(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
-    /**
-     * 显示长提示
-     */
     protected void showLongToast(String message) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
@@ -86,5 +119,14 @@ public abstract class BaseActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (uiConfig != null) {
+            uiConfig.applyTheme(this);
+            applyThemeToComponents();
+        }
     }
 }

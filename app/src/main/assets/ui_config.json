@@ -1,21 +1,45 @@
 {
   "theme": {
-    "name": "默认主题",
-    "version": 1,
-    "primaryColor": "#1E3A5F",
-    "primaryDarkColor": "#152A45",
-    "primaryLightColor": "#3A5A8A",
-    "accentColor": "#4A90E2",
-    "successColor": "#2ECC71",
-    "warningColor": "#F39C12",
-    "errorColor": "#E74C3C",
-    "infoColor": "#3498DB",
-    "backgroundColor": "#F0F2F5",
-    "surfaceColor": "#FFFFFF",
-    "textPrimaryColor": "#1A1A2E",
-    "textSecondaryColor": "#6C757D",
-    "textHintColor": "#ADB5BD",
-    "dividerColor": "#E9ECEF"
+    "primary": "#FF37474F",
+    "primary_dark": "#FF263238",
+    "primary_light": "#FF546E7A",
+    "accent": "#FF607D8B",
+    "success": "#FF4CAF50",
+    "warning": "#FFFF9800",
+    "error": "#FFF44336",
+    "info": "#FF2196F3",
+    "text_primary": "#FF212121",
+    "text_secondary": "#FF757575",
+    "text_hint": "#FFBDBDBD",
+    "text_disabled": "#FF9E9E9E",
+    "background": "#FFF8F8F8",
+    "background_card": "#FFFFFFFF",
+    "background_dark": "#FFE0E0E0",
+    "surface": "#FFFFFFFF",
+    "surface_variant": "#FFFAFAFA",
+    "surface_card": "#FFFFFFFF",
+    "divider": "#FFE0E0E0",
+    "border": "#FFD0D0D0",
+    "gradient_start": "#FF37474F",
+    "gradient_end": "#FF546E7A",
+    "gradient_accent_start": "#FF607D8B",
+    "gradient_accent_end": "#FF78909C",
+    "nav_item_selected": "#FF37474F",
+    "nav_item_unselected": "#FFBDBDBD",
+    "card_shadow": "#1A000000",
+    "card_ripple": "#0D37474F",
+    "glass_background": "#E6FFFFFF",
+    "glass_border": "#40FFFFFF",
+    "glass_shadow": "#20000000",
+    "overlay_light": "#0D000000",
+    "overlay_medium": "#1A000000",
+    "overlay_dark": "#33000000",
+    "gray_light": "#FFF5F5F5",
+    "gray_medium": "#FFEEEEEE",
+    "gray_dark": "#FF9E9E9E",
+    "gray_text": "#FF616161",
+    "icon_tint": "#FF757575",
+    "icon_tint_selected": "#FF37474F"
   },
   "shape": {
     "cornerRadiusSmall": 8,
@@ -25,52 +49,5 @@
     "buttonCornerRadius": 12,
     "cardCornerRadius": 16,
     "dialogCornerRadius": 20
-  },
-  "elevation": {
-    "cardElevation": 2,
-    "cardElevationPressed": 6,
-    "buttonElevation": 2,
-    "fabElevation": 6,
-    "dialogElevation": 8
-  },
-  "typography": {
-    "fontFamily": "sans-serif",
-    "titleSize": 24,
-    "subtitleSize": 18,
-    "bodySize": 14,
-    "captionSize": 12,
-    "buttonSize": 14,
-    "enableBoldTitles": true
-  },
-  "animation": {
-    "durationShort": 150,
-    "durationMedium": 300,
-    "durationLong": 500,
-    "enableAnimations": true,
-    "enableRipple": true
-  },
-  "glassmorphism": {
-    "enabled": true,
-    "blurRadius": 10,
-    "opacity": 0.85
-  },
-  "neumorphism": {
-    "enabled": false,
-    "lightShadow": "#FFFFFF",
-    "darkShadow": "#D1D9E6"
-  },
-  "background": {
-    "type": "solid",
-    "gradientStart": "#1E3A5F",
-    "gradientEnd": "#3A5A8A",
-    "gradientAngle": 135,
-    "wallpaperPath": ""
-  },
-  "customStyles": {
-    "enableGlassCards": true,
-    "enableGradientButtons": true,
-    "enableIconTinting": true,
-    "enableRoundedSearchBar": true,
-    "bottomNavStyle": "modern"
   }
 }

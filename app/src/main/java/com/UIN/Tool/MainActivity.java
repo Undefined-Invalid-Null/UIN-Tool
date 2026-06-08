@@ -64,28 +64,33 @@ public class MainActivity extends AppCompatActivity {
         long startTime = System.currentTimeMillis();
         LogUtils.enter(TAG, "onCreate");
         
+        // 初始化 UI 配置
+        uiConfig = UIConfig.getInstance(this);
+        uiConfig.applyTheme(this);
+        
         // 设置状态栏颜色
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(ContextCompat.getColor(this, R.color.background));
-            window.setNavigationBarColor(ContextCompat.getColor(this, R.color.background));
+            window.setStatusBarColor(uiConfig.getPrimaryDarkColor());
+            window.setNavigationBarColor(uiConfig.getSurfaceColor());
         }
         
         // 设置窗口背景色，避免白屏
         getWindow().setBackgroundDrawableResource(R.color.background);
         
-        // 确保应用在最近任务中可见
+        // 确保应用在最近任务中可见 - 确保颜色完全不透明
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            int primaryColor = uiConfig.getPrimaryColor();
+            // 移除 Alpha 通道，确保颜色完全不透明
+            int opaqueColor = primaryColor | 0xFF000000;
+            
             setTaskDescription(new ActivityManager.TaskDescription(
                 getString(R.string.app_name),
                 null,
-                getColor(R.color.primary)
+                opaqueColor
             ));
         }
-        
-        uiConfig = UIConfig.getInstance(this);
-        uiConfig.applyTheme(this);
         
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -103,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
         bottomNav = findViewById(R.id.bottom_navigation);
 
         setupBottomNavigation();
+        applyBottomNavigationTheme();
 
         // 处理快捷方式启动
         handleShortcutIntent(getIntent());
@@ -139,6 +145,16 @@ public class MainActivity extends AppCompatActivity {
         }, 1000);
         
         LogUtils.exit(TAG, "onCreate", startTime);
+    }
+    
+    /**
+     * 应用主题到底部导航栏
+     */
+    private void applyBottomNavigationTheme() {
+        if (bottomNav != null && uiConfig != null) {
+            uiConfig.applyBottomNavigationTheme(bottomNav);
+            bottomNav.setBackgroundColor(uiConfig.getSurfaceColor());
+        }
     }
     
     /**
@@ -229,8 +245,8 @@ public class MainActivity extends AppCompatActivity {
     private void setupBottomNavigation() {
         LogUtils.enter(TAG, "setupBottomNavigation");
         try {
-            int selectedColor = uiConfig.getPrimaryColor();
-            int unselectedColor = uiConfig.getTextHintColor();
+            int selectedColor = uiConfig.getNavItemSelectedColor();
+            int unselectedColor = uiConfig.getNavItemUnselectedColor();
             
             android.content.res.ColorStateList colorStateList = new android.content.res.ColorStateList(
                 new int[][]{
@@ -360,10 +376,20 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         LogUtils.d(TAG, "onResume");
-        uiConfig.applyTheme(this);
-        setupBottomNavigation();
         
-        // 如果不是从快捷方式启动，恢复之前选中的页面
+        // 重新应用主题
+        if (uiConfig != null) {
+            uiConfig.applyTheme(this);
+            applyBottomNavigationTheme();
+            setupBottomNavigation();
+            
+            // 更新状态栏颜色
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                getWindow().setStatusBarColor(uiConfig.getPrimaryDarkColor());
+            }
+        }
+        
+        // 恢复选中的页面
         if (!isFromShortcut) {
             if (currentFragment instanceof DevFragment) {
                 bottomNav.setSelectedItemId(R.id.nav_dev);
