@@ -19,14 +19,14 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
       "selection": {
         "end": {
-          "column": 55,
-          "index": 30287,
-          "line": 589
+          "column": 57,
+          "index": 30725,
+          "line": 598
         },
         "start": {
-          "column": 55,
-          "index": 30287,
-          "line": 589
+          "column": 57,
+          "index": 30725,
+          "line": 598
         }
       }
     },
@@ -95,13 +95,13 @@
       "selection": {
         "end": {
           "column": 1,
-          "index": 23374,
-          "line": 609
+          "index": 23587,
+          "line": 618
         },
         "start": {
           "column": 1,
-          "index": 23374,
-          "line": 609
+          "index": 23587,
+          "line": 618
         }
       }
     },
@@ -155,13 +155,13 @@
       "selection": {
         "end": {
           "column": 1,
-          "index": 12944,
-          "line": 341
+          "index": 15408,
+          "line": 423
         },
         "start": {
           "column": 1,
-          "index": 12944,
-          "line": 341
+          "index": 15408,
+          "line": 423
         }
       }
     },
@@ -170,16 +170,46 @@
       "selection": {
         "end": {
           "column": 11,
-          "index": 13576,
-          "line": 297
+          "index": 14892,
+          "line": 324
         },
         "start": {
           "column": 11,
-          "index": 13576,
-          "line": 297
+          "index": 14892,
+          "line": 324
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/xml/shortcuts.xml",
+      "selection": {
+        "end": {
+          "column": 12,
+          "index": 2363,
+          "line": 61
+        },
+        "start": {
+          "column": 12,
+          "index": 2363,
+          "line": 61
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginManager.java",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 49497,
+          "line": 1420
+        },
+        "start": {
+          "column": 1,
+          "index": 49497,
+          "line": 1420
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/MainActivity.java"
 }

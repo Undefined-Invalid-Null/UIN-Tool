@@ -5,6 +5,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -12,7 +17,6 @@ import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
-import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -20,14 +24,14 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
+
 import com.UIN.Tool.R;
 import com.UIN.Tool.utils.FileUtils;
 import com.UIN.Tool.utils.LogUtils;
 import com.UIN.Tool.utils.PreferencesUtils;
 import com.UIN.Tool.widget.UINWidgetProvider;
 import com.UIN.Tool.widget.Widget1x1Provider;
-
-import dalvik.system.DexClassLoader;
 
 import org.json.JSONObject;
 
@@ -42,6 +46,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import dalvik.system.DexClassLoader;
 
 /**
  * 插件管理器
@@ -280,9 +286,6 @@ public class PluginManager {
     
     /**
      * 安装插件
-     * @param tpkFilePath TPK 文件路径
-     * @param originalFileName 原始文件名
-     * @return 安装的插件信息，失败返回 null
      */
     public PluginInfo installPlugin(String tpkFilePath, String originalFileName) {
         long startTime = System.currentTimeMillis();
@@ -383,6 +386,9 @@ public class PluginManager {
             LogUtils.success(TAG, "导入成功: " + info.name + " (" + info.pluginId + ")");
             showToast("导入成功：" + info.name, Toast.LENGTH_SHORT);
             
+            // 为插件创建动态快捷方式（Android 7.1+）
+            createPluginDynamicShortcut(info);
+            
             notifyWidgetsRefresh();
             
             LogUtils.exit(TAG, "installPlugin", startTime);
@@ -393,6 +399,132 @@ public class PluginManager {
             showToast("导入失败：" + e.getMessage(), Toast.LENGTH_SHORT);
             LogUtils.exit(TAG, "installPlugin", startTime);
             return null;
+        }
+    }
+    
+    /**
+     * 为插件创建动态快捷方式（Android 7.1+）
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N_MR1)
+    private void createPluginDynamicShortcut(PluginInfo plugin) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+        
+        try {
+            ShortcutManager shortcutManager = appContext.getSystemService(ShortcutManager.class);
+            if (shortcutManager == null) return;
+            
+            // 检查是否超过最大数量限制
+            List<ShortcutInfo> dynamicShortcuts = shortcutManager.getDynamicShortcuts();
+            int maxCount = shortcutManager.getMaxShortcutCountPerActivity();
+            if (dynamicShortcuts.size() >= maxCount) {
+                // 移除最早的一个插件快捷方式
+                for (ShortcutInfo info : dynamicShortcuts) {
+                    if (info.getId().startsWith("plugin_")) {
+                        shortcutManager.removeDynamicShortcuts(List.of(info.getId()));
+                        break;
+                    }
+                }
+            }
+            
+            Intent intent = new Intent(appContext, PluginHostActivity.class);
+            intent.putExtra(PluginHostActivity.EXTRA_PLUGIN_ID, plugin.pluginId);
+            intent.setAction(Intent.ACTION_VIEW);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            
+            // 获取插件图标
+            Icon icon = getPluginIconForShortcut(plugin);
+            
+            ShortcutInfo shortcut = new ShortcutInfo.Builder(appContext, "plugin_" + plugin.pluginId)
+                    .setShortLabel(plugin.name)
+                    .setLongLabel(plugin.description != null && !plugin.description.isEmpty() ? 
+                            plugin.description : plugin.name)
+                    .setIcon(icon)
+                    .setIntent(intent)
+                    .build();
+            
+            shortcutManager.addDynamicShortcuts(List.of(shortcut));
+            LogUtils.success(TAG, "为插件创建动态快捷方式: " + plugin.name);
+            
+        } catch (Exception e) {
+            LogUtils.e(TAG, "创建插件快捷方式失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 移除插件的动态快捷方式
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N_MR1)
+    public void removePluginDynamicShortcut(String pluginId) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+        
+        try {
+            ShortcutManager shortcutManager = appContext.getSystemService(ShortcutManager.class);
+            if (shortcutManager == null) return;
+            
+            shortcutManager.removeDynamicShortcuts(List.of("plugin_" + pluginId));
+            LogUtils.i(TAG, "移除插件动态快捷方式: " + pluginId);
+        } catch (Exception e) {
+            LogUtils.e(TAG, "移除插件快捷方式失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取插件图标用于快捷方式
+     */
+    private Icon getPluginIconForShortcut(PluginInfo plugin) {
+        try {
+            File pluginDir = getPluginDirFile(plugin.pluginId);
+            if (pluginDir != null && pluginDir.exists()) {
+                String iconPath = plugin.icon != null && !plugin.icon.isEmpty() ? plugin.icon : "icon.png";
+                File iconFile = new File(pluginDir, iconPath);
+                if (iconFile.exists()) {
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inSampleSize = 2;
+                    Bitmap bitmap = BitmapFactory.decodeFile(iconFile.getAbsolutePath(), options);
+                    if (bitmap != null) {
+                        Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, 72, 72, true);
+                        return Icon.createWithBitmap(scaledBitmap);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "获取插件图标失败", e);
+        }
+        return Icon.createWithResource(appContext, R.drawable.ic_extension);
+    }
+    
+    /**
+     * 刷新所有插件的动态快捷方式
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N_MR1)
+    public void refreshAllPluginShortcuts() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return;
+        
+        try {
+            ShortcutManager shortcutManager = appContext.getSystemService(ShortcutManager.class);
+            if (shortcutManager == null) return;
+            
+            // 移除所有插件相关的动态快捷方式
+            List<ShortcutInfo> dynamicShortcuts = shortcutManager.getDynamicShortcuts();
+            List<String> pluginShortcutIds = new ArrayList<>();
+            for (ShortcutInfo info : dynamicShortcuts) {
+                if (info.getId().startsWith("plugin_")) {
+                    pluginShortcutIds.add(info.getId());
+                }
+            }
+            if (!pluginShortcutIds.isEmpty()) {
+                shortcutManager.removeDynamicShortcuts(pluginShortcutIds);
+            }
+            
+            // 为所有已安装插件重新创建快捷方式
+            List<PluginInfo> plugins = getInstalledPlugins();
+            for (PluginInfo plugin : plugins) {
+                createPluginDynamicShortcut(plugin);
+            }
+            
+            LogUtils.i(TAG, "刷新所有插件动态快捷方式完成");
+        } catch (Exception e) {
+            LogUtils.e(TAG, "刷新插件快捷方式失败: " + e.getMessage());
         }
     }
     
@@ -597,7 +729,7 @@ public class PluginManager {
                 }
                 
                 @Override
-                public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                public boolean onJsAlert(WebView view, String url, String message, android.webkit.JsResult result) {
                     new android.app.AlertDialog.Builder(context)
                         .setTitle("提示")
                         .setMessage(message)
@@ -609,7 +741,7 @@ public class PluginManager {
                 }
                 
                 @Override
-                public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+                public boolean onJsConfirm(WebView view, String url, String message, android.webkit.JsResult result) {
                     new android.app.AlertDialog.Builder(context)
                         .setTitle("确认")
                         .setMessage(message)
@@ -1030,6 +1162,11 @@ public class PluginManager {
         File optDir = new File(appContext.getCodeCacheDir(), "opt/" + pluginId);
         if (pluginDir != null) FileUtils.deleteDir(pluginDir);
         FileUtils.deleteDir(optDir);
+        
+        // 移除动态快捷方式
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            removePluginDynamicShortcut(pluginId);
+        }
         
         // 清理 WebView 缓存
         WebView webView = webViewCache.remove(pluginId);
