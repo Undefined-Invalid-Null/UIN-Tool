@@ -131,6 +131,62 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 文档中心 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_doc_center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_sm"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            app:cardCornerRadius="@dimen/radius_lg"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/card_padding_medium"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="@dimen/icon_xlarge"
+                    android:layout_height="@dimen/icon_xlarge"
+                    android:src="@drawable/ic_document"
+                    android:tint="@color/primary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="@dimen/spacing_md">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/doc_center_title"
+                        style="@style/TextSubtitle" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/doc_center_desc"
+                        style="@style/TextCaption" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="@dimen/icon_medium"
+                    android:layout_height="@dimen/icon_medium"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/text_hint" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 检查更新 -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_update"
@@ -166,69 +222,13 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="检查更新"
+                        android:text="@string/check_update"
                         style="@style/TextSubtitle" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="检查 GitHub 上的最新版本"
-                        style="@style/TextCaption" />
-
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="@dimen/icon_medium"
-                    android:layout_height="@dimen/icon_medium"
-                    android:src="@drawable/ic_chevron_right"
-                    android:tint="@color/text_hint" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 查看文档 -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_docs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/spacing_sm"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardCornerRadius="@dimen/radius_lg"
-            app:cardElevation="2dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="@dimen/card_padding_medium"
-                android:gravity="center_vertical">
-
-                <ImageView
-                    android:layout_width="@dimen/icon_xlarge"
-                    android:layout_height="@dimen/icon_xlarge"
-                    android:src="@drawable/ic_document"
-                    android:tint="@color/primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="@dimen/spacing_md">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/view_docs"
-                        style="@style/TextSubtitle" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/view_docs_desc"
+                        android:text="@string/check_update_desc"
                         style="@style/TextCaption" />
 
                 </LinearLayout>
@@ -502,13 +502,13 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="开发者选项"
+                        android:text="@string/developer_options"
                         style="@style/TextSubtitle" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="签名验证、调试设置等"
+                        android:text="@string/developer_options_desc"
                         style="@style/TextCaption" />
 
                 </LinearLayout>

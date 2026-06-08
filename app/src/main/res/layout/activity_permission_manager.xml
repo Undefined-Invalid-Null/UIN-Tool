@@ -16,7 +16,7 @@
         app:navigationIconTint="@android:color/white"
         app:title="@string/title_permission_manager" />
 
-    <!-- 按钮网格布局 -->
+    <!-- 按钮网格布局 2x2 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -68,11 +68,19 @@
                     android:text="@string/btn_plugin_permission" />
             </LinearLayout>
 
-            <!-- 占位（保持网格对齐） -->
+            <!-- 权限说明按钮 -->
             <LinearLayout
+                android:id="@+id/btn_permission_explain_container"
                 style="@style/FlatButtonContainer"
-                android:layout_marginStart="@dimen/spacing_md"
-                android:visibility="invisible" />
+                android:layout_marginStart="@dimen/spacing_md">
+                <ImageView
+                    style="@style/FlatButtonIcon"
+                    android:src="@drawable/ic_info"
+                    android:tint="@color/info" />
+                <TextView
+                    style="@style/FlatButtonText"
+                    android:text="@string/btn_permission_explain" />
+            </LinearLayout>
         </LinearLayout>
 
     </LinearLayout>
