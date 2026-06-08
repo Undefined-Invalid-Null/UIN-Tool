@@ -4,8 +4,8 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 3.0.0 |
-| 对应应用版本 | v3.0.0 (Build 6) |
+| 文档版本 | 3.4.0 |
+| 对应应用版本 | v3.4.0 (Build 7) |
 | 最后更新 | 2026年6月8日 |
 
 ---
@@ -102,7 +102,7 @@ cp plugin.dex /storage/emulated/0/UIN_Tool/com.example.nativeplugin/
 
 对比表格
 
-特性 原生插件 Web插件
+特性 原生插件 Web 插件
 UI开发方式 Java 代码动态创建 HTML/CSS/JS
 开发效率 中等 高
 运行性能 高 中等
@@ -118,7 +118,7 @@ UI开发方式 Java 代码动态创建 HTML/CSS/JS
 如何选择
 
 · 选择原生插件：需要访问系统 API、复杂动画、高性能计算、自定义 View
-· 选择 Web插件：快速原型、界面频繁变动、已有 Web 项目、希望前端开发者参与
+· 选择 Web 插件：快速原型、界面频繁变动、已有 Web 项目、希望前端开发者参与
 
 ---
 
@@ -335,7 +335,7 @@ if (configFile.exists()) {
 
 ---
 
-Web插件开发
+Web 插件开发
 
 目录结构
 
@@ -1240,7 +1240,7 @@ plugin.tpk
     └── com/example/MainPlugin.java
 ```
 
-Web插件结构
+Web 插件结构
 
 ```
 plugin.tpk
@@ -1254,21 +1254,21 @@ plugin.tpk
 
 plugin.json 完整字段
 
-字段 类型 说明
-pluginId string 唯一标识符，必填
-version int 版本号，必填
-versionName string 显示版本名，必填
-minHostVersion int 最低宿主版本，必填
-name string 插件名称，必填
-author string 作者，可选
-description string 描述，可选
-icon string 图标文件名，可选
-mainClass string 主类名，原生插件必填
-updateUrl string 更新检查 URL，可选
-apiLevel int 最低 API 级别，默认 21
-category string 分类，默认"未分类"
-uiType string UI类型: native/web，默认 native
-entry string 入口文件，Web插件必填
+字段 类型 说明 必填
+pluginId string 唯一标识符 ✅
+version int 版本号 ✅
+versionName string 显示版本名 ✅
+minHostVersion int 最低宿主版本 ✅
+name string 插件名称 ✅
+author string 作者 ❌
+description string 描述 ❌
+icon string 图标文件名 ❌
+mainClass string 主类名，原生插件必填 原生✅
+updateUrl string 更新检查 URL ❌
+apiLevel int 最低 API 级别，默认 21 ❌
+category string 分类，默认"未分类" ❌
+uiType string UI类型: native/web，默认 native ❌
+entry string 入口文件，Web插件必填 Web✅
 
 导入步骤
 
@@ -1356,9 +1356,9 @@ git push
 · ✅ 验证命名规范
 · ✅ 在 Release 页面评论验证结果
 
-验证通过后
+5. 验证通过后
 
-插件会在 24 小时内出现在 UIN Tool 的「仓库」页面中，用户可以直接浏览和安装。
+插件会在 24 小时内 出现在 UIN Tool 的「仓库」页面中，用户可以直接浏览和安装。
 
 更新插件
 
@@ -1385,7 +1385,7 @@ LogUtils.e("TAG", "错误", exception);
 LogUtils.success("TAG", "成功");
 ```
 
-Web插件
+Web 插件
 
 ```javascript
 UINPlugin.callHost('log', '调试信息');
@@ -1412,7 +1412,7 @@ console.log('控制台输出');
 Toast.makeText(context, "调试信息", Toast.LENGTH_SHORT).show();
 ```
 
-Web插件
+Web 插件
 
 ```javascript
 UINPlugin.callHost('toast', '调试信息');
@@ -1673,6 +1673,24 @@ function startWithTimeout() {
 
 更新日志
 
+v3.4.0 (2026-06-08)
+
+新增内容：
+
+· UI 个性化完整颜色选择器说明
+· 38+ 颜色配置项说明
+· 圆角实时调节说明
+· 图标着色开关说明
+· 应用图标快捷方式说明
+· 动态插件快捷方式说明
+· 自动更新检测说明
+
+更新内容：
+
+· 更新版本号至 v3.4.0 (Build 7)
+· 更新常见问题解答
+· 完善文档结构
+
 v3.0.0 (2026-06-08)
 
 新增内容：
@@ -1682,12 +1700,6 @@ v3.0.0 (2026-06-08)
 · 引导页系统说明
 · 点状指示器说明
 · 白屏问题修复说明
-
-更新内容：
-
-· 更新版本号至 v3.0.0 (Build 6)
-· 更新常见问题解答
-· 完善文档结构
 
 v2.8.0 (2026-06-08)
 
@@ -1729,9 +1741,9 @@ v1.1.0 (2026-06-07)
 · 1x1 小部件开发说明
 · 更新日志查看功能
 
-v1.0.0 (2024-06-06)
+v1.0.0 (2024-06-06) - 首次发布
 
-首次发布：
+新增内容：
 
 · 初始版本发布
 · 支持原生插件和 Web插件
@@ -1741,7 +1753,6 @@ v1.0.0 (2024-06-06)
 
 ---
 
-文档版本: 3.0.0
+文档版本: 3.4.0
 最后更新: 2026年6月8日
-对应应用版本: v3.0.0 (Build 6)
-
+对应应用版本: v3.4.0 (Build 7)
