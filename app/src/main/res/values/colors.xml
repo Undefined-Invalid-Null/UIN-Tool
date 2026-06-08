@@ -65,4 +65,6 @@
     <color name="gray_medium">#FFEEEEEE</color>
     <color name="gray_dark">#FF9E9E9E</color>
     <color name="gray_text">#FF616161</color>
+    <!-- 颜色选择器相关 -->
+<color name="color_picker_brightness">#80FFFFFF</color>
 </resources>

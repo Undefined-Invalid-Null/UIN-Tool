@@ -51,5 +51,6 @@ dependencies {
     // SwipeRefreshLayout
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.core:core-splashscreen:1.0.1'
+  //  implementation 'com.github.skydoves:colorpickerview:2.2.4'
     
     }

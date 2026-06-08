@@ -13,43 +13,60 @@ import com.UIN.Tool.utils.UIConfig;
 public abstract class BaseFragment extends Fragment {
 
     protected UIConfig uiConfig;
+    protected View rootView;
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        this.rootView = view;
         uiConfig = UIConfig.getInstance(requireContext());
-        uiConfig.applyTheme(requireActivity());
+        
+        // 应用主题到 Activity
+        if (getActivity() != null) {
+            uiConfig.applyTheme(getActivity());
+        }
+        
+        // 应用主题到 Fragment 中的所有 View
+        if (uiConfig != null) {
+            try {
+                uiConfig.applyThemeToViewTree(view);
+            } catch (Exception e) {
+                // 忽略主题应用中的异常，不影响正常使用
+                e.printStackTrace();
+            }
+        }
+        
         initViews(view);
         initData();
         setupListeners();
     }
 
-    /**
-     * 初始化视图
-     */
     protected void initViews(View view) {}
 
-    /**
-     * 初始化数据
-     */
     protected void initData() {}
 
-    /**
-     * 设置监听器
-     */
     protected void setupListeners() {}
 
-    /**
-     * 显示短提示
-     */
     protected void showToast(String message) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
     }
 
-    /**
-     * 显示长提示
-     */
     protected void showLongToast(String message) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+    }
+    
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 每次恢复时重新应用主题
+        if (rootView != null && uiConfig != null && getActivity() != null) {
+            try {
+                uiConfig.applyTheme(getActivity());
+                uiConfig.applyThemeToViewTree(rootView);
+            } catch (Exception e) {
+                // 忽略主题应用中的异常
+                e.printStackTrace();
+            }
+        }
     }
 }
