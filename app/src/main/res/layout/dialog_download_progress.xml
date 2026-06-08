@@ -26,7 +26,7 @@
         android:id="@+id/tv_speed"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="连接中..."
+        android:text="准备下载..."
         android:textSize="@dimen/text_caption"
         android:textColor="@color/text_hint"
         android:gravity="center"

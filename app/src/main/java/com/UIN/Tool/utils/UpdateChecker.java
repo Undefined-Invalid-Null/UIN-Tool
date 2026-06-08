@@ -5,8 +5,6 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -28,9 +26,13 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
 /**
  * 应用更新检查器
- * 从 GitHub Releases 检查最新版本，支持选择版本下载
+ * 从 GitHub Releases 检查最新版本
  * Tag 格式: {versionCode}-{versionName} 例如: 4-2.6.0
  */
 public class UpdateChecker {
@@ -51,9 +53,10 @@ public class UpdateChecker {
     };
     
     private Context context;
-    private Handler mainHandler;
+    private android.os.Handler mainHandler;
     private OnUpdateCheckListener listener;
     private String currentMirror = "";
+    private OkHttpClient client;
     
     public interface OnUpdateCheckListener {
         void onCheckStart();
@@ -79,6 +82,7 @@ public class UpdateChecker {
         public String getFormattedDate() {
             if (releaseDate == null || releaseDate.isEmpty()) return "";
             try {
+                // 格式: 2026-06-07T06:41:39Z -> 2026-06-07
                 return releaseDate.substring(0, 10);
             } catch (Exception e) {
                 return releaseDate;
@@ -102,9 +106,50 @@ public class UpdateChecker {
     
     public UpdateChecker(Context context) {
         this.context = context.getApplicationContext();
-        this.mainHandler = new Handler(Looper.getMainLooper());
-        disableSSLCertificateChecking();  // 禁用 SSL 证书检查
+        this.mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        this.client = getUnsafeOkHttpClient();
+        disableSSLCertificateChecking();
         LogUtils.i(TAG, "UpdateChecker 初始化完成");
+    }
+    
+    /**
+     * 获取不验证 SSL 证书的 OkHttpClient
+     */
+    private OkHttpClient getUnsafeOkHttpClient() {
+        try {
+            final TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[]{};
+                    }
+                }
+            };
+
+            final SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+            final HostnameVerifier hostnameVerifier = (hostname, session) -> true;
+
+            return new OkHttpClient.Builder()
+                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
+                    .hostnameVerifier(hostnameVerifier)
+                    .build();
+        } catch (Exception e) {
+            LogUtils.e(TAG, "创建OkHttpClient失败", e);
+            return new OkHttpClient.Builder()
+                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .build();
+        }
     }
     
     /**
@@ -230,76 +275,69 @@ public class UpdateChecker {
     
     private void doCheckUpdate(String apiUrl) {
         LogUtils.i(TAG, "开始检查更新, API URL: " + apiUrl);
-        HttpURLConnection connection = null;
+        
         try {
             String fullUrl = apiUrl + "?per_page=30";
             LogUtils.d(TAG, "请求 URL: " + fullUrl);
             
-            URL url = new URL(fullUrl);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(15000);
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
-            connection.setRequestProperty("User-Agent", "UIN-Tool-Android");
+            Request request = new Request.Builder()
+                    .url(fullUrl)
+                    .header("Accept", "application/vnd.github.v3+json")
+                    .header("User-Agent", "UIN-Tool-Android")
+                    .build();
             
-            int responseCode = connection.getResponseCode();
-            LogUtils.param(TAG, "响应码", responseCode);
-            
-            if (responseCode != 200) {
-                final String error = "GitHub API 响应错误: " + responseCode;
-                LogUtils.e(TAG, error);
+            try (Response response = client.newCall(request).execute()) {
+                int responseCode = response.code();
+                LogUtils.param(TAG, "响应码", responseCode);
+                
+                if (responseCode != 200) {
+                    final String error = "GitHub API 响应错误: " + responseCode;
+                    LogUtils.e(TAG, error);
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (listener != null) listener.onCheckFailed(error);
+                        }
+                    });
+                    return;
+                }
+                
+                String responseBody = response.body().string();
+                LogUtils.d(TAG, "响应内容长度: " + responseBody.length());
+                
+                final List<ReleaseInfo> releases = parseReleasesInfo(responseBody);
+                final int currentVersionCode = getCurrentVersionCode();
+                final String currentVersionName = getCurrentVersionName();
+                
+                LogUtils.param(TAG, "当前版本", currentVersionName + " (代码: " + currentVersionCode + ")");
+                LogUtils.param(TAG, "找到 Release 数量", releases.size());
+                
+                boolean hasNewer = false;
+                for (ReleaseInfo info : releases) {
+                    info.isNewer = info.isNewerThan(currentVersionCode);
+                    if (info.isNewer) {
+                        hasNewer = true;
+                        LogUtils.d(TAG, "发现新版本: " + info.versionName + " (代码: " + info.versionCode + ")");
+                    }
+                }
+                
+                final boolean finalHasNewer = hasNewer;
+                
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        if (listener != null) listener.onCheckFailed(error);
-                    }
-                });
-                return;
-            }
-            
-            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                response.append(line);
-            }
-            reader.close();
-            
-            LogUtils.d(TAG, "响应内容长度: " + response.length());
-            
-            final List<ReleaseInfo> releases = parseReleasesInfo(response.toString());
-            final int currentVersionCode = getCurrentVersionCode();
-            final String currentVersionName = getCurrentVersionName();
-            
-            LogUtils.param(TAG, "当前版本", currentVersionName + " (代码: " + currentVersionCode + ")");
-            LogUtils.param(TAG, "找到 Release 数量", releases.size());
-            
-            boolean hasNewer = false;
-            for (ReleaseInfo info : releases) {
-                info.isNewer = info.isNewerThan(currentVersionCode);
-                if (info.isNewer) {
-                    hasNewer = true;
-                    LogUtils.d(TAG, "发现新版本: " + info.versionName + " (代码: " + info.versionCode + ")");
-                }
-            }
-            
-            final boolean finalHasNewer = hasNewer;
-            
-            mainHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (listener != null) {
-                        if (!releases.isEmpty()) {
-                            LogUtils.success(TAG, "检查更新成功，共 " + releases.size() + " 个版本");
-                            listener.onCheckSuccess(releases, finalHasNewer);
-                        } else {
-                            LogUtils.i(TAG, "没有找到任何 Release");
-                            listener.onNoUpdate(currentVersionName);
+                        if (listener != null) {
+                            if (!releases.isEmpty()) {
+                                LogUtils.success(TAG, "检查更新成功，共 " + releases.size() + " 个版本");
+                                listener.onCheckSuccess(releases, finalHasNewer);
+                            } else {
+                                LogUtils.i(TAG, "没有找到任何 Release");
+                                listener.onNoUpdate(currentVersionName);
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
             
         } catch (final Exception e) {
             LogUtils.e(TAG, "检查更新失败: " + e.getMessage(), e);
@@ -311,10 +349,6 @@ public class UpdateChecker {
                     }
                 }
             });
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
     }
     
@@ -404,6 +438,87 @@ public class UpdateChecker {
         return releases;
     }
     
+    /**
+     * 获取最新版本信息（同步方法，用于启动时快速检查）
+     */
+    public ReleaseInfo getLatestRelease() {
+        LogUtils.enter(TAG, "getLatestRelease");
+        try {
+            String apiUrl = GITHUB_API + "?per_page=1";
+            String mirroredUrl = getMirrorUrl(apiUrl);
+            
+            Request request = new Request.Builder()
+                    .url(mirroredUrl)
+                    .header("Accept", "application/vnd.github.v3+json")
+                    .header("User-Agent", "UIN-Tool-Android")
+                    .build();
+            
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    String responseBody = response.body().string();
+                    JSONArray releases = new JSONArray(responseBody);
+                    if (releases.length() > 0) {
+                        JSONObject release = releases.getJSONObject(0);
+                        ReleaseInfo info = new ReleaseInfo();
+                        info.tagName = release.optString("tag_name", "");
+                        info.releaseDate = release.optString("published_at", "");
+                        info.releaseNotes = release.optString("body", "");
+                        info.isPreRelease = release.optBoolean("prerelease", false);
+                        
+                        if (info.tagName.contains("-")) {
+                            String[] parts = info.tagName.split("-", 2);
+                            info.versionCode = parts[0];
+                            info.versionName = parts.length > 1 ? parts[1] : parts[0];
+                        } else {
+                            info.versionName = info.tagName;
+                            info.versionCode = info.tagName;
+                        }
+                        
+                        JSONArray assets = release.optJSONArray("assets");
+                        if (assets != null && assets.length() > 0) {
+                            for (int j = 0; j < assets.length(); j++) {
+                                JSONObject asset = assets.getJSONObject(j);
+                                String name = asset.optString("name", "");
+                                if (name.endsWith(".apk")) {
+                                    info.downloadUrl = asset.optString("browser_download_url", "");
+                                    long size = asset.optLong("size", 0);
+                                    info.apkSize = formatSize(size);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (info.downloadUrl == null || info.downloadUrl.isEmpty()) {
+                            info.downloadUrl = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/" + info.tagName;
+                            info.apkSize = "未知";
+                        }
+                        
+                        LogUtils.success(TAG, "获取最新版本成功: " + info.versionName);
+                        return info;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LogUtils.e(TAG, "获取最新版本失败: " + e.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * 获取镜像 URL
+     */
+    private String getMirrorUrl(String originalUrl) {
+        if (currentMirror == null || currentMirror.isEmpty()) {
+            return originalUrl;
+        }
+        if (currentMirror.contains("ghproxy")) {
+            return currentMirror + "/" + originalUrl;
+        } else if (currentMirror.contains("fastgit")) {
+            return originalUrl.replace("https://api.github.com", currentMirror + "/api.github.com");
+        }
+        return originalUrl;
+    }
+    
     private int getVersionCodeFromName(String versionName) {
         try {
             String[] parts = versionName.split("\\.");
@@ -441,6 +556,9 @@ public class UpdateChecker {
         }
     }
     
+    /**
+     * 格式化文件大小
+     */
     private String formatSize(long size) {
         if (size <= 0) return "未知";
         if (size < 1024) return size + " B";
@@ -449,6 +567,9 @@ public class UpdateChecker {
         return String.format("%.2f GB", size / (1024.0 * 1024.0 * 1024.0));
     }
     
+    /**
+     * 打开下载页面
+     */
     public void openDownloadPage(String url) {
         if (url == null || url.isEmpty()) {
             url = GITHUB_REPO;
@@ -459,6 +580,9 @@ public class UpdateChecker {
         context.startActivity(intent);
     }
     
+    /**
+     * 打开 Release 页面
+     */
     public void openReleasePage() {
         LogUtils.action(TAG, "打开 Release 页面", GITHUB_REPO);
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_REPO));
