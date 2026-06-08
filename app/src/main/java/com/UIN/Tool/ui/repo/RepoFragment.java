@@ -152,7 +152,7 @@ public class RepoFragment extends BaseFragment {
                 return;
             }
             LogUtils.action(TAG, "下拉刷新", "刷新插件列表");
-            loadPluginsFromRepo();
+            refreshPlugins();
         });
         
         // 搜索框文本变化监听
@@ -167,7 +167,6 @@ public class RepoFragment extends BaseFragment {
             
             @Override
             public void afterTextChanged(Editable s) {
-                // 显示/清除按钮
                 if (s.length() > 0) {
                     binding.btnClearSearch.setVisibility(View.VISIBLE);
                 } else {
@@ -178,7 +177,6 @@ public class RepoFragment extends BaseFragment {
         
         // 搜索按钮点击
         binding.btnSearch.setOnClickListener(v -> {
-            // 搜索已经在文本变化时执行，这里只是确保键盘收起
             binding.etSearch.clearFocus();
         });
         
@@ -197,6 +195,55 @@ public class RepoFragment extends BaseFragment {
             }
             return false;
         });
+    }
+    
+    private void refreshPlugins() {
+        new Thread(() -> {
+            try {
+                // 重新获取数据
+                List<RepoPluginInfo> fetchedPlugins = fetchPluginsFromNetwork();
+                
+                updateUiOnMainThread(() -> {
+                    if (isFragmentAttached()) {
+                        allPlugins.clear();
+                        allPlugins.addAll(fetchedPlugins);
+                        performSearch(currentKeyword);
+                        refreshInstalledStatus();
+                        binding.swipeRefreshLayout.setRefreshing(false);
+                    }
+                });
+            } catch (Exception e) {
+                LogUtils.e(TAG, "刷新失败", e);
+                updateUiOnMainThread(() -> {
+                    if (isFragmentAttached()) {
+                        binding.swipeRefreshLayout.setRefreshing(false);
+                        Toast.makeText(requireContext(), getString(R.string.repo_load_failed), Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        }).start();
+    }
+    
+    private List<RepoPluginInfo> fetchPluginsFromNetwork() throws Exception {
+        List<RepoPluginInfo> result = new ArrayList<>();
+        String reposUrl = "https://api.github.com/orgs/UIN-Tool-Plugins/repos?per_page=100";
+        String mirroredUrl = getMirrorUrl(reposUrl);
+        
+        Request request = new Request.Builder()
+                .url(mirroredUrl)
+                .header("Accept", "application/vnd.github.v3+json")
+                .header("User-Agent", "UIN-Tool-Android")
+                .build();
+        
+        try (Response response = unsafeHttpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new Exception("GitHub API 错误: " + response.code());
+            }
+            String responseBody = response.body().string();
+            parseReposFromJson(responseBody, result);
+        }
+        
+        return result;
     }
     
     private void performSearch(String keyword) {
@@ -363,7 +410,6 @@ public class RepoFragment extends BaseFragment {
             updateUiOnMainThread(() -> {
                 if (isFragmentAttached()) {
                     binding.progressBar.setVisibility(View.GONE);
-                    binding.swipeRefreshLayout.setRefreshing(false);
                     binding.tvEmpty.setVisibility(View.VISIBLE);
                     binding.tvEmpty.setText(getString(R.string.repo_load_failed));
                     Toast.makeText(requireContext(), getString(R.string.repo_load_failed), Toast.LENGTH_SHORT).show();
@@ -373,11 +419,11 @@ public class RepoFragment extends BaseFragment {
             return;
         }
         
+        // 只显示 ProgressBar，不触发 SwipeRefreshLayout
         updateUiOnMainThread(() -> {
             if (isFragmentAttached()) {
                 binding.progressBar.setVisibility(View.VISIBLE);
                 binding.tvEmpty.setVisibility(View.GONE);
-                binding.swipeRefreshLayout.setRefreshing(true);
             }
         });
         
@@ -417,7 +463,6 @@ public class RepoFragment extends BaseFragment {
                 updateUiOnMainThread(() -> {
                     if (isFragmentAttached()) {
                         binding.progressBar.setVisibility(View.GONE);
-                        binding.swipeRefreshLayout.setRefreshing(false);
                     }
                 });
                 
@@ -426,7 +471,6 @@ public class RepoFragment extends BaseFragment {
                 updateUiOnMainThread(() -> {
                     if (isFragmentAttached()) {
                         binding.progressBar.setVisibility(View.GONE);
-                        binding.swipeRefreshLayout.setRefreshing(false);
                         binding.tvEmpty.setVisibility(View.VISIBLE);
                         binding.tvEmpty.setText(getString(R.string.repo_load_failed));
                         Toast.makeText(requireContext(), getString(R.string.repo_load_failed), Toast.LENGTH_LONG).show();
@@ -629,7 +673,6 @@ public class RepoFragment extends BaseFragment {
                                 binding.downloadProgressText.setVisibility(View.GONE);
                                 Toast.makeText(requireContext(), "安装成功: " + installedInfo.name, Toast.LENGTH_SHORT).show();
                                 refreshInstalledStatus();
-                                loadPluginsFromRepo();
                             }
                         });
                     } else {

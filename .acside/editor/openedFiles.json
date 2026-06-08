@@ -1,110 +1,20 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/repo/RepoFragment.java",
       "selection": {
         "end": {
           "column": 1,
-          "index": 2225,
-          "line": 65
+          "index": 31354,
+          "line": 791
         },
         "start": {
           "column": 1,
-          "index": 2225,
-          "line": 65
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/activity_main.xml",
-      "selection": {
-        "end": {
-          "column": 15,
-          "index": 978,
-          "line": 24
-        },
-        "start": {
-          "column": 15,
-          "index": 978,
-          "line": 24
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
-      "selection": {
-        "end": {
-          "column": 12,
-          "index": 7783,
-          "line": 173
-        },
-        "start": {
-          "column": 12,
-          "index": 7783,
-          "line": 173
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/MainActivity.java",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 12595,
-          "line": 332
-        },
-        "start": {
-          "column": 1,
-          "index": 12595,
-          "line": 332
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
-      "selection": {
-        "end": {
-          "column": 11,
-          "index": 13428,
-          "line": 294
-        },
-        "start": {
-          "column": 11,
-          "index": 13428,
-          "line": 294
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/splash_background.xml",
-      "selection": {
-        "end": {
-          "column": 13,
-          "index": 366,
-          "line": 12
-        },
-        "start": {
-          "column": 13,
-          "index": 366,
-          "line": 12
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/layout/activity_splash.xml",
-      "selection": {
-        "end": {
-          "column": 15,
-          "index": 1036,
-          "line": 31
-        },
-        "start": {
-          "column": 15,
-          "index": 1036,
-          "line": 31
+          "index": 31354,
+          "line": 791
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/splash_background.xml"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/repo/RepoFragment.java"
 }
