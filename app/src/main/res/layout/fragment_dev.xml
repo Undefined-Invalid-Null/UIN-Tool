@@ -55,28 +55,22 @@
 
                 </LinearLayout>
 
+                <!-- 创建新插件按钮 -->
                 <Button
                     android:id="@+id/btn_create_plugin"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/button_height_medium"
+                    android:layout_height="wrap_content"
                     android:text="@string/btn_create_plugin"
                     style="@style/Widget.UIN.Tool.Button"
-                    android:layout_marginBottom="@dimen/spacing_sm" />
+                    android:layout_marginBottom="@dimen/spacing_md" />
 
+                <!-- 导出模板按钮 - 与创建新插件完全相同的样式 -->
                 <Button
                     android:id="@+id/btn_export_template"
                     android:layout_width="match_parent"
-                    android:layout_height="@dimen/button_height_medium"
+                    android:layout_height="wrap_content"
                     android:text="@string/btn_export_template"
-                    style="@style/Widget.UIN.Tool.Button.Outlined"
-                    android:layout_marginBottom="@dimen/spacing_sm" />
-
-                <Button
-                    android:id="@+id/btn_view_docs"
-                    android:layout_width="wrap_content"
-                    android:layout_height="@dimen/button_height_small"
-                    android:text="@string/btn_view_docs"
-                    style="@style/Widget.UIN.Tool.Button.Text" />
+                    style="@style/Widget.UIN.Tool.Button" />
 
             </LinearLayout>
 

@@ -570,4 +570,6 @@
     
     <!-- 更新相关 -->
     <string name="update_download_progress" formatted="false">%d%% (%s/%s)</string>
+    <!-- 开发页面字符串 -->
+<string name="exporting_template">正在导出模板...</string>
 </resources>
