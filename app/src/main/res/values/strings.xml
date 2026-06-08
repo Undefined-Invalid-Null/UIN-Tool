@@ -588,4 +588,12 @@
 <string name="update_install_later">稍后安装</string>
 <string name="update_saved_path">安装包已保存到 UIN_Tool/downloads/ 目录</string>
 <string name="update_url_invalid">下载链接无效，请稍后重试</string>
-</resources>
+<!-- 快捷方式文字 -->
+<string name="shortcut_tools">工具</string>
+<string name="shortcut_tools_long">打开工具页面</string>
+<string name="shortcut_plugin_manage">插件管理</string>
+<string name="shortcut_plugin_manage_long">管理已安装插件</string>
+<string name="shortcut_permission">权限管理</string>
+<string name="shortcut_permission_long">管理应用和插件权限</string>
+<string name="shortcut_check_update">检查更新</string>
+<string name="shortcut_check_update_long">检查应用更新</string></resources>

@@ -38,10 +38,14 @@ import java.io.File;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
+    private static final String EXTRA_SELECTED_TAB = "selected_tab";
+    private static final String EXTRA_CHECK_UPDATE = "check_update";
+    
     private FrameLayout fragmentContainer;
     private BottomNavigationView bottomNav;
     private Fragment currentFragment;
     private UIConfig uiConfig;
+    private boolean isFromShortcut = false;
 
     private final ActivityResultLauncher<Intent> manageStorageLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -72,11 +76,13 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setBackgroundDrawableResource(R.color.background);
         
         // 确保应用在最近任务中可见
-        setTaskDescription(new ActivityManager.TaskDescription(
-            getString(R.string.app_name),
-            null,
-            getColor(R.color.primary)
-        ));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            setTaskDescription(new ActivityManager.TaskDescription(
+                getString(R.string.app_name),
+                null,
+                getColor(R.color.primary)
+            ));
+        }
         
         uiConfig = UIConfig.getInstance(this);
         uiConfig.applyTheme(this);
@@ -98,11 +104,8 @@ public class MainActivity extends AppCompatActivity {
 
         setupBottomNavigation();
 
-        if (savedInstanceState == null) {
-            switchToFragment(new ToolsFragment());
-            bottomNav.setSelectedItemId(R.id.nav_tools);
-            LogUtils.d(TAG, "初始切换到工具页面");
-        }
+        // 处理快捷方式启动
+        handleShortcutIntent(getIntent());
 
         bottomNav.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
@@ -136,6 +139,82 @@ public class MainActivity extends AppCompatActivity {
         }, 1000);
         
         LogUtils.exit(TAG, "onCreate", startTime);
+    }
+    
+    /**
+     * 处理快捷方式启动
+     */
+    private void handleShortcutIntent(Intent intent) {
+        if (intent == null) return;
+        
+        String selectedTab = intent.getStringExtra(EXTRA_SELECTED_TAB);
+        boolean checkUpdate = intent.getBooleanExtra(EXTRA_CHECK_UPDATE, false);
+        
+        // 兼容 meta-data 方式
+        if (selectedTab == null && intent.getExtras() != null) {
+            selectedTab = intent.getExtras().getString("selected_tab");
+        }
+        
+        LogUtils.d(TAG, "handleShortcutIntent - selectedTab: " + selectedTab + ", checkUpdate: " + checkUpdate);
+        
+        if (checkUpdate) {
+            switchToCheckUpdatePage();
+        } else if ("tools".equals(selectedTab)) {
+            switchToToolsPage();
+        } else {
+            // 默认打开工具页面
+            if (currentFragment == null) {
+                switchToToolsPage();
+            }
+        }
+    }
+    
+    /**
+     * 切换到工具页面
+     */
+    private void switchToToolsPage() {
+        LogUtils.d(TAG, "切换到工具页面");
+        switchToFragment(new ToolsFragment());
+        bottomNav.setSelectedItemId(R.id.nav_tools);
+        isFromShortcut = true;
+    }
+    
+    /**
+     * 切换到检查更新页面
+     */
+    private void switchToCheckUpdatePage() {
+        LogUtils.d(TAG, "切换到管理页面并检查更新");
+        ManageFragment manageFragment = new ManageFragment();
+        switchToFragment(manageFragment);
+        bottomNav.setSelectedItemId(R.id.nav_manage);
+        isFromShortcut = true;
+        
+        // 延迟执行检查更新
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (manageFragment != null && isFragmentVisible(manageFragment)) {
+                manageFragment.checkUpdateFromShortcut();
+            }
+        }, 500);
+    }
+    
+    /**
+     * 检查 Fragment 是否可见
+     */
+    private boolean isFragmentVisible(Fragment fragment) {
+        return fragment != null && fragment.isAdded() && !fragment.isHidden() && fragment.getUserVisibleHint();
+    }
+
+    /**
+     * 处理新 Intent（当应用已在后台时，通过快捷方式再次启动）
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        LogUtils.d(TAG, "onNewIntent");
+        
+        // 重新处理快捷方式
+        handleShortcutIntent(intent);
     }
 
     private int getVersionCode() {
@@ -217,7 +296,7 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("退出", (dialog, which) -> {
                     LogUtils.action(TAG, "用户点击", "退出");
-                    finishAffinity(); // 使用 finishAffinity 彻底退出
+                    finishAffinity();
                 })
                 .setCancelable(false)
                 .show();
@@ -284,15 +363,19 @@ public class MainActivity extends AppCompatActivity {
         uiConfig.applyTheme(this);
         setupBottomNavigation();
         
-        if (currentFragment instanceof DevFragment) {
-            bottomNav.setSelectedItemId(R.id.nav_dev);
-        } else if (currentFragment instanceof ToolsFragment) {
-            bottomNav.setSelectedItemId(R.id.nav_tools);
-        } else if (currentFragment instanceof RepoFragment) {
-            bottomNav.setSelectedItemId(R.id.nav_repo);
-        } else if (currentFragment instanceof ManageFragment) {
-            bottomNav.setSelectedItemId(R.id.nav_manage);
+        // 如果不是从快捷方式启动，恢复之前选中的页面
+        if (!isFromShortcut) {
+            if (currentFragment instanceof DevFragment) {
+                bottomNav.setSelectedItemId(R.id.nav_dev);
+            } else if (currentFragment instanceof ToolsFragment) {
+                bottomNav.setSelectedItemId(R.id.nav_tools);
+            } else if (currentFragment instanceof RepoFragment) {
+                bottomNav.setSelectedItemId(R.id.nav_repo);
+            } else if (currentFragment instanceof ManageFragment) {
+                bottomNav.setSelectedItemId(R.id.nav_manage);
+            }
         }
+        isFromShortcut = false;
     }
 
     @Override
@@ -317,7 +400,6 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage("确定要退出 UIN Tool 吗？")
                 .setPositiveButton("退出", (dialog, which) -> {
                     LogUtils.action(TAG, "用户选择", "退出应用");
-                    // 使用 finishAffinity 彻底退出
                     finishAffinity();
                 })
                 .setNegativeButton("取消", null)

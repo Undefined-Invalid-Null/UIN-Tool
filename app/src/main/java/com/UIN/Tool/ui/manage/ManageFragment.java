@@ -105,6 +105,15 @@ public class ManageFragment extends BaseFragment {
     // ==================== 更新相关方法 ====================
     
     /**
+     * 供快捷方式调用的检查更新方法
+     */
+    public void checkUpdateFromShortcut() {
+        if (!isFragmentAlive) return;
+        LogUtils.enter(TAG, "checkUpdateFromShortcut");
+        checkForUpdate();
+    }
+    
+    /**
      * 检查更新
      */
     private void checkForUpdate() {

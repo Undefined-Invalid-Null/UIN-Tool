@@ -119,6 +119,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            
+            <!-- 添加 shortcuts 引用 -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <!-- ==================== 引导页 Activity ==================== -->
@@ -137,7 +142,29 @@
             android:launchMode="singleTask"
             android:excludeFromRecents="false"
             android:taskAffinity=""
-            android:alwaysRetainTaskState="true" />
+            android:alwaysRetainTaskState="true">
+            
+            <!-- 添加 URI Scheme 处理，用于快捷方式跳转 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="uin" android:host="tools" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="uin" android:host="dev" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="uin" android:host="check_update" />
+            </intent-filter>
+            
+        </activity>
 
         <!-- ==================== 插件相关 Activity ==================== -->
         <activity
