@@ -78,7 +78,7 @@
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 图标着色开关 - 卡片点击切换 -->
+            <!-- 图标着色开关 - 使用 TextView 状态显示 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -119,20 +119,21 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="点击切换，关闭后图标将保持原色"
+                            android:text="开启后图标将使用主题色，关闭后保持原色"
                             android:textSize="@dimen/text_caption"
                             android:textColor="@color/text_hint" />
 
                     </LinearLayout>
 
+                    <!-- 使用 TextView 显示状态 -->
                     <TextView
                         android:id="@+id/tv_icon_tint_status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="已开启"
                         android:textSize="@dimen/text_body"
-                        android:textColor="@color/primary"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:textColor="@color/primary" />
 
                 </LinearLayout>
 

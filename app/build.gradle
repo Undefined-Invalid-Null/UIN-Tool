@@ -11,8 +11,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 21
         targetSdk 34
-        versionCode 8
-        versionName "3.5.0"
+        versionCode 9
+        versionName "3.10.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

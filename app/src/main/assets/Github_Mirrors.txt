@@ -1,0 +1,19 @@
+# GitHub 镜像站列表
+# 格式: 镜像站名称|镜像站URL|备注
+# 每行一个，支持 # 注释
+
+GitHub 官方|https://github.com|官方源（需代理）
+FastGit|https://hub.fastgit.xyz|国内高速镜像
+GhProxy|https://ghproxy.net|代理加速
+Mirror GhProxy|https://mirror.ghproxy.com|代理加速备选
+Moeyy|https://github.moeyy.xyz|国内镜像
+GitClone|https://gitclone.com|国内镜像
+GhApi|https://gh.api.99988866.xyz|API 加速
+Jiewen|https://gh.jiewen.ltd|国内镜像
+CDN Proxy|https://ghproxy.ltd|CDN 代理
+加速 GitHub|https://github.zhlh6.cn|国内加速
+Kkgithub|https://kkgithub.com|国内镜像
+Huu |https://hub.uuu.moe|国内加速
+GitHub 代下载|https://download.fastgit.xyz|下载加速
+CF Workers|https://gh-proxy.liuzhicong.workers.dev|CloudFlare 代理
+Moeyy 备用|https://ghproxy.moeyy.xyz|Moeyy 代理

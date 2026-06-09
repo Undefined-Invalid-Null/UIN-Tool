@@ -97,67 +97,54 @@ public class PermissionManagerActivity extends BaseActivity {
     }
 
     private void createAllPermissionItems() {
-        // 存储权限
         addPermissionItem(R.drawable.ic_folder, R.string.perm_category_storage,
                 Manifest.permission.READ_EXTERNAL_STORAGE,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 "MANAGE_EXTERNAL_STORAGE");
 
-        // 网络权限
         addPermissionItem(R.drawable.ic_network, R.string.perm_category_network,
                 Manifest.permission.INTERNET,
                 Manifest.permission.ACCESS_NETWORK_STATE,
                 Manifest.permission.ACCESS_WIFI_STATE);
 
-        // 相机权限
         addPermissionItem(R.drawable.ic_camera, R.string.perm_category_camera,
                 Manifest.permission.CAMERA);
 
-        // 麦克风权限
         addPermissionItem(R.drawable.ic_microphone, R.string.perm_category_microphone,
                 Manifest.permission.RECORD_AUDIO);
 
-        // 位置权限
         addPermissionItem(R.drawable.ic_location, R.string.perm_category_location,
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION);
 
-        // 电话权限
         addPermissionItem(R.drawable.ic_phone, R.string.perm_category_phone,
                 Manifest.permission.CALL_PHONE,
                 Manifest.permission.READ_PHONE_STATE);
 
-        // 短信权限
         addPermissionItem(R.drawable.ic_message, R.string.perm_category_sms,
                 Manifest.permission.SEND_SMS,
                 Manifest.permission.READ_SMS,
                 Manifest.permission.RECEIVE_SMS);
 
-        // 联系人权限
         addPermissionItem(R.drawable.ic_contacts, R.string.perm_category_contacts,
                 Manifest.permission.READ_CONTACTS,
                 Manifest.permission.WRITE_CONTACTS);
 
-        // 日历权限
         addPermissionItem(R.drawable.ic_calendar, R.string.perm_category_calendar,
                 Manifest.permission.READ_CALENDAR,
                 Manifest.permission.WRITE_CALENDAR);
 
-        // 系统权限
         addPermissionItem(R.drawable.ic_settings, R.string.perm_category_system,
                 "SYSTEM_ALERT_WINDOW", "WRITE_SETTINGS",
                 "POST_NOTIFICATIONS", Manifest.permission.VIBRATE,
                 Manifest.permission.WAKE_LOCK, "FLASHLIGHT");
 
-        // 无障碍权限
         addPermissionItem(R.drawable.ic_accessibility, R.string.perm_category_accessibility,
                 "ACCESSIBILITY");
 
-        // 高级权限
         addPermissionItem(R.drawable.ic_security, R.string.perm_category_advanced,
                 "REQUEST_INSTALL_PACKAGES", "PACKAGE_USAGE_STATS");
 
-        // 权限增强工具
         addPermissionItem(R.drawable.ic_developer_mode, R.string.perm_category_tools,
                 "ROOT", "SHIZUKU", "DHIZUKU");
     }
@@ -289,8 +276,17 @@ public class PermissionManagerActivity extends BaseActivity {
             holder.tvCategory.setText(item.category);
             holder.tvCategory.setTextColor(getColor(R.color.text_secondary));
 
+            // 修复：先移除监听器，避免循环调用
             holder.checkBox.setOnCheckedChangeListener(null);
             holder.checkBox.setChecked(granted);
+            
+            // 修复：设置 CheckBox 的背景为透明，防止点击时背景变色
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                holder.checkBox.setButtonTintList(android.content.res.ColorStateList.valueOf(getColor(R.color.primary)));
+            }
+            // 设置 CheckBox 背景透明，防止点击时产生背景色
+            holder.checkBox.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            
             holder.checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isChecked && !granted) {
                     requestPermission(item.permission);

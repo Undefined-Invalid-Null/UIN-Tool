@@ -5,18 +5,14 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.cardview.widget.CardView;
 
 import com.UIN.Tool.R;
 import com.UIN.Tool.databinding.ActivityUiConfigNewBinding;
@@ -31,8 +27,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class UIConfigActivity extends BaseActivity {
 
@@ -82,53 +76,32 @@ public class UIConfigActivity extends BaseActivity {
     }
     
     /**
-     * 卡片点击切换开关 - 实时生效
+     * 图标着色开关设置 - 使用 TextView 状态显示
      */
     private void setupIconTintSwitch() {
         if (uiConfig == null) return;
         
-        CardView cardView = binding.cardIconTint;
         TextView tvStatus = binding.tvIconTintStatus;
+        if (tvStatus == null) return;
         
-        // 设置初始状态
-        boolean isChecked = uiConfig.isUseCustomIconTint();
-        updateIconTintStatus(tvStatus, isChecked);
+        // 更新状态显示
+        updateIconTintStatus(tvStatus);
         
-        // 点击卡片切换
-        cardView.setOnClickListener(v -> {
-            boolean newState = !uiConfig.isUseCustomIconTint();
-            uiConfig.setUseCustomIconTint(newState);
-            updateIconTintStatus(tvStatus, newState);
-            showToast(newState ? "图标将使用主题色" : "图标将保持原色");
-            // 实时应用图标着色到整个应用
-            refreshAllViewsIconTint();
-        });
+        // 卡片点击切换
+        if (binding.cardIconTint != null) {
+            binding.cardIconTint.setOnClickListener(v -> {
+                boolean newState = !uiConfig.isUseCustomIconTint();
+                uiConfig.setUseCustomIconTint(newState);
+                updateIconTintStatus(tvStatus);
+                showToast(newState ? "图标将使用主题色" : "图标将保持原色");
+                refreshAllViewsIconTint();
+            });
+        }
     }
     
-    /**
-     * 刷新所有 View 的图标着色
-     */
-    private void refreshAllViewsIconTint() {
+    private void updateIconTintStatus(TextView tvStatus) {
         if (uiConfig == null) return;
-        
-        // 重新应用到当前 Activity 的所有 View
-        if (binding.getRoot() != null) {
-            uiConfig.applyThemeToViewTree(binding.getRoot());
-        }
-        
-        // 重新应用到 Toolbar
-        applyThemeToToolbar();
-        
-        // 刷新预览
-        updatePreview();
-        
-        // 重新应用到状态栏
-        if (getWindow() != null) {
-            getWindow().setStatusBarColor(uiConfig.getPrimaryDarkColor());
-        }
-    }
-    
-    private void updateIconTintStatus(TextView tvStatus, boolean isChecked) {
+        boolean isChecked = uiConfig.isUseCustomIconTint();
         if (isChecked) {
             tvStatus.setText("已开启");
             tvStatus.setTextColor(uiConfig.getPrimaryColor());
@@ -138,19 +111,39 @@ public class UIConfigActivity extends BaseActivity {
         }
     }
     
+    /**
+     * 刷新所有 View 的图标着色
+     */
+    private void refreshAllViewsIconTint() {
+        if (uiConfig == null) return;
+        
+        if (binding.getRoot() != null) {
+            uiConfig.applyThemeToViewTree(binding.getRoot());
+        }
+        
+        applyThemeToToolbar();
+        updatePreview();
+        
+        if (getWindow() != null) {
+            getWindow().setStatusBarColor(uiConfig.getPrimaryDarkColor());
+        }
+        
+        // 刷新状态文字颜色
+        if (binding.tvIconTintStatus != null) {
+            updateIconTintStatus(binding.tvIconTintStatus);
+        }
+    }
+    
     private void applyCurrentTheme() {
         if (uiConfig == null) {
             uiConfig = UIConfig.getInstance(this);
         }
-        // 保存配置
         uiConfig.saveConfig();
-        // 应用主题
         uiConfig.applyTheme(this);
         applyThemeToToolbar();
         updatePreview();
         refreshColorList();
         refreshShapeList();
-        updateIconTintStatus(binding.tvIconTintStatus, uiConfig.isUseCustomIconTint());
         if (binding.getRoot() != null) {
             uiConfig.applyThemeToViewTree(binding.getRoot());
         }
@@ -181,7 +174,7 @@ public class UIConfigActivity extends BaseActivity {
         
         for (int i = 0; i < childCount && i < colorKeys.length; i++) {
             View itemView = binding.colorContainer.getChildAt(i);
-            if (itemView instanceof CardView) {
+            if (itemView instanceof com.google.android.material.card.MaterialCardView) {
                 String colorValue = theme.optString(colorKeys[i], "#FFFFFFFF");
                 
                 View colorPreview = itemView.findViewById(R.id.view_color_preview);
@@ -208,7 +201,7 @@ public class UIConfigActivity extends BaseActivity {
         
         for (int i = 0; i < childCount && i < shapeKeys.length; i++) {
             View itemView = binding.shapeContainer.getChildAt(i);
-            if (itemView instanceof CardView) {
+            if (itemView instanceof com.google.android.material.card.MaterialCardView) {
                 TextView valueView = itemView.findViewById(R.id.tv_shape_value);
                 if (valueView != null) {
                     int value = shape.optInt(shapeKeys[i], 0);
@@ -380,9 +373,6 @@ public class UIConfigActivity extends BaseActivity {
         }
         float radius = uiConfig.getCardCornerRadius();
 
-        GradientDrawable cardBg = new GradientDrawable();
-        cardBg.setColor(uiConfig.getSurfaceColor());
-        cardBg.setCornerRadius(radius);
         binding.previewCard.setCardBackgroundColor(uiConfig.getSurfaceCardColor());
         binding.previewCard.setRadius(radius);
 
@@ -410,7 +400,10 @@ public class UIConfigActivity extends BaseActivity {
                     loadShapeConfigs();
                     updatePreview();
                     applyThemeToToolbar();
-                    updateIconTintStatus(binding.tvIconTintStatus, uiConfig.isUseCustomIconTint());
+                    // 刷新状态文字
+                    if (binding.tvIconTintStatus != null) {
+                        updateIconTintStatus(binding.tvIconTintStatus);
+                    }
                     refreshAllViewsIconTint();
                     showToast(getString(R.string.ui_config_reset_success));
                 }).show();
@@ -459,7 +452,9 @@ public class UIConfigActivity extends BaseActivity {
                 loadShapeConfigs();
                 updatePreview();
                 applyThemeToToolbar();
-                updateIconTintStatus(binding.tvIconTintStatus, uiConfig.isUseCustomIconTint());
+                if (binding.tvIconTintStatus != null) {
+                    updateIconTintStatus(binding.tvIconTintStatus);
+                }
                 refreshAllViewsIconTint();
                 showToast(getString(R.string.ui_config_import_success));
             } else {

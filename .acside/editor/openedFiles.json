@@ -1,17 +1,17 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/dev/DevFragment.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateChecker.java",
       "selection": {
         "end": {
-          "column": 1,
-          "index": 9297,
-          "line": 245
+          "column": 0,
+          "index": 28,
+          "line": 1
         },
         "start": {
-          "column": 1,
-          "index": 9297,
-          "line": 245
+          "column": 0,
+          "index": 28,
+          "line": 1
         }
       }
     },

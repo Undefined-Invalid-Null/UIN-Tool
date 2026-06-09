@@ -125,6 +125,10 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+<activity
+    android:name=".ui.manage.GitHubMirrorActivity"
+    android:exported="false"
+    android:theme="@style/Theme.UIN.Tool" />
 
         <!-- ==================== 引导页 Activity ==================== -->
         <activity
