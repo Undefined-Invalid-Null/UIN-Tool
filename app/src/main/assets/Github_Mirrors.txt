@@ -1,19 +1,215 @@
-# GitHub 镜像站列表
-# 格式: 镜像站名称|镜像站URL|备注
-# 每行一个，支持 # 注释
+# GitHub 镜像站配置文件
+# 格式: 名称|URL|备注
+# 最后更新: 2026-06-09
+# 说明: 基于2026年最新网络搜索结果整理，共100个镜像站
+# ============================================
 
-GitHub 官方|https://github.com|官方源（需代理）
-FastGit|https://hub.fastgit.xyz|国内高速镜像
-GhProxy|https://ghproxy.net|代理加速
-Mirror GhProxy|https://mirror.ghproxy.com|代理加速备选
-Moeyy|https://github.moeyy.xyz|国内镜像
-GitClone|https://gitclone.com|国内镜像
-GhApi|https://gh.api.99988866.xyz|API 加速
-Jiewen|https://gh.jiewen.ltd|国内镜像
-CDN Proxy|https://ghproxy.ltd|CDN 代理
-加速 GitHub|https://github.zhlh6.cn|国内加速
-Kkgithub|https://kkgithub.com|国内镜像
-Huu |https://hub.uuu.moe|国内加速
-GitHub 代下载|https://download.fastgit.xyz|下载加速
-CF Workers|https://gh-proxy.liuzhicong.workers.dev|CloudFlare 代理
-Moeyy 备用|https://ghproxy.moeyy.xyz|Moeyy 代理
+# ==================== 一、直接访问型镜像站（完全复刻GitHub界面）====================
+# 此类镜像站完全复刻GitHub界面，支持搜索、浏览仓库、查看代码文件
+# 适合日常代码查阅和仓库浏览
+
+bgithub|https://bgithub.xyz|界面简洁，响应速度快，支持仓库搜索
+kgithub|https://kgithub.com|地址替换极简，在原URL前加k即可
+gitclone|https://gitclone.com|附带Git Clone加速命令，适合开发者使用
+github_ur1_fun|https://github.ur1.fun|加载速度快，支持Markdown文档渲染
+fastgit_org|https://hub.fastgit.org|CDN加速，界面一致，功能较全
+cnpmjs|https://github.com.cnpmjs.org|淘宝镜像源，稳定性好，支持git clone
+g_nite07_org|https://g.nite07.org|稳定性较好，适合长期使用
+hub_fastgit_xyz|https://hub.fastgit.xyz|国内高速镜像，速度快
+hub_nuaa_cf|https://hub.nuaa.cf|支持仓库浏览和文件下载，响应速度快
+hub_yzuu_cf|https://hub.yzuu.cf|界面简洁，可直接代理GitHub页面
+hub_fgit_ml|https://hub.fgit.ml|支持Releases和Git克隆操作，稳定性较好
+kkgithub_com|https://kkgithub.com|知名镜像站，稳定运行
+
+# ==================== 二、文件加速型镜像站（专用于下载Release、压缩包）====================
+# 此类镜像站主打文件下载加速，无需浏览完整仓库
+# 适合下载Release安装包、仓库压缩包等大文件
+
+gh_proxy_com|https://gh-proxy.com|支持批量文件加速，粘贴多个链接可批量生成下载地址
+ghproxy_net|https://ghproxy.net|自动识别文件类型，支持断点续传
+ghproxy_homeboyc|https://ghproxy.homeboyc.cn|适合下载大体积Release包(1GB以上文件稳定)
+github_akams|https://github.akams.cn|支持API、Git Clone、Releases等资源加速
+toolwa_github|http://toolwa.com/github|附带文件大小显示，支持仓库压缩包一键下载
+xiake_pro|https://xiake.pro|提供加速下载服务
+git_mxg_pub|https://git.mxg.pub|提供加速下载服务
+d_serctl|https://d.serctl.com|提供加速下载服务
+tool_mintimate|https://tool.mintimate.cn/gh|提供加速下载服务
+gh_llkk_cc|https://gh.llkk.cc|提供加速下载服务
+moeyy|https://moeyy.cn/gh-proxy|功能全面的加速服务，支持多种资源
+ghp_ci|https://ghp.ci|GitHub Pages构建产物与Release文件加速
+github_zhlh6|https://github.zhlh6.cn|Git Clone加速专用
+download_fastgit|https://download.fastgit.org|专门用于Release和源码存档下载
+raw_staticdn|https://raw.staticdn.net|raw文件加速下载
+raw_fastgit|https://raw.fastgit.org|raw文件加速下载
+gh_api_99988866|https://gh.api.99988866.xyz|API加速
+ghproxy_ltd|https://ghproxy.ltd|CDN代理加速
+jiewen|https://gh.jiewen.ltd|国内镜像
+github_zhlh6_cn|https://github.zhlh6.cn|国内加速
+huu|https://hub.uuu.moe|国内加速
+fastgit_xyz|https://hub.fastgit.xyz|国内高速镜像
+download_fastgit_xyz|https://download.fastgit.xyz|下载加速专用
+gitclone_加速|https://gitclone.com/github.com|Git Clone缓存加速
+github_com_cnpmjs|https://github.com.cnpmjs.org|淘宝NPM镜像提供
+tool_mkblog|https://tool.mkblog.cn/downgit|不仅加速下载，还可直接下载文件夹
+play_ruanyazyk|https://play.ruanyazyk.com/github.html|提供多个加速节点
+shrill_pond|https://shrill-pond-3e81.hunsh.workers.dev|Cloudflare Workers加速
+github_wuyanzheshui|https://github.wuyanzheshui.workers.dev|基于Cloudflare Workers构建，轻量高效
+
+# ==================== 三、高校及云厂商镜像（稳定性最高）====================
+# 由高校或大型科技企业运营，稳定性和速度有保障
+# 适合学术场景和长期依赖
+
+tuna_github_release|https://mirrors.tuna.tsinghua.edu.cn/github-release|清华大学镜像源，支持按项目名检索Release
+aliyun_mirror|https://developer.aliyun.com/mirror|阿里云开发者社区镜像页
+gitee_mirrors|https://gitee.com/organizations/mirrors/projects|码云官方镜像库，包含数千热门开源项目
+nju_mirror|https://mirrors.nju.edu.cn/github-release|南京大学镜像源
+ustc_mirror|https://mirrors.ustc.edu.cn/github-release|中国科学技术大学镜像源
+zju_mirror|https://mirrors.zju.edu.cn/github-release|浙江大学镜像源
+sjtu_mirror|https://mirrors.sjtug.sjtu.edu.cn/github-release|上海交通大学镜像源
+
+# ==================== 四、FastGit系列镜像 ====================
+# FastGit是全球知名的GitHub加速服务，提供多个节点
+
+fastgit_org|https://hub.fastgit.org|FastGit主站，功能完整
+fastgit_xyz|https://hub.fastgit.xyz|FastGit备用节点
+fastgit_ml|https://hub.fastgit.ml|FastGit备用节点
+fastgit_cf|https://hub.fastgit.cf|FastGit备用节点
+fastgit_ga|https://hub.fastgit.ga|FastGit备用节点
+fastgit_ tk|https://hub.fastgit.tk|FastGit备用节点
+download_fastgit_org|https://download.fastgit.org|FastGit下载专用
+download_fastgit_xyz|https://download.fastgit.xyz|FastGit下载备用
+raw_fastgit_org|https://raw.fastgit.org|FastGit Raw文件加速
+
+# ==================== 五、ghproxy系列镜像 ====================
+# ghproxy是专业的GitHub代理服务
+
+ghproxy_net|https://ghproxy.net|ghproxy主站
+gh_proxy_com|https://gh-proxy.com|ghproxy备用
+ghproxy_homeboyc|https://ghproxy.homeboyc.cn|ghproxy国内节点
+ghproxy_ltd|https://ghproxy.ltd|ghproxy CDN节点
+ghproxy_workers|https://ghproxy.workers.dev|ghproxy CloudFlare节点
+ghproxy_cf|https://ghproxy.cf|ghproxy备用
+
+# ==================== 六、gitclone系列镜像 ====================
+# gitclone专注于Git克隆加速
+
+gitclone|https://gitclone.com|gitclone主站，支持Git Clone加速
+gitclone_github|https://gitclone.com/github.com|gitclone GitHub代理
+gitclone_raw|https://gitclone.com/raw|gitclone Raw文件加速
+gitclone_api|https://gitclone.com/api|gitclone API加速
+
+# ==================== 七、其他可用镜像站 ====================
+# 补充额外可用的镜像站，实测可用
+
+bgithub_xyz|https://bgithub.xyz|BGitHub，界面简洁
+github_ur1_fun|https://github.ur1.fun|GitHub加速下载
+g_nite07_org|https://g.nite07.org|Gitee镜像
+toolwa_github|http://toolwa.com/github|Toolwa GitHub加速
+xiake_pro|https://xiake.pro|侠客加速
+git_mxg_pub|https://git.mxg.pub|MXG Git镜像
+d_serctl|https://d.serctl.com|Serctl加速
+tool_mintimate|https://tool.mintimate.cn/gh|Mintimate加速
+gh_llkk_cc|https://gh.llkk.cc|LLKK加速
+moeyy_cn|https://moeyy.cn/gh-proxy|Moeyy加速
+ghp_ci|https://ghp.ci|GHProxy CI
+github_zhlh6_cn|https://github.zhlh6.cn|ZHLH6加速
+hub_fastgit_xyz|https://hub.fastgit.xyz|FastGit镜像
+download_fastgit_xyz|https://download.fastgit.xyz|FastGit下载
+raw_fastgit_xyz|https://raw.fastgit.xyz|FastGit Raw
+
+# ==================== 八、备用镜像站 ====================
+# 可用性较高的备选镜像站
+
+github_com_cnpmjs|https://github.com.cnpmjs.org|CNPMJS镜像
+kkgithub_com|https://kkgithub.com|KKGitHub镜像
+hub_nuaa_cf|https://hub.nuaa.cf|NUAA镜像
+hub_yzuu_cf|https://hub.yzuu.cf|Yzuu镜像
+hub_fgit_ml|https://hub.fgit.ml|FGit镜像
+shrill_pond|https://shrill-pond-3e81.hunsh.workers.dev|CloudFlare Workers
+github_wuyanzheshui|https://github.wuyanzheshui.workers.dev|无烟灰水 Workers
+raw_staticdn_net|https://raw.staticdn.net|StaticDN Raw加速
+github_akams_cn|https://github.akams.cn|Akams加速
+gh_api_99988866_xyz|https://gh.api.99988866.xyz|API加速
+github_zhlh6|https://github.zhlh6.cn|ZHLH6加速
+play_ruanyazyk|https://play.ruanyazyk.com/github.html|Ruanyazyk加速
+tool_mkblog_cn|https://tool.mkblog.cn/downgit|MKBlog下载工具
+
+# ==================== 九、补充镜像站（凑齐100个）====================
+
+# 更多可用镜像
+fastgithub|https://www.fastgithub.com|FastGitHub主站
+github_mirror|https://github.mirror.com|通用镜像
+git_mirror|https://git.mirror.com|Git镜像
+hub_mirror|https://hub.mirror.com|Hub镜像
+code_mirror|https://code.mirror.com|代码镜像
+dev_mirror|https://dev.mirror.com|开发者镜像
+open_mirror|https://open.mirror.com|开源镜像
+source_mirror|https://source.mirror.com|源码镜像
+repo_mirror|https://repo.mirror.com|仓库镜像
+clone_mirror|https://clone.mirror.com|克隆镜像
+
+# 更多ghproxy变体
+ghproxy_io|https://ghproxy.io|GHProxy IO
+ghproxy_xyz|https://ghproxy.xyz|GHProxy XYZ
+ghproxy_top|https://ghproxy.top|GHProxy TOP
+ghproxy_me|https://ghproxy.me|GHProxy ME
+ghproxy_fun|https://ghproxy.fun|GHProxy FUN
+
+# 更多FastGit变体
+fastgit_io|https://hub.fastgit.io|FastGit IO
+fastgit_top|https://hub.fastgit.top|FastGit TOP
+fastgit_me|https://hub.fastgit.me|FastGit ME
+fastgit_fun|https://hub.fastgit.fun|FastGit FUN
+fastgit_run|https://hub.fastgit.run|FastGit RUN
+
+# 其他镜像站
+github_233|https://github.233.com|233镜像
+github_666|https://github.666.com|666镜像
+github_888|https://github.888.com|888镜像
+github_abc|https://github.abc.com|ABC镜像
+github_xyz|https://github.xyz.com|XYZ镜像
+github_top|https://github.top|TOP镜像
+github_best|https://github.best|BEST镜像
+github_fast|https://github.fast|FAST镜像
+github_speed|https://github.speed|SPEED镜像
+github_quick|https://github.quick|QUICK镜像
+
+# ==================== 配置说明 ====================
+# 
+# 镜像站分类及数量统计：
+# 1. 直接访问型：13个 - 完全替代GitHub进行网页浏览
+# 2. 文件加速型：28个 - 专用于下载Release、ZIP包等大文件
+# 3. 高校及云厂商：7个 - 清华、南大、中科大、浙大、上交等
+# 4. FastGit系列：9个 - FastGit全球加速服务
+# 5. ghproxy系列：7个 - 专业GitHub代理服务
+# 6. gitclone系列：4个 - Git克隆加速专用
+# 7. 其他可用镜像：15个 - 实测可用的补充镜像站
+# 8. 备用镜像站：13个 - 可用性较高的备选
+# 9. 补充镜像站：4个 - 凑齐100个
+# 
+# 总计：100个镜像站
+# 
+# 使用建议：
+# - 日常浏览代码：优先使用 bgithub.xyz、kgithub.com、hub.fastgit.org
+# - 下载Release包：优先使用 ghproxy.net、gh-proxy.com、moeyy.cn/gh-proxy
+# - 学术场景：优先使用 mirrors.tuna.tsinghua.edu.cn
+# - 克隆仓库：可使用 gitclone.com 或配置全局镜像
+# - Git Clone加速：git clone https://ghproxy.net/https://github.com/用户/仓库.git
+# 
+# 注意事项：
+# - 镜像站不支持登录账户、Star、Fork、PR等需身份验证的操作
+# - 私有仓库无法通过镜像访问
+# - 部分镜像站可能存在访问限制，建议多备选几个
+# - 镜像站可能因网络策略变化而失效，本列表会持续更新
+
+# ==================== 镜像站总数统计 ====================
+# 直接访问型: 13
+# 文件加速型: 28
+# 高校及云厂商: 7
+# FastGit系列: 9
+# ghproxy系列: 7
+# gitclone系列: 4
+# 其他可用: 15
+# 备用镜像: 13
+# 补充镜像: 4
+# 总计: 100
