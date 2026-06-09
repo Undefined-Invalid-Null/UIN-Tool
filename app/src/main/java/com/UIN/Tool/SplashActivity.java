@@ -46,23 +46,50 @@ public class SplashActivity extends AppCompatActivity {
     private boolean hasPendingNavigation = false;
     private AlertDialog progressDialog;
     private AlertDialog updateDialog;
+    private boolean isActivityAlive = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         
+        isActivityAlive = true;
+        
         TextView tvVersion = findViewById(R.id.tv_version);
         tvVersion.setText(getString(R.string.app_version_title, getVersionName()));
         
-        // 初始化更新组件
         updateChecker = new UpdateChecker(this);
         updateDownloader = new UpdateDownloader(this);
         
-        // 延迟检查更新和导航
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            checkForUpdate();
+            if (isActivityAlive) {
+                checkForUpdate();
+            }
         }, 500);
+    }
+    
+    private boolean isActivityAlive() {
+        return isActivityAlive && !isFinishing() && !isDestroyed();
+    }
+    
+    private void safeShowDialog(AlertDialog dialog) {
+        if (dialog != null && isActivityAlive()) {
+            try {
+                dialog.show();
+            } catch (Exception e) {
+                LogUtils.e(TAG, "显示 Dialog 失败: " + e.getMessage());
+            }
+        }
+    }
+    
+    private void safeDismissDialog(AlertDialog dialog) {
+        if (dialog != null && dialog.isShowing() && !isFinishing() && !isDestroyed()) {
+            try {
+                dialog.dismiss();
+            } catch (Exception e) {
+                // 忽略
+            }
+        }
     }
     
     private void checkForUpdate() {
@@ -75,19 +102,22 @@ public class SplashActivity extends AppCompatActivity {
             }
             
             @Override
-            public void onCheckSuccess(List<UpdateChecker.ReleaseInfo> releases, boolean hasNewer) {
-                LogUtils.d(TAG, "检查更新完成, hasNewer=" + hasNewer);
+            public void onCheckSuccess(List<UpdateChecker.ReleaseInfo> releases, boolean hasNewer, boolean forceUpdate) {
+                if (!isActivityAlive()) return;
+                
+                LogUtils.d(TAG, "检查更新完成, hasNewer=" + hasNewer + ", forceUpdate=" + forceUpdate);
                 
                 if (hasNewer && releases != null && !releases.isEmpty()) {
                     UpdateChecker.ReleaseInfo latestRelease = releases.get(0);
                     
-                    if (isVersionIgnored(latestRelease.versionName)) {
+                    // 强制更新时忽略版本忽略检查
+                    if (!forceUpdate && isVersionIgnored(latestRelease.versionName)) {
                         LogUtils.d(TAG, "用户已忽略版本: " + latestRelease.versionName);
                         navigateToNext();
                         return;
                     }
                     
-                    showUpdateDialog(latestRelease);
+                    showUpdateDialog(latestRelease, forceUpdate);
                 } else {
                     navigateToNext();
                 }
@@ -95,12 +125,14 @@ public class SplashActivity extends AppCompatActivity {
             
             @Override
             public void onCheckFailed(String error) {
+                if (!isActivityAlive()) return;
                 LogUtils.e(TAG, "检查更新失败: " + error);
                 showManualDownloadOnlyDialog(error);
             }
             
             @Override
             public void onNoUpdate(String currentVersion) {
+                if (!isActivityAlive()) return;
                 LogUtils.d(TAG, "当前已是最新版本: " + currentVersion);
                 navigateToNext();
             }
@@ -122,16 +154,17 @@ public class SplashActivity extends AppCompatActivity {
         prefs.edit().putString(KEY_IGNORE_VERSION, versionName).apply();
     }
     
-    /**
-     * 使用自定义布局显示更新弹窗（支持滚动和 Markdown）
-     */
-    private void showUpdateDialog(UpdateChecker.ReleaseInfo releaseInfo) {
-        LogUtils.enter(TAG, "showUpdateDialog");
+    private void showUpdateDialog(UpdateChecker.ReleaseInfo releaseInfo, boolean forceUpdate) {
+        LogUtils.enter(TAG, "showUpdateDialog, forceUpdate=" + forceUpdate);
         
-        // 加载自定义布局
+        if (!isActivityAlive()) {
+            LogUtils.w(TAG, "Activity 已销毁，跳过显示更新 Dialog");
+            navigateToNext();
+            return;
+        }
+        
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_update, null);
         
-        // 获取控件
         TextView tvVersionName = dialogView.findViewById(R.id.tv_version_name);
         TextView tvVersionCode = dialogView.findViewById(R.id.tv_version_code);
         TextView tvReleaseDate = dialogView.findViewById(R.id.tv_release_date);
@@ -143,7 +176,13 @@ public class SplashActivity extends AppCompatActivity {
         Button btnManualDownload = dialogView.findViewById(R.id.btn_manual_download);
         Button btnIgnore = dialogView.findViewById(R.id.btn_ignore);
         
-        // 设置文本内容
+        // 强制更新时隐藏忽略按钮
+        if (forceUpdate) {
+            btnIgnore.setVisibility(View.GONE);
+        } else {
+            btnIgnore.setVisibility(View.VISIBLE);
+        }
+        
         tvVersionName.setText("版本号：" + releaseInfo.versionName);
         tvVersionCode.setText("版本代码：" + releaseInfo.versionCode);
         tvReleaseDate.setText("发布日期：" + releaseInfo.getFormattedDate());
@@ -154,52 +193,45 @@ public class SplashActivity extends AppCompatActivity {
             tvFileSize.setText("文件大小：未知");
         }
         
-        // 设置更新日志（Markdown 格式）
         String releaseNotes = releaseInfo.releaseNotes;
         if (releaseNotes == null || releaseNotes.isEmpty()) {
             releaseNotes = "暂无更新日志";
         }
         
-        // 显示加载进度
         if (progressWebView != null) {
             progressWebView.setVisibility(View.VISIBLE);
         }
         
-        // 配置 WebView 并加载内容
         configureWebViewForMarkdown(wvReleaseNotes, releaseNotes, progressWebView);
         
-        // 创建对话框
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setView(dialogView);
         builder.setCancelable(false);
         
         updateDialog = builder.create();
         
-        // 设置按钮点击事件
         btnAutoDownload.setOnClickListener(v -> {
             LogUtils.action(TAG, "用户选择", "自动下载");
-            updateDialog.dismiss();
+            safeDismissDialog(updateDialog);
             startDownload(releaseInfo);
         });
         
         btnManualDownload.setOnClickListener(v -> {
             LogUtils.action(TAG, "用户选择", "手动下载");
-            updateDialog.dismiss();
+            safeDismissDialog(updateDialog);
             openBrowserForDownload(releaseInfo);
         });
         
         btnIgnore.setOnClickListener(v -> {
             LogUtils.action(TAG, "用户选择", "暂不更新");
-            updateDialog.dismiss();
+            safeDismissDialog(updateDialog);
+            setVersionIgnored(releaseInfo.versionName);
             navigateToNext();
         });
         
-        updateDialog.show();
+        safeShowDialog(updateDialog);
     }
     
-    /**
-     * 配置 WebView 用于显示 Markdown
-     */
     private void configureWebViewForMarkdown(WebView webView, String markdownContent, ProgressBar progressBar) {
         if (webView == null) return;
         
@@ -213,7 +245,6 @@ public class SplashActivity extends AppCompatActivity {
         settings.setDefaultTextEncodingName("UTF-8");
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         
-        // 设置背景透明
         webView.setBackgroundColor(Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             webView.setLayerType(WebView.LAYER_TYPE_SOFTWARE, null);
@@ -240,10 +271,8 @@ public class SplashActivity extends AppCompatActivity {
             }
         });
         
-        // 使用 MarkdownRenderer 将 Markdown 转换为 HTML
         String html = MarkdownRenderer.toHtml(markdownContent);
         
-        // 添加额外的样式以确保在对话框中正常显示
         String styledHtml = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
                 "<style>" +
                 "body { padding: 8px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #333; line-height: 1.5; }" +
@@ -266,15 +295,17 @@ public class SplashActivity extends AppCompatActivity {
                 html +
                 "</body></html>";
         
-        // 使用 loadDataWithBaseURL 确保相对路径资源能正确加载
         webView.loadDataWithBaseURL("file:///android_asset/", styledHtml, "text/html", "UTF-8", null);
     }
     
-    /**
-     * 仅显示手动下载选项（当检查更新失败时）
-     */
     private void showManualDownloadOnlyDialog(String errorMessage) {
         LogUtils.enter(TAG, "showManualDownloadOnlyDialog");
+        
+        if (!isActivityAlive()) {
+            LogUtils.w(TAG, "Activity 已销毁，跳过显示手动下载 Dialog");
+            navigateToNext();
+            return;
+        }
         
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_update_manual, null);
         
@@ -292,22 +323,19 @@ public class SplashActivity extends AppCompatActivity {
         
         btnGoDownload.setOnClickListener(v -> {
             LogUtils.action(TAG, "用户选择", "前往 GitHub Releases");
-            dialog.dismiss();
+            safeDismissDialog(dialog);
             openBrowser(GITHUB_RELEASES_URL);
         });
         
         btnEnterApp.setOnClickListener(v -> {
             LogUtils.action(TAG, "用户选择", "进入应用");
-            dialog.dismiss();
+            safeDismissDialog(dialog);
             navigateToNext();
         });
         
-        dialog.show();
+        safeShowDialog(dialog);
     }
     
-    /**
-     * 打开浏览器跳转到 Release 页面
-     */
     private void openBrowserForDownload(UpdateChecker.ReleaseInfo releaseInfo) {
         LogUtils.enter(TAG, "openBrowserForDownload");
         
@@ -315,7 +343,9 @@ public class SplashActivity extends AppCompatActivity {
         openBrowser(releaseUrl);
         
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            navigateToNext();
+            if (isActivityAlive()) {
+                navigateToNext();
+            }
         }, 500);
     }
     
@@ -334,6 +364,11 @@ public class SplashActivity extends AppCompatActivity {
     private void startDownload(UpdateChecker.ReleaseInfo releaseInfo) {
         LogUtils.enter(TAG, "startDownload");
         
+        if (!isActivityAlive()) {
+            LogUtils.w(TAG, "Activity 已销毁，跳过下载");
+            return;
+        }
+        
         if (releaseInfo.downloadUrl == null || releaseInfo.downloadUrl.isEmpty()) {
             LogUtils.e(TAG, "下载链接为空");
             Toast.makeText(this, "下载链接无效，请稍后重试", Toast.LENGTH_SHORT).show();
@@ -351,22 +386,28 @@ public class SplashActivity extends AppCompatActivity {
             
             @Override
             public void onProgress(int progress, long downloaded, long total) {
-                updateProgressDialog(progress, downloaded, total);
+                if (isActivityAlive()) {
+                    updateProgressDialog(progress, downloaded, total);
+                }
             }
             
             @Override
             public void onSuccess(File file) {
                 LogUtils.success(TAG, "下载成功");
-                dismissProgressDialog();
-                showInstallDialog(releaseInfo, file);
+                safeDismissDialog(progressDialog);
+                if (isActivityAlive()) {
+                    showInstallDialog(releaseInfo, file);
+                }
             }
             
             @Override
             public void onFailed(String error) {
                 LogUtils.e(TAG, "下载失败: " + error);
-                dismissProgressDialog();
-                Toast.makeText(SplashActivity.this, "下载失败: " + error, Toast.LENGTH_LONG).show();
-                showDownloadFailedDialog(releaseInfo, error);
+                safeDismissDialog(progressDialog);
+                if (isActivityAlive()) {
+                    Toast.makeText(SplashActivity.this, "下载失败: " + error, Toast.LENGTH_LONG).show();
+                    showDownloadFailedDialog(releaseInfo, error);
+                }
             }
         });
         
@@ -374,6 +415,8 @@ public class SplashActivity extends AppCompatActivity {
     }
     
     private void showDownloadFailedDialog(UpdateChecker.ReleaseInfo releaseInfo, String error) {
+        if (!isActivityAlive()) return;
+        
         new AlertDialog.Builder(this)
             .setTitle("下载失败")
             .setMessage("自动下载失败：" + error + "\n\n是否前往 GitHub Releases 页面手动下载？")
@@ -388,6 +431,8 @@ public class SplashActivity extends AppCompatActivity {
     }
     
     private void showProgressDialog() {
+        if (!isActivityAlive()) return;
+        
         View view = getLayoutInflater().inflate(R.layout.dialog_download_progress, null);
         
         progressDialog = new AlertDialog.Builder(this)
@@ -400,16 +445,17 @@ public class SplashActivity extends AppCompatActivity {
         if (btnCancel != null) {
             btnCancel.setOnClickListener(v -> {
                 updateDownloader.cancelDownload();
-                dismissProgressDialog();
+                safeDismissDialog(progressDialog);
                 navigateToNext();
             });
         }
         
-        progressDialog.show();
+        safeShowDialog(progressDialog);
     }
     
     private void updateProgressDialog(int progress, long downloaded, long total) {
         if (progressDialog == null || !progressDialog.isShowing()) return;
+        if (!isActivityAlive()) return;
         
         View view = progressDialog.getWindow().getDecorView().findViewById(android.R.id.content);
         if (view == null) return;
@@ -428,21 +474,18 @@ public class SplashActivity extends AppCompatActivity {
         }
     }
     
-    private void dismissProgressDialog() {
-        if (progressDialog != null && progressDialog.isShowing()) {
-            progressDialog.dismiss();
-            progressDialog = null;
-        }
-    }
-    
     private void showInstallDialog(UpdateChecker.ReleaseInfo releaseInfo, File apkFile) {
+        if (!isActivityAlive()) return;
+        
         new AlertDialog.Builder(this)
             .setTitle("下载完成")
             .setMessage("UIN Tool " + releaseInfo.versionName + " 已下载完成，是否立即安装？\n\n选择\"稍后安装\"将保存到 downloads 目录。")
             .setPositiveButton("立即安装", (dialog, which) -> {
                 updateDownloader.installApk(apkFile);
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    finish();
+                    if (isActivityAlive()) {
+                        finish();
+                    }
                 }, 500);
             })
             .setNegativeButton("稍后安装", (dialog, which) -> {
@@ -465,6 +508,12 @@ public class SplashActivity extends AppCompatActivity {
             LogUtils.d(TAG, "导航已执行，跳过重复调用");
             return;
         }
+        
+        if (!isActivityAlive()) {
+            LogUtils.w(TAG, "Activity 已销毁，跳过导航");
+            return;
+        }
+        
         hasPendingNavigation = true;
         
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
@@ -503,12 +552,9 @@ public class SplashActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (updateDialog != null && updateDialog.isShowing()) {
-            updateDialog.dismiss();
-        }
-        if (progressDialog != null && progressDialog.isShowing()) {
-            progressDialog.dismiss();
-        }
+        isActivityAlive = false;
+        safeDismissDialog(updateDialog);
+        safeDismissDialog(progressDialog);
         if (updateDownloader != null) {
             updateDownloader.cancelDownload();
         }

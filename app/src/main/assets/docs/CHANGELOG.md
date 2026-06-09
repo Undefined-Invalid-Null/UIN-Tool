@@ -12,6 +12,76 @@
 
 ---
 
+## [3.10.0] - 2026-06-09
+
+### 🎉 重大更新：GitHub 加速 + 强制更新机制
+
+#### GitHub 加速功能
+
+- **镜像站管理**：独立的 GitHub 加速管理页面
+  - 内置 13+ 个国内可用镜像站
+  - 支持手动添加自定义镜像站
+  - 支持导入/导出镜像站列表（txt 格式）
+  - 支持一键测试镜像站可用性
+  - 镜像站列表支持全选/取消全选
+  - 长按可删除自定义镜像站
+
+- **CDN 加速**：可开关的 CDN 代理加速下载
+  - 开启后使用 CDN 代理加速文件下载
+  - 关闭后直接使用原始 GitHub 地址
+
+- **镜像站配置文件**：`assets/Github_Mirrors.txt`
+  - 格式：`名称|URL|备注`
+  - 支持注释（以 `#` 开头）
+
+#### 强制更新机制
+
+- **Release Tag 格式**：`{versionCode}-{versionName}-{forceFlag}`
+  - `forceFlag = 1`：强制更新（用户无法跳过）
+  - `forceFlag = 0` 或无：普通更新（用户可跳过）
+
+- **强制更新特点**：
+  - 更新弹窗中「暂不更新」按钮被隐藏
+  - 用户必须选择「自动下载」或「手动下载」
+  - 适用于严重 Bug 修复或安全更新
+
+#### 修复
+
+- **修复 SplashActivity 崩溃**：
+  - 修复 Activity 销毁后尝试显示 Dialog 导致的 `BadTokenException`
+  - 添加 Activity 生命周期检查，确保 Dialog 安全显示
+  - 添加 `safeShowDialog()` 和 `safeDismissDialog()` 方法
+
+- **修复 CheckBox 背景变色问题**：
+  - 统一 CheckBox 样式，设置 `buttonTint` 和透明背景
+  - CDN 加速开关改用 TextView 状态显示，彻底解决背景变色
+  - 修复 UI 配置页面图标着色开关背景问题
+
+- **修复权限管理页面 CheckBox 背景**：
+  - 统一 CheckBox 样式，与整体 UI 保持一致
+  - 设置 `clickable="false"` 和 `focusable="false"`
+
+- **修复布局文件编译错误**：
+  - 修复 `activity_github_mirror.xml` 中的 XML 语法错误
+  - 修复资源引用问题
+
+#### 优化
+
+- 镜像站列表支持全选/取消全选
+- 整体页面滑动优化，镜像站列表独立滑动
+- 更新文档完善，记录所有功能
+- 优化 RecyclerView 滑动性能
+
+#### 新增文件
+
+- `GitHubMirrorActivity.java` - GitHub 加速主界面
+- `activity_github_mirror.xml` - GitHub 加速布局
+- `item_mirror.xml` - 镜像站列表项布局
+- `dialog_add_mirror.xml` - 添加镜像站对话框
+- `Github_Mirrors.txt` - 默认镜像站配置
+
+---
+
 ## [3.5.0] - 2026-06-08
 
 ### 🐛 问题修复：开发页面显示问题
@@ -198,7 +268,7 @@
 - **SplashActivity 启动页**：新增专业的启动页，提升应用启动体验
   - 显示应用 Logo、名称和版本号
   - 平滑的淡入淡出动画效果
-  - 合理的启动延迟（1500ms）
+  - 合理的启动延迟
   - 全屏沉浸式显示
 
 - **OnboardingActivity 引导页**：首次启动或版本更新时显示引导页
@@ -719,6 +789,10 @@
 
 ---
 
-**文档版本:** 3.5.0
-**最后更新:** 2026年6月8日
-**对应应用版本:** v3.5.0 (Build 8)
+**文档版本:** 3.10.0
+**最后更新:** 2026年6月9日
+**对应应用版本:** v3.10.0 (Build 9)
+
+---
+
+© 2026 UIN Team. All Rights Reserved.

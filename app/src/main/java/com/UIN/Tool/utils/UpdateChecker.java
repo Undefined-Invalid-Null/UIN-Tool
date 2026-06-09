@@ -1,15 +1,23 @@
 package com.UIN.Tool.utils;
 
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -30,19 +38,18 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-/**
- * 应用更新检查器
- * 从 GitHub Releases 检查最新版本
- * Tag 格式: {versionCode}-{versionName} 例如: 4-2.6.0
- */
 public class UpdateChecker {
     
     private static final String TAG = "UpdateChecker";
     private static final String GITHUB_API = "https://api.github.com/repos/Undefined-Invalid-Null/UIN-Tool/releases";
     private static final String GITHUB_REPO = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/latest";
+    private static final String PREF_NAME = "github_mirror";
+    private static final String KEY_ENABLED_MIRRORS = "enabled_mirrors";
+    private static final String KEY_USE_CDN = "use_cdn";
+    private static final String KEY_FORCE_UPDATE_IGNORE = "force_update_ignore";
     
-    // 镜像站列表（用于加速）
-    private static final String[] GITHUB_MIRRORS = {
+    // 默认镜像站列表
+    private static final String[] DEFAULT_MIRRORS = {
         "https://hub.fastgit.xyz",
         "https://github.moeyy.xyz",
         "https://ghproxy.net",
@@ -53,25 +60,27 @@ public class UpdateChecker {
     };
     
     private Context context;
-    private android.os.Handler mainHandler;
+    private Handler mainHandler;
     private OnUpdateCheckListener listener;
     private String currentMirror = "";
     private OkHttpClient client;
+    private List<String> customMirrors = null;
+    private boolean useCdn = true;
+    private MirrorUpdateReceiver mirrorReceiver;
     
     public interface OnUpdateCheckListener {
         void onCheckStart();
-        void onCheckSuccess(List<ReleaseInfo> releases, boolean hasNewer);
+        void onCheckSuccess(List<ReleaseInfo> releases, boolean hasNewer, boolean forceUpdate);
         void onCheckFailed(String error);
         void onNoUpdate(String currentVersion);
     }
     
-    /**
-     * Release 信息类
-     */
     public static class ReleaseInfo {
-        public String tagName;          // Tag 名称，如 "4-2.6.0"
-        public String versionName;      // 版本名，如 "2.6.0"
-        public String versionCode;      // 版本代码，如 "4"
+        public String tagName;          // Tag 名称，如 "1-1.0.0-1"
+        public String versionName;      // 版本名，如 "1.0.0"
+        public String versionCode;      // 版本代码，如 "1"
+        public String forceFlag;        // 强制更新标志，如 "1" 或 "0"
+        public boolean forceUpdate;     // 是否强制更新
         public String releaseDate;      // 发布日期
         public String releaseNotes;     // 更新日志
         public String downloadUrl;      // APK 下载链接
@@ -82,7 +91,6 @@ public class UpdateChecker {
         public String getFormattedDate() {
             if (releaseDate == null || releaseDate.isEmpty()) return "";
             try {
-                // 格式: 2026-06-07T06:41:39Z -> 2026-06-07
                 return releaseDate.substring(0, 10);
             } catch (Exception e) {
                 return releaseDate;
@@ -104,17 +112,73 @@ public class UpdateChecker {
         }
     }
     
+    private class MirrorUpdateReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("com.UIN.Tool.UPDATE_MIRRORS".equals(intent.getAction())) {
+                ArrayList<String> mirrors = intent.getStringArrayListExtra("mirrors");
+                if (mirrors != null && !mirrors.isEmpty()) {
+                    customMirrors = mirrors;
+                    LogUtils.i(TAG, "已更新镜像站列表，共 " + mirrors.size() + " 个");
+                }
+                useCdn = intent.getBooleanExtra("use_cdn", true);
+                testMirrorsAndCheck();
+            }
+        }
+    }
+    
     public UpdateChecker(Context context) {
         this.context = context.getApplicationContext();
-        this.mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        this.mainHandler = new Handler(Looper.getMainLooper());
         this.client = getUnsafeOkHttpClient();
         disableSSLCertificateChecking();
+        loadMirrorSettings();
+        registerMirrorReceiver();
         LogUtils.i(TAG, "UpdateChecker 初始化完成");
     }
     
-    /**
-     * 获取不验证 SSL 证书的 OkHttpClient
-     */
+    private void loadMirrorSettings() {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String enabledMirrorsStr = prefs.getString(KEY_ENABLED_MIRRORS, "");
+        useCdn = prefs.getBoolean(KEY_USE_CDN, true);
+        
+        if (!enabledMirrorsStr.isEmpty()) {
+            String[] urls = enabledMirrorsStr.split(",");
+            customMirrors = new ArrayList<>();
+            for (String url : urls) {
+                if (!url.isEmpty()) {
+                    customMirrors.add(url);
+                }
+            }
+            if (!customMirrors.isEmpty()) {
+                LogUtils.i(TAG, "从配置加载镜像站，共 " + customMirrors.size() + " 个");
+            }
+        }
+    }
+    
+    private void registerMirrorReceiver() {
+        mirrorReceiver = new MirrorUpdateReceiver();
+        IntentFilter filter = new IntentFilter("com.UIN.Tool.UPDATE_MIRRORS");
+        LocalBroadcastManager.getInstance(context).registerReceiver(mirrorReceiver, filter);
+    }
+    
+    public void unregisterReceiver() {
+        if (mirrorReceiver != null) {
+            LocalBroadcastManager.getInstance(context).unregisterReceiver(mirrorReceiver);
+        }
+    }
+    
+    private List<String> getMirrorsToTest() {
+        if (customMirrors != null && !customMirrors.isEmpty()) {
+            return customMirrors;
+        }
+        List<String> mirrors = new ArrayList<>();
+        for (String mirror : DEFAULT_MIRRORS) {
+            mirrors.add(mirror);
+        }
+        return mirrors;
+    }
+    
     private OkHttpClient getUnsafeOkHttpClient() {
         try {
             final TrustManager[] trustAllCerts = new TrustManager[]{
@@ -152,9 +216,6 @@ public class UpdateChecker {
         }
     }
     
-    /**
-     * 禁用 SSL 证书检查（解决部分设备的证书问题）
-     */
     private void disableSSLCertificateChecking() {
         try {
             TrustManager[] trustAllCerts = new TrustManager[]{
@@ -192,9 +253,6 @@ public class UpdateChecker {
         this.listener = listener;
     }
     
-    /**
-     * 检查更新（获取所有版本）
-     */
     public void checkUpdate() {
         LogUtils.enter(TAG, "checkUpdate");
         if (listener != null) {
@@ -210,18 +268,17 @@ public class UpdateChecker {
             @Override
             public void run() {
                 String workingUrl = null;
+                List<String> mirrors = getMirrorsToTest();
                 
-                // 先测试直连
                 LogUtils.d(TAG, "测试直连: " + GITHUB_API);
                 if (testUrl(GITHUB_API)) {
                     workingUrl = GITHUB_API;
                     LogUtils.success(TAG, "直连可用");
                 }
                 
-                // 测试镜像
                 if (workingUrl == null) {
-                    for (String mirror : GITHUB_MIRRORS) {
-                        String testUrl = mirror + "/" + GITHUB_API;
+                    for (String mirror : mirrors) {
+                        String testUrl = getMirrorUrl(mirror, GITHUB_API);
                         LogUtils.d(TAG, "测试镜像: " + testUrl);
                         if (testUrl(testUrl)) {
                             workingUrl = testUrl;
@@ -250,13 +307,38 @@ public class UpdateChecker {
         }).start();
     }
     
+    private String getMirrorUrl(String mirror, String originalUrl) {
+        if (mirror == null || mirror.isEmpty()) {
+            return originalUrl;
+        }
+        if (mirror.contains("ghproxy")) {
+            return mirror + "/" + originalUrl;
+        } else if (mirror.contains("fastgit")) {
+            return originalUrl.replace("https://api.github.com", mirror + "/api.github.com");
+        } else if (mirror.contains("moeyy")) {
+            return mirror + "/" + originalUrl;
+        } else {
+            return mirror + "/" + originalUrl;
+        }
+    }
+    
+    private String getDownloadMirrorUrl(String mirror, String originalUrl) {
+        if (mirror == null || mirror.isEmpty() || !useCdn) {
+            return originalUrl;
+        }
+        if (mirror.contains("ghproxy")) {
+            return mirror + "/" + originalUrl;
+        }
+        return originalUrl;
+    }
+    
     private boolean testUrl(String urlString) {
         HttpURLConnection connection = null;
         try {
             URL url = new URL(urlString);
             connection = (HttpURLConnection) url.openConnection();
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
+            connection.setConnectTimeout(8000);
+            connection.setReadTimeout(8000);
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
             connection.setRequestProperty("User-Agent", "UIN-Tool-Android");
@@ -313,15 +395,29 @@ public class UpdateChecker {
                 LogUtils.param(TAG, "找到 Release 数量", releases.size());
                 
                 boolean hasNewer = false;
+                boolean forceUpdate = false;
+                ReleaseInfo latestRelease = null;
+                
                 for (ReleaseInfo info : releases) {
                     info.isNewer = info.isNewerThan(currentVersionCode);
                     if (info.isNewer) {
                         hasNewer = true;
-                        LogUtils.d(TAG, "发现新版本: " + info.versionName + " (代码: " + info.versionCode + ")");
+                        forceUpdate = info.forceUpdate;
+                        latestRelease = info;
+                        LogUtils.d(TAG, "发现新版本: " + info.versionName + " (代码: " + info.versionCode + ", 强制更新: " + forceUpdate + ")");
+                        if (currentMirror != null && !currentMirror.isEmpty() && useCdn) {
+                            String originalUrl = info.downloadUrl;
+                            if (originalUrl != null && originalUrl.startsWith("https://github.com")) {
+                                info.downloadUrl = getDownloadMirrorUrl(currentMirror, originalUrl);
+                                LogUtils.d(TAG, "使用镜像下载: " + info.downloadUrl);
+                            }
+                        }
+                        break;
                     }
                 }
                 
                 final boolean finalHasNewer = hasNewer;
+                final boolean finalForceUpdate = forceUpdate;
                 
                 mainHandler.post(new Runnable() {
                     @Override
@@ -329,7 +425,7 @@ public class UpdateChecker {
                         if (listener != null) {
                             if (!releases.isEmpty()) {
                                 LogUtils.success(TAG, "检查更新成功，共 " + releases.size() + " 个版本");
-                                listener.onCheckSuccess(releases, finalHasNewer);
+                                listener.onCheckSuccess(releases, finalHasNewer, finalForceUpdate);
                             } else {
                                 LogUtils.i(TAG, "没有找到任何 Release");
                                 listener.onNoUpdate(currentVersionName);
@@ -353,7 +449,9 @@ public class UpdateChecker {
     }
     
     /**
-     * 解析所有 Releases 信息
+     * 解析 Releases 信息
+     * Tag 格式: {versionCode}-{versionName}-{forceFlag}
+     * 例如: 1-1.0.0-1 (强制更新), 1-1.0.0-0 (不强制), 1-1.0.0 (默认不强制)
      */
     private List<ReleaseInfo> parseReleasesInfo(String json) {
         List<ReleaseInfo> releases = new ArrayList<>();
@@ -365,7 +463,6 @@ public class UpdateChecker {
             for (int i = 0; i < releasesArray.length(); i++) {
                 JSONObject release = releasesArray.getJSONObject(i);
                 
-                // 跳过草稿
                 if (release.optBoolean("draft", false)) {
                     LogUtils.d(TAG, "跳过草稿版本");
                     continue;
@@ -379,17 +476,30 @@ public class UpdateChecker {
                 
                 LogUtils.d(TAG, "解析版本: " + info.tagName);
                 
-                // 解析 tag_name (格式: 4-2.6.0)
-                if (info.tagName.contains("-")) {
-                    String[] parts = info.tagName.split("-", 2);
+                // 解析 tag_name (格式: versionCode-versionName-forceFlag)
+                // 例如: 1-1.0.0-1, 1-1.0.0-0, 1-1.0.0
+                String[] parts = info.tagName.split("-", 3);
+                if (parts.length >= 2) {
                     info.versionCode = parts[0];
-                    info.versionName = parts.length > 1 ? parts[1] : parts[0];
+                    info.versionName = parts[1];
+                    if (parts.length >= 3) {
+                        info.forceFlag = parts[2];
+                        info.forceUpdate = "1".equals(info.forceFlag);
+                    } else {
+                        info.forceFlag = "0";
+                        info.forceUpdate = false;
+                    }
                 } else {
                     info.versionName = info.tagName;
                     info.versionCode = String.valueOf(getVersionCodeFromName(info.tagName));
+                    info.forceFlag = "0";
+                    info.forceUpdate = false;
                 }
                 
-                // 查找 APK 附件
+                LogUtils.d(TAG, "版本信息: versionCode=" + info.versionCode + 
+                        ", versionName=" + info.versionName + 
+                        ", forceUpdate=" + info.forceUpdate);
+                
                 JSONArray assets = release.optJSONArray("assets");
                 if (assets != null && assets.length() > 0) {
                     LogUtils.d(TAG, "找到 " + assets.length() + " 个附件");
@@ -406,7 +516,6 @@ public class UpdateChecker {
                     }
                 }
                 
-                // 如果没有找到 APK，使用仓库地址
                 if (info.downloadUrl == null || info.downloadUrl.isEmpty()) {
                     info.downloadUrl = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/" + info.tagName;
                     info.apkSize = "未知";
@@ -439,13 +548,12 @@ public class UpdateChecker {
     }
     
     /**
-     * 获取最新版本信息（同步方法，用于启动时快速检查）
+     * 检查是否是强制更新（用于启动时判断）
      */
-    public ReleaseInfo getLatestRelease() {
-        LogUtils.enter(TAG, "getLatestRelease");
+    public boolean isForceUpdateRequired() {
         try {
             String apiUrl = GITHUB_API + "?per_page=1";
-            String mirroredUrl = getMirrorUrl(apiUrl);
+            String mirroredUrl = getMirrorUrl(currentMirror, apiUrl);
             
             Request request = new Request.Builder()
                     .url(mirroredUrl)
@@ -459,64 +567,47 @@ public class UpdateChecker {
                     JSONArray releases = new JSONArray(responseBody);
                     if (releases.length() > 0) {
                         JSONObject release = releases.getJSONObject(0);
-                        ReleaseInfo info = new ReleaseInfo();
-                        info.tagName = release.optString("tag_name", "");
-                        info.releaseDate = release.optString("published_at", "");
-                        info.releaseNotes = release.optString("body", "");
-                        info.isPreRelease = release.optBoolean("prerelease", false);
+                        String tagName = release.optString("tag_name", "");
+                        String[] parts = tagName.split("-", 3);
                         
-                        if (info.tagName.contains("-")) {
-                            String[] parts = info.tagName.split("-", 2);
-                            info.versionCode = parts[0];
-                            info.versionName = parts.length > 1 ? parts[1] : parts[0];
-                        } else {
-                            info.versionName = info.tagName;
-                            info.versionCode = info.tagName;
+                        int currentVersionCode = getCurrentVersionCode();
+                        int newVersionCode = 0;
+                        try {
+                            newVersionCode = Integer.parseInt(parts[0]);
+                        } catch (Exception e) {
+                            return false;
                         }
                         
-                        JSONArray assets = release.optJSONArray("assets");
-                        if (assets != null && assets.length() > 0) {
-                            for (int j = 0; j < assets.length(); j++) {
-                                JSONObject asset = assets.getJSONObject(j);
-                                String name = asset.optString("name", "");
-                                if (name.endsWith(".apk")) {
-                                    info.downloadUrl = asset.optString("browser_download_url", "");
-                                    long size = asset.optLong("size", 0);
-                                    info.apkSize = formatSize(size);
-                                    break;
-                                }
+                        boolean hasNewer = newVersionCode > currentVersionCode;
+                        boolean forceUpdate = false;
+                        if (parts.length >= 3) {
+                            forceUpdate = "1".equals(parts[2]);
+                        }
+                        
+                        // 检查是否已被忽略
+                        if (forceUpdate && hasNewer) {
+                            SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+                            String ignoredVersion = prefs.getString(KEY_FORCE_UPDATE_IGNORE, "");
+                            if (tagName.equals(ignoredVersion)) {
+                                return false;
                             }
+                            return true;
                         }
-                        
-                        if (info.downloadUrl == null || info.downloadUrl.isEmpty()) {
-                            info.downloadUrl = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/" + info.tagName;
-                            info.apkSize = "未知";
-                        }
-                        
-                        LogUtils.success(TAG, "获取最新版本成功: " + info.versionName);
-                        return info;
                     }
                 }
             }
         } catch (Exception e) {
-            LogUtils.e(TAG, "获取最新版本失败: " + e.getMessage());
+            LogUtils.e(TAG, "检查强制更新失败", e);
         }
-        return null;
+        return false;
     }
     
     /**
-     * 获取镜像 URL
+     * 忽略本次强制更新（仅用于测试，不建议用户使用）
      */
-    private String getMirrorUrl(String originalUrl) {
-        if (currentMirror == null || currentMirror.isEmpty()) {
-            return originalUrl;
-        }
-        if (currentMirror.contains("ghproxy")) {
-            return currentMirror + "/" + originalUrl;
-        } else if (currentMirror.contains("fastgit")) {
-            return originalUrl.replace("https://api.github.com", currentMirror + "/api.github.com");
-        }
-        return originalUrl;
+    public void ignoreForceUpdate(String tagName) {
+        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_FORCE_UPDATE_IGNORE, tagName).apply();
     }
     
     private int getVersionCodeFromName(String versionName) {
@@ -556,9 +647,6 @@ public class UpdateChecker {
         }
     }
     
-    /**
-     * 格式化文件大小
-     */
     private String formatSize(long size) {
         if (size <= 0) return "未知";
         if (size < 1024) return size + " B";
@@ -567,9 +655,6 @@ public class UpdateChecker {
         return String.format("%.2f GB", size / (1024.0 * 1024.0 * 1024.0));
     }
     
-    /**
-     * 打开下载页面
-     */
     public void openDownloadPage(String url) {
         if (url == null || url.isEmpty()) {
             url = GITHUB_REPO;
@@ -580,9 +665,6 @@ public class UpdateChecker {
         context.startActivity(intent);
     }
     
-    /**
-     * 打开 Release 页面
-     */
     public void openReleasePage() {
         LogUtils.action(TAG, "打开 Release 页面", GITHUB_REPO);
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_REPO));

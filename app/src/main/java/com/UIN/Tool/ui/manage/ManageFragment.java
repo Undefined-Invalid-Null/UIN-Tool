@@ -1,8 +1,9 @@
 package com.UIN.Tool.ui.manage;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -48,6 +49,8 @@ public class ManageFragment extends BaseFragment {
 
     private static final String TAG = "ManageFragment";
     private static final String GITHUB_RELEASES_URL = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases";
+    private static final String PREF_NAME = "app_prefs";
+    private static final String KEY_IGNORE_VERSION = "ignore_version";
     
     private FragmentManageBinding binding;
     private PluginManager pluginManager;
@@ -96,6 +99,15 @@ public class ManageFragment extends BaseFragment {
         binding.cardUiConfig.setOnClickListener(v -> startActivity(new Intent(getContext(), UIConfigActivity.class)));
         binding.cardWidget.setOnClickListener(v -> showWidgetGuide());
         binding.cardUpdate.setOnClickListener(v -> checkForUpdate());
+        binding.cardGithubAccelerate.setOnClickListener(v -> {
+            try {
+                Class<?> clazz = Class.forName("com.UIN.Tool.ui.manage.GitHubMirrorActivity");
+                startActivity(new Intent(getContext(), clazz));
+            } catch (ClassNotFoundException e) {
+                LogUtils.e(TAG, "GitHubMirrorActivity not found", e);
+                showToast("GitHub 加速功能开发中");
+            }
+        });
         
         if (binding.cardDeveloper != null) {
             binding.cardDeveloper.setOnClickListener(v -> showDeveloperOptions());
@@ -104,18 +116,12 @@ public class ManageFragment extends BaseFragment {
     
     // ==================== 更新相关方法 ====================
     
-    /**
-     * 供快捷方式调用的检查更新方法
-     */
     public void checkUpdateFromShortcut() {
         if (!isFragmentAlive) return;
         LogUtils.enter(TAG, "checkUpdateFromShortcut");
         checkForUpdate();
     }
     
-    /**
-     * 检查更新
-     */
     private void checkForUpdate() {
         if (!isFragmentAlive || getActivity() == null) {
             LogUtils.w(TAG, "Fragment 未附加，无法检查更新");
@@ -133,14 +139,21 @@ public class ManageFragment extends BaseFragment {
             }
             
             @Override
-            public void onCheckSuccess(List<UpdateChecker.ReleaseInfo> releases, boolean hasNewer) {
+            public void onCheckSuccess(List<UpdateChecker.ReleaseInfo> releases, boolean hasNewer, boolean forceUpdate) {
                 if (!isFragmentAlive) return;
                 dismissCheckingDialog();
                 
                 if (hasNewer && !releases.isEmpty()) {
                     UpdateChecker.ReleaseInfo latest = releases.get(0);
-                    LogUtils.success(TAG, "发现新版本: " + latest.versionName);
-                    showUpdateDialog(latest);
+                    
+                    // 强制更新时忽略版本忽略检查
+                    if (!forceUpdate && isVersionIgnored(latest.versionName)) {
+                        LogUtils.d(TAG, "用户已忽略版本: " + latest.versionName);
+                        return;
+                    }
+                    
+                    LogUtils.success(TAG, "发现新版本: " + latest.versionName + ", 强制更新: " + forceUpdate);
+                    showUpdateDialog(latest, forceUpdate);
                 } else {
                     safeShowToast("当前已是最新版本");
                 }
@@ -164,17 +177,20 @@ public class ManageFragment extends BaseFragment {
         updateChecker.checkUpdate();
     }
     
-    /**
-     * 显示更新弹窗（使用自定义布局，支持滚动和 Markdown）
-     */
-    private void showUpdateDialog(UpdateChecker.ReleaseInfo releaseInfo) {
+    private boolean isVersionIgnored(String versionName) {
+        if (versionName == null || versionName.isEmpty()) return false;
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREF_NAME, android.content.Context.MODE_PRIVATE);
+        String ignoredVersion = prefs.getString(KEY_IGNORE_VERSION, "");
+        return versionName.equals(ignoredVersion);
+    }
+    
+    private void showUpdateDialog(UpdateChecker.ReleaseInfo releaseInfo, boolean forceUpdate) {
         if (!isFragmentAlive || getActivity() == null) return;
         
-        LogUtils.enter(TAG, "showUpdateDialog");
+        LogUtils.enter(TAG, "showUpdateDialog, forceUpdate=" + forceUpdate);
         
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_update, null);
         
-        // 获取控件
         TextView tvVersionName = dialogView.findViewById(R.id.tv_version_name);
         TextView tvVersionCode = dialogView.findViewById(R.id.tv_version_code);
         TextView tvReleaseDate = dialogView.findViewById(R.id.tv_release_date);
@@ -186,7 +202,13 @@ public class ManageFragment extends BaseFragment {
         Button btnManualDownload = dialogView.findViewById(R.id.btn_manual_download);
         Button btnIgnore = dialogView.findViewById(R.id.btn_ignore);
         
-        // 设置内容
+        // 强制更新时隐藏忽略按钮
+        if (forceUpdate) {
+            btnIgnore.setVisibility(View.GONE);
+        } else {
+            btnIgnore.setVisibility(View.VISIBLE);
+        }
+        
         tvVersionName.setText("版本号：" + releaseInfo.versionName);
         tvVersionCode.setText("版本代码：" + releaseInfo.versionCode);
         tvReleaseDate.setText("发布日期：" + releaseInfo.getFormattedDate());
@@ -197,18 +219,15 @@ public class ManageFragment extends BaseFragment {
             tvFileSize.setText("文件大小：未知");
         }
         
-        // 设置更新日志（Markdown 格式）
         String releaseNotes = releaseInfo.releaseNotes;
         if (releaseNotes == null || releaseNotes.isEmpty()) {
             releaseNotes = "暂无更新日志";
         }
         
-        // 显示加载进度
         if (progressWebView != null) {
             progressWebView.setVisibility(View.VISIBLE);
         }
         
-        // 配置 WebView 并加载内容
         configureWebViewForMarkdown(wvReleaseNotes, releaseNotes, progressWebView);
         
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
@@ -231,15 +250,14 @@ public class ManageFragment extends BaseFragment {
         
         btnIgnore.setOnClickListener(v -> {
             LogUtils.action(TAG, "用户选择", "暂不更新");
+            SharedPreferences prefs = requireContext().getSharedPreferences(PREF_NAME, android.content.Context.MODE_PRIVATE);
+            prefs.edit().putString(KEY_IGNORE_VERSION, releaseInfo.versionName).apply();
             updateDialog.dismiss();
         });
         
         updateDialog.show();
     }
     
-    /**
-     * 配置 WebView 用于显示 Markdown
-     */
     private void configureWebViewForMarkdown(WebView webView, String markdownContent, ProgressBar progressBar) {
         if (webView == null) return;
         
@@ -253,8 +271,7 @@ public class ManageFragment extends BaseFragment {
         settings.setDefaultTextEncodingName("UTF-8");
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         
-        // 设置背景透明
-        webView.setBackgroundColor(Color.TRANSPARENT);
+        webView.setBackgroundColor(android.graphics.Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             webView.setLayerType(WebView.LAYER_TYPE_SOFTWARE, null);
         }
@@ -280,10 +297,8 @@ public class ManageFragment extends BaseFragment {
             }
         });
         
-        // 使用 MarkdownRenderer 将 Markdown 转换为 HTML
         String html = MarkdownRenderer.toHtml(markdownContent);
         
-        // 添加额外的样式以确保在对话框中正常显示
         String styledHtml = "<html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
                 "<style>" +
                 "body { padding: 8px; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; color: #333; line-height: 1.5; }" +
@@ -306,13 +321,9 @@ public class ManageFragment extends BaseFragment {
                 html +
                 "</body></html>";
         
-        // 使用 loadDataWithBaseURL 确保相对路径资源能正确加载
         webView.loadDataWithBaseURL("file:///android_asset/", styledHtml, "text/html", "UTF-8", null);
     }
     
-    /**
-     * 仅显示手动下载选项（当检查更新失败时）
-     */
     private void showManualDownloadOnlyDialog(String errorMessage) {
         if (!isFragmentAlive || getActivity() == null) return;
         
@@ -346,9 +357,6 @@ public class ManageFragment extends BaseFragment {
         dialog.show();
     }
     
-    /**
-     * 打开浏览器跳转到 Release 页面
-     */
     private void openBrowserForDownload(UpdateChecker.ReleaseInfo releaseInfo) {
         if (!isFragmentAlive || getActivity() == null) return;
         

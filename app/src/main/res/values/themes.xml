@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
+    
     <!-- 基础主题 -->
     <style name="Theme.UIN.Tool" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
@@ -9,8 +10,9 @@
         <item name="android:windowBackground">@color/background</item>
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent</item>
-        <item name="colorPrimaryVariant">@color/primary_light</item>
+        <item name="colorAccent">@color/primary</item>
+        <!-- 关键：设置 CheckBox 激活颜色为主题色，但不改变背景 -->
+        <item name="colorControlActivated">@color/primary</item>
         <item name="android:fontFamily">sans-serif</item>
         <item name="android:windowAnimationStyle">@style/Animation.UIN.Tool</item>
         <item name="materialCardViewStyle">@style/Widget.UIN.Tool.CardView</item>
@@ -171,39 +173,42 @@
         <item name="android:orientation">horizontal</item>
         <item name="android:layout_marginBottom">@dimen/spacing_md</item>
     </style>
+    
     <!-- 多行文字按钮样式 -->
-<style name="Widget.UIN.Tool.Button.Multiline" parent="Widget.MaterialComponents.Button">
-    <item name="android:textColor">@android:color/white</item>
-    <item name="backgroundTint">@color/primary</item>
-    <item name="cornerRadius">8dp</item>
-    <item name="android:textSize">12sp</item>
-    <item name="android:paddingStart">8dp</item>
-    <item name="android:paddingEnd">8dp</item>
-    <item name="android:minHeight">52dp</item>
-    <item name="android:maxHeight">60dp</item>
-    <item name="android:gravity">center</item>
-    <item name="android:lineSpacingExtra">-2dp</item>
-</style>
+    <style name="Widget.UIN.Tool.Button.Multiline" parent="Widget.MaterialComponents.Button">
+        <item name="android:textColor">@android:color/white</item>
+        <item name="backgroundTint">@color/primary</item>
+        <item name="cornerRadius">8dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:maxHeight">60dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:lineSpacingExtra">-2dp</item>
+    </style>
 
-<!-- 多行文字轮廓按钮样式 -->
-<style name="Widget.UIN.Tool.Button.Outlined.Multiline" parent="Widget.MaterialComponents.Button.OutlinedButton">
-    <item name="android:textColor">@color/primary</item>
-    <item name="strokeColor">@color/primary</item>
-    <item name="cornerRadius">8dp</item>
-    <item name="android:textSize">12sp</item>
-    <item name="android:paddingStart">8dp</item>
-    <item name="android:paddingEnd">8dp</item>
-    <item name="android:minHeight">52dp</item>
-    <item name="android:maxHeight">60dp</item>
-    <item name="android:gravity">center</item>
-    <item name="android:lineSpacingExtra">-2dp</item>
-</style>
-<!-- 无背景 CheckBox 样式 -->
-<style name="Widget.UIN.Tool.CheckBox.NoBackground" parent="Widget.AppCompat.CompoundButton.CheckBox">
-    <item name="android:background">@null</item>
-    <item name="android:minHeight">0dp</item>
-    <item name="android:minWidth">0dp</item>
-    <item name="android:padding">0dp</item>
-    <item name="android:buttonTint">@color/primary</item>
-</style>
+    <!-- 多行文字轮廓按钮样式 -->
+    <style name="Widget.UIN.Tool.Button.Outlined.Multiline" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textColor">@color/primary</item>
+        <item name="strokeColor">@color/primary</item>
+        <item name="cornerRadius">8dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:maxHeight">60dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:lineSpacingExtra">-2dp</item>
+    </style>
+    
+    <!-- ==================== 统一 CheckBox 样式 ==================== -->
+    <style name="Widget.UIN.Tool.CheckBox" parent="Widget.AppCompat.CompoundButton.CheckBox">
+        <item name="android:buttonTint">@color/primary</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:padding">0dp</item>
+    </style>
+
 </resources>
