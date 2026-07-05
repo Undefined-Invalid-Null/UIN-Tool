@@ -1,19 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
-    
+<resources>
     <style name="Theme.UIN.Tool" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/primary</item>
-        <item name="colorControlActivated">@color/primary</item>
+        <item name="android:statusBarColor">#FF4A8A9E</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#FF1E1E1E</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">#FF121212</item>
+        <item name="colorPrimary">#FF4A8A9E</item>
+        <item name="colorPrimaryDark">#FF1A3A4A</item>
+        <item name="colorAccent">#FF4A8A9E</item>
         <item name="android:fontFamily">sans-serif</item>
-        <item name="android:windowAnimationStyle">@style/Animation.UIN.Tool</item>
-        <item name="materialCardViewStyle">@style/Widget.UIN.Tool.CardView</item>
     </style>
-
 </resources>

@@ -1,0 +1,17 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 阴影 -->
+    <item>
+        <shape>
+            <solid android:color="@color/glass_shadow" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    <!-- 玻璃背景 -->
+    <item android:bottom="2dp" android:left="1dp" android:right="1dp" android:top="2dp">
+        <shape>
+            <solid android:color="@color/glass_background" />
+            <corners android:radius="16dp" />
+            <stroke android:width="0.5dp" android:color="@color/glass_border" />
+        </shape>
+    </item>
+</layer-list>

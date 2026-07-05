@@ -10,7 +10,7 @@
         android:layout_height="wrap_content"
         android:background="@color/primary"
         android:orientation="horizontal"
-        android:padding="@dimen/spacing_md">
+        android:padding="12dp">
 
         <TextView
             android:id="@+id/widget_title"
@@ -18,15 +18,15 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
-            android:text="@string/widget_title"
+            android:text="@string/app_name"
             android:textColor="@android:color/white"
-            android:textSize="@dimen/text_body_large"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <ImageButton
             android:id="@+id/btn_refresh"
-            android:layout_width="@dimen/icon_medium"
-            android:layout_height="@dimen/icon_medium"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_refresh"
             android:contentDescription="@string/refresh"
@@ -34,23 +34,30 @@
 
     </LinearLayout>
 
-    <ListView
-        android:id="@+id/widget_list"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/surface"
-        android:divider="@color/divider"
-        android:dividerHeight="1dp"
-        android:padding="0dp" />
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-    <TextView
-        android:id="@+id/empty_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center"
-        android:padding="@dimen/spacing_lg"
-        android:text="@string/widget_empty"
-        android:textColor="@color/text_secondary"
-        android:visibility="gone" />
+        <ListView
+            android:id="@+id/widget_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/surface"
+            android:divider="@color/divider"
+            android:dividerHeight="1dp"
+            android:padding="0dp" />
+
+        <TextView
+            android:id="@+id/empty_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:padding="16dp"
+            android:text="@string/widget_empty"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
 </LinearLayout>

@@ -3,4 +3,5 @@
     <include domain="file" path="plugins/" />
     <include domain="sharedpref" path="uin_tool_prefs.xml" />
     <include domain="file" path="logs/" />
+    <include domain="file" path="ui_config.json" />
 </full-backup-content>

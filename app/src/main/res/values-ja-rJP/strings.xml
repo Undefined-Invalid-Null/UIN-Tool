@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">UIN Tool</string>
+    
+    <!-- 导航 -->
+    <string name="nav_dev">開発</string>
+    <string name="nav_tools">ツール</string>
+    <string name="nav_manage">管理</string>
+    <string name="nav_repo">リポジトリ</string>
+    
+    <!-- 通用 -->
+    <string name="confirm">確定</string>
+    <string name="cancel">キャンセル</string>
+    <string name="delete">削除</string>
+    <string name="close">閉じる</string>
+    <string name="ok">OK</string>
+    <string name="back">戻る</string>
+    <string name="next">次へ</string>
+    <string name="prev">前へ</string>
+    <string name="finish">完了</string>
+    <string name="skip">スキップ</string>
+    <string name="refresh">更新</string>
+    <string name="export_action">エクスポート</string>
+    <string name="import_action">インポート</string>
+    <string name="select_all">すべて選択</string>
+    <string name="deselect_all">すべて解除</string>
+    <string name="search">検索</string>
+    <string name="clear">クリア</string>
+    <string name="reset">リセット</string>
+    <string name="apply">適用</string>
+    <string name="save">保存</string>
+    <string name="loading">読み込み中...</string>
+    
+    <!-- 快捷方式 -->
+    <string name="shortcut_tools">ツール</string>
+    <string name="shortcut_tools_long">ツールページを開く</string>
+    <string name="shortcut_plugin_manage">プラグイン管理</string>
+    <string name="shortcut_plugin_manage_long">インストール済みプラグインを管理</string>
+    <string name="shortcut_permission">権限管理</string>
+    <string name="shortcut_permission_long">アプリとプラグインの権限を管理</string>
+    <string name="shortcut_check_update">アップデート確認</string>
+    <string name="shortcut_check_update_long">アプリのアップデートを確認</string>
+    
+    <!-- 无障碍 -->
+    <string name="accessibility_service_description">UIN Tool アクセシビリティサービス、プラグインの自動化操作を実行</string>
+</resources>

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     
-    <!-- 快捷方式1：工具页面 -->
     <shortcut
         android:shortcutId="tools_shortcut"
         android:enabled="true"
@@ -11,13 +10,13 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.UIN.Tool"
-            android:targetClass="com.UIN.Tool.MainActivity" />
-        <meta-data
-            android:name="selected_tab"
-            android:value="tools" />
+            android:targetClass="com.UIN.Tool.MainActivity">
+            <extra
+                android:name="selected_tab"
+                android:value="tools" />
+        </intent>
     </shortcut>
 
-    <!-- 快捷方式2：插件管理页面 -->
     <shortcut
         android:shortcutId="plugin_manage_shortcut"
         android:enabled="true"
@@ -27,23 +26,13 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.UIN.Tool"
-            android:targetClass="com.UIN.Tool.ui.plugin.PluginManageActivity" />
+            android:targetClass="com.UIN.Tool.MainActivity">
+            <extra
+                android:name="selected_tab"
+                android:value="manage" />
+        </intent>
     </shortcut>
 
-    <!-- 快捷方式3：权限管理页面 -->
-    <shortcut
-        android:shortcutId="permission_shortcut"
-        android:enabled="true"
-        android:icon="@drawable/ic_security"
-        android:shortcutShortLabel="@string/shortcut_permission"
-        android:shortcutLongLabel="@string/shortcut_permission_long">
-        <intent
-            android:action="android.intent.action.VIEW"
-            android:targetPackage="com.UIN.Tool"
-            android:targetClass="com.UIN.Tool.ui.permission.PermissionManagerActivity" />
-    </shortcut>
-
-    <!-- 快捷方式4：检查更新 -->
     <shortcut
         android:shortcutId="check_update_shortcut"
         android:enabled="true"
@@ -53,10 +42,11 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.UIN.Tool"
-            android:targetClass="com.UIN.Tool.MainActivity" />
-        <meta-data
-            android:name="check_update"
-            android:value="true" />
+            android:targetClass="com.UIN.Tool.MainActivity">
+            <extra
+                android:name="check_update"
+                android:value="true" />
+        </intent>
     </shortcut>
 
 </shortcuts>

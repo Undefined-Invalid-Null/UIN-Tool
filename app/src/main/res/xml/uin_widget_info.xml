@@ -3,8 +3,10 @@
     android:initialLayout="@layout/widget_layout"
     android:minHeight="180dp"
     android:minWidth="180dp"
+    android:minResizeHeight="180dp"
+    android:minResizeWidth="180dp"
     android:previewImage="@drawable/ic_launcher_foreground"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"
-    android:configure="com.UIN.Tool.ui.widget.UINWidgetConfigureActivity"
+    android:configure="com.UIN.Tool.widget.WidgetConfigureActivity"
     android:widgetCategory="home_screen" />

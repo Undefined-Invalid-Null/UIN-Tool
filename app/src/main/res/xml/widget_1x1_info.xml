@@ -9,6 +9,4 @@
     android:resizeMode="none"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen"
-    android:configure="com.UIN.Tool.ui.widget.Widget1x1ConfigureActivity"
-    android:targetCellWidth="1"
-    android:targetCellHeight="1" />
+    android:configure="com.UIN.Tool.widget.Widget1x1ConfigureActivity" />
