@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 应用名称 -->
+    <string name="app_name">UIN Tool</string>
+    
+    <!-- 导航 -->
+    <string name="nav_dev">开发</string>
+    <string name="nav_tools">工具</string>
+    <string name="nav_manage">管理</string>
+    <string name="nav_repo">仓库</string>
+    
+    <!-- 通用 -->
+    <string name="confirm">确定</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="close">关闭</string>
+    <string name="ok">好的</string>
+    <string name="back">返回</string>
+    <string name="next">下一步</string>
+    <string name="prev">上一步</string>
+    <string name="finish">完成</string>
+    <string name="skip">跳过</string>
+    <string name="refresh">刷新</string>
+    <string name="search">搜索</string>
+    <string name="save">保存</string>
+    <string name="reset">重置</string>
+    <string name="apply">应用</string>
+    <string name="loading">加载中...</string>
+    <string name="version">版本</string>
+    <string name="update">更新</string>
+    <string name="download">下载</string>
+    <string name="install">安装</string>
+    <string name="uninstall">卸载</string>
+    <string name="open">打开</string>
+    <string name="run">运行</string>
+    <string name="error">错误</string>
+    <string name="success">成功</string>
+    <string name="warning">警告</string>
+    <string name="info">提示</string>
+    <string name="export_action">导出</string>
+    <string name="import_action">导入</string>
+    <string name="select_all">全选</string>
+    <string name="deselect_all">全不选</string>
+    <string name="clear">清空</string>
+    <string name="edit">编辑</string>
+    <string name="share">分享</string>
+    <string name="copy">复制</string>
+    <string name="more">更多</string>
+    <string name="settings">设置</string>
+    <string name="help">帮助</string>
+    <string name="about">关于</string>
+    <string name="all_category">全部</string>
+    <string name="none">无</string>
+    <string name="yes">是</string>
+    <string name="no">否</string>
+    <string name="all_plugins">全部插件</string>
+    <string name="search_plugins">搜索插件...</string>
+    <string name="clear_search">清除搜索</string>
+    <string name="switch_view">切换视图</string>
+    <string name="grid_view">网格视图</string>
+    <string name="list_view">列表视图</string>
+    <string name="retry">重试</string>
+    
+    <!-- 快捷方式 -->
+    <string name="shortcut_tools">工具</string>
+    <string name="shortcut_tools_long">打开工具页面</string>
+    <string name="shortcut_plugin_manage">插件管理</string>
+    <string name="shortcut_plugin_manage_long">管理已安装插件</string>
+    <string name="shortcut_permission">权限管理</string>
+    <string name="shortcut_permission_long">管理应用和插件权限</string>
+    <string name="shortcut_check_update">检查更新</string>
+    <string name="shortcut_check_update_long">检查应用更新</string>
+    
+    <!-- 小部件 -->
+    <string name="widget_name">UIN Tool 小部件</string>
+    <string name="widget_1x1_name">插件快捷方式</string>
+    <string name="widget_title">UIN Tool</string>
+    <string name="widget_no_plugin">-- 无 --</string>
+    <string name="widget_plugin_1">插件 1</string>
+    <string name="widget_plugin_2">插件 2</string>
+    <string name="widget_plugin_3">插件 3</string>
+    <string name="widget_config_title">配置小部件</string>
+    <string name="widget_config_select_plugins">选择要在小部件中显示的插件</string>
+    <string name="widget_config_saved">小部件配置已保存</string>
+    <string name="widget_refresh">刷新</string>
+    <string name="widget_empty">暂无插件\n请先在应用中导入插件</string>
+    <string name="widget_load_plugins_failed">加载插件失败</string>
+    <string name="widget_guide_title">添加桌面小部件</string>
+    <string name="widget_guide_message">长按桌面空白处，选择「小部件」，找到「UIN Tool」拖拽到桌面</string>
+    <string name="widget_refresh_sent">小部件刷新请求已发送</string>
+    <string name="widget_refresh_failed">刷新失败：%s</string>
+    <string name="widget_1x1_config_title">选择快捷方式插件</string>
+    <string name="widget_1x1_select_plugin">选择一个插件作为桌面快捷方式</string>
+    <string name="widget_1x1_launch_main">打开主界面（默认）</string>
+    <string name="widget_1x1_open_main">设为默认</string>
+    <string name="widget_1x1_config_saved">快捷方式配置已保存</string>
+    
+    <!-- 无障碍 -->
+    <string name="accessibility_service_description">UIN Tool 无障碍服务，用于插件执行自动化操作</string>
+    
+    <!-- 插件相关 -->
+    <string name="plugin_ui_type_native">原生代码 UI</string>
+    <string name="plugin_ui_type_web">WebView UI</string>
+    <string name="plugin_field_id">插件ID</string>
+    <string name="plugin_field_name">插件名称</string>
+    <string name="plugin_field_author">作者</string>
+    <string name="plugin_field_description">描述</string>
+    <string name="plugin_field_version">版本号</string>
+    <string name="plugin_field_version_name">版本名</string>
+    <string name="plugin_field_main_class">主类名</string>
+    <string name="plugin_field_category">分类</string>
+    <string name="plugin_unknown_author">未知</string>
+    <string name="plugin_no_description">无描述</string>
+    <string name="plugin_default_category">未分类</string>
+    
+    <!-- 提示消息 -->
+    <string name="toast_import_success">导入成功：%s</string>
+    <string name="toast_import_failed">导入失败：%s</string>
+    <string name="toast_export_success">导出成功</string>
+    <string name="toast_export_failed">导出失败：%s</string>
+    <string name="toast_uninstall_success">已卸载：%s</string>
+    <string name="toast_uninstall_failed">卸载失败：%s</string>
+    <string name="toast_permission_denied">权限被拒绝</string>
+    <string name="toast_permission_granted">权限已授予</string>
+    <string name="toast_copy_success">已复制到剪贴板</string>
+    <string name="toast_work_folder_created">工作目录：%s</string>
+    <string name="toast_no_plugins">暂无已安装的插件</string>
+    <string name="toast_please_select_plugin">请先选择要导出的插件</string>
+    <string name="toast_please_select_uninstall">请先选择要卸载的插件</string>
+    <string name="toast_plugin_not_found">插件不存在：%s</string>
+    <string name="toast_save_success">保存成功</string>
+    <string name="toast_save_failed">保存失败：%s</string>
+    <string name="toast_delete_success">删除成功</string>
+    <string name="toast_delete_failed">删除失败</string>
+    <string name="toast_network_error">网络错误，请稍后重试</string>
+    <string name="toast_no_data">暂无数据</string>
+    
+    <!-- 权限 -->
+    <string name="title_permission_manager">权限管理</string>
+    <string name="title_plugin_permission">插件权限管理</string>
+    <string name="permission_explain_title">权限说明</string>
+    <string name="permission_refreshed">权限状态已刷新</string>
+    <string name="permission_grant_one_by_one">请依次完成各个权限的授权</string>
+    <string name="permission_permanently_denied">「%s」权限已被永久拒绝，请前往设置中手动开启。</string>
+    
+    <!-- 日志 -->
+    <string name="title_log_viewer">运行日志</string>
+    <string name="log_no_records">暂无日志记录</string>
+    <string name="log_cleared">日志已清空</string>
+    <string name="log_all_cleared">已删除 %d 个日志文件</string>
+    <string name="log_exported">日志已导出</string>
+    <string name="log_export_failed">导出失败：%s</string>
+    <string name="clear_log_confirm">确定要清空今天的日志记录吗？</string>
+    <string name="clear_all_logs_confirm">确定要清空所有历史日志文件吗？</string>
+    
+    <!-- 备份 -->
+    <string name="title_backup_manager">备份恢复</string>
+    <string name="backup_success" formatted="false">✅ 备份成功！\n文件：%s\n大小：%s</string>
+    <string name="backup_failed">❌ 备份失败：%s</string>
+    <string name="backup_restore_success">✅ 恢复完成！</string>
+    <string name="backup_restore_failed">❌ 恢复失败：%s</string>
+    <string name="backup_restore_confirm">⚠️ 恢复操作将覆盖现有插件、配置和 UI 主题！</string>
+    <string name="backup_no_files">没有找到备份文件</string>
+    <string name="select_backup">选择要恢复的备份</string>
+    
+    <!-- UI配置 -->
+    <string name="title_ui_config">UI 个性化</string>
+    <string name="ui_config_preview">实时预览</string>
+    <string name="ui_config_color">颜色配置</string>
+    <string name="ui_config_shape">形状配置</string>
+    <string name="ui_config_reset_confirm">确定要重置所有 UI 配置吗？</string>
+    <string name="ui_config_reset_success">已重置为默认配置</string>
+    <string name="ui_config_apply_success">配置已应用</string>
+    <string name="ui_config_export_success">配置已导出</string>
+    <string name="ui_config_import_success">配置已导入</string>
+    <string name="ui_config_import_failed">配置文件无效</string>
+    <string name="ui_config_export_failed">导出失败: %s</string>
+    
+    <!-- 预览 -->
+    <string name="preview_title">预览标题</string>
+    <string name="preview_text">这是预览文本，显示当前主题效果。</string>
+    <string name="preview_button_text">预览按钮</string>
+    
+    <!-- 引导 -->
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_start">开始体验</string>
+    <string name="onboarding_close">关闭</string>
+    
+    <!-- 仓库 -->
+    <string name="repo_title">插件仓库</string>
+    <string name="repo_install">安装</string>
+    <string name="repo_open">打开</string>
+    <string name="repo_installed">已安装</string>
+    <string name="repo_downloading">下载中...</string>
+    <string name="repo_no_plugins">暂无可用插件</string>
+    <string name="repo_load_failed">加载失败，请检查网络</string>
+    
+    <!-- 文档 -->
+    <string name="doc_center_title">文档中心</string>
+    <string name="doc_help_desc">使用帮助、常见问题解答</string>
+    <string name="doc_dev_desc">插件开发文档、API 参考</string>
+    <string name="doc_changelog_desc">版本更新历史记录</string>
+    <string name="doc_about_desc">关于应用、版本信息</string>
+    <string name="doc_contributors_desc">贡献者名单</string>
+    
+    <!-- 按钮 -->
+    <string name="btn_run">运行</string>
+    <string name="btn_create_shortcut">创建快捷方式</string>
+    <string name="btn_change_category">修改分类</string>
+    <string name="btn_uninstall">卸载</string>
+    <string name="btn_backup">备份</string>
+    <string name="btn_restore">恢复</string>
+    <string name="btn_grant_all">一键授权</string>
+    <string name="btn_plugin_permission">插件权限</string>
+    <string name="btn_create_plugin">创建新插件</string>
+    <string name="btn_export_template">导出模板</string>
+    <string name="btn_import_plugin">导入插件</string>
+    <string name="btn_batch_import">批量导入</string>
+    <string name="btn_select_icon">选择图标</string>
+    <string name="btn_add_resource">添加资源文件</string>
+    <string name="btn_compile">生成项目文件</string>
+    <string name="btn_open_folder">打开文件夹</string>
+    <string name="btn_permission_explain">权限说明</string>
+</resources>

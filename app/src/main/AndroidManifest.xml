@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.UIN.Tool">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- ==================== 存储权限 ==================== -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -14,12 +13,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
     <!-- ==================== 下载相关权限 ==================== -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- ==================== 相机/麦克风权限 ==================== -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -27,31 +25,23 @@
     <!-- ==================== 位置权限 ==================== -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- ==================== 电话权限 ==================== -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" />
 
     <!-- ==================== 短信权限 ==================== -->
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_MMS" />
-    <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
 
     <!-- ==================== 联系人权限 ==================== -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
-    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
 
     <!-- ==================== 日历权限 ==================== -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
-
-    <!-- ==================== 传感器权限 ==================== -->
-    <uses-permission android:name="android.permission.BODY_SENSORS" />
 
     <!-- ==================== 系统权限 ==================== -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -64,9 +54,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.NFC" />
-
-    <!-- ==================== Android 13+ 通知权限 ==================== -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- ==================== Android 13+ 媒体权限 ==================== -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -83,11 +70,9 @@
     <!-- ==================== 开机启动权限 ==================== -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- ==================== 查询其他应用（Android 11+） ==================== -->
     <queries>
         <package android:name="moe.shizuku.privileged.api" />
         <package android:name="com.rosan.dhizuku" />
-        <package android:name="${applicationId}" />
     </queries>
 
     <application
@@ -107,48 +92,30 @@
         tools:ignore="GoogleAppIndexingWarning"
         tools:targetApi="33">
 
-        <!-- ==================== 启动页 Activity ==================== -->
+        <!-- ==================== 启动Activity ==================== -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.UIN.Tool.Splash"
             android:screenOrientation="portrait"
-            android:launchMode="singleTask"
-            android:taskAffinity="">
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            
-            <!-- 添加 shortcuts 引用 -->
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
-<activity
-    android:name=".ui.manage.GitHubMirrorActivity"
-    android:exported="false"
-    android:theme="@style/Theme.UIN.Tool" />
 
-        <!-- ==================== 引导页 Activity ==================== -->
-        <activity
-            android:name=".ui.onboarding.OnboardingActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool"
-            android:screenOrientation="portrait" />
-
-        <!-- ==================== 主 Activity ==================== -->
+        <!-- ==================== 主Activity ==================== -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.UIN.Tool"
             android:launchMode="singleTask"
-            android:excludeFromRecents="false"
-            android:taskAffinity=""
             android:alwaysRetainTaskState="true">
-            
-            <!-- 添加 URI Scheme 处理，用于快捷方式跳转 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -159,107 +126,158 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="uin" android:host="dev" />
+                <data android:scheme="uin" android:host="check_update" />
             </intent-filter>
+        </activity>
+
+        <!-- ==================== 引导页 ==================== -->
+        <activity
+            android:name=".ui.screen.onboarding.OnboardingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:screenOrientation="portrait" />
+
+        <!-- ==================== 插件宿主Activity ==================== -->
+        <activity
+            android:name=".plugin.PluginHostActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.UIN.Tool.plugin"
+            android:theme="@style/Theme.UIN.Tool" />
+
+        <!-- ==================== 日志查看器 ==================== -->
+        <activity
+            android:name=".ui.log.LogViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="运行日志" />
+
+        <!-- ==================== 插件向导 ==================== -->
+        <activity
+            android:name=".ui.screen.dev.BasePluginWizardActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:screenOrientation="portrait" />
+
+        <!-- ==================== 代码编辑器 ==================== -->
+        <activity
+            android:name=".ui.screen.dev.CodeEditorActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:screenOrientation="portrait"
+            android:label="代码编辑器" />
+
+        <!-- ==================== 文档中心 ==================== -->
+        <activity
+            android:name=".ui.screen.docs.DocBrowserActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="文档中心" />
+        <activity
+            android:name=".ui.screen.docs.DocViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="文档" />
+
+        <!-- ==================== 权限管理 ==================== -->
+        <activity
+            android:name=".ui.screen.permission.PermissionManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="权限管理" />
+        <activity
+            android:name=".ui.screen.permission.PluginPermissionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="插件权限" />
+        <activity
+            android:name=".ui.screen.permission.PermissionExplainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="权限说明" />
+
+        <!-- ==================== 插件管理 ==================== -->
+        <activity
+            android:name=".ui.screen.manage.PluginManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="插件管理" />
+
+        <!-- ==================== 备份管理 ==================== -->
+        <activity
+            android:name=".ui.screen.backup.BackupManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="备份恢复" />
+
+        <!-- ==================== UI个性化 ==================== -->
+        <activity
+            android:name=".ui.screen.manage.UIConfigActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="UI个性化" />
+
+        <!-- ==================== GitHub镜像 ==================== -->
+        <activity
+            android:name=".ui.screen.manage.GitHubMirrorActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="GitHub加速" />
+
+        <!-- ==================== 帮助 ==================== -->
+        <activity
+            android:name=".ui.screen.help.HelpActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="使用帮助" />
+
+        <!-- ==================== 开发文档 ==================== -->
+        <activity
+            android:name=".ui.screen.dev.DevDocActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="开发文档" />
+
+        <!-- ==================== 跳板 Activity ==================== -->
+        <activity
+            android:name=".TrampolineActivity"
+            android:exported="true"
+            android:taskAffinity="com.UIN.Tool.trampoline"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleInstance">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="uin" android:host="check_update" />
             </intent-filter>
+        </activity>
+
+        <!-- ==================== 小部件配置 ==================== -->
+        <activity
+            android:name=".widget.WidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="配置小部件" />
             
-        </activity>
-
-        <!-- ==================== 插件相关 Activity ==================== -->
         <activity
-            android:name=".plugin.PluginHostActivity"
-            android:exported="true"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.plugin.PluginManageActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.dev.NativePluginWizardActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.dev.WebPluginWizardActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.dev.DevDocActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.docs.DocViewerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.docs.DocBrowserActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.help.HelpActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ==================== 设置相关 Activity ==================== -->
-        <activity
-            android:name=".ui.permission.PermissionManagerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.permission.PluginPermissionManagerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.permission.PermissionExplainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.log.LogViewerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.backup.BackupManagerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.settings.UIConfigActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ==================== 代码编辑器 Activity ==================== -->
-        <activity
-            android:name=".ui.dev.CodeEditorActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool"
-            android:configChanges="orientation|screenSize|keyboardHidden" />
-
-        <!-- ==================== 小部件相关组件 ==================== -->
-        <activity
-            android:name=".ui.widget.UINWidgetConfigureActivity"
-            android:exported="true"
-            android:theme="@style/Theme.UIN.Tool" />
-        <activity
-            android:name=".ui.widget.Widget1x1ConfigureActivity"
+            android:name=".widget.Widget1x1ConfigureActivity"
             android:exported="true"
             android:theme="@style/Theme.UIN.Tool"
-            android:label="@string/widget_1x1_config_title">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-            </intent-filter>
-        </activity>
+            android:label="配置快捷方式" />
+
+        <!-- ==================== 小部件点击中转 ==================== -->
         <activity
             android:name=".widget.WidgetClickActivity"
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:excludeFromRecents="true"
             android:noHistory="true" />
-            
+
+        <!-- ==================== 小部件Provider ==================== -->
         <receiver
-            android:name=".widget.UINWidgetProvider"
+            android:name=".widget.WidgetProvider"
             android:exported="true"
             android:label="@string/widget_name">
             <intent-filter>
@@ -270,13 +288,23 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/uin_widget_info" />
         </receiver>
-        
-        <service
-            android:name=".widget.UINWidgetService"
-            android:exported="false"
-            android:permission="android.permission.BIND_REMOTEVIEWS" />
-            
-        <!-- ==================== 1x1 桌面小部件 ==================== -->
+<!-- app/src/main/AndroidManifest.xml -->
+<!-- 在 <application> 标签内添加 -->
+
+<activity
+    android:name=".ui.screen.manage.WidgetConfigActivity"
+    android:exported="false"
+    android:theme="@style/Theme.UIN.Tool"
+    android:label="小部件配置" />
+
+        <!-- app/src/main/AndroidManifest.xml -->
+<!-- 在 <application> 标签内添加 -->
+
+<service
+    android:name=".widget.WidgetService"
+    android:exported="false"
+    android:permission="android.permission.BIND_REMOTEVIEWS" />
+
         <receiver
             android:name=".widget.Widget1x1Provider"
             android:exported="true"
@@ -289,6 +317,18 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_1x1_info" />
         </receiver>
+<!-- app/src/main/AndroidManifest.xml -->
+<!-- 在 <application> 标签内添加 -->
+
+<!-- ==================== 小部件固定成功广播接收器 ==================== -->
+<receiver
+    android:name=".widget.WidgetPinnedReceiver"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="com.UIN.Tool.WIDGET_PINNED" />
+        <action android:name="com.UIN.Tool.WIDGET_1X1_PINNED" />
+    </intent-filter>
+</receiver>
 
         <!-- ==================== 系统事件接收器 ==================== -->
         <receiver
@@ -302,7 +342,7 @@
 
         <!-- ==================== 无障碍服务 ==================== -->
         <service
-            android:name=".service.UinAccessibilityService"
+            android:name=".core.accessibility.UinAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -312,7 +352,7 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
-        
+
         <!-- ==================== FileProvider ==================== -->
         <provider
             android:name="androidx.core.content.FileProvider"

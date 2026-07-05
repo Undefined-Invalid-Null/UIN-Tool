@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ==================== 基础主题 ==================== -->
+    <style name="Theme.UIN.Tool" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/primary_dark</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/text_inverse</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/text_inverse</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+    
+    <!-- ==================== 启动主题 ==================== -->
+    <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+    
+    <!-- ==================== 透明主题 ==================== -->
+    <style name="Theme.UIN.Tool.Translucent" parent="Theme.UIN.Tool">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+    
+    <!-- ==================== 弹窗主题 ==================== -->
+    <style name="Theme.UIN.Tool.Dialog" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <item name="android:windowBackground">@drawable/glass_background</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
+</resources>

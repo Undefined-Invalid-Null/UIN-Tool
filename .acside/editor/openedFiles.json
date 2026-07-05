@@ -1,35 +1,140 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/UpdateChecker.java",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/settings.gradle.kts",
       "selection": {
         "end": {
-          "column": 0,
-          "index": 28,
-          "line": 1
+          "column": 15,
+          "index": 1426,
+          "line": 39
         },
         "start": {
-          "column": 0,
-          "index": 28,
-          "line": 1
+          "column": 15,
+          "index": 1426,
+          "line": 39
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle.kts",
       "selection": {
         "end": {
-          "column": 21,
-          "index": 241,
-          "line": 13
+          "column": 5,
+          "index": 4571,
+          "line": 129
         },
         "start": {
-          "column": 21,
-          "index": 241,
-          "line": 13
+          "column": 5,
+          "index": 4571,
+          "line": 129
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/MainActivity.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 23135,
+          "line": 632
+        },
+        "start": {
+          "column": 1,
+          "index": 23135,
+          "line": 632
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
+      "selection": {
+        "end": {
+          "column": 84,
+          "index": 7603,
+          "line": 181
+        },
+        "start": {
+          "column": 84,
+          "index": 7603,
+          "line": 181
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/attrs.xml",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/styles.xml",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/colors.xml",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/dimens.xml",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/drawable/glass_background.xml",
+      "selection": {
+        "end": {
+          "column": 22,
+          "index": 195,
+          "line": 5
+        },
+        "start": {
+          "column": 22,
+          "index": 195,
+          "line": 5
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml"
 }

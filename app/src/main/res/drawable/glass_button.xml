@@ -1,0 +1,16 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape>
+            <solid android:color="@color/overlay_medium" />
+            <corners android:radius="12dp" />
+            <stroke android:width="0.5dp" android:color="@color/glass_border" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <solid android:color="@color/glass_background" />
+            <corners android:radius="12dp" />
+            <stroke android:width="0.5dp" android:color="@color/glass_border" />
+        </shape>
+    </item>
+</selector>

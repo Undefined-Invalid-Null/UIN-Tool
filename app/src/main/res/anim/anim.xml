@@ -1,0 +1,17 @@
+<resources>
+    <!-- 弹窗动画 -->
+    <item name="anim_dialog_enter" type="anim">@anim/scale_in</item>
+    <item name="anim_dialog_exit" type="anim">@anim/scale_out</item>
+    
+    <!-- 底部弹窗动画 -->
+    <item name="anim_bottom_sheet_enter" type="anim">@anim/slide_in_bottom</item>
+    <item name="anim_bottom_sheet_exit" type="anim">@anim/slide_out_bottom</item>
+    
+    <!-- 页面切换动画 -->
+    <item name="anim_page_enter" type="anim">@anim/slide_in_right</item>
+    <item name="anim_page_exit" type="anim">@anim/slide_out_left</item>
+    
+    <!-- 透明页面动画 -->
+    <item name="anim_translucent_enter" type="anim">@anim/fade_in</item>
+    <item name="anim_translucent_exit" type="anim">@anim/fade_out</item>
+</resources>
