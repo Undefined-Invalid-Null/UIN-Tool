@@ -1,4 +1,3 @@
-// app/build.gradle.kts
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -37,6 +36,8 @@ android {
     }
 
     compileOptions {
+        // ✅ 启用核心库脱糖（修复 language-textmate 依赖问题）
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -129,6 +130,9 @@ dependencies {
 
     // ==================== 解决 ProfileVerifier 依赖问题 ====================
     implementation("com.google.guava:guava:31.1-android")
+
+    // ==================== ✅ 核心库脱糖（修复 language-textmate 问题） ====================
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
     // ==================== 测试 ====================
     testImplementation("junit:junit:4.13.2")
