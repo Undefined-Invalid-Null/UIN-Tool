@@ -1,23 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:installLocation="internalOnly"
-    android:sharedUserId="${TERMUX_PACKAGE_NAME}"
-    android:sharedUserLabel="@string/shared_user_label">
+    android:installLocation="internalOnly">
 
-    <!-- ==================== 存储权限 ==================== -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
-
-    <!-- ==================== 网络权限 ==================== -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 权限声明 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
-    <!-- ==================== 系统权限 ==================== -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -28,137 +19,56 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- ==================== 其他权限 ==================== -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.READ_SMS" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
-    <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-
-    <uses-feature
-        android:name="android.hardware.touchscreen"
-        android:required="false" />
-    <uses-feature
-        android:name="android.software.leanback"
-        android:required="false" />
-
-    <!-- ==================== 权限定义 ==================== -->
-    <permission
-        android:name="${TERMUX_PACKAGE_NAME}.permission.RUN_COMMAND"
-        android:description="@string/permission_run_command_description"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/permission_run_command_label"
-        android:protectionLevel="dangerous" />
-
-    <queries>
-        <package android:name="moe.shizuku.privileged.api" />
-        <package android:name="com.rosan.dhizuku" />
-    </queries>
+    <!-- MultiDex 支持 -->
+    <uses-permission android:name="android.permission.MULTI_DEX" />
 
     <application
         android:name=".UinApplication"
-        android:allowBackup="true"
-        android:banner="@drawable/banner"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:largeHeap="true"
-        android:networkSecurityConfig="@xml/network_security_config"
-        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.UIN.Tool"
-        android:usesCleartextTraffic="true"
+        android:supportsRtl="false"
+        android:requestLegacyExternalStorage="true"
+        android:theme="@style/Theme.UinTool"
         tools:targetApi="m">
 
         <!-- ============================================================
-             UIN Tool - 启动 Activity (唯一 LAUNCHER)
-             ============================================================ -->
-        <activity
-            android:name=".SplashActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.UIN.Tool.Splash">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
-        </activity>
-
-        <!-- ============================================================
-             UIN Tool - 主界面
-             ============================================================ -->
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:alwaysRetainTaskState="true"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.UIN.Tool"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="uin" android:host="tools" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="uin" android:host="check_update" />
-            </intent-filter>
-        </activity>
-
-        <!-- ============================================================
-             Termux - 终端 Activity (无 LAUNCHER)
-             ============================================================ -->
+        主 Activity
+        ============================================================ -->
         <activity
             android:name=".app.TermuxActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|keyboard|keyboardHidden|navigation"
-            android:label="@string/application_name"
+            android:label="@string/app_name"
             android:launchMode="standard"
             android:resizeableActivity="true"
-            android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
+            android:theme="@style/Theme.UinTool.Activity.NoActionBar"
             tools:targetApi="n">
-            <!--
-            ❌ 已移除 LAUNCHER intent-filter，避免双图标
-            ✅ 只能通过 DevScreen 中的「打开终端」按钮启动
-            -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <!-- Termux Activity Alias (移除 LAUNCHER) -->
+        <!-- ============================================================
+        Home Activity 别名（Android Things）
+        ============================================================ -->
         <activity-alias
             android:name=".HomeActivity"
             android:exported="true"
             android:targetActivity=".app.TermuxActivity">
-            <!--
-            ❌ 已移除 LAUNCHER intent-filter
-            -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.IOT_LAUNCHER" />
@@ -167,178 +77,37 @@
         </activity-alias>
 
         <!-- ============================================================
-             UIN Tool - 引导页
-             ============================================================ -->
-        <activity
-            android:name=".ui.screen.onboarding.OnboardingActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 插件相关
-             ============================================================ -->
-        <activity
-            android:name=".plugin.PluginHostActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:taskAffinity="com.UIN.Tool.plugin"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.dev.BasePluginWizardActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.dev.CodeEditorActivity"
-            android:exported="false"
-            android:label="代码编辑器"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.dev.DevDocActivity"
-            android:exported="false"
-            android:label="开发文档"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 管理相关
-             ============================================================ -->
-        <activity
-            android:name=".ui.screen.manage.PluginManageActivity"
-            android:exported="false"
-            android:label="插件管理"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.manage.UIConfigActivity"
-            android:exported="false"
-            android:label="UI个性化"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.manage.GitHubMirrorActivity"
-            android:exported="false"
-            android:label="GitHub加速"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.manage.WidgetConfigActivity"
-            android:exported="false"
-            android:label="小部件配置"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 权限管理
-             ============================================================ -->
-        <activity
-            android:name=".ui.screen.permission.PermissionManagerActivity"
-            android:exported="false"
-            android:label="权限管理"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.permission.PluginPermissionActivity"
-            android:exported="false"
-            android:label="插件权限"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.permission.PermissionExplainActivity"
-            android:exported="false"
-            android:label="权限说明"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 备份恢复
-             ============================================================ -->
-        <activity
-            android:name=".ui.screen.backup.BackupManagerActivity"
-            android:exported="false"
-            android:label="备份恢复"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 文档
-             ============================================================ -->
-        <activity
-            android:name=".ui.screen.docs.DocBrowserActivity"
-            android:exported="false"
-            android:label="文档中心"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".ui.screen.docs.DocViewerActivity"
-            android:exported="false"
-            android:label="文档"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 帮助
-             ============================================================ -->
-        <activity
-            android:name=".ui.screen.help.HelpActivity"
-            android:exported="false"
-            android:label="使用帮助"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 日志
-             ============================================================ -->
-        <activity
-            android:name=".ui.log.LogViewerActivity"
-            android:exported="false"
-            android:label="运行日志"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <!-- ============================================================
-             UIN Tool - 跳板 Activity
-             ============================================================ -->
-        <activity
-            android:name=".TrampolineActivity"
-            android:exported="true"
-            android:excludeFromRecents="true"
-            android:launchMode="singleInstance"
-            android:noHistory="true"
-            android:taskAffinity="com.UIN.Tool.trampoline"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-            </intent-filter>
-        </activity>
-
-        <!-- ============================================================
-             Termux - Settings
-             ============================================================ -->
-        <activity
-            android:name=".app.activities.SettingsActivity"
-            android:exported="true"
-            android:label="@string/title_activity_termux_settings"
-            android:theme="@style/Theme.TermuxApp.DayNight.NoActionBar" />
-
+        其他 Activity
+        ============================================================ -->
         <activity
             android:name=".app.activities.HelpActivity"
             android:exported="false"
-            android:label="@string/application_name"
+            android:label="@string/app_name"
             android:parentActivityName=".app.TermuxActivity"
             android:resizeableActivity="true"
             tools:targetApi="n" />
 
+        <activity
+            android:name=".app.activities.SettingsActivity"
+            android:exported="true"
+            android:label="@string/title_settings"
+            android:theme="@style/Theme.UinTool.NoActionBar" />
+
+        <activity
+            android:name=".shared.activities.ReportActivity"
+            android:theme="@style/Theme.UinTool.Markdown"
+            android:documentLaunchMode="intoExisting" />
+
         <!-- ============================================================
-             Termux - File Receiver
-             ============================================================ -->
+        文件接收 Activity
+        ============================================================ -->
         <activity
             android:name=".app.api.file.FileReceiverActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:noHistory="true"
             android:resizeableActivity="true"
-            android:taskAffinity="${TERMUX_PACKAGE_NAME}.filereceiver"
+            android:taskAffinity="com.UIN.Tool.filereceiver"
             tools:targetApi="n" />
 
         <activity-alias
@@ -374,44 +143,28 @@
         </activity-alias>
 
         <!-- ============================================================
-             Termux - Services
-             ============================================================ -->
-        <service
-            android:name=".app.TermuxService"
-            android:exported="false" />
-
-        <service
-            android:name=".app.RunCommandService"
+        Content Provider
+        ============================================================ -->
+        <provider
+            android:name=".filepicker.TermuxDocumentsProvider"
+            android:authorities="com.UIN.Tool.documents"
             android:exported="true"
-            android:permission="${TERMUX_PACKAGE_NAME}.permission.RUN_COMMAND">
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
             <intent-filter>
-                <action android:name="${TERMUX_PACKAGE_NAME}.RUN_COMMAND" />
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
-        </service>
+        </provider>
+
+        <provider
+            android:name=".app.TermuxOpenReceiver$ContentProvider"
+            android:authorities="com.UIN.Tool.files"
+            android:exported="true"
+            android:grantUriPermissions="true" />
 
         <!-- ============================================================
-             UIN Tool - Widget Services
-             ============================================================ -->
-        <service
-            android:name=".widget.WidgetService"
-            android:exported="false"
-            android:permission="android.permission.BIND_REMOTEVIEWS" />
-
-        <service
-            android:name=".core.accessibility.UinAccessibilityService"
-            android:exported="true"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
-        <!-- ============================================================
-             Termux - Receivers
-             ============================================================ -->
+        Broadcast Receiver
+        ============================================================ -->
         <receiver
             android:name=".app.TermuxOpenReceiver"
             android:exported="false" />
@@ -429,123 +182,35 @@
             android:exported="false" />
 
         <!-- ============================================================
-             UIN Tool - Widget Receivers
-             ============================================================ -->
-        <receiver
-            android:name=".widget.WidgetProvider"
+        Service
+        ============================================================ -->
+        <service
+            android:name=".app.TermuxService"
+            android:exported="false" />
+
+        <service
+            android:name=".app.RunCommandService"
             android:exported="true"
-            android:label="@string/widget_name">
+            android:permission="com.UIN.Tool.permission.RUN_COMMAND">
             <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.UIN.Tool.REFRESH_WIDGET" />
+                <action android:name="com.UIN.Tool.RUN_COMMAND" />
             </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/uin_widget_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.Widget1x1Provider"
-            android:exported="true"
-            android:label="@string/widget_1x1_name">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.UIN.Tool.REFRESH_WIDGET_1x1" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_1x1_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.WidgetPinnedReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.UIN.Tool.WIDGET_PINNED" />
-                <action android:name="com.UIN.Tool.WIDGET_1X1_PINNED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".widget.SystemEventReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
+        </service>
 
         <!-- ============================================================
-             UIN Tool - Widget Activity
-             ============================================================ -->
-        <activity
-            android:name=".widget.WidgetConfigureActivity"
-            android:exported="true"
-            android:label="配置小部件"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".widget.Widget1x1ConfigureActivity"
-            android:exported="true"
-            android:label="配置快捷方式"
-            android:theme="@style/Theme.UIN.Tool" />
-
-        <activity
-            android:name=".widget.WidgetClickActivity"
-            android:exported="true"
-            android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-
-        <!-- ============================================================
-             Termux - Providers
-             ============================================================ -->
-        <provider
-            android:name=".filepicker.TermuxDocumentsProvider"
-            android:authorities="${TERMUX_PACKAGE_NAME}.documents"
-            android:exported="true"
-            android:grantUriPermissions="true"
-            android:permission="android.permission.MANAGE_DOCUMENTS">
-            <intent-filter>
-                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
-            </intent-filter>
-        </provider>
-
-        <provider
-            android:name=".app.TermuxOpenReceiver$ContentProvider"
-            android:authorities="${TERMUX_PACKAGE_NAME}.files"
-            android:exported="true"
-            android:grantUriPermissions="true"
-            android:permission="${TERMUX_PACKAGE_NAME}.permission.RUN_COMMAND" />
-
-        <!-- ============================================================
-             UIN Tool - FileProvider
-             ============================================================ -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
-
-        <!-- ============================================================
-             Metadata
-             ============================================================ -->
+        Meta Data
+        ============================================================ -->
         <meta-data
             android:name="android.max_aspect"
             android:value="10.0" />
 
+        <!-- Samsung DeX 支持 -->
         <meta-data
             android:name="com.samsung.android.keepalive.density"
             android:value="true" />
-
         <meta-data
             android:name="com.samsung.android.multidisplay.keep_process_alive"
             android:value="true" />
-
         <meta-data
             android:name="com.sec.android.support.multiwindow"
             android:value="true" />
