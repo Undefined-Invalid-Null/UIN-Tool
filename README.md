@@ -1,295 +1,531 @@
-# Termux application
+# UIN Tool
 
-[![Build status](https://github.com/termux/termux-app/workflows/Build/badge.svg)](https://github.com/termux/termux-app/actions)
-[![Testing status](https://github.com/termux/termux-app/workflows/Unit%20tests/badge.svg)](https://github.com/termux/termux-app/actions)
-[![Join the chat at https://gitter.im/termux/termux](https://badges.gitter.im/termux/termux.svg)](https://gitter.im/termux/termux)
-[![Join the Termux discord server](https://img.shields.io/discord/641256914684084234.svg?label=&logo=discord&logoColor=ffffff&color=5865F2)](https://discord.gg/HXpF69X)
-[![Termux library releases at Jitpack](https://jitpack.io/v/termux/termux-app.svg)](https://jitpack.io/#termux/termux-app)
+![Version](https://img.shields.io/badge/version-3.10.0-blue)
+![Build](https://img.shields.io/badge/build-9-green)
+![Android](https://img.shields.io/badge/Android-5.0%2B-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-orange)
 
+## 应用简介
 
-[Termux](https://termux.dev) is an Android terminal application and Linux environment.
+UIN Tool 是一个强大的 Android 插件化框架应用，允许用户动态加载和运行第三方插件。无论是原生 Java 插件还是 Web 技术栈（HTML/CSS/JS）的插件，都能在 UIN Tool 中无缝运行。它提供了一个完整的插件生态系统，包括插件开发、管理、运行和权限控制等功能。
 
-Note that this repository is for the app itself (the user interface and the terminal emulation). For the packages installable inside the app, see [termux/termux-packages](https://github.com/termux/termux-packages).
+### 核心理念
 
-Quick how-to about Termux package management is available at [Package Management](https://github.com/termux/termux-packages/wiki/Package-Management). It also has info on how to fix **`repository is under maintenance or down`** errors when running `apt` or `pkg` commands.
+- **开放**：任何人都可以开发插件，支持原生 Java 和 Web 技术栈
+- **安全**：插件权限独立管理，支持签名验证，防止恶意插件
+- **高效**：原生性能，Web 插件支持热更新，无需重新编译
+- **易用**：可视化开发向导，无需复杂配置即可创建插件
+- **灵活**：支持网格/列表视图切换，支持分类管理
 
-**We are looking for Termux Android application maintainers.**
+---
 
-***
+## 版本信息
 
-**NOTICE: Termux may be unstable on Android 12+.** Android OS will kill any (phantom) processes greater than 32 (limit is for all apps combined) and also kill any processes using excessive CPU. You may get `[Process completed (signal 9) - press Enter]` message in the terminal without actually exiting the shell process yourself. Check the related issue [#2366](https://github.com/termux/termux-app/issues/2366), [issue tracker](https://issuetracker.google.com/u/1/issues/205156966), [phantom cached and empty processes docs](https://github.com/agnostic-apollo/Android-Docs/blob/master/en/docs/apps/processes/phantom-cached-and-empty-processes.md) and [this TLDR comment](https://github.com/termux/termux-app/issues/2366#issuecomment-1237468220) on how to disable trimming of phantom and excessive cpu usage processes. A proper docs page will be added later. An option to disable the killing should be available in Android 12L or 13, so upgrade at your own risk if you are on Android 11, specially if you are not rooted.
+### 当前版本：v3.10.0 (Build 9)
 
-***
+| 项目 | 信息 |
+|------|------|
+| 版本号 | 3.10.0 |
+| 版本代码 | 9 |
+| 更新日期 | 2026年6月9日 |
+| 最低 Android 版本 | 5.0 (API 21) |
+| 目标 Android 版本 | 13 (API 33) |
+| 编译 SDK 版本 | 33 (Android 13) |
+| 架构 | arm64-v8a, armeabi-v7a, x86, x86_64 |
 
-## Contents
-- [Termux App and Plugins](#termux-app-and-plugins)
-- [Installation](#installation)
-- [Uninstallation](#uninstallation)
-- [Important Links](#important-links)
-- [Debugging](#debugging)
-- [For Maintainers and Contributors](#for-maintainers-and-contributors)
-- [Forking](#forking)
-- [Sponsors and Funders](#sponsors-and-funders)
-##
+### 版本历史
 
+#### v3.10.0 (2026年6月9日)
 
+**🎉 重大更新：GitHub 加速 + 强制更新机制**
 
-## Termux App and Plugins
+**新增功能：**
+- **GitHub 加速功能**：
+  - 独立的 GitHub 加速管理页面
+  - 内置 13+ 个国内可用镜像站
+  - 支持手动添加自定义镜像站
+  - 支持导入/导出镜像站列表（txt 格式）
+  - 支持一键测试镜像站可用性
+  - CDN 加速开关（使用 CDN 代理加速下载）
+  - 镜像站列表支持全选/取消全选
+  - 长按可删除自定义镜像站
+- **强制更新机制**：
+  - Release Tag 格式支持强制更新标识
+  - 格式：`{versionCode}-{versionName}-{forceFlag}`
+  - `forceFlag = 1`：强制更新（无取消按钮）
+  - `forceFlag = 0` 或无：普通更新（可忽略）
+  - 强制更新时隐藏「暂不更新」按钮
 
-The core [Termux](https://github.com/termux/termux-app) app comes with the following optional plugin apps.
+**🐛 Bug 修复：**
+- **修复 SplashActivity 崩溃**：
+  - 修复 Activity 销毁后尝试显示 Dialog 导致的 `BadTokenException`
+  - 添加 Activity 生命周期检查，确保 Dialog 安全显示
+- **修复 CheckBox 背景变色问题**：
+  - 统一 CheckBox 样式，设置 `buttonTint` 和透明背景
+  - CDN 加速开关改用 TextView 状态显示，彻底解决背景变色
+- **修复 UI 配置页面图标着色开关**：
+  - 改用 TextView 状态显示，简单可靠
+- **修复权限管理页面 CheckBox 背景**：
+  - 统一 CheckBox 样式，与整体 UI 保持一致
+- **修复布局文件编译错误**：
+  - 修复 `activity_github_mirror.xml` 中的 XML 语法错误
 
-- [com.UIN.Tool:API](https://github.com/termux/termux-api)
-- [com.UIN.Tool:Boot](https://github.com/termux/termux-boot)
-- [com.UIN.Tool:Float](https://github.com/termux/termux-float)
-- [com.UIN.Tool:Styling](https://github.com/termux/termux-styling)
-- [com.UIN.Tool:Tasker](https://github.com/termux/termux-tasker)
-- [com.UIN.Tool:Widget](https://github.com/termux/termux-widget)
-##
+**优化：**
+- 镜像站列表支持全选/取消全选
+- 整体页面滑动优化，镜像站列表独立滑动
+- 更新文档完善，记录所有功能
 
+#### v3.5.0 (2026年6月8日)
 
+**🐛 修复：开发页面显示问题**
 
-## Installation
+**修复内容：**
+- **修复开发页面按钮不显示问题**：
+  - 创建新插件按钮现在正常显示
+  - 导出模板按钮现在正常显示
+- **修复查看文档按钮残留问题**：移除开发页面中不再需要的查看文档按钮
+- **修复按钮样式不一致问题**：导出模板按钮样式与创建新插件按钮保持统一
+- **修复代码编译错误**：添加缺失的 import 语句
+- **修复按钮文字不可见问题**：优化按钮样式确保文字清晰可见
 
-Latest version is `v0.118.3`.
+**优化：**
+- 开发页面布局优化，两个主要按钮间距合理
+- 快速开始卡片内容更新，帮助用户快速上手
+- 代码结构优化，移除冗余代码
 
-**NOTICE: It is highly recommended that you update to `v0.118.0` or higher ASAP for various bug fixes, including a critical world-readable vulnerability reported [here](https://termux.github.io/general/2022/02/15/termux-apps-vulnerability-disclosures.html). See [below](#google-play-store-experimental-branch) for information regarding Termux on Google Play.**
+#### v3.4.0 (2026年6月8日)
 
-Termux can be obtained through various sources listed below for **only** Android `>= 7` with full support for apps and packages.
+**🎉 重大更新：应用快捷方式 + 自动更新 + UI 全面优化**
 
-Support for both app and packages was dropped for Android `5` and `6` on [2020-01-01](https://www.reddit.com/r/termux/comments/dnzdbs/end_of_android56_support_on_20200101/) at `v0.83`, however it was re-added just for the app *without any support for package updates* on [2022-05-24](https://github.com/termux/termux-app/pull/2740) via the [GitHub](#github) sources. Check [here](https://github.com/termux/termux-app/wiki/Termux-on-android-5-or-6) for the details.
+**新增功能：**
+- **应用图标快捷方式**：长按应用图标显示快捷菜单
+- **自动更新检测**：启动时自动检查 GitHub 最新版本
+- **应用内更新**：支持自动下载和手动下载两种方式
+- **版本忽略功能**：可忽略特定版本
+- **下载进度显示**：实时显示下载百分比和速度
+- **后台下载支持**：后台下载，通知栏提醒
+- **一键安装**：下载完成后直接安装
 
-The APK files of different sources are signed with different signature keys. The `Termux` app and all its plugins use the same [`sharedUserId`](https://developer.android.com/guide/topics/manifest/manifest-element) `com.UIN.Tool` and so all their APKs installed on a device must have been signed with the same signature key to work together and so they must all be installed from the same source. Do not attempt to mix them together, i.e do not try to install an app or plugin from `F-Droid` and another one from a different source like `GitHub`. Android Package Manager will also normally not allow installation of APKs with different signatures and you will get errors on installation like `App not installed`, `Failed to install due to an unknown error`, `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, `INSTALL_FAILED_SHARED_USER_INCOMPATIBLE`, `signatures do not match previously installed version`, etc. This restriction can be bypassed with root or with custom roms.
+**UI 全面优化：**
+- **完整颜色选择器**：支持 RGB 三通道独立调节
+- **透明度调节**：支持颜色透明度调节
+- **十六进制颜色输入**：支持直接输入颜色值
+- **实时颜色预览**：选择颜色时实时预览
+- **圆角实时调节**：滑块拖动时实时预览
+- **图标着色开关**：可关闭图标着色保持原色
+- **38+ 颜色配置项**：全部颜色可自定义
+- **深色模式适配**：深色模式独立配置
+- **UI 配置导入导出**：支持配置导入导出
 
-If you wish to install from a different source, then you must **uninstall any and all existing Termux or its plugin app APKs** from your device first, then install all new APKs from the same new source. Check [Uninstallation](#uninstallation) section for details. You may also want to consider [Backing up Termux](https://wiki.termux.dev/wiki/Backing_up_Termux) before the uninstallation so that you can restore it after re-installing from Termux different source.
+#### v3.0.0 (2026年6月8日)
 
-In the following paragraphs, *"bootstrap"* refers to the minimal packages that are shipped with the `termux-app` itself to start a working shell environment. Its zips are built and released [here](https://github.com/termux/termux-packages/releases).
+**🎉 重大更新：启动体验与文档系统**
 
-### F-Droid
+**新增功能：**
+- **应用启动页优化**：新增 SplashActivity
+- **引导页系统**：首次启动显示引导页
+- **文档中心**：集中管理使用帮助、开发文档等
+- **权限说明页面**：详细说明各项权限的用途
+- **点状指示器**：美观的点状页面指示器
+- **仓库页面搜索**：支持按名称、ID、描述搜索
+- **GitHub 镜像加速**：内置多个镜像站
 
-Termux application can be obtained from `F-Droid` from [here](https://f-droid.org/en/packages/com.UIN.Tool/).
+#### v2.8.0 (2026年6月8日)
 
-You **do not** need to download the `F-Droid` app (via the `Download F-Droid` link) to install Termux. You can download the Termux APK directly from the site by clicking the `Download APK` link at the bottom of each version section.
+**🎉 重大更新：应用内更新与版本管理**
 
-It usually takes a few days (or even a week or more) for updates to be available on `F-Droid` once an update has been released on `GitHub`. The `F-Droid` releases are built and published by `F-Droid` once they [detect](https://gitlab.com/fdroid/fdroiddata/-/blob/master/metadata/com.UIN.Tool.yml) a new `GitHub` release. The Termux maintainers **do not** have any control over the building and publishing of the Termux apps on `F-Droid`. Moreover, the Termux maintainers also do not have access to the APK signing keys of `F-Droid` releases, so we cannot release an APK ourselves on `GitHub` that would be compatible with `F-Droid` releases.
+**新增功能：**
+- 应用内更新检查
+- 版本列表浏览
+- 应用内下载 APK
+- 下载进度显示
+- 后台下载支持
+- 一键安装
 
-The `F-Droid` app often may not notify you of updates and you will manually have to do a pull down swipe action in the `Updates` tab of the app for it to check updates. Make sure battery optimizations are disabled for the app, check https://dontkillmyapp.com/ for details on how to do that.
+#### v2.6.0 (2026年6月7日)
 
-Only a universal APK is released, which will work on all supported architectures. The APK and bootstrap installation size will be `~180MB`. `F-Droid` does [not support](https://github.com/termux/termux-app/pull/1904) architecture specific APKs.
+**🎉 重大更新：插件功能全面增强**
 
-### GitHub
+**新增功能：**
+- Web 插件网络请求支持
+- Web 插件文件系统支持
+- Web 插件传感器支持
+- 插件搜索功能
+- GitHub 镜像加速
 
-Termux application can be obtained on `GitHub` either from [`GitHub Releases`](https://github.com/termux/termux-app/releases) for version `>= 0.118.0` or from [`GitHub Build Action`](https://github.com/termux/termux-app/actions/workflows/debug_build.yml?query=branch%3Amaster+event%3Apush) workflows. **For android `>= 7`, only install `apt-android-7` variants. For android `5` and `6`, only install `apt-android-5` variants.**
+#### v2.0.0 (2026年6月7日)
 
-The APKs for `GitHub Releases` will be listed under `Assets` drop-down of a release. These are automatically attached when a new version is released.
+**🎉 重大更新：插件仓库功能**
 
-The APKs for `GitHub Build` action workflows will be listed under `Artifacts` section of a workflow run. These are created for each commit/push done to the repository and can be used by users who don't want to wait for releases and want to try out the latest features immediately or want to test their pull requests. Note that for action workflows, you need to be [**logged into a `GitHub` account**](https://github.com/login) for the `Artifacts` links to be enabled/clickable. If you are using the [`GitHub` app](https://github.com/mobile), then make sure to open workflow link in a browser like Chrome or Firefox that has your GitHub account logged in since the in-app browser may not be logged in.
+**新增功能：**
+- GitHub 插件仓库集成
+- 镜像加速下载
+- 实时进度显示
+- 插件详情查看
+- 一键安装/打开
 
-The APKs for both of these are [`debuggable`](https://developer.android.com/studio/debug) and are compatible with each other but they are not compatible with other sources.
+#### v1.1.0 (2026年6月7日)
 
-Both universal and architecture specific APKs are released. The APK and bootstrap installation size will be `~180MB` if using universal and `~120MB` if using architecture specific. Check [here](https://github.com/termux/termux-app/issues/2153) for details.
+**新增功能：**
+- 分类管理
+- 工具页面长按菜单
+- 小部件系统重构
+- 错误处理增强
+- 更新日志查看
 
-**Security warning**: APK files on GitHub are signed with a test key that has been [shared with community](https://github.com/termux/termux-app/blob/master/app/testkey_untrusted.jks). This IS NOT an official developer key and everyone can use it to generate releases for own testing. Be very careful when using Termux GitHub builds obtained elsewhere except https://github.com/termux/termux-app. Everyone is able to use it to forge a malicious Termux update installable over the GitHub build. Think twice about installing Termux builds distributed via Telegram or other social media. If your device get caught by malware, we will not be able to help you.
+#### v1.0.0 (2026年6月6日) - 首次正式发布
 
-The [test key](https://github.com/termux/termux-app/blob/master/app/testkey_untrusted.jks) shall not be used to impersonate @termux and can't be used for this anyway. This key is not trusted by us and it is quite easy to detect its use in user generated content.
+**新增功能：**
+- 插件引擎（DEX + WebView）
+- 插件管理（导入/导出/批量/卸载）
+- 插件开发向导
+- 权限管理
+- 备份恢复
+- 日志系统
+- 桌面小部件
+- UI 个性化
+- 无障碍服务
 
-<details>
-<summary>Keystore information</summary>
+---
+
+## 功能清单
+
+### ✅ 已实现功能
+
+| 模块 | 功能 | 状态 | 说明 |
+|------|------|------|------|
+| **启动体验** | SplashActivity | ✅ | 应用启动页 |
+| **启动体验** | 引导页系统 | ✅ | 首次启动引导页 |
+| **启动体验** | 点状指示器 | ✅ | 美观的页面指示器 |
+| **启动体验** | 应用图标快捷方式 | ✅ | 长按图标快捷菜单 |
+| **应用更新** | 自动更新检测 | ✅ | 启动时自动检查 |
+| **应用更新** | 强制更新机制 | ✅ | 支持强制更新 |
+| **应用更新** | 版本忽略功能 | ✅ | 可忽略版本 |
+| **应用更新** | 版本列表浏览 | ✅ | 查看所有版本 |
+| **应用更新** | 应用内下载 | ✅ | 显示下载进度 |
+| **应用更新** | 后台下载 | ✅ | 通知栏提醒 |
+| **应用更新** | 一键安装 | ✅ | 直接安装 APK |
+| **GitHub 加速** | 镜像站管理 | ✅ | 独立管理页面 |
+| **GitHub 加速** | 内置镜像站 | ✅ | 13+ 个镜像站 |
+| **GitHub 加速** | 自定义镜像 | ✅ | 手动添加镜像站 |
+| **GitHub 加速** | 导入/导出 | ✅ | TXT 格式导入导出 |
+| **GitHub 加速** | 测试可用性 | ✅ | 一键测试镜像 |
+| **GitHub 加速** | CDN 加速 | ✅ | 可开关的 CDN 加速 |
+| **GitHub 加速** | 全选/取消 | ✅ | 镜像站列表全选 |
+| **插件引擎** | 动态加载 DEX | ✅ | DexClassLoader |
+| **插件引擎** | 资源隔离 | ✅ | 独立 Context |
+| **插件引擎** | 生命周期管理 | ✅ | 完整生命周期 |
+| **插件引擎** | WebView 支持 | ✅ | HTML/CSS/JS |
+| **插件引擎** | 网络请求 API | ✅ | HTTP GET/POST |
+| **插件引擎** | 文件系统 API | ✅ | 读写删除文件 |
+| **插件引擎** | 传感器 API | ✅ | 加速度计等 |
+| **插件管理** | 导入插件 | ✅ | TPK 文件导入 |
+| **插件管理** | 导出插件 | ✅ | ZIP 包导出 |
+| **插件管理** | 批量导入 | ✅ | 多个 TPK 文件 |
+| **插件管理** | 插件集导入 | ✅ | ZIP 批量导入 |
+| **插件管理** | 分类管理 | ✅ | 添加/删除分类 |
+| **插件管理** | 签名验证 | ✅ | SHA-256 验证 |
+| **插件管理** | 桌面快捷方式 | ✅ | 创建快捷方式 |
+| **插件仓库** | GitHub 集成 | ✅ | 官方仓库 |
+| **插件仓库** | 镜像加速 | ✅ | 自动选择镜像 |
+| **插件仓库** | 下载进度 | ✅ | 实时显示 |
+| **插件仓库** | 插件详情 | ✅ | 查看详细信息 |
+| **插件仓库** | 搜索功能 | ✅ | 按关键词搜索 |
+| **文档系统** | 文档中心 | ✅ | 集中管理文档 |
+| **文档系统** | 使用帮助 | ✅ | 详细使用说明 |
+| **文档系统** | 开发文档 | ✅ | 插件开发指南 |
+| **文档系统** | 更新日志 | ✅ | 版本历史 |
+| **文档系统** | 关于页面 | ✅ | 应用信息 |
+| **文档系统** | 贡献者名单 | ✅ | 贡献者列表 |
+| **权限管理** | 权限说明 | ✅ | 详细说明 |
+| **权限管理** | 应用权限 | ✅ | 管理应用权限 |
+| **权限管理** | 插件权限 | ✅ | 独立权限配置 |
+| **工具页面** | 长按菜单 | ✅ | 详情弹窗 |
+| **工具页面** | 网格/列表切换 | ✅ | 两种视图模式 |
+| **工具页面** | 插件搜索 | ✅ | 按关键词搜索 |
+| **开发工具** | 原生插件向导 | ✅ | Java 插件创建 |
+| **开发工具** | Web 插件向导 | ✅ | Web 插件创建 |
+| **开发工具** | 代码编辑器 | ✅ | 内置编辑器 |
+| **开发工具** | 模板导出 | ✅ | 导出模板文档 |
+| **实用工具** | 备份恢复 | ✅ | 备份所有数据 |
+| **实用工具** | 日志查看 | ✅ | 查看导出日志 |
+| **实用工具** | 崩溃捕获 | ✅ | 自动保存日志 |
+| **桌面小部件** | 列表小部件 | ✅ | 显示3个插件 |
+| **桌面小部件** | 1x1快捷方式 | ✅ | 单个插件快捷方式 |
+| **UI 个性化** | 完整颜色选择器 | ✅ | RGB + 透明度 |
+| **UI 个性化** | 38+ 颜色配置 | ✅ | 全部可自定义 |
+| **UI 个性化** | 圆角配置 | ✅ | 7种圆角 |
+| **UI 个性化** | 图标着色开关 | ✅ | 可关闭着色 |
+| **UI 个性化** | 实时预览 | ✅ | 即时预览 |
+| **UI 个性化** | 导出/导入配置 | ✅ | 配置备份 |
+| **UI 个性化** | 深色模式 | ✅ | 独立配置 |
+| **无障碍** | 无障碍服务 | ✅ | 自动化操作 |
+
+### 🚧 开发中功能
+
+| 功能 | 预计完成 |
+|------|----------|
+| 插件自动更新 | v3.11.0 |
+| 插件评分系统 | v3.11.0 |
+| 更多 UI 主题模板 | v3.11.0 |
+| 插件调试工具 | v3.12.0 |
+
+### 📅 计划中功能
+
+| 功能 | 预计版本 |
+|------|----------|
+| Compose UI 插件支持 | v4.0.0 |
+| 云端编译服务 | v4.0.0 |
+| 插件社区 | v4.0.0 |
+| 脚本插件支持 | v4.5.0 |
+
+---
+
+## 项目结构
 
 ```
-Alias name: alias
-Creation date: Oct 4, 2019
-Entry type: PrivateKeyEntry
-Certificate chain length: 1
-Certificate[1]:
-Owner: CN=APK Signer, OU=Earth, O=Earth
-Issuer: CN=APK Signer, OU=Earth, O=Earth
-Serial number: 29be297b
-Valid from: Wed Sep 04 02:03:24 EEST 2019 until: Tue Oct 26 02:03:24 EEST 2049
-Certificate fingerprints:
-         SHA1: 51:79:55:EA:BF:69:FC:05:7C:41:C7:D3:79:DB:BC:EF:20:AD:85:F2
-         SHA256: B6:DA:01:48:0E:EF:D5:FB:F2:CD:37:71:B8:D1:02:1E:C7:91:30:4B:DD:6C:4B:F4:1D:3F:AA:BA:D4:8E:E5:E1
-Signature algorithm name: SHA1withRSA (disabled)
-Subject Public Key Algorithm: 2048-bit RSA key
-Version: 3
-```
 
-</details>
-
-### Google Play Store **(Experimental branch)**
-
-There is currently a build of Termux available on Google Play for Android 11+ devices, with extensive adjustments in order to pass policy requirements there. This is under development and has missing functionality and bugs (see [here](https://github.com/termux-play-store/) for status updates) compared to the stable F-Droid build, which is why most users who can should still use F-Droid or GitHub build as mentioned above.
-
-Currently, Google Play will try to update installations away from F-Droid ones. Updating will still fail as [sharedUserId](https://developer.android.com/guide/topics/manifest/manifest-element#uid) has been removed. A planned 0.118.1 F-Droid release will fix this by setting a higher version code than used for the PlayStore app. Meanwhile, to prevent Google Play from attempting to download and then fail to install the Google Play releases over existing installations, you can open the Termux apps pages on Google Play and then click on the 3 dots options button in the top right and then disable the Enable auto update toggle. However, the Termux apps updates will still show in the PlayStore app updates list.
-
-If you want to help out with testing the Google Play build (or cannot install Termux from other sources), be aware that it's built from a separate repository (https://github.com/termux-play-store/) - be sure to report issues [there](https://github.com/termux-play-store/termux-issues/issues/new/choose), as any issues encountered might very well be specific to that repository.
-
-## Uninstallation
-
-Uninstallation may be required if a user doesn't want Termux installed in their device anymore or is switching to a different [install source](#installation). You may also want to consider [Backing up Termux](https://wiki.termux.com/wiki/Backing_up_Termux) before the uninstallation.
-
-To uninstall Termux completely, you must uninstall **any and all existing Termux or its plugin app APKs** listed in [Termux App and Plugins](#termux-app-and-plugins).
-
-Go to `Android Settings` -> `Applications` and then look for those apps. You can also use the search feature if it’s available on your device and search `termux` in the applications list.
-
-Even if you think you have not installed any of the plugins, it's strongly suggested to go through the application list in Android settings and double-check.
-##
-
-
-
-## Important Links
-
-### Community
-All community links are available [here](https://wiki.termux.com/wiki/Community).
-
-The main ones are the following.
-
-- [Termux Reddit community](https://reddit.com/r/termux)
-- [Termux User Matrix Channel](https://matrix.to/#/#termux_termux:gitter.im) ([Gitter](https://gitter.im/termux/termux))
-- [Termux Dev Matrix Channel](https://matrix.to/#/#termux_dev:gitter.im) ([Gitter](https://gitter.im/termux/dev))
-- [Termux X (Twitter)](https://twitter.com/termuxdevs)
-- [Termux Support Email](mailto:support@termux.dev)
-
-### Wikis
-
-- [Termux Wiki](https://wiki.termux.com/wiki/)
-- [Termux App Wiki](https://github.com/termux/termux-app/wiki)
-- [Termux Packages Wiki](https://github.com/termux/termux-packages/wiki)
-
-### Miscellaneous
-- [FAQ](https://wiki.termux.com/wiki/FAQ)
-- [Termux File System Layout](https://github.com/termux/termux-packages/wiki/Termux-file-system-layout)
-- [Differences From Linux](https://wiki.termux.com/wiki/Differences_from_Linux)
-- [Package Management](https://wiki.termux.com/wiki/Package_Management)
-- [Remote Access](https://wiki.termux.com/wiki/Remote_Access)
-- [Backing up Termux](https://wiki.termux.com/wiki/Backing_up_Termux)
-- [Terminal Settings](https://wiki.termux.com/wiki/Terminal_Settings)
-- [Touch Keyboard](https://wiki.termux.com/wiki/Touch_Keyboard)
-- [Android Storage and Sharing Data with Other Apps](https://wiki.termux.com/wiki/Internal_and_external_storage)
-- [Android APIs](https://wiki.termux.com/wiki/com.UIN.Tool:API)
-- [Moved Termux Packages Hosting From Bintray to IPFS](https://github.com/termux/termux-packages/issues/6348)
-- [Running Commands in Termux From Other Apps via `RUN_COMMAND` intent](https://github.com/termux/termux-app/wiki/RUN_COMMAND-Intent)
-- [Termux and Android 10](https://github.com/termux/termux-packages/wiki/Termux-and-Android-10)
-
-
-### Terminal
-
-<details>
-<summary></summary>
-
-### Terminal resources
-
-- [XTerm control sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
-- [vt100.net](https://vt100.net/)
-- [Terminal codes (ANSI and terminfo equivalents)](https://wiki.bash-hackers.org/scripting/terminalcodes)
-
-### Terminal emulators
-
-- VTE (libvte): Terminal emulator widget for GTK+, mainly used in gnome-terminal. [Source](https://github.com/GNOME/vte), [Open Issues](https://bugzilla.gnome.org/buglist.cgi?quicksearch=product%3A%22vte%22+), and [All (including closed) issues](https://bugzilla.gnome.org/buglist.cgi?bug_status=RESOLVED&bug_status=VERIFIED&chfield=resolution&chfieldfrom=-2000d&chfieldvalue=FIXED&product=vte&resolution=FIXED).
-
-- iTerm 2: OS X terminal application. [Source](https://github.com/gnachman/iTerm2), [Issues](https://gitlab.com/gnachman/iterm2/issues) and [Documentation](https://iterm2.com/documentation.html) (which includes [iTerm2 proprietary escape codes](https://iterm2.com/documentation-escape-codes.html)).
-
-- Konsole: KDE terminal application. [Source](https://projects.kde.org/projects/kde/applications/konsole/repository), in particular [tests](https://projects.kde.org/projects/kde/applications/konsole/repository/revisions/master/show/tests), [Bugs](https://bugs.kde.org/buglist.cgi?bug_severity=critical&bug_severity=grave&bug_severity=major&bug_severity=crash&bug_severity=normal&bug_severity=minor&bug_status=UNCONFIRMED&bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&product=konsole) and [Wishes](https://bugs.kde.org/buglist.cgi?bug_severity=wishlist&bug_status=UNCONFIRMED&bug_status=NEW&bug_status=ASSIGNED&bug_status=REOPENED&product=konsole).
-
-- hterm: JavaScript terminal implementation from Chromium. [Source](https://github.com/chromium/hterm), including [tests](https://github.com/chromium/hterm/blob/master/js/hterm_vt_tests.js), and [Google group](https://groups.google.com/a/chromium.org/forum/#!forum/chromium-hterm).
-
-- xterm: The grandfather of terminal emulators. [Source](https://invisible-island.net/datafiles/release/xterm.tar.gz).
-
-- Connectbot: Android SSH client. [Source](https://github.com/connectbot/connectbot)
-
-- Android Terminal Emulator: Android terminal app which Termux terminal handling is based on. Inactive. [Source](https://github.com/jackpal/Android-Terminal-Emulator).
-</details>
-
-##
-
-
-
-### Debugging
-
-You can help debug problems of the `Termux` app and its plugins by setting appropriate `logcat` `Log Level` in `Termux` app settings -> `<APP_NAME>` -> `Debugging` -> `Log Level` (Requires `Termux` app version `>= 0.118.0`). The `Log Level` defaults to `Normal` and log level `Verbose` currently logs additional information. Its best to revert log level to `Normal` after you have finished debugging since private data may otherwise be passed to `logcat` during normal operation and moreover, additional logging increases execution time.
-
-The plugin apps **do not execute the commands themselves** but send execution intents to `Termux` app, which has its own log level which can be set in `Termux` app settings -> `Termux` -> `Debugging` -> `Log Level`. So you must set log level for both `Termux` and the respective plugin app settings to get all the info.
-
-Once log levels have been set, you can run the `logcat` command in `Termux` app terminal to view the logs in realtime (`Ctrl+c` to stop) or use `logcat -d > logcat.txt` to take a dump of the log. You can also view the logs from a PC over `ADB`. For more information, check official android `logcat` guide [here](https://developer.android.com/studio/command-line/logcat).
-
-Moreover, users can generate termux files `stat` info and `logcat` dump automatically too with terminal's long hold options menu `More` -> `Report Issue` option and selecting `YES` in the prompt shown to add debug info. This can be helpful for reporting and debugging other issues. If the report generated is too large, then `Save To File` option in context menu (3 dots on top right) of `ReportActivity` can be used and the file viewed/shared instead.
-
-Users must post complete report (optionally without sensitive info) when reporting issues. Issues opened with **(partial) screenshots of error reports** instead of text will likely be automatically closed/deleted.
-
-##### Log Levels
-
-- `Off` - Log nothing.
-- `Normal` - Start logging error, warn and info messages and stacktraces.
-- `Debug` - Start logging debug messages.
-- `Verbose` - Start logging verbose messages.
-##
-
-
-
-## For Maintainers and Contributors
-
-The [termux-shared](termux-shared) library was added in [`v0.109`](https://github.com/termux/termux-app/releases/tag/v0.109). It defines shared constants and utils of the Termux app and its plugins. It was created to allow for the removal of all hardcoded paths in the Termux app. Some of the termux plugins are using this as well and rest will in future. If you are contributing code that is using a constant or a util that may be shared, then define it in `termux-shared` library if it currently doesn't exist and reference it from there. Update the relevant changelogs as well. Pull requests using hardcoded values **will/should not** be accepted. Termux app and plugin specific classes must be added under `com.UIN.Tool.shared.termux` package and general classes outside it. The [`termux-shared` `LICENSE`](termux-shared/LICENSE.md) must also be checked and updated if necessary when contributing code. The licenses of any external library or code must be honoured.
-
-The main Termux constants are defined by [`TermuxConstants`](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java) class. It also contains information on how to fork Termux or build it with your own package name. Changing the package name will require building the bootstrap zip packages and other packages with the new `$PREFIX`, check [Building Packages](https://github.com/termux/termux-packages/wiki/Building-packages) for more info.
-
-Check [Termux Libraries](https://github.com/termux/termux-app/wiki/Termux-Libraries) for how to import termux libraries in plugin apps and [Forking and Local Development](https://github.com/termux/termux-app/wiki/Termux-Libraries#forking-and-local-development) for how to update termux libraries for plugins.
-
-The `versionName` in `build.gradle` files of Termux and its plugin apps must follow the [semantic version `2.0.0` spec](https://semver.org/spec/v2.0.0.html) in the format `major.minor.patch(-prerelease)(+buildmetadata)`. When bumping `versionName` in `build.gradle` files and when creating a tag for new releases on GitHub, make sure to include the patch number as well, like `v0.1.0` instead of just `v0.1`. The `build.gradle` files and `attach_debug_apks_to_release` workflow validates the version as well and the build/attachment will fail if `versionName` does not follow the spec.
-
-### Commit Messages Guidelines
-
-Commit messages **must** use the [Conventional Commits](https://www.conventionalcommits.org) spec so that chagelogs as per the [Keep a Changelog](https://github.com/olivierlacan/keep-a-changelog) spec can automatically be generated by the [`create-conventional-changelog`](https://github.com/termux/create-conventional-changelog) script, check its repo for further details on the spec. **The first letter for `type` and `description` must be capital and description should be in the present tense.** The space after the colon `:` is necessary. For a breaking change, add an exclamation mark `!` before the colon `:`, so that it is highlighted in the chagelog automatically.
+UIN_Tool/
+├── app/
+│   ├── src/main/
+│   │   ├── java/com/UIN/Tool/
+│   │   │   ├── MainActivity.java              # 主入口
+│   │   │   ├── SplashActivity.java            # 启动页
+│   │   │   ├── UinApplication.java            # Application
+│   │   │   ├── compiler/                      # Java→DEX 编译
+│   │   │   ├── plugin/                        # 插件核心框架
+│   │   │   ├── service/                       # 无障碍服务
+│   │   │   ├── ui/                            # UI 界面
+│   │   │   │   ├── onboarding/                # 引导页
+│   │   │   │   ├── dev/                       # 开发工具
+│   │   │   │   ├── manage/                    # 插件管理
+│   │   │   │   ├── repo/                      # 插件仓库
+│   │   │   │   ├── tools/                     # 工具页
+│   │   │   │   ├── backup/                    # 备份恢复
+│   │   │   │   ├── docs/                      # 文档中心
+│   │   │   │   ├── permission/                # 权限管理
+│   │   │   │   ├── settings/                  # UI 个性化
+│   │   │   │   └── widget/                    # 桌面小部件
+│   │   │   └── utils/                         # 工具类
+│   │   ├── res/                               # 资源文件
+│   │   ├── assets/                            # 静态资源
+│   │   └── AndroidManifest.xml                # 清单文件
+│   └── build.gradle                           # 模块构建文件
+├── build.gradle                               # 项目构建文件
+├── gradle.properties                          # Gradle 配置
+├── settings.gradle                            # 项目设置
+└── README.md                                  # 项目文档
 
 ```
-<type>[optional scope]: <description>
 
-[optional body]
+---
 
-[optional footer(s)]
+## 技术架构
+
+### 核心组件架构
+
 ```
 
-**Only the `types` listed below must be used exactly as they are used in the changelog headings.** For example, `Added: Add foo`, `Added|Fixed: Add foo and fix bar`, `Changed!: Change baz as a breaking change`, etc. You can optionally add a scope as well, like `Fixed(terminal): Fix some bug`. **Do not use anything else as type, like `add` instead of `Added`, etc.**
+┌─────────────────────────────────────────────────────────────┐
+│                      UIN Tool 应用层                         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ 开发模块 │  │ 工具模块 │  │ 仓库模块 │  │ 管理模块 │   │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
+│       │             │             │             │           │
+│       └─────────────┼─────────────┼─────────────┘           │
+│                     │             │                         │
+│              ┌──────┴──────┐ ┌────┴──────┐                  │
+│              │ Fragment   │ │ Activity  │                  │
+│              └──────┬──────┘ └────┬──────┘                  │
+│                     │             │                         │
+│                     └──────┬──────┘                         │
+│                            │                                │
+│              ┌─────────────┴─────────────┐                  │
+│              │       PluginManager       │                  │
+│              │      (插件核心管理)        │                  │
+│              └─────────────┬─────────────┘                  │
+│                            │                                │
+│         ┌──────────────────┼──────────────────┐             │
+│         │                  │                  │             │
+│    ┌────┴────┐        ┌────┴────┐        ┌────┴────┐        │
+│    │DexLoader│        │WebView  │        │Context  │        │
+│    │动态加载 │        │容器     │        │资源隔离 │        │
+│    └─────────┘        └─────────┘        └─────────┘        │
+└─────────────────────────────────────────────────────────────┘
 
-- **Added** for new features.
-- **Changed** for changes in existing functionality.
-- **Deprecated** for soon-to-be removed features.
-- **Removed** for now removed features.
-- **Fixed** for any bug fixes.
-- **Security** in case of vulnerabilities.
-##
+```
 
+### 技术栈详情
 
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| Java | JDK 11 | 主要开发语言 |
+| Android SDK | API 33 | Android 框架 |
+| Material Design | 1.11.0 | UI 组件库 |
+| OkHttp | 4.12.0 | HTTP 客户端 |
+| DexClassLoader | - | 动态加载 DEX |
+| WebView | - | Web 插件容器 |
+| SharedPreferences | - | 配置存储 |
+| AccessibilityService | - | 无障碍自动化 |
+| FileProvider | - | 文件共享 |
 
-## Forking
+### 插件类型对比
 
-- Check [`TermuxConstants`](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java) javadocs for instructions on what changes to make in the app to change package name.
-- You also need to recompile bootstrap zip for the new package name. Check [building bootstrap](https://github.com/termux/termux-packages/wiki/For-maintainers#build-bootstrap-archives), [here](https://github.com/termux/termux-app/issues/1983) and [here](https://github.com/termux/termux-app/issues/2081#issuecomment-865280111).
-- Currently, not all plugins use `TermuxConstants` from `termux-shared` library and have hardcoded `com.UIN.Tool` values and will need to be manually patched.
-- If forking termux plugins, check [Forking and Local Development](https://github.com/termux/termux-app/wiki/Termux-Libraries#forking-and-local-development) for info on how to use termux libraries for plugins.
-##
+| 特性 | 原生插件 | Web 插件 |
+|------|----------|----------|
+| 开发语言 | Java | HTML/CSS/JS |
+| UI 创建方式 | Java 代码动态创建 | HTML 布局 |
+| 性能 | 最优 | 良好 |
+| 热更新 | 需要重新编译 | 无需编译 |
+| 系统 API 访问 | 完全访问 | 通过 JS 接口 |
+| 调试难度 | 较高 | 较低 |
+| 开发门槛 | 较高 | 较低 |
+| 文件类型 | .dex | .html/.css/.js |
+| 适用场景 | 复杂功能 | 界面类插件 |
 
+---
 
+## 快速开始
 
-## Sponsors and Funders
+### 安装应用
 
-[<img alt="GitHub Accelerator" width="25%" src="site/assets/sponsors/github.png" />](https://github.com)  
-*[GitHub Accelerator](https://github.com/accelerator) ([1](https://github.blog/2023-04-12-github-accelerator-our-first-cohort-and-whats-next))*
+1. 下载最新版本的 APK 文件
+2. 在设备上启用「允许安装未知来源应用」
+3. 安装 APK
 
-&nbsp;
+### 首次启动
 
-[<img alt="GitHub Secure Open Source Fund" width="25%" src="site/assets/sponsors/github.png" />](https://github.com)  
-*[GitHub Secure Open Source Fund](https://resources.github.com/github-secure-open-source-fund) ([1](https://github.blog/open-source/maintainers/securing-the-supply-chain-at-scale-starting-with-71-important-open-source-projects), [2](https://termux.dev/en/posts/general/2025/08/11/termux-selected-for-github-secure-open-source-fund-session-2.html))*
+1. 应用启动后显示引导页，介绍核心功能
+2. 阅读引导内容后点击「开始体验」
+3. 首次启动可能需要授予存储权限
 
-&nbsp;
+### 安装插件
 
-[<img alt="NLnet NGI Mobifree" width="25%" src="site/assets/sponsors/nlnet-ngi-mobifree.png" />](https://nlnet.nl/mobifree)  
-*[NLnet NGI Mobifree](https://nlnet.nl/mobifree) ([1](https://nlnet.nl/news/2024/20241111-NGI-Mobifree-grants.html), [2](https://termux.dev/en/posts/general/2024/11/11/termux-selected-for-nlnet-ngi-mobifree-grant.html))*
+**方式一：从仓库安装**
+1. 点击底部「仓库」标签
+2. 浏览可用插件
+3. 点击「安装」按钮
 
-&nbsp;
+**方式二：本地导入**
+1. 将 `.tpk` 文件传输到手机
+2. 点击底部「管理」→「插件管理」
+3. 点击「导入插件」选择文件
 
-[<img alt="Cloudflare" width="25%" src="site/assets/sponsors/cloudflare.png" />](https://www.cloudflare.com)  
-*[Cloudflare](https://www.cloudflare.com) ([1](https://packages-cf.termux.dev))*
+### 配置 GitHub 加速
 
-&nbsp;
+1. 点击底部「管理」→「GitHub 加速」
+2. 可添加自定义镜像站
+3. 勾选要启用的镜像站
+4. 开启 CDN 加速
+5. 点击「保存设置」
 
-[<img alt="Warp" width="25%" src="https://github.com/warpdotdev/brand-assets/blob/640dffd347439bbcb535321ab36b7281cf4446c0/Github/Sponsor/Warp-Github-LG-03.png" />](https://www.warp.dev/?utm_source=github&utm_medium=readme&utm_campaign=termux)  
-[*Warp, built for coding with multiple AI agents*](https://www.warp.dev/?utm_source=github&utm_medium=readme&utm_campaign=termux)
+### 开发插件
+
+1. 点击底部「开发」标签
+2. 点击「创建新插件」按钮
+3. 选择插件类型（原生/Web）
+4. 填写插件信息
+5. 编写代码
+6. 生成项目文件并打包为 TPK
+
+### 导出开发模板
+
+1. 点击底部「开发」标签
+2. 点击「导出模板」按钮
+3. 系统自动导出到工作目录
+
+---
+
+## 开源协议
+
+本项目采用 **MIT License** 开源协议。
+
+---
+
+## 致谢
+
+### 开源项目依赖
+
+| 项目 | 许可证 | 用途 |
+|------|--------|------|
+| Android SDK | Apache 2.0 | 基础框架 |
+| Material Components | Apache 2.0 | UI 组件库 |
+| AndroidX | Apache 2.0 | 支持库 |
+| OkHttp | Apache 2.0 | HTTP 客户端 |
+| JSON-java | JSON License | JSON 解析 |
+| ECJ (Eclipse Compiler) | EPL 1.0 | Java 编译 |
+| D8/R8 | BSD | DEX 编译 |
+
+### 贡献者名单
+
+| 贡献者 | 角色 | 贡献内容 |
+|--------|------|----------|
+| -UIN- | 核心开发 | 架构设计、核心功能 |
+| 一支电笔 | 功能开发 | 1x1 桌面小部件功能 |
+
+---
+
+## 联系方式
+
+### 官方渠道
+
+| 渠道 | 地址 |
+|------|------|
+| GitHub | https://github.com/Undefined-Invalid-Null/UIN-Tool |
+| 电子邮箱 | undefinedinvalidnull@outlook.com |
+| 插件仓库 | https://github.com/UIN-Tool-Plugins |
+
+### 社区交流
+
+- QQ 群：511875883
+
+---
+
+## 常见问题
+
+### Q: 如何安装插件？
+**A**: 有三种方式：从「仓库」页面直接安装、导入 `.tpk` 文件、批量导入或插件集导入。
+
+### Q: Web 插件和原生插件有什么区别？
+**A**: Web 插件使用 HTML/CSS/JS 开发，无需编译，修改后即时生效；原生插件使用 Java 开发，性能更好，但需要编译。
+
+### Q: 插件签名验证失败怎么办？
+**A**: 可以在「管理」→「开发者选项」中开启「忽略签名验证」（仅用于测试）。
+
+### Q: 如何开发自己的插件？
+**A**: 点击底部「开发」→「创建新插件」，按照向导操作即可。
+
+### Q: 如何备份插件和数据？
+**A**: 在「管理」→「备份恢复」中点击备份按钮。
+
+### Q: 应用崩溃了怎么办？
+**A**: 应用会自动捕获崩溃日志，下次启动时会自动打开日志查看器。
+
+### Q: 如何自定义 UI 颜色和圆角？
+**A**: 在「管理」→「UI 个性化」中，可以自定义 38+ 种颜色和 7 种圆角大小。
+
+### Q: 图标着色开关有什么用？
+**A**: 开启后所有图标使用主题色着色；关闭后图标保持原色。
+
+### Q: 长按应用图标有什么功能？
+**A**: 长按应用图标会弹出快捷菜单，可快速打开工具页面、插件管理、权限管理或检查更新。
+
+### Q: 开发页面的按钮不显示怎么办？
+**A**: v3.5.0 已修复此问题，请升级到最新版本。
+
+### Q: GitHub 加速功能如何使用？
+**A**: 在「管理」→「GitHub 加速」中配置镜像站和 CDN 加速，可添加自定义镜像站或导入镜像站列表。
+
+### Q: 强制更新是什么？
+**A**: 当 Release Tag 格式为 `x-y-z` 且 `z=1` 时，会强制用户更新，无法跳过。
+
+---
+
+## 最后更新
+
+本文档最后更新于：2026年6月9日
+
+---
+
+© 2026 UIN Team. All Rights Reserved.
