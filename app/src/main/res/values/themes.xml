@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============================================================
+         UIN Tool 基础主题 (合并 Termux 主题)
+         ============================================================ -->
+    
+    <!-- UIN Tool 主主题 -->
+    <style name="Theme.UIN.Tool" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- ===== 状态栏 ===== -->
+        <item name="android:statusBarColor">@color/primary_dark</item>
+        <item name="android:windowLightStatusBar">true</item>
+        
+        <!-- ===== 导航栏 ===== -->
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        
+        <!-- ===== 窗口背景 ===== -->
+        <item name="android:windowBackground">@color/background</item>
+        
+        <!-- ===== 颜色系统 ===== -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/text_inverse</item>
+        <item name="colorSecondary">@color/primary_light</item>
+        <item name="colorOnSecondary">@color/text_inverse</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/text_inverse</item>
+        <item name="colorAccent">@color/primary</item>
+        
+        <!-- ===== 字体 ===== -->
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <!-- ============================================================
+         启动主题 (Splash)
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+    </style>
+
+    <!-- ============================================================
+         透明主题
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.Translucent" parent="Theme.UIN.Tool">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <!-- ============================================================
+         弹窗主题
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.Dialog" parent="Theme.MaterialComponents.DayNight.Dialog">
+        <item name="android:windowBackground">@drawable/glass_background</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
+
+    <!-- ============================================================
+         Termux 相关主题 (适配 UIN Tool)
+         ============================================================ -->
+    
+    <!-- Termux 应用基础主题 -->
+    <style name="Theme.TermuxApp.DayNight.DarkActionBar" parent="Theme.UIN.Tool">
+        <!-- 继承 UIN Tool 主题，添加 ActionBar -->
+        <item name="windowActionBar">true</item>
+        <item name="windowNoTitle">false</item>
+    </style>
+    
+    <style name="Theme.TermuxApp.DayNight.NoActionBar" parent="Theme.UIN.Tool">
+        <!-- 继承 UIN Tool 主题，无 ActionBar -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- TermuxActivity DayNight NoActionBar 主题 -->
+    <style name="Theme.TermuxActivity.DayNight.NoActionBar" parent="Theme.TermuxApp.DayNight.NoActionBar">
+        <!-- 终端专用 - 黑色背景 -->
+        <item name="colorPrimary">@color/black</item>
+        <item name="colorPrimaryVariant">@color/black</item>
+        <item name="colorPrimaryDark">@color/black</item>
+
+        <item name="android:windowBackground">@color/black</item>
+
+        <!-- 避免动作模式工具栏推下终端内容 -->
+        <item name="android:windowActionModeOverlay">true</item>
+
+        <!-- 透明状态栏和导航栏 -->
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+
+        <!-- 过渡动画 -->
+        <item name="android:windowAllowReturnTransitionOverlap">true</item>
+        <item name="android:windowAllowEnterTransitionOverlap">true</item>
+
+        <!-- 左侧抽屉 -->
+        <item name="buttonBarButtonStyle">@style/TermuxActivity.Drawer.ButtonBarStyle.Dark</item>
+        <item name="termuxActivityDrawerBackground">@color/black</item>
+        <item name="termuxActivityDrawerImageTint">@color/white</item>
+
+        <!-- 额外按键颜色 -->
+        <item name="extraKeysButtonTextColor">@color/white</item>
+        <item name="extraKeysButtonActiveTextColor">@color/red_400</item>
+        <item name="extraKeysButtonBackgroundColor">@color/black</item>
+        <item name="extraKeysButtonActiveBackgroundColor">@color/grey_500</item>
+    </style>
+
+</resources>

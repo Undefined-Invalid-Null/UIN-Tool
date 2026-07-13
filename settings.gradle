@@ -1,0 +1,6 @@
+// Termux/settings.gradle
+
+include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view', ':termux-am-library'
+
+// 如果 UIN Tool 有额外的模块，在这里添加
+// include ':core', ':data', ':domain'

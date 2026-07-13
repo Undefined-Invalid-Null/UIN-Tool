@@ -1,5 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- ============================================================
+         UIN Tool 自定义属性
+         ============================================================ -->
+    
+    <!-- CustomCardView 样式属性 -->
     <declare-styleable name="CustomCardView">
         <attr name="cardCornerRadius" format="dimension" />
     </declare-styleable>
+
+    <!-- ============================================================
+         Termux 自定义属性
+         ============================================================ -->
+    
+    <!-- 终端 Activity 抽屉背景 -->
+    <attr name="termuxActivityDrawerBackground" format="reference" />
+    
+    <!-- 终端 Activity 抽屉图标着色 -->
+    <attr name="termuxActivityDrawerImageTint" format="reference" />
+    
+    <!-- ============================================================
+         Extra Keys 属性 (来自 termux-shared)
+         ============================================================ -->
+    
+    <!-- 额外按键文字颜色 -->
+    <attr name="extraKeysButtonTextColor" format="color" />
+    
+    <!-- 额外按键激活文字颜色 -->
+    <attr name="extraKeysButtonActiveTextColor" format="color" />
+    
+    <!-- 额外按键背景颜色 -->
+    <attr name="extraKeysButtonBackgroundColor" format="color" />
+    
+    <!-- 额外按键激活背景颜色 -->
+    <attr name="extraKeysButtonActiveBackgroundColor" format="color" />
+
 </resources>
