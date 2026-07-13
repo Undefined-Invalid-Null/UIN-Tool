@@ -1,41 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ==================== 基础主题 ==================== -->
-    <style name="Theme.UIN.Tool" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="android:statusBarColor">@color/primary_dark</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:navigationBarColor">@color/surface</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorOnPrimary">@color/text_inverse</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorOnSurface">@color/text_primary</item>
-        <item name="colorError">@color/error</item>
-        <item name="colorOnError">@color/text_inverse</item>
-        <item name="android:fontFamily">sans-serif</item>
-    </style>
+    <!-- ============================================================
+         UIN Tool 样式
+         ============================================================ -->
     
-    <!-- ==================== 启动主题 ==================== -->
-    <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
-        <item name="android:windowBackground">@android:color/white</item>
-        <item name="android:windowNoTitle">true</item>
-        <item name="android:windowFullscreen">true</item>
-    </style>
+    <!-- ============================================================
+         Termux 样式 (合并)
+         ============================================================ -->
     
-    <!-- ==================== 透明主题 ==================== -->
-    <style name="Theme.UIN.Tool.Translucent" parent="Theme.UIN.Tool">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@color/transparent</item>
-        <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowNoTitle">true</item>
-        <item name="android:backgroundDimEnabled">false</item>
+    <!-- Termux 对话框样式 -->
+    <style name="TermuxAlertDialogStyle" parent="@android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorAccent">@color/primary</item>
     </style>
-    
-    <!-- ==================== 弹窗主题 ==================== -->
-    <style name="Theme.UIN.Tool.Dialog" parent="Theme.MaterialComponents.DayNight.Dialog">
-        <item name="android:windowBackground">@drawable/glass_background</item>
-        <item name="android:windowIsTranslucent">true</item>
+
+    <!-- 抽屉按钮样式 - 浅色 -->
+    <style name="TermuxActivity.Drawer.ButtonBarStyle.Light" parent="@style/Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/black</item>
     </style>
+
+    <!-- 抽屉按钮样式 - 深色 -->
+    <style name="TermuxActivity.Drawer.ButtonBarStyle.Dark" parent="@style/Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/white</item>
+    </style>
+
 </resources>
