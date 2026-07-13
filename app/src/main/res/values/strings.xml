@@ -514,5 +514,8 @@
 
     <!-- 捐赠 -->
     <string name="donate_preference_title">捐赠</string>
+    <string name="title_settings">设置</string>
+   
+    
 
 </resources>
