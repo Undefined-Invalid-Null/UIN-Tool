@@ -35,6 +35,22 @@
     </style>
 
     <!-- ============================================================
+         NoActionBar 主题
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.NoActionBar" parent="Theme.UIN.Tool">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- ============================================================
+         Markdown 主题
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.Markdown" parent="Theme.UIN.Tool.NoActionBar">
+        <!-- Markdown 相关样式 -->
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+
+    <!-- ============================================================
          启动主题 (Splash)
          ============================================================ -->
     <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">

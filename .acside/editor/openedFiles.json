@@ -1,95 +1,50 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
-      "selection": {
-        "end": {
-          "column": 51,
-          "index": 5239,
-          "line": 180
-        },
-        "start": {
-          "column": 51,
-          "index": 5239,
-          "line": 180
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/UinApplication.kt",
-      "selection": {
-        "end": {
-          "column": 5,
-          "index": 2341,
-          "line": 90
-        },
-        "start": {
-          "column": 5,
-          "index": 2341,
-          "line": 90
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/proguard-rules.pro",
-      "selection": {
-        "end": {
-          "column": 0,
-          "index": 462,
-          "line": 12
-        },
-        "start": {
-          "column": 0,
-          "index": 462,
-          "line": 12
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/termux-shared/build.gradle",
-      "selection": {
-        "end": {
-          "column": 55,
-          "index": 609,
-          "line": 16
-        },
-        "start": {
-          "column": 55,
-          "index": 609,
-          "line": 16
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/build.gradle",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 670,
-          "line": 23
-        },
-        "start": {
-          "column": 1,
-          "index": 670,
-          "line": 23
-        }
-      }
-    },
-    {
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
       "selection": {
         "end": {
           "column": 11,
-          "index": 9785,
-          "line": 219
+          "index": 23462,
+          "line": 537
         },
         "start": {
           "column": 11,
-          "index": 9785,
-          "line": 219
+          "index": 23462,
+          "line": 537
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
+      "selection": {
+        "end": {
+          "column": 12,
+          "index": 6016,
+          "line": 129
+        },
+        "start": {
+          "column": 12,
+          "index": 6016,
+          "line": 129
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
+      "selection": {
+        "end": {
+          "column": 4,
+          "index": 25575,
+          "line": 518
+        },
+        "start": {
+          "column": 4,
+          "index": 25575,
+          "line": 518
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml"
 }
