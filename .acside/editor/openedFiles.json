@@ -74,7 +74,22 @@
           "line": 23
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
+      "selection": {
+        "end": {
+          "column": 11,
+          "index": 9785,
+          "line": 219
+        },
+        "start": {
+          "column": 11,
+          "index": 9785,
+          "line": 219
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/termux-shared/build.gradle"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml"
 }
