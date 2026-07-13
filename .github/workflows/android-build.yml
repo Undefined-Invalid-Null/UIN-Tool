@@ -43,6 +43,12 @@ jobs:
           java-version: 17
           distribution: 'temurin'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -93,6 +99,12 @@ jobs:
         with:
           java-version: 17
           distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
