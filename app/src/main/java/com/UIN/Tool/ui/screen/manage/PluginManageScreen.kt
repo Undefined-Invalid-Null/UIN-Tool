@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,8 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.R
@@ -43,14 +48,6 @@ import java.util.*
 
 private const val TAG = "PluginManageScreen"
 
-// ==================== 数据类 ====================
-data class ButtonColors(
-    val containerColor: Color,
-    val contentColor: Color
-)
-
-// ==================== 插件管理主界面 ====================
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginManageScreen(
@@ -61,7 +58,6 @@ fun PluginManageScreen(
     val pluginManager = ServiceLocator.getPluginManager()
     val preferenceManager = PreferenceManager(context)
 
-    // ==================== 状态 ====================
     var plugins by remember { mutableStateOf<List<PluginInfo>>(emptyList()) }
     var selectedPluginIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(false) }
@@ -74,7 +70,6 @@ fun PluginManageScreen(
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("全部") }
 
-    // ==================== 加载插件 ====================
     fun loadPlugins() {
         pluginManager.refreshPlugins()
         plugins = pluginManager.plugins.value
@@ -91,12 +86,10 @@ fun PluginManageScreen(
         }
     }
 
-    // ==================== 获取分类列表 ====================
     val categories = remember(plugins) {
         listOf("全部") + plugins.map { it.category }.distinct()
     }
 
-    // ==================== 过滤插件 ====================
     val filteredPlugins = remember(searchText, selectedCategory, plugins) {
         var result = plugins
         if (searchText.isNotEmpty()) {
@@ -112,7 +105,6 @@ fun PluginManageScreen(
         result
     }
 
-    // ==================== 导入单个插件 ====================
     fun importSinglePlugin(uri: Uri) {
         scope.launch {
             try {
@@ -125,22 +117,21 @@ fun PluginManageScreen(
                         Logger.success(TAG, "导入成功: ${info.name}")
                         loadPlugins()
                         refreshWidgets()
-                        showResultDialog = "✅ 导入成功: ${info.name}"
+                        showResultDialog = "导入成功: ${info.name}"
                     } else {
-                        showResultDialog = "❌ 导入失败: $fileName"
+                        showResultDialog = "导入失败: $fileName"
                     }
                 }
                 tempFile.delete()
             } catch (e: Exception) {
                 Logger.e(TAG, "导入失败", e)
-                showResultDialog = "❌ 导入失败: ${e.message}"
+                showResultDialog = "导入失败: ${e.message}"
             } finally {
                 isLoading = false
             }
         }
     }
 
-    // ==================== 批量导入插件 ====================
     fun batchImportPlugins(uris: List<Uri>) {
         scope.launch {
             try {
@@ -176,14 +167,13 @@ fun PluginManageScreen(
                 }
             } catch (e: Exception) {
                 Logger.e(TAG, "批量导入失败", e)
-                showResultDialog = "❌ 批量导入失败: ${e.message}"
+                showResultDialog = "批量导入失败: ${e.message}"
             } finally {
                 isLoading = false
             }
         }
     }
 
-    // ==================== 插件集导入 ====================
     fun importPluginSet(uri: Uri) {
         scope.launch {
             try {
@@ -192,7 +182,7 @@ fun PluginManageScreen(
 
                 val zipFile = File(context.cacheDir, "temp_plugin_set_${System.currentTimeMillis()}.zip")
                 if (!FileUtils.copyUriToFile(context, uri, zipFile)) {
-                    showResultDialog = "❌ 无法读取文件"
+                    showResultDialog = "无法读取文件"
                     return@launch
                 }
 
@@ -217,7 +207,7 @@ fun PluginManageScreen(
                         }
 
                         if (total == 0) {
-                            showResultDialog = "❌ 插件集中没有找到 .tpk 文件"
+                            showResultDialog = "插件集中没有找到 .tpk 文件"
                             return@launch
                         }
 
@@ -259,9 +249,9 @@ fun PluginManageScreen(
                 }
 
                 val message = if (failCount > 0) {
-                    "✅ 成功导入 $successCount 个插件\n❌ 失败 ${failCount} 个：\n${failNames.joinToString("\n")}"
+                    "成功导入 $successCount 个插件，失败 ${failCount} 个：\n${failNames.joinToString("\n")}"
                 } else {
-                    "✅ 成功导入 $successCount 个插件"
+                    "成功导入 $successCount 个插件"
                 }
                 showResultDialog = message
 
@@ -273,7 +263,7 @@ fun PluginManageScreen(
 
             } catch (e: Exception) {
                 Logger.e(TAG, "导入插件集失败", e)
-                showResultDialog = "❌ 导入插件集失败: ${e.message}"
+                showResultDialog = "导入插件集失败: ${e.message}"
             } finally {
                 isLoading = false
                 exportProgress = ""
@@ -281,7 +271,6 @@ fun PluginManageScreen(
         }
     }
 
-    // ==================== 导出选中插件 ====================
     fun exportSelectedPlugins() {
         val selectedIds = selectedPluginIds.toList()
         if (selectedIds.isEmpty()) {
@@ -327,9 +316,9 @@ fun PluginManageScreen(
                 }
 
                 val message = if (failedList.isNotEmpty()) {
-                    "✅ 成功导出 $successCount 个插件到:\n${zipFile.absolutePath}\n\n❌ 失败 ${failedList.size} 个：\n${failedList.joinToString("\n")}"
+                    "成功导出 $successCount 个插件到:\n${zipFile.absolutePath}\n\n失败 ${failedList.size} 个：\n${failedList.joinToString("\n")}"
                 } else {
-                    "✅ 成功导出 $successCount 个插件到:\n${zipFile.absolutePath}"
+                    "成功导出 $successCount 个插件到:\n${zipFile.absolutePath}"
                 }
                 showResultDialog = message
 
@@ -343,7 +332,7 @@ fun PluginManageScreen(
 
             } catch (e: Exception) {
                 Logger.e(TAG, "导出插件失败", e)
-                showResultDialog = "❌ 导出失败: ${e.message}"
+                showResultDialog = "导出失败: ${e.message}"
             } finally {
                 isLoading = false
                 exportProgress = ""
@@ -351,7 +340,6 @@ fun PluginManageScreen(
         }
     }
 
-    // ==================== 卸载插件 ====================
     fun uninstallPlugin(plugin: PluginInfo) {
         scope.launch {
             try {
@@ -370,7 +358,6 @@ fun PluginManageScreen(
         }
     }
 
-    // ==================== 请求权限 ====================
     fun requestPluginPermissions(plugin: PluginInfo) {
         scope.launch {
             try {
@@ -383,9 +370,9 @@ fun PluginManageScreen(
                     onComplete = { allGranted ->
                         isLoading = false
                         if (allGranted) {
-                            Toast.makeText(context, "✅ 所有权限已授予", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "所有权限已授予", Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "⚠️ 部分权限被拒绝", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "部分权限被拒绝", Toast.LENGTH_SHORT).show()
                         }
                         showPermissionDialog = null
                     }
@@ -398,7 +385,6 @@ fun PluginManageScreen(
         }
     }
 
-    // ==================== Launchers ====================
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -419,19 +405,16 @@ fun PluginManageScreen(
         uri?.let { importPluginSet(it) }
     }
 
-    // ==================== 初始化加载 ====================
-    LaunchedEffect(Unit) { 
+    LaunchedEffect(Unit) {
         loadPlugins()
         Logger.i(TAG, "插件管理界面初始化完成")
     }
 
-    // ==================== UI ====================
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // ==================== 标题栏 ====================
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -446,7 +429,6 @@ fun PluginManageScreen(
             }
         }
 
-        // ==================== 搜索栏 ====================
         UIComponents.TextInput(
             value = searchText,
             onValueChange = { searchText = it },
@@ -457,7 +439,6 @@ fun PluginManageScreen(
             leadingIcon = Icons.Default.Search
         )
 
-        // ==================== 分类筛选 ====================
         if (categories.size > 1) {
             Row(
                 modifier = Modifier
@@ -475,7 +456,6 @@ fun PluginManageScreen(
             }
         }
 
-        // ==================== 进度显示 ====================
         if (exportProgress.isNotEmpty()) {
             UIComponents.Card(
                 modifier = Modifier
@@ -502,7 +482,6 @@ fun PluginManageScreen(
             }
         }
 
-        // ==================== 操作按钮 ====================
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -559,7 +538,6 @@ fun PluginManageScreen(
             )
         }
 
-        // ==================== 统计信息 ====================
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -599,7 +577,6 @@ fun PluginManageScreen(
             }
         }
 
-        // ==================== 插件列表 ====================
         when {
             isLoading && plugins.isEmpty() -> {
                 Box(
@@ -678,65 +655,32 @@ fun PluginManageScreen(
         }
     }
 
-    // ==================== 对话框 ====================
-
-    // 删除确认对话框
+    // ==================== 删除确认对话框 ====================
     if (showDeleteDialog != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            title = { Text("确认删除") },
-            text = { 
-                Text(
-                    text = "确定要删除插件 \"${showDeleteDialog?.name}\" 吗？\n\n删除后插件数据将被清除，不可恢复。",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+        DeleteConfirmDialog(
+            pluginName = showDeleteDialog!!.name,
+            onConfirm = {
+                showDeleteDialog?.let { uninstallPlugin(it) }
             },
-            confirmButton = {
-                UIComponents.PrimaryButton(
-                    text = "删除",
-                    onClick = { 
-                        showDeleteDialog?.let { uninstallPlugin(it) }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            dismissButton = {
-                UIComponents.TextButton(
-                    text = "取消",
-                    onClick = { showDeleteDialog = null }
-                )
-            }
+            onDismiss = { showDeleteDialog = null }
         )
     }
 
-    // 操作结果对话框
+    // ==================== 操作结果对话框 ====================
     if (showResultDialog != null) {
-        AlertDialog(
-            onDismissRequest = { showResultDialog = null },
-            title = { Text("操作结果") },
-            text = { 
-                Text(
-                    text = showResultDialog!!,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                UIComponents.PrimaryButton(
-                    text = "确定",
-                    onClick = { showResultDialog = null },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+        ResultDialog(
+            message = showResultDialog!!,
+            onDismiss = { showResultDialog = null }
         )
     }
 
-    // 插件详情对话框
+    // ==================== 插件详情对话框 ====================
     if (showDetailDialog != null) {
         PluginDetailDialog(
             plugin = showDetailDialog!!,
             onDismiss = { showDetailDialog = null },
-            onOpen = { 
-                pluginManager.openPlugin(showDetailDialog!!.pluginId, context)
+            onOpen = {
+                ServiceLocator.getPluginManager().openPlugin(showDetailDialog!!.pluginId, context)
                 showDetailDialog = null
             },
             onUninstall = {
@@ -750,39 +694,19 @@ fun PluginManageScreen(
         )
     }
 
-    // 权限管理对话框
+    // ==================== 权限管理对话框 ====================
     if (showPermissionDialog != null) {
         PermissionManagementDialog(
             plugin = showPermissionDialog!!,
-            onDismiss = { showPermissionDialog = null },
-            onRequestPermissions = { 
-                requestPluginPermissions(showPermissionDialog!!)
-            },
-            onOpenSettings = {
-                try {
-                    val intent = android.content.Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    intent.data = Uri.parse("package:${context.packageName}")
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "打开设置失败", Toast.LENGTH_SHORT).show()
-                }
-            },
-            onRefresh = {
-                showPermissionDialog?.let { plugin ->
-                    Toast.makeText(context, "权限状态已刷新", Toast.LENGTH_SHORT).show()
-                }
-            }
+            onDismiss = { showPermissionDialog = null }
         )
     }
 
-    // 权限详情页面
+    // ==================== 权限详情对话框 ====================
     if (showPermissionDetail != null) {
         PermissionDetailDialog(
             plugin = showPermissionDetail!!,
-            onDismiss = { showPermissionDetail = null },
-            onRequestAll = {
-                requestPluginPermissions(showPermissionDetail!!)
-            }
+            onDismiss = { showPermissionDetail = null }
         )
     }
 }
@@ -816,6 +740,1079 @@ private fun addPluginDirToZip(
     }
 }
 
+// ==================== 删除确认对话框 ====================
+
+@Composable
+fun DeleteConfirmDialog(
+    pluginName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFD32F2F),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "确认删除",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                }
+
+                Text(
+                    text = "确定要删除插件 \"$pluginName\" 吗？\n\n删除后插件数据将被清除，不可恢复。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF444444),
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEEEEEE),
+                            contentColor = Color(0xFF666666)
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("取消", fontSize = 15.sp)
+                    }
+
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFD32F2F),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("删除", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== 操作结果对话框 ====================
+
+@Composable
+fun ResultDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = Color(0xFF1A3A4A),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "操作结果",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                }
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF444444),
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1A3A4A),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("确定", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+        }
+    }
+}
+
+// ==================== 插件详情对话框（紧凑版） ====================
+
+@Composable
+fun PluginDetailDialog(
+    plugin: PluginInfo,
+    onDismiss: () -> Unit,
+    onOpen: () -> Unit,
+    onUninstall: () -> Unit,
+    onManagePermissions: () -> Unit
+) {
+    val pluginManager = ServiceLocator.getPluginManager()
+    val permissionSummary = pluginManager.getPluginPermissionSummary(plugin.pluginId)
+    val context = LocalContext.current
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                // 标题行 - 更紧凑
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text(
+                        plugin.name,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = Color(0xFF1A1A1A),
+                            fontSize = 17.sp
+                        ),
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (plugin.isWebPlugin()) {
+                        Surface(
+                            color = Color(0xFFE3F2FD),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "Web",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF1565C0),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                            )
+                        }
+                    } else {
+                        Surface(
+                            color = Color(0xFFFFF3E0),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "原生",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFE65100),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+
+                // 内容 - 使用更紧凑的间距
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    DetailInfoRowCompact("插件ID", plugin.pluginId)
+                    DetailInfoRowCompact("版本", "${plugin.versionName} (${plugin.version})")
+                    DetailInfoRowCompact("作者", plugin.author.ifEmpty { "未知" })
+                    DetailInfoRowCompact("分类", plugin.category)
+
+                    if (plugin.description.isNotEmpty()) {
+                        Divider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFE0E0E0))
+                        Text(
+                            text = "描述",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF666666)
+                        )
+                        Text(
+                            text = plugin.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF333333),
+                            modifier = Modifier.padding(top = 2.dp),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    if (plugin.dependencies.isNotEmpty()) {
+                        Divider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFE0E0E0))
+                        Text(
+                            text = "依赖",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF666666)
+                        )
+                        Text(
+                            text = plugin.dependencies.joinToString(", "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF333333),
+                            modifier = Modifier.padding(top = 2.dp),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    if (plugin.permissions.isNotEmpty()) {
+                        Divider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFE0E0E0))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "权限状态",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF666666)
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "${permissionSummary.granted}/${permissionSummary.total}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF333333),
+                                    fontSize = 11.sp
+                                )
+                                if (permissionSummary.isAllGranted) {
+                                    Surface(
+                                        color = Color(0xFF4CAF50),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            "已授权",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                } else {
+                                    Surface(
+                                        color = Color(0xFFFF9800),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            "${permissionSummary.denied} 项未授权",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 权限列表 - 最多显示2行
+                        if (plugin.permissions.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 2.dp)
+                            ) {
+                                plugin.permissions.take(2).forEach { permission ->
+                                    val granted = pluginManager.getPluginPermissionStatus(plugin.pluginId)[permission] ?: false
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(vertical = 1.dp)
+                                    ) {
+                                        Icon(
+                                            if (granted) Icons.Default.CheckCircle else Icons.Outlined.Circle,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(12.dp),
+                                            tint = if (granted) Color(0xFF4CAF50) else Color(0xFFBDBDBD)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            PluginPermissionManager.getPermissionDisplayName(permission),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (granted) Color(0xFF333333) else Color(0xFF999999),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                                if (plugin.permissions.size > 2) {
+                                    Text(
+                                        "... 还有 ${plugin.permissions.size - 2} 项权限",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFF999999),
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.padding(top = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Divider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFE0E0E0))
+                        Text(
+                            text = "未声明任何权限",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF999999),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 按钮 - 更紧凑
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Button(
+                            onClick = onOpen,
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF1A3A4A),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("运行", fontSize = 13.sp)
+                        }
+                        Button(
+                            onClick = onManagePermissions,
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEEEEEE),
+                                contentColor = Color(0xFF333333)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("权限", fontSize = 13.sp)
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Button(
+                            onClick = onUninstall,
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFFEBEE),
+                                contentColor = Color(0xFFD32F2F)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("卸载", fontSize = 13.sp)
+                        }
+                        Button(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFF5F5F5),
+                                contentColor = Color(0xFF666666)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("关闭", fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== 紧凑版信息行 ====================
+
+@Composable
+fun DetailInfoRowCompact(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 1.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF666666),
+            fontSize = 11.sp
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF1A1A1A),
+            fontSize = 12.sp,
+            maxLines = 1,
+            modifier = Modifier.weight(1f, fill = false),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+// ==================== 权限管理对话框 ====================
+
+@Composable
+fun PermissionManagementDialog(
+    plugin: PluginInfo,
+    onDismiss: () -> Unit
+) {
+    val pluginManager = ServiceLocator.getPluginManager()
+    val context = LocalContext.current
+    var permissions by remember {
+        mutableStateOf(pluginManager.getPluginPermissionStatus(plugin.pluginId))
+    }
+    var isRequesting by remember { mutableStateOf(false) }
+    var progressMessage by remember { mutableStateOf("") }
+    val allGranted = permissions.values.all { it }
+
+    fun refreshPermissions() {
+        permissions = pluginManager.getPluginPermissionStatus(plugin.pluginId)
+    }
+
+    LaunchedEffect(Unit) {
+        refreshPermissions()
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight()
+                .heightIn(max = 450.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = null,
+                        tint = Color(0xFF1A3A4A),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        "权限管理",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = Color(0xFF1A1A1A)
+                        )
+                    )
+                    if (allGranted && permissions.isNotEmpty()) {
+                        Surface(
+                            color = Color(0xFF4CAF50),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "已授权",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "插件: ${plugin.name}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF444444),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                if (permissions.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "权限状态: ${permissions.values.count { it }}/${permissions.size} 已授予",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF666666)
+                        )
+                        IconButton(
+                            onClick = { refreshPermissions() },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "刷新",
+                                modifier = Modifier.size(18.dp),
+                                tint = Color(0xFF1A3A4A)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (permissions.isEmpty()) {
+                    Text(
+                        text = "该插件没有声明任何权限",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF999999),
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(permissions.entries.toList()) { (permission, granted) ->
+                            PermissionItemCompact(
+                                permission = permission,
+                                granted = granted,
+                                onRequest = {
+                                    if (!granted && !isRequesting) {
+                                        isRequesting = true
+                                        pluginManager.requestPluginPermissionsByGroups(
+                                            plugin.pluginId,
+                                            onProgress = { group, current, total ->
+                                                progressMessage = "请求中: $group ($current/$total)"
+                                            },
+                                            onComplete = { allGranted ->
+                                                isRequesting = false
+                                                progressMessage = ""
+                                                refreshPermissions()
+                                                if (allGranted) {
+                                                    Toast.makeText(context, "所有权限已授予", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(context, "部分权限被拒绝", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (progressMessage.isNotEmpty()) {
+                    Text(
+                        text = progressMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF666666),
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (permissions.isNotEmpty() && !allGranted) {
+                        Button(
+                            onClick = {
+                                isRequesting = true
+                                pluginManager.requestPluginPermissionsByGroups(
+                                    plugin.pluginId,
+                                    onProgress = { group, current, total ->
+                                        progressMessage = "请求中: $group ($current/$total)"
+                                    },
+                                    onComplete = { allGranted ->
+                                        isRequesting = false
+                                        progressMessage = ""
+                                        refreshPermissions()
+                                        if (allGranted) {
+                                            Toast.makeText(context, "所有权限已授予", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "部分权限被拒绝", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF1A3A4A),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isRequesting
+                        ) {
+                            if (isRequesting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else {
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+                            Text(if (isRequesting) "请求中..." else "一键授权所有权限", fontSize = 14.sp)
+                        }
+                    }
+
+                    val hasSpecial = permissions.keys.any {
+                        PluginPermissionManager.isSpecialPermission(it) && !(permissions[it] ?: false)
+                    }
+                    if (hasSpecial) {
+                        Button(
+                            onClick = {
+                                try {
+                                    val intent = android.content.Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    intent.data = Uri.parse("package:${context.packageName}")
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "打开设置失败", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFFF3E0),
+                                contentColor = Color(0xFFE65100)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("去系统设置开启特殊权限", fontSize = 14.sp)
+                        }
+                    }
+
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF5F5F5),
+                            contentColor = Color(0xFF666666)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("关闭", fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==================== 权限详情对话框 ====================
+
+@Composable
+fun PermissionDetailDialog(
+    plugin: PluginInfo,
+    onDismiss: () -> Unit
+) {
+    val pluginManager = ServiceLocator.getPluginManager()
+    val context = LocalContext.current
+    var permissions by remember {
+        mutableStateOf(pluginManager.getPluginPermissionStatus(plugin.pluginId))
+    }
+    var isRequesting by remember { mutableStateOf(false) }
+
+    fun refreshPermissions() {
+        permissions = pluginManager.getPluginPermissionStatus(plugin.pluginId)
+    }
+
+    LaunchedEffect(Unit) {
+        refreshPermissions()
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight()
+                .heightIn(max = 450.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = Color(0xFF1A3A4A),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "权限详情 - ${plugin.name}",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = Color(0xFF1A1A1A)
+                        )
+                    )
+                }
+
+                val grantedCount = permissions.values.count { it }
+                val totalCount = permissions.size
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "已授权: $grantedCount / $totalCount",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (grantedCount == totalCount) Color(0xFF4CAF50) else Color(0xFFE65100)
+                    )
+                    if (grantedCount < totalCount) {
+                        Button(
+                            onClick = {
+                                isRequesting = true
+                                pluginManager.requestPluginPermissionsByGroups(
+                                    plugin.pluginId,
+                                    onProgress = { group, current, total ->
+                                        // 进度更新
+                                    },
+                                    onComplete = { allGranted ->
+                                        isRequesting = false
+                                        refreshPermissions()
+                                        if (allGranted) {
+                                            Toast.makeText(context, "所有权限已授予", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "部分权限被拒绝", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                            },
+                            modifier = Modifier.height(32.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF1A3A4A),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(6.dp),
+                            enabled = !isRequesting
+                        ) {
+                            if (isRequesting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White
+                                )
+                            } else {
+                                Text("一键授权", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                Divider(color = Color(0xFFE0E0E0))
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (permissions.isEmpty()) {
+                    Text(
+                        text = "该插件没有声明任何权限",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF999999),
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(permissions.entries.toList()) { (permission, granted) ->
+                            PermissionDetailItem(
+                                permission = permission,
+                                granted = granted
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF5F5F5),
+                        contentColor = Color(0xFF666666)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("关闭", fontSize = 14.sp)
+                }
+            }
+        }
+    }
+}
+
+// ==================== 权限项紧凑版 ====================
+
+@Composable
+fun PermissionItemCompact(
+    permission: String,
+    granted: Boolean,
+    onRequest: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (granted) Color(0xFFF5F5F5) else Color(0xFFFFF3E0)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (granted) Icons.Default.CheckCircle else Icons.Outlined.Warning,
+                contentDescription = null,
+                tint = if (granted) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                modifier = Modifier.size(20.dp)
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = PluginPermissionManager.getPermissionDisplayName(permission),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (granted) Color(0xFF1A1A1A) else Color(0xFF555555)
+                )
+                if (PluginPermissionManager.isSpecialPermission(permission)) {
+                    Text(
+                        text = "特殊权限，需在系统设置中开启",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFF9800)
+                    )
+                }
+            }
+
+            if (granted) {
+                Surface(
+                    color = Color(0xFFE8F5E9),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "已授予",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF4CAF50),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onRequest,
+                    modifier = Modifier.height(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1A3A4A),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("授权", fontSize = 11.sp)
+                }
+            }
+        }
+    }
+}
+
+// ==================== 权限详情项 ====================
+
+@Composable
+fun PermissionDetailItem(
+    permission: String,
+    granted: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF5F5F5)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (granted) Icons.Default.CheckCircle else Icons.Outlined.Warning,
+                contentDescription = null,
+                tint = if (granted) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = PluginPermissionManager.getPermissionDisplayName(permission),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (granted) Color(0xFF1A1A1A) else Color(0xFF555555)
+                )
+                Text(
+                    text = PluginPermissionManager.getPermissionDescription(permission),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF666666)
+                )
+                if (PluginPermissionManager.isSpecialPermission(permission)) {
+                    Text(
+                        text = "特殊权限：需在系统设置中手动开启",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFF9800)
+                    )
+                }
+            }
+
+            if (granted) {
+                Surface(
+                    color = Color(0xFFE8F5E9),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "已授予",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF4CAF50),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            } else {
+                Surface(
+                    color = Color(0xFFFFF3E0),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "未授权",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFF9800),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 // ==================== 插件列表项 ====================
 
 @Composable
@@ -830,7 +1827,7 @@ fun PluginManageItem(
     onViewPermissions: () -> Unit
 ) {
     val pluginManager = ServiceLocator.getPluginManager()
-    
+
     val permissionSummary = remember(plugin.pluginId) {
         pluginManager.getPluginPermissionSummary(plugin.pluginId)
     }
@@ -843,9 +1840,9 @@ fun PluginManageItem(
             .clickable { onDetail() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (hasMissingPermissions) 
-                Color(0xFFFFF3E0) 
-            else 
+            containerColor = if (hasMissingPermissions)
+                Color(0xFFFFF3E0)
+            else
                 MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -900,7 +1897,7 @@ fun PluginManageItem(
                         maxLines = 1,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    
+
                     if (hasPermissions) {
                         if (hasMissingPermissions) {
                             Surface(
@@ -911,9 +1908,11 @@ fun PluginManageItem(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
-                                    Text(
-                                        text = "⚠️",
-                                        fontSize = 10.sp
+                                    Icon(
+                                        Icons.Outlined.Warning,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(10.dp),
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer
                                     )
                                     Spacer(modifier = Modifier.width(2.dp))
                                     Text(
@@ -929,12 +1928,23 @@ fun PluginManageItem(
                                 color = MaterialTheme.colorScheme.primaryContainer,
                                 shape = RoundedCornerShape(4.dp)
                             ) {
-                                Text(
-                                    text = "✅ ${permissionSummary.granted}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                                ) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(10.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "${permissionSummary.granted}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
                             }
                         }
                     }
@@ -963,7 +1973,7 @@ fun PluginManageItem(
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                         )
                     }
-                    
+
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(4.dp)
@@ -975,14 +1985,14 @@ fun PluginManageItem(
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                         )
                     }
-                    
+
                     if (plugin.isWebPlugin()) {
                         Surface(
                             color = Color(0xFFE3F2FD),
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "🌐 Web",
+                                text = "Web",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFF1565C0),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
@@ -994,14 +2004,14 @@ fun PluginManageItem(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "📱 原生",
+                                text = "原生",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFFE65100),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                             )
                         }
                     }
-                    
+
                     if (hasPermissions) {
                         Surface(
                             color = if (hasMissingPermissions)
@@ -1029,697 +2039,32 @@ fun PluginManageItem(
             ) {
                 if (hasPermissions) {
                     UIComponents.IconButton(
-                        icon = if (hasMissingPermissions) 
-                            Icons.Default.Security 
-                        else 
+                        icon = if (hasMissingPermissions)
+                            Icons.Default.Security
+                        else
                             Icons.Default.Verified,
                         onClick = onManagePermissions,
-                        tint = if (hasMissingPermissions) 
-                            MaterialTheme.colorScheme.tertiary 
-                        else 
+                        tint = if (hasMissingPermissions)
+                            MaterialTheme.colorScheme.tertiary
+                        else
                             MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
-                
+
                 UIComponents.IconButton(
                     icon = Icons.Default.PlayArrow,
                     onClick = onOpen,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
                 )
-                
+
                 UIComponents.IconButton(
                     icon = Icons.Default.Delete,
                     onClick = onDelete,
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(32.dp)
                 )
-            }
-        }
-    }
-}
-
-// ==================== 插件详情对话框 ====================
-
-@Composable
-fun PluginDetailDialog(
-    plugin: PluginInfo,
-    onDismiss: () -> Unit,
-    onOpen: () -> Unit,
-    onUninstall: () -> Unit,
-    onManagePermissions: () -> Unit
-) {
-    val pluginManager = ServiceLocator.getPluginManager()
-    val permissionSummary = pluginManager.getPluginPermissionSummary(plugin.pluginId)
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(plugin.name, style = MaterialTheme.typography.titleLarge)
-                if (plugin.isWebPlugin()) {
-                    Surface(
-                        color = Color(0xFFE3F2FD),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            "Web",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF1565C0),
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                } else {
-                    Surface(
-                        color = Color(0xFFFFF3E0),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            "原生",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFE65100),
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp)
-            ) {
-                DetailInfoRow("插件ID", plugin.pluginId)
-                DetailInfoRow("版本", "${plugin.versionName} (${plugin.version})")
-                DetailInfoRow("作者", plugin.author.ifEmpty { "未知" })
-                DetailInfoRow("分类", plugin.category)
-                
-                if (plugin.description.isNotEmpty()) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text(
-                        text = "📝 描述",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = plugin.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-                
-                if (plugin.dependencies.isNotEmpty()) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text(
-                        text = "📦 依赖",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = plugin.dependencies.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-                
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                
-                if (plugin.permissions.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "🔐 权限状态",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "${permissionSummary.granted}/${permissionSummary.total}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium
-                            )
-                            if (permissionSummary.isAllGranted) {
-                                Surface(
-                                    color = Color(0xFF4CAF50),
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        "✅ 已授权",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                    )
-                                }
-                            } else {
-                                Surface(
-                                    color = Color(0xFFFF9800),
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        "⚠️ ${permissionSummary.denied} 项未授权",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (plugin.permissions.isNotEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp)
-                        ) {
-                            plugin.permissions.take(3).forEach { permission ->
-                                val granted = pluginManager.getPluginPermissionStatus(plugin.pluginId)[permission] ?: false
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        if (granted) "✅" else "⬜",
-                                        fontSize = 12.sp
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        PluginPermissionManager.getPermissionDisplayName(permission),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (granted) 
-                                            MaterialTheme.colorScheme.onSurface 
-                                        else 
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            if (plugin.permissions.size > 3) {
-                                Text(
-                                    "... 还有 ${plugin.permissions.size - 3} 项权限",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    Text(
-                        text = "🔓 未声明任何权限",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    UIComponents.PrimaryButton(
-                        text = "运行",
-                        icon = Icons.Default.PlayArrow,
-                        onClick = onOpen,
-                        modifier = Modifier.weight(1f)
-                    )
-                    UIComponents.SecondaryButton(
-                        text = "权限",
-                        icon = Icons.Default.Security,
-                        onClick = onManagePermissions,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    UIComponents.SecondaryButton(
-                        text = "卸载",
-                        icon = Icons.Default.Delete,
-                        onClick = onUninstall,
-                        modifier = Modifier.weight(1f)
-                    )
-                    UIComponents.TextButton(
-                        text = "关闭",
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-    )
-}
-
-@Composable
-fun DetailInfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1
-        )
-    }
-}
-
-// ==================== 权限管理对话框 ====================
-
-@Composable
-fun PermissionManagementDialog(
-    plugin: PluginInfo,
-    onDismiss: () -> Unit,
-    onRequestPermissions: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onRefresh: () -> Unit
-) {
-    val pluginManager = ServiceLocator.getPluginManager()
-    var permissions by remember {
-        mutableStateOf(pluginManager.getPluginPermissionStatus(plugin.pluginId))
-    }
-    var isRequesting by remember { mutableStateOf(false) }
-    var progressMessage by remember { mutableStateOf("") }
-    var allGranted by remember { mutableStateOf(permissions.values.all { it }) }
-    
-    fun refreshPermissions() {
-        permissions = pluginManager.getPluginPermissionStatus(plugin.pluginId)
-        allGranted = permissions.values.all { it }
-    }
-    
-    LaunchedEffect(Unit) {
-        refreshPermissions()
-    }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("🔐 权限管理", style = MaterialTheme.typography.titleMedium)
-                if (allGranted && permissions.isNotEmpty()) {
-                    Surface(
-                        color = Color(0xFF4CAF50),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            "已授权",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp)
-            ) {
-                Text(
-                    text = "插件: ${plugin.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                
-                if (permissions.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "权限状态: ${permissions.values.count { it }}/${permissions.size} 已授予",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        IconButton(
-                            onClick = onRefresh,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Refresh,
-                                contentDescription = "刷新",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                if (permissions.isEmpty()) {
-                    Text(
-                        text = "该插件没有声明任何权限",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(permissions.entries.toList()) { (permission, granted) ->
-                            PermissionItemCompact(
-                                permission = permission,
-                                granted = granted,
-                                onRequest = {
-                                    if (!granted && !isRequesting) {
-                                        onRequestPermissions()
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-                
-                if (progressMessage.isNotEmpty()) {
-                    Text(
-                        text = progressMessage,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (permissions.isNotEmpty() && !allGranted) {
-                    UIComponents.PrimaryButton(
-                        text = if (isRequesting) "请求中..." else "一键授权所有权限",
-                        icon = Icons.Default.Check,
-                        onClick = onRequestPermissions,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isRequesting,
-                        loading = isRequesting
-                    )
-                }
-                
-                val hasSpecial = permissions.keys.any { 
-                    PluginPermissionManager.isSpecialPermission(it) && !(permissions[it] ?: false)
-                }
-                if (hasSpecial) {
-                    UIComponents.SecondaryButton(
-                        text = "⚙️ 去系统设置开启特殊权限",
-                        onClick = onOpenSettings,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                UIComponents.TextButton(
-                    text = "关闭",
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-    )
-}
-
-@Composable
-fun PermissionItemCompact(
-    permission: String,
-    granted: Boolean,
-    onRequest: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (granted)
-                MaterialTheme.colorScheme.surface
-            else
-                MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Warning,
-                contentDescription = null,
-                tint = if (granted)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.size(20.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(10.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = PluginPermissionManager.getPermissionDisplayName(permission),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (granted)
-                        MaterialTheme.colorScheme.onSurface
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (PluginPermissionManager.isSpecialPermission(permission)) {
-                    Text(
-                        text = "⚠️ 特殊权限，需在系统设置中开启",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-            }
-            
-            if (granted) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = "已授予",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            } else {
-                UIComponents.PrimaryButton(
-                    text = "授权",
-                    onClick = onRequest,
-                    modifier = Modifier.height(28.dp)
-                )
-            }
-        }
-    }
-}
-
-// ==================== 权限详情对话框 ====================
-
-@Composable
-fun PermissionDetailDialog(
-    plugin: PluginInfo,
-    onDismiss: () -> Unit,
-    onRequestAll: () -> Unit
-) {
-    val pluginManager = ServiceLocator.getPluginManager()
-    var permissions by remember {
-        mutableStateOf(pluginManager.getPluginPermissionStatus(plugin.pluginId))
-    }
-    var isRequesting by remember { mutableStateOf(false) }
-    
-    fun refreshPermissions() {
-        permissions = pluginManager.getPluginPermissionStatus(plugin.pluginId)
-    }
-    
-    LaunchedEffect(Unit) {
-        refreshPermissions()
-    }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "权限详情 - ${plugin.name}",
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 450.dp)
-            ) {
-                val grantedCount = permissions.values.count { it }
-                val totalCount = permissions.size
-                
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "已授权: $grantedCount / $totalCount",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (grantedCount == totalCount)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.tertiary
-                    )
-                    if (grantedCount < totalCount) {
-                        UIComponents.PrimaryButton(
-                            text = if (isRequesting) "请求中..." else "一键授权",
-                            onClick = onRequestAll,
-                            modifier = Modifier.height(32.dp),
-                            enabled = !isRequesting,
-                            loading = isRequesting
-                        )
-                    }
-                }
-                
-                Divider()
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                if (permissions.isEmpty()) {
-                    Text(
-                        text = "该插件没有声明任何权限",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(permissions.entries.toList()) { (permission, granted) ->
-                            PermissionDetailItem(
-                                permission = permission,
-                                granted = granted
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            UIComponents.TextButton(
-                text = "关闭",
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    )
-}
-
-@Composable
-fun PermissionDetailItem(
-    permission: String,
-    granted: Boolean
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Warning,
-                contentDescription = null,
-                tint = if (granted)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.size(24.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = PluginPermissionManager.getPermissionDisplayName(permission),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (granted)
-                        MaterialTheme.colorScheme.onSurface
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = PluginPermissionManager.getPermissionDescription(permission),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (PluginPermissionManager.isSpecialPermission(permission)) {
-                    Text(
-                        text = "⚠️ 特殊权限：需在系统设置中手动开启",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-            }
-            
-            if (granted) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = "已授予",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            } else {
-                Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = "未授权",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
             }
         }
     }

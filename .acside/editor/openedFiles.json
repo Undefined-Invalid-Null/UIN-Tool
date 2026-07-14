@@ -19,17 +19,152 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 20,
-          "index": 422,
-          "line": 19
+          "column": 75,
+          "index": 5724,
+          "line": 193
         },
         "start": {
-          "column": 20,
-          "index": 422,
-          "line": 19
+          "column": 75,
+          "index": 5724,
+          "line": 193
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 34388,
+          "line": 792
+        },
+        "start": {
+          "column": 1,
+          "index": 34388,
+          "line": 792
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/theme/Theme.kt",
+      "selection": {
+        "end": {
+          "column": 30,
+          "index": 371,
+          "line": 10
+        },
+        "start": {
+          "column": 30,
+          "index": 371,
+          "line": 10
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.kt",
+      "selection": {
+        "end": {
+          "column": 46,
+          "index": 52611,
+          "line": 1370
+        },
+        "start": {
+          "column": 46,
+          "index": 52611,
+          "line": 1370
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 7522,
+          "line": 220
+        },
+        "start": {
+          "column": 1,
+          "index": 7522,
+          "line": 220
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/colors.xml",
+      "selection": {
+        "end": {
+          "column": 14,
+          "index": 354,
+          "line": 8
+        },
+        "start": {
+          "column": 14,
+          "index": 354,
+          "line": 8
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/WidgetConfigScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 15264,
+          "line": 396
+        },
+        "start": {
+          "column": 1,
+          "index": 15264,
+          "line": 396
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/PluginManageScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 84349,
+          "line": 2070
+        },
+        "start": {
+          "column": 1,
+          "index": 84349,
+          "line": 2070
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/UIConfigScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 66741,
+          "line": 1274
+        },
+        "start": {
+          "column": 1,
+          "index": 66741,
+          "line": 1274
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/UIConfigScreen.kt"
 }
