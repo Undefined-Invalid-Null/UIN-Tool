@@ -19,14 +19,14 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 75,
-          "index": 5724,
-          "line": 193
+          "column": 1,
+          "index": 7975,
+          "line": 251
         },
         "start": {
-          "column": 75,
-          "index": 5724,
-          "line": 193
+          "column": 1,
+          "index": 7975,
+          "line": 251
         }
       }
     },
@@ -164,7 +164,22 @@
           "line": 1274
         }
       }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 21374,
+          "line": 541
+        },
+        "start": {
+          "column": 0,
+          "index": 21374,
+          "line": 541
+        }
+      }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/UIConfigScreen.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt"
 }
