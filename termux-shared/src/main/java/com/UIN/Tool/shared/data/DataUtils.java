@@ -5,8 +5,6 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.base.Strings;
-
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
@@ -195,6 +193,25 @@ public class DataUtils {
     }
 
     /**
+     * 原生 Java 实现的字符串重复方法，替代 Guava 的 Strings.repeat()
+     * 
+     * @param str 要重复的字符串
+     * @param count 重复次数
+     * @return 重复后的字符串
+     */
+    private static String repeatString(String str, int count) {
+        if (str == null || count <= 0) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder(str.length() * count);
+        for (int i = 0; i < count; i++) {
+            sb.append(str);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Add an indent to a {@link String}.
      *
      * @param string The {@link String} to add indent to.
@@ -205,8 +222,10 @@ public class DataUtils {
     public static String getIndentedString(String string, @NonNull String indent, int count) {
         if (string == null || string.isEmpty())
             return string;
-        else
-            return string.replaceAll("(?m)^", Strings.repeat(indent, Math.max(count, 1)));
+        else {
+            String repeatedIndent = repeatString(indent, Math.max(count, 1));
+            return string.replaceAll("(?m)^", repeatedIndent);
+        }
     }
 
 

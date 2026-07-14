@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId "com.UIN.Tool"
         minSdk 23
-        targetSdk 35
+        targetSdk 28
         versionCode 10
         versionName "4.0.0"
 
@@ -146,17 +146,15 @@ android {
 // 🔥 修复依赖冲突 - 强制使用最新版本
 // ============================================================
 configurations.all {
-    // 排除 Guava 的 listenablefuture 模块（24.1 已包含）
-    exclude group: "com.google.guava", module: "listenablefuture"
+    
     
     // 排除 Atlassian 的旧版 commonmark
     exclude group: 'com.atlassian.commonmark', module: 'commonmark'
     
     // ⭐ 强制版本策略（移除旧的 force，使用新版本）
     resolutionStrategy {
-        // ===== 强制使用最新稳定版 =====
-        force "com.google.guava:guava:24.1-jre"
-        force "org.commonmark:commonmark:0.22.0"
+        
+    force "org.commonmark:commonmark:0.22.0"
         
         // 可选：强制其他关键库版本
         force "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
@@ -177,8 +175,6 @@ dependencies {
     // MultiDex
     implementation 'androidx.multidex:multidex:2.0.1'
     
-    // ⭐ Guava - 使用最新 Android 版本
-    implementation "com.google.guava:guava:24.1-jre"
     
     implementation "io.noties.markwon:core:4.6.2"
     implementation "io.noties.markwon:ext-strikethrough:4.6.2"
