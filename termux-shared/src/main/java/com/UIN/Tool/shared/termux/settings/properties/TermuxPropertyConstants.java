@@ -1,6 +1,5 @@
 package com.UIN.Tool.shared.termux.settings.properties;
 
-import com.google.common.collect.ImmutableBiMap;
 import com.UIN.Tool.shared.termux.shell.am.TermuxAmSocketServer;
 import com.UIN.Tool.shared.theme.NightMode;
 import com.UIN.Tool.shared.file.FileUtils;
@@ -13,8 +12,10 @@ import com.UIN.Tool.view.TerminalView;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /*
@@ -180,13 +181,26 @@ public final class TermuxPropertyConstants {
     public static final int IVALUE_BELL_BEHAVIOUR_IGNORE = 3;
     public static final int DEFAULT_IVALUE_BELL_BEHAVIOUR = IVALUE_BELL_BEHAVIOUR_VIBRATE;
 
-    /** Defines the bidirectional map for bell behaviour values and their internal values */
-    public static final ImmutableBiMap<String, Integer> MAP_BELL_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, Integer>()
-            .put(VALUE_BELL_BEHAVIOUR_VIBRATE, IVALUE_BELL_BEHAVIOUR_VIBRATE)
-            .put(VALUE_BELL_BEHAVIOUR_BEEP, IVALUE_BELL_BEHAVIOUR_BEEP)
-            .put(VALUE_BELL_BEHAVIOUR_IGNORE, IVALUE_BELL_BEHAVIOUR_IGNORE)
-            .build();
+    /** 
+     * 使用原生 HashMap 替代 ImmutableBiMap
+     * 同时提供正向和反向映射
+     */
+    private static final Map<String, Integer> MAP_BELL_BEHAVIOUR_FORWARD = new HashMap<>();
+    private static final Map<Integer, String> MAP_BELL_BEHAVIOUR_REVERSE = new HashMap<>();
+    
+    static {
+        MAP_BELL_BEHAVIOUR_FORWARD.put(VALUE_BELL_BEHAVIOUR_VIBRATE, IVALUE_BELL_BEHAVIOUR_VIBRATE);
+        MAP_BELL_BEHAVIOUR_FORWARD.put(VALUE_BELL_BEHAVIOUR_BEEP, IVALUE_BELL_BEHAVIOUR_BEEP);
+        MAP_BELL_BEHAVIOUR_FORWARD.put(VALUE_BELL_BEHAVIOUR_IGNORE, IVALUE_BELL_BEHAVIOUR_IGNORE);
+        
+        MAP_BELL_BEHAVIOUR_REVERSE.put(IVALUE_BELL_BEHAVIOUR_VIBRATE, VALUE_BELL_BEHAVIOUR_VIBRATE);
+        MAP_BELL_BEHAVIOUR_REVERSE.put(IVALUE_BELL_BEHAVIOUR_BEEP, VALUE_BELL_BEHAVIOUR_BEEP);
+        MAP_BELL_BEHAVIOUR_REVERSE.put(IVALUE_BELL_BEHAVIOUR_IGNORE, VALUE_BELL_BEHAVIOUR_IGNORE);
+    }
+    
+    /** 提供只读访问的正向映射（兼容旧代码） */
+    public static final Map<String, Integer> MAP_BELL_BEHAVIOUR = 
+        java.util.Collections.unmodifiableMap(MAP_BELL_BEHAVIOUR_FORWARD);
 
 
 
@@ -210,13 +224,26 @@ public final class TermuxPropertyConstants {
     public static final int IVALUE_TERMINAL_CURSOR_STYLE_BAR = TerminalEmulator.TERMINAL_CURSOR_STYLE_BAR;
     public static final int DEFAULT_IVALUE_TERMINAL_CURSOR_STYLE = TerminalEmulator.DEFAULT_TERMINAL_CURSOR_STYLE;
 
-    /** Defines the bidirectional map for terminal cursor styles and their internal values */
-    public static final ImmutableBiMap<String, Integer> MAP_TERMINAL_CURSOR_STYLE =
-        new ImmutableBiMap.Builder<String, Integer>()
-            .put(VALUE_TERMINAL_CURSOR_STYLE_BLOCK, IVALUE_TERMINAL_CURSOR_STYLE_BLOCK)
-            .put(VALUE_TERMINAL_CURSOR_STYLE_UNDERLINE, IVALUE_TERMINAL_CURSOR_STYLE_UNDERLINE)
-            .put(VALUE_TERMINAL_CURSOR_STYLE_BAR, IVALUE_TERMINAL_CURSOR_STYLE_BAR)
-            .build();
+    /** 
+     * 使用原生 HashMap 替代 ImmutableBiMap
+     * 同时提供正向和反向映射
+     */
+    private static final Map<String, Integer> MAP_TERMINAL_CURSOR_STYLE_FORWARD = new HashMap<>();
+    private static final Map<Integer, String> MAP_TERMINAL_CURSOR_STYLE_REVERSE = new HashMap<>();
+    
+    static {
+        MAP_TERMINAL_CURSOR_STYLE_FORWARD.put(VALUE_TERMINAL_CURSOR_STYLE_BLOCK, IVALUE_TERMINAL_CURSOR_STYLE_BLOCK);
+        MAP_TERMINAL_CURSOR_STYLE_FORWARD.put(VALUE_TERMINAL_CURSOR_STYLE_UNDERLINE, IVALUE_TERMINAL_CURSOR_STYLE_UNDERLINE);
+        MAP_TERMINAL_CURSOR_STYLE_FORWARD.put(VALUE_TERMINAL_CURSOR_STYLE_BAR, IVALUE_TERMINAL_CURSOR_STYLE_BAR);
+        
+        MAP_TERMINAL_CURSOR_STYLE_REVERSE.put(IVALUE_TERMINAL_CURSOR_STYLE_BLOCK, VALUE_TERMINAL_CURSOR_STYLE_BLOCK);
+        MAP_TERMINAL_CURSOR_STYLE_REVERSE.put(IVALUE_TERMINAL_CURSOR_STYLE_UNDERLINE, VALUE_TERMINAL_CURSOR_STYLE_UNDERLINE);
+        MAP_TERMINAL_CURSOR_STYLE_REVERSE.put(IVALUE_TERMINAL_CURSOR_STYLE_BAR, VALUE_TERMINAL_CURSOR_STYLE_BAR);
+    }
+    
+    /** 提供只读访问的正向映射（兼容旧代码） */
+    public static final Map<String, Integer> MAP_TERMINAL_CURSOR_STYLE = 
+        java.util.Collections.unmodifiableMap(MAP_TERMINAL_CURSOR_STYLE_FORWARD);
 
 
 
@@ -285,14 +312,28 @@ public final class TermuxPropertyConstants {
     public static final int ACTION_SHORTCUT_PREVIOUS_SESSION = 3;
     public static final int ACTION_SHORTCUT_RENAME_SESSION = 4;
 
-    /** Defines the bidirectional map for session shortcut values and their internal actions */
-    public static final ImmutableBiMap<String, Integer> MAP_SESSION_SHORTCUTS =
-        new ImmutableBiMap.Builder<String, Integer>()
-            .put(KEY_SHORTCUT_CREATE_SESSION, ACTION_SHORTCUT_CREATE_SESSION)
-            .put(KEY_SHORTCUT_NEXT_SESSION, ACTION_SHORTCUT_NEXT_SESSION)
-            .put(KEY_SHORTCUT_PREVIOUS_SESSION, ACTION_SHORTCUT_PREVIOUS_SESSION)
-            .put(KEY_SHORTCUT_RENAME_SESSION, ACTION_SHORTCUT_RENAME_SESSION)
-            .build();
+    /** 
+     * 使用原生 HashMap 替代 ImmutableBiMap
+     * 同时提供正向和反向映射
+     */
+    private static final Map<String, Integer> MAP_SESSION_SHORTCUTS_FORWARD = new HashMap<>();
+    private static final Map<Integer, String> MAP_SESSION_SHORTCUTS_REVERSE = new HashMap<>();
+    
+    static {
+        MAP_SESSION_SHORTCUTS_FORWARD.put(KEY_SHORTCUT_CREATE_SESSION, ACTION_SHORTCUT_CREATE_SESSION);
+        MAP_SESSION_SHORTCUTS_FORWARD.put(KEY_SHORTCUT_NEXT_SESSION, ACTION_SHORTCUT_NEXT_SESSION);
+        MAP_SESSION_SHORTCUTS_FORWARD.put(KEY_SHORTCUT_PREVIOUS_SESSION, ACTION_SHORTCUT_PREVIOUS_SESSION);
+        MAP_SESSION_SHORTCUTS_FORWARD.put(KEY_SHORTCUT_RENAME_SESSION, ACTION_SHORTCUT_RENAME_SESSION);
+        
+        MAP_SESSION_SHORTCUTS_REVERSE.put(ACTION_SHORTCUT_CREATE_SESSION, KEY_SHORTCUT_CREATE_SESSION);
+        MAP_SESSION_SHORTCUTS_REVERSE.put(ACTION_SHORTCUT_NEXT_SESSION, KEY_SHORTCUT_NEXT_SESSION);
+        MAP_SESSION_SHORTCUTS_REVERSE.put(ACTION_SHORTCUT_PREVIOUS_SESSION, KEY_SHORTCUT_PREVIOUS_SESSION);
+        MAP_SESSION_SHORTCUTS_REVERSE.put(ACTION_SHORTCUT_RENAME_SESSION, KEY_SHORTCUT_RENAME_SESSION);
+    }
+    
+    /** 提供只读访问的正向映射（兼容旧代码） */
+    public static final Map<String, Integer> MAP_SESSION_SHORTCUTS = 
+        java.util.Collections.unmodifiableMap(MAP_SESSION_SHORTCUTS_FORWARD);
 
 
 
@@ -307,12 +348,24 @@ public final class TermuxPropertyConstants {
     public static final String IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE = "escape";
     public static final String DEFAULT_IVALUE_BACK_KEY_BEHAVIOUR = IVALUE_BACK_KEY_BEHAVIOUR_BACK;
 
-    /** Defines the bidirectional map for back key behaviour values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_BACK_KEY_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_BACK_KEY_BEHAVIOUR_BACK, IVALUE_BACK_KEY_BEHAVIOUR_BACK)
-            .put(IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE, IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE)
-            .build();
+    /** 
+     * 使用原生 HashMap 替代 ImmutableBiMap
+     * 同时提供正向和反向映射
+     */
+    private static final Map<String, String> MAP_BACK_KEY_BEHAVIOUR_FORWARD = new HashMap<>();
+    private static final Map<String, String> MAP_BACK_KEY_BEHAVIOUR_REVERSE = new HashMap<>();
+    
+    static {
+        MAP_BACK_KEY_BEHAVIOUR_FORWARD.put(IVALUE_BACK_KEY_BEHAVIOUR_BACK, IVALUE_BACK_KEY_BEHAVIOUR_BACK);
+        MAP_BACK_KEY_BEHAVIOUR_FORWARD.put(IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE, IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE);
+        
+        MAP_BACK_KEY_BEHAVIOUR_REVERSE.put(IVALUE_BACK_KEY_BEHAVIOUR_BACK, IVALUE_BACK_KEY_BEHAVIOUR_BACK);
+        MAP_BACK_KEY_BEHAVIOUR_REVERSE.put(IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE, IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE);
+    }
+    
+    /** 提供只读访问的正向映射（兼容旧代码） */
+    public static final Map<String, String> MAP_BACK_KEY_BEHAVIOUR = 
+        java.util.Collections.unmodifiableMap(MAP_BACK_KEY_BEHAVIOUR_FORWARD);
 
 
 
@@ -342,13 +395,26 @@ public final class TermuxPropertyConstants {
     public static final String IVALUE_NIGHT_MODE_SYSTEM = NightMode.SYSTEM.getName();
     public static final String DEFAULT_IVALUE_NIGHT_MODE = IVALUE_NIGHT_MODE_SYSTEM;
 
-    /** Defines the bidirectional map for {@link NightMode} values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_NIGHT_MODE =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_NIGHT_MODE_TRUE, IVALUE_NIGHT_MODE_TRUE)
-            .put(IVALUE_NIGHT_MODE_FALSE, IVALUE_NIGHT_MODE_FALSE)
-            .put(IVALUE_NIGHT_MODE_SYSTEM, IVALUE_NIGHT_MODE_SYSTEM)
-            .build();
+    /** 
+     * 使用原生 HashMap 替代 ImmutableBiMap
+     * 同时提供正向和反向映射
+     */
+    private static final Map<String, String> MAP_NIGHT_MODE_FORWARD = new HashMap<>();
+    private static final Map<String, String> MAP_NIGHT_MODE_REVERSE = new HashMap<>();
+    
+    static {
+        MAP_NIGHT_MODE_FORWARD.put(IVALUE_NIGHT_MODE_TRUE, IVALUE_NIGHT_MODE_TRUE);
+        MAP_NIGHT_MODE_FORWARD.put(IVALUE_NIGHT_MODE_FALSE, IVALUE_NIGHT_MODE_FALSE);
+        MAP_NIGHT_MODE_FORWARD.put(IVALUE_NIGHT_MODE_SYSTEM, IVALUE_NIGHT_MODE_SYSTEM);
+        
+        MAP_NIGHT_MODE_REVERSE.put(IVALUE_NIGHT_MODE_TRUE, IVALUE_NIGHT_MODE_TRUE);
+        MAP_NIGHT_MODE_REVERSE.put(IVALUE_NIGHT_MODE_FALSE, IVALUE_NIGHT_MODE_FALSE);
+        MAP_NIGHT_MODE_REVERSE.put(IVALUE_NIGHT_MODE_SYSTEM, IVALUE_NIGHT_MODE_SYSTEM);
+    }
+    
+    /** 提供只读访问的正向映射（兼容旧代码） */
+    public static final Map<String, String> MAP_NIGHT_MODE = 
+        java.util.Collections.unmodifiableMap(MAP_NIGHT_MODE_FORWARD);
 
 
 
@@ -359,12 +425,24 @@ public final class TermuxPropertyConstants {
     public static final String IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE = "enable/disable";
     public static final String DEFAULT_IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR = IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE;
 
-    /** Defines the bidirectional map for toggle soft keyboard behaviour values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE)
-            .put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE)
-            .build();
+    /** 
+     * 使用原生 HashMap 替代 ImmutableBiMap
+     * 同时提供正向和反向映射
+     */
+    private static final Map<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_FORWARD = new HashMap<>();
+    private static final Map<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_REVERSE = new HashMap<>();
+    
+    static {
+        MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_FORWARD.put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE);
+        MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_FORWARD.put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE);
+        
+        MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_REVERSE.put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE);
+        MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_REVERSE.put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE);
+    }
+    
+    /** 提供只读访问的正向映射（兼容旧代码） */
+    public static final Map<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR = 
+        java.util.Collections.unmodifiableMap(MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_FORWARD);
 
 
 
@@ -375,12 +453,24 @@ public final class TermuxPropertyConstants {
     public static final String IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME = "volume";
     public static final String DEFAULT_IVALUE_VOLUME_KEYS_BEHAVIOUR = IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL;
 
-    /** Defines the bidirectional map for volume keys behaviour values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_VOLUME_KEYS_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL, IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL)
-            .put(IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME, IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME)
-            .build();
+    /** 
+     * 使用原生 HashMap 替代 ImmutableBiMap
+     * 同时提供正向和反向映射
+     */
+    private static final Map<String, String> MAP_VOLUME_KEYS_BEHAVIOUR_FORWARD = new HashMap<>();
+    private static final Map<String, String> MAP_VOLUME_KEYS_BEHAVIOUR_REVERSE = new HashMap<>();
+    
+    static {
+        MAP_VOLUME_KEYS_BEHAVIOUR_FORWARD.put(IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL, IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL);
+        MAP_VOLUME_KEYS_BEHAVIOUR_FORWARD.put(IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME, IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME);
+        
+        MAP_VOLUME_KEYS_BEHAVIOUR_REVERSE.put(IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL, IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL);
+        MAP_VOLUME_KEYS_BEHAVIOUR_REVERSE.put(IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME, IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME);
+    }
+    
+    /** 提供只读访问的正向映射（兼容旧代码） */
+    public static final Map<String, String> MAP_VOLUME_KEYS_BEHAVIOUR = 
+        java.util.Collections.unmodifiableMap(MAP_VOLUME_KEYS_BEHAVIOUR_FORWARD);
 
 
 
@@ -477,5 +567,115 @@ public final class TermuxPropertyConstants {
      */
     public static final Set<String> TERMUX_DEFAULT_INVERETED_TRUE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST = new HashSet<>(Arrays.asList(
     ));
+    
+    /**
+     * 辅助方法：获取反向映射的值（替代 BiMap 的 inverse().get()）
+     * 
+     * @param map 正向映射
+     * @param reverseMap 反向映射
+     * @param key 要查找的键
+     * @return 对应的值，如果不存在则返回 null
+     */
+    public static <K, V> V getReverseValue(Map<K, V> reverseMap, K key) {
+        return reverseMap.get(key);
+    }
+    
+    /**
+     * 获取 BellBehaviour 的反向映射
+     */
+    public static Integer getBellBehaviourValue(String key) {
+        return MAP_BELL_BEHAVIOUR_FORWARD.get(key);
+    }
+    
+    /**
+     * 获取 BellBehaviour 的键（反向查找）
+     */
+    public static String getBellBehaviourKey(Integer value) {
+        return MAP_BELL_BEHAVIOUR_REVERSE.get(value);
+    }
+    
+    /**
+     * 获取 TerminalCursorStyle 的反向映射
+     */
+    public static Integer getTerminalCursorStyleValue(String key) {
+        return MAP_TERMINAL_CURSOR_STYLE_FORWARD.get(key);
+    }
+    
+    /**
+     * 获取 TerminalCursorStyle 的键（反向查找）
+     */
+    public static String getTerminalCursorStyleKey(Integer value) {
+        return MAP_TERMINAL_CURSOR_STYLE_REVERSE.get(value);
+    }
+    
+    /**
+     * 获取 SessionShortcuts 的反向映射
+     */
+    public static Integer getSessionShortcutValue(String key) {
+        return MAP_SESSION_SHORTCUTS_FORWARD.get(key);
+    }
+    
+    /**
+     * 获取 SessionShortcuts 的键（反向查找）
+     */
+    public static String getSessionShortcutKey(Integer value) {
+        return MAP_SESSION_SHORTCUTS_REVERSE.get(value);
+    }
+    
+    /**
+     * 获取 BackKeyBehaviour 的反向映射
+     */
+    public static String getBackKeyBehaviourValue(String key) {
+        return MAP_BACK_KEY_BEHAVIOUR_FORWARD.get(key);
+    }
+    
+    /**
+     * 获取 BackKeyBehaviour 的键（反向查找）
+     */
+    public static String getBackKeyBehaviourKey(String value) {
+        return MAP_BACK_KEY_BEHAVIOUR_REVERSE.get(value);
+    }
+    
+    /**
+     * 获取 NightMode 的反向映射
+     */
+    public static String getNightModeValue(String key) {
+        return MAP_NIGHT_MODE_FORWARD.get(key);
+    }
+    
+    /**
+     * 获取 NightMode 的键（反向查找）
+     */
+    public static String getNightModeKey(String value) {
+        return MAP_NIGHT_MODE_REVERSE.get(value);
+    }
+    
+    /**
+     * 获取 SoftKeyboardToggleBehaviour 的反向映射
+     */
+    public static String getSoftKeyboardToggleBehaviourValue(String key) {
+        return MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_FORWARD.get(key);
+    }
+    
+    /**
+     * 获取 SoftKeyboardToggleBehaviour 的键（反向查找）
+     */
+    public static String getSoftKeyboardToggleBehaviourKey(String value) {
+        return MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_REVERSE.get(value);
+    }
+    
+    /**
+     * 获取 VolumeKeysBehaviour 的反向映射
+     */
+    public static String getVolumeKeysBehaviourValue(String key) {
+        return MAP_VOLUME_KEYS_BEHAVIOUR_FORWARD.get(key);
+    }
+    
+    /**
+     * 获取 VolumeKeysBehaviour 的键（反向查找）
+     */
+    public static String getVolumeKeysBehaviourKey(String value) {
+        return MAP_VOLUME_KEYS_BEHAVIOUR_REVERSE.get(value);
+    }
 
 }

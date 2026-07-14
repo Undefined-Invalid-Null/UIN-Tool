@@ -1,50 +1,35 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/AndroidManifest.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/build.gradle",
       "selection": {
         "end": {
-          "column": 11,
-          "index": 23462,
-          "line": 537
+          "column": 0,
+          "index": 0,
+          "line": 0
         },
         "start": {
-          "column": 11,
-          "index": 23462,
-          "line": 537
+          "column": 0,
+          "index": 0,
+          "line": 0
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 12,
-          "index": 6016,
-          "line": 129
+          "column": 20,
+          "index": 422,
+          "line": 19
         },
         "start": {
-          "column": 12,
-          "index": 6016,
-          "line": 129
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml",
-      "selection": {
-        "end": {
-          "column": 4,
-          "index": 25575,
-          "line": 518
-        },
-        "start": {
-          "column": 4,
-          "index": 25575,
-          "line": 518
+          "column": 20,
+          "index": 422,
+          "line": 19
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/strings.xml"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
 }

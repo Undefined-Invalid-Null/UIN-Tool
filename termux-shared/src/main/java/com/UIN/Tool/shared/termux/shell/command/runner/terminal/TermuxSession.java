@@ -6,7 +6,6 @@ import android.system.OsConstants;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.base.Joiner;
 import com.UIN.Tool.shared.R;
 import com.UIN.Tool.shared.shell.command.ExecutionCommand;
 import com.UIN.Tool.shared.shell.command.environment.ShellEnvironmentUtils;
@@ -149,8 +148,10 @@ public class TermuxSession {
         }
 
         Logger.logDebugExtended(LOG_TAG, executionCommand.toString());
-        Logger.logVerboseExtended(LOG_TAG, "\"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession Environment:\n" +
-            Joiner.on("\n").join(environmentArray));
+        
+        // 使用原生 Java 实现 Joiner 功能
+        String environmentLog = joinStringArray(environmentArray, "\n");
+        Logger.logVerboseExtended(LOG_TAG, "\"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession Environment:\n" + environmentLog);
 
         Logger.logDebug(LOG_TAG, "Running \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
         TerminalSession terminalSession = new TerminalSession(executionCommand.executable,
@@ -162,6 +163,28 @@ public class TermuxSession {
         }
 
         return new TermuxSession(terminalSession, executionCommand, termuxSessionClient, setStdoutOnExit);
+    }
+
+    /**
+     * 原生 Java 实现的字符串数组连接方法，替代 Guava 的 Joiner
+     * 
+     * @param array 要连接的字符串数组
+     * @param delimiter 分隔符
+     * @return 连接后的字符串
+     */
+    private static String joinStringArray(String[] array, String delimiter) {
+        if (array == null || array.length == 0) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < array.length; i++) {
+            if (i > 0) {
+                sb.append(delimiter);
+            }
+            sb.append(array[i]);
+        }
+        return sb.toString();
     }
 
     /**
@@ -279,8 +302,6 @@ public class TermuxSession {
     public ExecutionCommand getExecutionCommand() {
         return mExecutionCommand;
     }
-
-
 
     public interface TermuxSessionClient {
 

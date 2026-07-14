@@ -8,7 +8,6 @@ import android.os.Build;
 
 import androidx.annotation.NonNull;
 
-import com.google.common.base.Joiner;
 import com.UIN.Tool.shared.R;
 import com.UIN.Tool.shared.data.DataUtils;
 import com.UIN.Tool.shared.logger.Logger;
@@ -26,6 +25,34 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AndroidUtils {
+
+    /**
+     * 原生 Java 实现的字符串连接方法，替代 Guava 的 Joiner
+     * 
+     * @param delimiter 分隔符
+     * @param array 要连接的字符串数组
+     * @param skipNulls 是否跳过 null 值
+     * @return 连接后的字符串
+     */
+    private static String joinStrings(String delimiter, String[] array, boolean skipNulls) {
+        if (array == null || array.length == 0) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (String item : array) {
+            if (skipNulls && item == null) {
+                continue;
+            }
+            if (!first) {
+                sb.append(delimiter);
+            }
+            sb.append(item);
+            first = false;
+        }
+        return sb.toString();
+    }
 
     /**
      * Get a markdown {@link String} for the app info for the package associated with the {@code context}.
@@ -158,7 +185,10 @@ public class AndroidUtils {
         appendPropertyToMarkdown(markdownString, "BOARD", Build.BOARD);
         appendPropertyToMarkdown(markdownString, "HARDWARE", Build.HARDWARE);
         appendPropertyToMarkdown(markdownString, "DEVICE", Build.DEVICE);
-        appendPropertyToMarkdown(markdownString, "SUPPORTED_ABIS", Joiner.on(", ").skipNulls().join(Build.SUPPORTED_ABIS));
+        
+        // 使用原生 Java 实现 Joiner 功能
+        String supportedAbis = joinStrings(", ", Build.SUPPORTED_ABIS, true);
+        appendPropertyToMarkdown(markdownString, "SUPPORTED_ABIS", supportedAbis);
 
         markdownString.append("\n##\n");
 
