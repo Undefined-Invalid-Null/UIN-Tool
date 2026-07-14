@@ -8,7 +8,6 @@ import android.system.OsConstants;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.base.Joiner;
 import com.UIN.Tool.shared.R;
 import com.UIN.Tool.shared.data.DataUtils;
 import com.UIN.Tool.shared.shell.command.ExecutionCommand;
@@ -47,6 +46,28 @@ public final class AppShell {
         this.mProcess = process;
         this.mExecutionCommand = executionCommand;
         this.mAppShellClient = appShellClient;
+    }
+
+    /**
+     * 原生 Java 实现的字符串连接方法，替代 Guava 的 Joiner
+     * 
+     * @param delimiter 分隔符
+     * @param array 要连接的字符串数组
+     * @return 连接后的字符串
+     */
+    private static String joinStrings(String delimiter, String[] array) {
+        if (array == null || array.length == 0) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < array.length; i++) {
+            if (i > 0) {
+                sb.append(delimiter);
+            }
+            sb.append(array[i]);
+        }
+        return sb.toString();
     }
 
     /**
@@ -122,8 +143,10 @@ public final class AppShell {
         // No need to log stdin if logging is disabled, like for app internal scripts
         Logger.logDebugExtended(LOG_TAG, ExecutionCommand.getExecutionInputLogString(executionCommand,
             true, Logger.shouldEnableLoggingForCustomLogLevel(executionCommand.backgroundCustomLogLevel)));
-        Logger.logVerboseExtended(LOG_TAG, "\"" + executionCommand.getCommandIdAndLabelLogString() + "\" AppShell Environment:\n" +
-            Joiner.on("\n").join(environmentArray));
+        
+        // 使用原生 Java 实现 Joiner 功能
+        String environmentLog = joinStrings("\n", environmentArray);
+        Logger.logVerboseExtended(LOG_TAG, "\"" + executionCommand.getCommandIdAndLabelLogString() + "\" AppShell Environment:\n" + environmentLog);
 
         // Exec the process
         final Process process;

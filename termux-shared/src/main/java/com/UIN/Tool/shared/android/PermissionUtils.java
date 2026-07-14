@@ -19,7 +19,6 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.google.common.base.Joiner;
 import com.UIN.Tool.shared.R;
 import com.UIN.Tool.shared.file.FileUtils;
 import com.UIN.Tool.shared.logger.Logger;
@@ -41,6 +40,28 @@ public class PermissionUtils {
 
     private static final String LOG_TAG = "PermissionUtils";
 
+
+    /**
+     * 原生 Java 实现的字符串连接方法，替代 Guava 的 Joiner
+     * 
+     * @param delimiter 分隔符
+     * @param items 要连接的字符串列表
+     * @return 连接后的字符串
+     */
+    private static String joinStrings(String delimiter, Iterable<String> items) {
+        if (items == null) return "";
+        
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (String item : items) {
+            if (!first) {
+                sb.append(delimiter);
+            }
+            sb.append(item);
+            first = false;
+        }
+        return sb.toString();
+    }
 
     /**
      * Check if app has been granted the required permission.
@@ -66,7 +87,7 @@ public class PermissionUtils {
         if (permissionsNotRequested.size() > 0) {
             Logger.logError(LOG_TAG,
                 context.getString(R.string.error_attempted_to_check_for_permissions_not_requested,
-                    Joiner.on(", ").join(permissionsNotRequested)));
+                    joinStrings(", ", permissionsNotRequested)));
             return false;
         }
 
@@ -124,7 +145,7 @@ public class PermissionUtils {
         if (permissionsNotRequested.size() > 0) {
             Logger.logErrorAndShowToast(context, LOG_TAG,
                 context.getString(R.string.error_attempted_to_ask_for_permissions_not_requested,
-                    Joiner.on(", ").join(permissionsNotRequested)));
+                    joinStrings(", ", permissionsNotRequested)));
             return false;
         }
 

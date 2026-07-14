@@ -15,7 +15,6 @@ import android.text.util.Linkify;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 
-import com.google.common.base.Strings;
 import com.UIN.Tool.shared.R;
 import com.UIN.Tool.shared.theme.ThemeUtils;
 
@@ -43,6 +42,25 @@ public class MarkdownUtils {
     public static final Pattern backticksPattern = Pattern.compile("(" + backtick + "+)");
 
     /**
+     * 原生 Java 实现的字符串重复方法，替代 Guava 的 Strings.repeat()
+     * 
+     * @param str 要重复的字符串
+     * @param count 重复次数
+     * @return 重复后的字符串
+     */
+    private static String repeatString(String str, int count) {
+        if (str == null || count <= 0) {
+            return "";
+        }
+        
+        StringBuilder sb = new StringBuilder(str.length() * count);
+        for (int i = 0; i < count; i++) {
+            sb.append(str);
+        }
+        return sb.toString();
+    }
+
+    /**
      * Get the markdown code {@link String} for a {@link String}. This ensures all backticks "`" are
      * properly escaped so that markdown does not break.
      *
@@ -65,7 +83,7 @@ public class MarkdownUtils {
             backticksCountToUse = maxConsecutiveBackTicksCount + 1;
 
         // create a string with n backticks where n==backticksCountToUse
-        String backticksToUse = Strings.repeat(backtick, backticksCountToUse);
+        String backticksToUse = repeatString(backtick, backticksCountToUse);
 
         if (codeBlock)
             return backticksToUse + "\n" + string + "\n" + backticksToUse;
