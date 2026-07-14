@@ -1,109 +1,81 @@
-# UIN Tool 开发文档
+UIN Tool 开发文档
 
-## 版本信息
+版本信息
 
-| 项目 | 信息 |
-|------|------|
-| 文档版本 | 3.10.0 |
-| 对应应用版本 | v3.10.0 (Build 9) |
-| 最后更新 | 2026年6月9日 |
-
----
-
-## 目录
-
-- [快速开始](#快速开始)
-- [插件类型](#插件类型)
-- [原生插件开发](#原生插件开发)
-- [Web插件开发](#web插件开发)
-- [PluginInterface 接口详解](#plugininterface-接口详解)
-- [JavaScript API 完整参考](#javascript-api-完整参考)
-- [打包与导入](#打包与导入)
-- [发布到插件仓库](#发布到插件仓库)
-- [调试技巧](#调试技巧)
-- [常见问题](#常见问题)
-- [最佳实践](#最佳实践)
+项目 信息
+文档版本 4.0.0
+对应应用版本 v4.0.0 (Build 10)
+最后更新 2026年7月14日
 
 ---
 
-## 快速开始
+目录
 
-### 第一步：创建插件
+· 快速开始
+· 插件类型
+· 原生插件开发
+· Web插件开发
+· PluginInterface 接口详解
+· JavaScript API 完整参考
+· 打包与导入
+· 插件权限系统
+· 发布到插件仓库
+· 终端功能开发（基于 Termux）
+· UI 个性化开发
+· 调试技巧
+· 常见问题
+· 最佳实践
+
+---
+
+快速开始
+
+第一步：创建插件
 
 1. 打开 UIN Tool App
 2. 点击底部导航栏的「开发」标签
-3. 点击「创建新插件」按钮
-4. 选择插件类型：
-   - **原生插件 (Native)**：使用 Java 代码动态创建 UI，性能最优
-   - **Web插件 (WebView)**：使用 HTML/CSS/JS 开发 UI，支持热更新
+3. 点击「创建原生插件」或「创建 Web 插件」
+4. 按照向导完成配置
 
-### 第二步：配置插件信息
+第二步：配置插件信息
 
-| 字段 | 说明 | 示例 | 必填 |
-|------|------|------|------|
-| 插件ID | 唯一标识符，域名倒序格式 | `com.example.myplugin` | ✅ |
-| 插件名称 | 在列表中显示的名称 | `我的插件` | ✅ |
-| 作者 | 开发者名称 | `张三` | ❌ |
-| 描述 | 插件功能说明 | `这是一个示例插件` | ❌ |
-| 版本号 | 数字版本，用于版本比较 | `1` | ✅ |
-| 版本名 | 显示版本号 | `1.0.0` | ✅ |
-| 主类名 | 入口类的完整路径 | `com.example.MainPlugin` | ✅ |
+字段 说明 示例 必填
+插件ID 唯一标识符，域名倒序格式 com.example.myplugin ✅
+插件名称 在列表中显示的名称 我的插件 ✅
+作者 开发者名称 张三 ❌
+描述 插件功能说明 这是一个示例插件 ❌
+版本号 数字版本，用于版本比较 1 ✅
+版本名 显示版本号 1.0.0 ✅
+主类名 入口类的完整路径（原生插件） com.example.MainPlugin ✅
+入口文件 Web 插件入口（Web 插件） web/index.html ✅
 
-### 第三步：编写代码
+第三步：编写代码
 
 根据选择的插件类型，编写对应的代码。详见下方各章节。
 
-### 第四步：编译原生插件（重要）
+第四步：编译与打包
 
-> ⚠️ **注意**：目前 UIN Tool 仅支持生成插件模板，Java 代码编译成 DEX 需要用户自己操作。Web 插件无需编译。
+⚠️ 重要提示：目前 UIN Tool 的原生插件编译功能暂时禁用（原因：Android 环境缺少 tools.jar 支持），Web 插件无需编译。
 
-#### 手机端编译指南
+原生插件（当前状态）
 
-**准备工作：**
-1. 确保已安装 ECJ 和 D8 编译工具
-2. 准备好 `host-sdk.jar`（从 UIN Tool 的 assets/compiler 目录获取）
+· 编译功能暂时不可用：原生插件编译功能正在重构中
+· 临时解决方案：
+  1. 使用 PC 端编译 Java 源码为 DEX
+  2. 或使用 Web 插件替代
+  3. 或等待后续版本更新
 
-**编译步骤：**
+Web 插件（推荐）
 
-```bash
-# 1. 进入工作目录
-cd /storage/emulated/0/Works/UIN_Tool
-
-# 2. 编译 Java 文件为 class
-ecj -d . -cp host-sdk.jar MainPlugin.java
-
-# 3. 转换 class 为 DEX
-d8 --lib host-sdk.jar --min-api 21 --output . *.class
-
-# 4. 重命名 DEX 文件
-mv classes.dex plugin.dex
-
-# 5. 复制到插件目录
-cp plugin.dex /storage/emulated/0/UIN_Tool/com.example.nativeplugin/
-```
+· 无需编译：修改 HTML/CSS/JS 后直接生效
+· 即时预览：重新打开插件即可看到变化
 
 第五步：打包并导入
 
-1. 将编译好的 plugin.dex 与 plugin.json、icon.png 等文件一起打包为 ZIP
-2. 将 ZIP 重命名为 .tpk
-3. 点击底部「管理」标签
-4. 点击「插件管理」
-5. 点击「导入插件」按钮
-6. 选择 .tpk 文件
-7. 等待导入完成，即可在「工具」标签中看到插件
-
-第六步：导出开发模板
-
-1. 点击底部「开发」标签
-2. 点击「导出模板」按钮
-3. 系统自动导出到工作目录，包含：
-   · native_plugin_template.tpk - 原生插件模板
-   · web_plugin_template.tpk - Web 插件模板
-   · docs/ - 完整开发文档
-
-第七步：发布到插件仓库
-
-完成插件开发后，可以将其发布到官方插件仓库，让更多用户发现和使用。详见 发布到插件仓库 章节。
+1. 插件向导会自动生成项目文件和 TPK 包
+2. 点击底部「管理」→「插件管理」
+3. 点击「导入」选择 TPK 文件
+4. 等待导入完成，即可在「工具」页面中看到插件
 
 ---
 
@@ -112,115 +84,118 @@ cp plugin.dex /storage/emulated/0/UIN_Tool/com.example.nativeplugin/
 对比表格
 
 特性 原生插件 Web 插件
-UI开发方式 Java 代码动态创建 HTML/CSS/JS
+开发语言 Kotlin/Java HTML/CSS/JS
+UI 开发方式 代码动态创建 HTML 布局
 开发效率 中等 高
 运行性能 高 中等
-热更新 需重新编译 DEX 无需编译，直接修改文件
+热更新 需重新编译 无需编译
 学习成本 需懂 Android 开发 懂前端即可
 调试难度 中等 低（浏览器 DevTools）
-适合场景 复杂交互、高性能要求 简单界面、快速迭代、动态内容
-编译方式 需要手动编译成 DEX 无需编译
-网络请求 原生支持 通过 JS API
-文件系统 完全访问 受限访问（插件目录）
-传感器 完全访问 通过 JS API
+适合场景 复杂交互、高性能 快速迭代、动态内容
+编译方式 需要编译成 DEX 无需编译
+系统 API 访问 完全访问 通过 JS 接口
 文件类型 .dex .html/.css/.js
 
 如何选择
 
 · 选择原生插件：需要访问系统 API、复杂动画、高性能计算、自定义 View
-· 选择 Web 插件：快速原型、界面频繁变动、已有 Web 项目、希望前端开发者参与
+· 选择 Web 插件：快速原型、界面频繁变动、已有 Web 项目、前端开发者参与
 
 ---
 
 原生插件开发
 
-基本结构
+基本结构 (Kotlin)
 
-```java
-package com.example;
+```kotlin
+package com.example
 
-import android.content.Context;
-import android.os.Bundle;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.content.Context
+import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import com.UIN.Tool.core.plugin.PluginInterface
 
-import com.UIN.Tool.plugin.PluginInterface;
+class MainPlugin : PluginInterface {
 
-public class MainPlugin implements PluginInterface {
+    private var context: Context? = null
+    private var rootView: View? = null
+    private var clickCount = 0
 
-    private Context context;
-    private View rootView;
+    override fun onCreateView(
+        context: Context,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        this.context = context
 
-    @Override
-    public View onCreateView(Context context, ViewGroup container, Bundle savedInstanceState) {
-        this.context = context;
-
-        // 创建根布局（建议使用 Application Context 避免主题问题）
-        Context appContext = context.getApplicationContext();
-        LinearLayout layout = new LinearLayout(appContext);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(50, 50, 50, 50);
+        // 使用 Application Context 避免主题问题
+        val appContext = context.applicationContext
+        val layout = LinearLayout(appContext).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 50, 50, 50)
+        }
 
         // 标题
-        TextView title = new TextView(appContext);
-        title.setText("我的插件");
-        title.setTextSize(24);
-        title.setTextColor(0xFF37474F);
-        title.setPadding(0, 0, 0, 20);
+        val title = TextView(appContext).apply {
+            text = "我的插件"
+            textSize = 24f
+            setTextColor(0xFF37474F.toInt())
+            setPadding(0, 0, 0, 20)
+        }
+
+        // 计数器
+        val counterText = TextView(appContext).apply {
+            text = "点击次数: 0"
+            textSize = 16f
+            setTextColor(0xFF666666.toInt())
+            setPadding(0, 0, 0, 20)
+        }
 
         // 按钮
-        Button button = new Button(appContext);
-        button.setText("点击我");
-        button.setBackgroundColor(0xFF37474F);
-        button.setTextColor(0xFFFFFFFF);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(context, "插件运行成功！", Toast.LENGTH_SHORT).show();
+        val button = Button(appContext).apply {
+            text = "点击我"
+            setBackgroundColor(0xFF37474F.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            setOnClickListener {
+                clickCount++
+                counterText.text = "点击次数: $clickCount"
+                Toast.makeText(context, "点击了 $clickCount 次", Toast.LENGTH_SHORT).show()
             }
-        });
-
-        layout.addView(title);
-        layout.addView(button);
-
-        rootView = layout;
-        return rootView;
-    }
-
-    @Override
-    public void onResume() {
-        // 插件恢复时调用，可以刷新数据
-    }
-
-    @Override
-    public void onPause() {
-        // 插件暂停时调用，可以暂停动画或保存临时数据
-    }
-
-    @Override
-    public void onDestroy() {
-        // 清理资源
-        if (rootView != null) {
-            // 释放资源
         }
+
+        layout.addView(title)
+        layout.addView(counterText)
+        layout.addView(button)
+
+        rootView = layout
+        return rootView
     }
 
-    @Override
-    public boolean onBackPressed() {
-        // 返回 true 表示消费了返回事件
-        // 返回 false 表示让系统处理（关闭插件）
-        return false;
+    override fun onResume() {
+        // 插件恢复时调用
     }
 
-    @Override
-    public Bundle onSaveInstanceState() {
-        Bundle bundle = new Bundle();
-        bundle.putString("key", "value");
-        return bundle;
+    override fun onPause() {
+        // 插件暂停时调用
+    }
+
+    override fun onDestroy() {
+        rootView = null
+    }
+
+    override fun onBackPressed(): Boolean {
+        return false
+    }
+
+    override fun onSaveInstanceState(): Bundle? {
+        return Bundle().apply {
+            putInt("clickCount", clickCount)
+        }
     }
 }
 ```
@@ -229,141 +204,67 @@ public class MainPlugin implements PluginInterface {
 
 控件 说明 常用方法
 TextView 文本显示 setText(), setTextSize(), setTextColor()
-EditText 文本输入 getText(), setHint(), addTextChangedListener()
+EditText 文本输入 getText(), setHint()
 Button 按钮 setText(), setOnClickListener()
 ImageView 图片显示 setImageResource(), setImageBitmap()
 LinearLayout 线性布局 setOrientation(), setGravity()
 RelativeLayout 相对布局 addRule()
-FrameLayout 帧布局 用于层叠视图
-GridLayout 网格布局 setColumnCount(), setRowCount()
-RecyclerView 列表视图 setAdapter(), setLayoutManager()
-ScrollView 滚动视图 包裹内容使其可滚动
-WebView 网页视图 loadUrl(), loadData()
+FrameLayout 帧布局 层叠视图
+ScrollView 滚动视图 包裹内容
 ProgressBar 进度条 setProgress(), setVisibility()
 CheckBox 复选框 setChecked(), isChecked()
-RadioButton 单选按钮 setChecked(), isChecked()
 Switch 开关 setChecked(), isChecked()
 SeekBar 滑块 setProgress(), setOnSeekBarChangeListener()
 
 布局示例
 
-线性布局（垂直）
-
-```java
-LinearLayout layout = new LinearLayout(appContext);
-layout.setOrientation(LinearLayout.VERTICAL);
-layout.setLayoutParams(new ViewGroup.LayoutParams(
-    ViewGroup.LayoutParams.MATCH_PARENT,
-    ViewGroup.LayoutParams.WRAP_CONTENT
-));
-
-TextView textView = new TextView(appContext);
-textView.setText("标题");
-layout.addView(textView);
-
-Button button = new Button(appContext);
-button.setText("按钮");
-layout.addView(button);
-```
-
-线性布局（水平）
-
-```java
-LinearLayout rowLayout = new LinearLayout(appContext);
-rowLayout.setOrientation(LinearLayout.HORIZONTAL);
-rowLayout.setGravity(Gravity.CENTER_VERTICAL);
-
-TextView label = new TextView(appContext);
-label.setText("标签：");
-
-EditText input = new EditText(appContext);
-input.setHint("请输入内容");
-input.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-rowLayout.addView(label);
-rowLayout.addView(input);
-```
-
-相对布局
-
-```java
-RelativeLayout layout = new RelativeLayout(appContext);
-
-TextView centerText = new TextView(appContext);
-centerText.setText("居中显示");
-RelativeLayout.LayoutParams centerParams = new RelativeLayout.LayoutParams(
-    RelativeLayout.LayoutParams.WRAP_CONTENT,
-    RelativeLayout.LayoutParams.WRAP_CONTENT
-);
-centerParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-centerText.setLayoutParams(centerParams);
-
-Button bottomButton = new Button(appContext);
-bottomButton.setText("底部按钮");
-RelativeLayout.LayoutParams bottomParams = new RelativeLayout.LayoutParams(
-    RelativeLayout.LayoutParams.WRAP_CONTENT,
-    RelativeLayout.LayoutParams.WRAP_CONTENT
-);
-bottomParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-bottomParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
-bottomButton.setLayoutParams(bottomParams);
-
-layout.addView(centerText);
-layout.addView(bottomButton);
-```
-
-列表视图（ListView）
-
-```java
-ListView listView = new ListView(appContext);
-String[] items = {"选项1", "选项2", "选项3"};
-ArrayAdapter<String> adapter = new ArrayAdapter<>(appContext, 
-    android.R.layout.simple_list_item_1, items);
-listView.setAdapter(adapter);
-
-listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        Toast.makeText(context, "点击了: " + items[position], Toast.LENGTH_SHORT).show();
-    }
-});
-```
-
-滚动视图（ScrollView）
-
-```java
-ScrollView scrollView = new ScrollView(appContext);
-LinearLayout contentLayout = new LinearLayout(appContext);
-contentLayout.setOrientation(LinearLayout.VERTICAL);
-
-// 添加大量内容
-for (int i = 0; i < 20; i++) {
-    TextView textView = new TextView(appContext);
-    textView.setText("第 " + (i + 1) + " 行");
-    contentLayout.addView(textView);
+```kotlin
+// 线性布局（垂直）
+val layout = LinearLayout(appContext).apply {
+    orientation = LinearLayout.VERTICAL
+    layoutParams = ViewGroup.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.WRAP_CONTENT
+    )
 }
 
-scrollView.addView(contentLayout);
+// 线性布局（水平）
+val rowLayout = LinearLayout(appContext).apply {
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER_VERTICAL
+}
+
+// 相对布局
+val layout = RelativeLayout(appContext)
+val centerText = TextView(appContext).apply {
+    text = "居中显示"
+    layoutParams = RelativeLayout.LayoutParams(
+        RelativeLayout.LayoutParams.WRAP_CONTENT,
+        RelativeLayout.LayoutParams.WRAP_CONTENT
+    ).apply {
+        addRule(RelativeLayout.CENTER_IN_PARENT)
+    }
+}
 ```
 
 访问插件资源
 
-```java
+```kotlin
 // 获取插件目录
-File pluginDir = context.getFilesDir().getParentFile();
-String pluginPath = pluginDir.getAbsolutePath();
+val pluginDir = context.filesDir.parentFile
+val pluginPath = pluginDir?.absolutePath ?: ""
 
-// 读取插件中的文件
-File configFile = new File(pluginPath, "config.json");
+// 读取配置文件
+val configFile = File(pluginPath, "config.json")
 if (configFile.exists()) {
-    String content = readFileToString(configFile);
+    val content = configFile.readText()
 }
 
-// 读取插件中的图片资源
-File iconFile = new File(pluginPath, "icon.png");
+// 读取图片资源
+val iconFile = File(pluginPath, "icon.png")
 if (iconFile.exists()) {
-    Bitmap bitmap = BitmapFactory.decodeFile(iconFile.getAbsolutePath());
-    imageView.setImageBitmap(bitmap);
+    val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
+    imageView.setImageBitmap(bitmap)
 }
 ```
 
@@ -398,7 +299,8 @@ plugin.json 配置
     "mainClass": "",
     "apiLevel": 21,
     "uiType": "web",
-    "entry": "web/index.html"
+    "entry": "web/index.html",
+    "permissions": ["INTERNET", "VIBRATE"]
 }
 ```
 
@@ -411,186 +313,20 @@ HTML 模板示例
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的Web插件</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>我的插件</h1>
-            <p>这是一个Web插件示例</p>
-        </div>
-        
-        <div class="content">
-            <!-- 基础功能卡片 -->
-            <div class="card">
-                <h3>基础功能</h3>
-                <button onclick="showToast()" class="btn-primary">显示提示</button>
-                <button onclick="closePlugin()" class="btn-danger">关闭插件</button>
-                <button onclick="copyText('Hello')" class="btn-secondary">复制文本</button>
-            </div>
-            
-            <!-- 网络请求卡片 -->
-            <div class="card">
-                <h3>网络请求</h3>
-                <button onclick="testHttpGet()" class="btn-info">GET 请求</button>
-                <button onclick="testHttpPost()" class="btn-info">POST 请求</button>
-            </div>
-            
-            <!-- 传感器卡片 -->
-            <div class="card">
-                <h3>传感器</h3>
-                <button onclick="startAccelerometer()" class="btn-secondary">加速度计</button>
-                <button onclick="startGyroscope()" class="btn-secondary">陀螺仪</button>
-                <button onclick="startLightSensor()" class="btn-secondary">光线传感器</button>
-                <button onclick="stopSensor()" class="btn-danger">停止传感器</button>
-                <div id="sensor-output" class="sensor-data"></div>
-            </div>
-            
-            <!-- 文件系统卡片 -->
-            <div class="card">
-                <h3>文件系统</h3>
-                <button onclick="writeTestFile()" class="btn-secondary">写入文件</button>
-                <button onclick="readTestFile()" class="btn-secondary">读取文件</button>
-                <button onclick="listFiles()" class="btn-secondary">列出文件</button>
-                <button onclick="deleteTestFile()" class="btn-danger">删除文件</button>
-            </div>
-            
-            <!-- 存储卡片 -->
-            <div class="card">
-                <h3>本地存储</h3>
-                <input type="text" id="storage-key" placeholder="键名" class="input">
-                <input type="text" id="storage-value" placeholder="值" class="input">
-                <button onclick="saveData()" class="btn-secondary">保存</button>
-                <button onclick="loadData()" class="btn-secondary">读取</button>
-                <button onclick="clearStorage()" class="btn-danger">清空</button>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <span>版本 1.0.0</span>
-        </div>
+        <h1>我的插件</h1>
+        <button onclick="showToast()">显示提示</button>
+        <button onclick="closePlugin()">关闭插件</button>
+        <button onclick="testHttpGet()">GET 请求</button>
     </div>
-    
     <script src="script.js"></script>
 </body>
 </html>
-```
-
-CSS 样式示例
-
-```css
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f5f7fa;
-    min-height: 100vh;
-}
-
-.container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 16px;
-}
-
-.header {
-    background: linear-gradient(135deg, #37474F 0%, #263238 100%);
-    color: white;
-    padding: 32px 20px;
-    text-align: center;
-    border-radius: 24px;
-    margin-bottom: 20px;
-}
-
-.header h1 {
-    font-size: 28px;
-    margin-bottom: 8px;
-}
-
-.header p {
-    opacity: 0.85;
-    font-size: 14px;
-}
-
-.card {
-    background: white;
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.card h3 {
-    color: #37474F;
-    margin-bottom: 16px;
-    font-size: 16px;
-}
-
-button {
-    border: none;
-    padding: 10px 20px;
-    border-radius: 24px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    margin-right: 10px;
-    margin-bottom: 10px;
-}
-
-.btn-primary {
-    background: #37474F;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #263238;
-}
-
-.btn-info {
-    background: #2196F3;
-    color: white;
-}
-
-.btn-secondary {
-    background: #607D8B;
-    color: white;
-}
-
-.btn-danger {
-    background: #F44336;
-    color: white;
-}
-
-.input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.sensor-data {
-    margin-top: 10px;
-    padding: 10px;
-    background: #f0f0f0;
-    border-radius: 8px;
-    font-size: 12px;
-    font-family: monospace;
-}
-
-.footer {
-    text-align: center;
-    padding: 16px;
-    font-size: 12px;
-    color: #999;
-}
 ```
 
 JavaScript 示例
@@ -598,31 +334,21 @@ JavaScript 示例
 ```javascript
 // ==================== 基础功能 ====================
 
-// 显示 Toast 提示
 function showToast() {
     UINPlugin.callHost('toast', 'Hello from WebView!');
 }
 
-// 关闭插件
 function closePlugin() {
     UINPlugin.callHost('finish', '');
 }
 
-// 输出日志
 function logMessage(message) {
     UINPlugin.callHost('log', message);
     console.log(message);
 }
 
-// 复制文本
-function copyText(text) {
-    UINPlugin.callHost('copy', text);
-    showToast('已复制: ' + text);
-}
-
 // ==================== 网络请求 ====================
 
-// GET 请求
 function testHttpGet() {
     const url = 'https://api.github.com/orgs/UIN-Tool-Plugins/repos';
     const callbackId = 'get_' + Date.now();
@@ -632,7 +358,7 @@ function testHttpGet() {
         const data = JSON.parse(response);
         if (data.success) {
             console.log('GET 成功:', data.data);
-            alert('请求成功！共 ' + JSON.parse(data.data).length + ' 个仓库');
+            alert('请求成功！');
         } else {
             console.error('GET 失败:', data.error);
             alert('请求失败: ' + data.error);
@@ -643,7 +369,6 @@ function testHttpGet() {
     UINPlugin.httpGet(url, callbackId);
 }
 
-// POST 请求
 function testHttpPost() {
     const url = 'https://httpbin.org/post';
     const postData = JSON.stringify({test: 'Hello World', time: Date.now()});
@@ -667,251 +392,79 @@ function testHttpPost() {
 
 // ==================== 传感器 ====================
 
-let currentSensorCallback = null;
-let currentSensorType = null;
-
 function startAccelerometer() {
-    startSensor('accelerometer', '加速度计');
-}
-
-function startGyroscope() {
-    startSensor('gyroscope', '陀螺仪');
-}
-
-function startLightSensor() {
-    startSensor('light', '光线传感器');
-}
-
-function startSensor(type, name) {
-    // 停止当前传感器
-    if (currentSensorCallback) {
-        stopSensor();
-    }
-    
     const callbackId = 'sensor_' + Date.now();
-    currentSensorType = type;
-    
     window.UINPluginCallbacks = window.UINPluginCallbacks || {};
     window.UINPluginCallbacks[callbackId] = function(data) {
         const sensorData = JSON.parse(data);
         if (sensorData.success) {
-            let output = '';
-            if (type === 'accelerometer') {
-                output = `X: ${sensorData.x.toFixed(2)}<br>Y: ${sensorData.y.toFixed(2)}<br>Z: ${sensorData.z.toFixed(2)}`;
-            } else if (type === 'gyroscope') {
-                output = `X: ${sensorData.x.toFixed(2)}<br>Y: ${sensorData.y.toFixed(2)}<br>Z: ${sensorData.z.toFixed(2)}`;
-            } else if (type === 'light') {
-                output = `光照强度: ${sensorData.lux.toFixed(2)} lux`;
-            } else if (type === 'proximity') {
-                output = `距离: ${sensorData.distance.toFixed(2)} cm`;
-            }
-            document.getElementById('sensor-output').innerHTML = `<strong>${name}数据:</strong><br>${output}`;
+            console.log(`X: ${sensorData.x}, Y: ${sensorData.y}, Z: ${sensorData.z}`);
+            document.getElementById('output').innerHTML = 
+                `X: ${sensorData.x.toFixed(2)}<br>Y: ${sensorData.y.toFixed(2)}<br>Z: ${sensorData.z.toFixed(2)}`;
         }
     };
-    
-    UINPlugin.startSensor(type, callbackId);
-    currentSensorCallback = callbackId;
-    showToast(`启动${name}传感器`);
+    UINPlugin.startSensor('accelerometer', callbackId);
+    showToast('启动加速度计');
 }
 
 function stopSensor() {
-    if (currentSensorCallback) {
-        delete window.UINPluginCallbacks[currentSensorCallback];
-        currentSensorCallback = null;
-    }
     UINPlugin.stopSensor();
-    document.getElementById('sensor-output').innerHTML = '传感器已停止';
     showToast('传感器已停止');
-}
-
-// 获取可用传感器
-function checkAvailableSensors() {
-    const sensors = JSON.parse(UINPlugin.getAvailableSensors());
-    console.log('可用传感器:', sensors);
-    let msg = '可用传感器:\n';
-    for (let [key, value] of Object.entries(sensors)) {
-        msg += `${key}: ${value ? '✓' : '✗'}\n`;
-    }
-    alert(msg);
 }
 
 // ==================== 文件系统 ====================
 
 function writeTestFile() {
-    const content = `测试文件内容\n时间: ${new Date().toLocaleString()}\n内容: Hello from Web Plugin!`;
+    const content = `测试文件内容\n时间: ${new Date().toLocaleString()}`;
     const success = UINPlugin.writeFile('test.txt', content);
-    if (success) {
-        alert('文件写入成功');
-        listFiles();
-    } else {
-        alert('文件写入失败');
-    }
+    alert(success ? '文件写入成功' : '文件写入失败');
 }
 
 function readTestFile() {
     const content = UINPlugin.readFile('test.txt');
-    if (content) {
-        alert('文件内容:\n' + content);
-    } else {
-        alert('文件不存在');
-    }
-}
-
-function deleteTestFile() {
-    const success = UINPlugin.deleteFile('test.txt');
-    if (success) {
-        alert('文件删除成功');
-        listFiles();
-    } else {
-        alert('文件删除失败');
-    }
+    alert(content ? '文件内容:\n' + content : '文件不存在');
 }
 
 function listFiles() {
     const files = UINPlugin.listFiles('');
-    if (files && files.length > 0) {
-        alert('文件列表:\n' + files.join('\n'));
-    } else {
-        alert('目录为空');
-    }
+    alert('文件列表:\n' + (files.length ? files.join('\n') : '目录为空'));
 }
 
-// ==================== 信息获取 ====================
-
-// 获取插件信息
-function getPluginInfo() {
-    try {
-        const infoStr = UINPlugin.getPluginInfo();
-        const info = JSON.parse(infoStr);
-        alert(`插件名称: ${info.name}\n插件ID: ${info.pluginId}\n版本: ${info.versionName}\n作者: ${info.author || '未知'}`);
-        logMessage(`插件信息: ${infoStr}`);
-    } catch (e) {
-        logMessage(`获取插件信息失败: ${e.message}`);
-    }
-}
-
-// 获取设备信息
-function getDeviceInfo() {
-    try {
-        const infoStr = UINPlugin.getDeviceInfo();
-        const info = JSON.parse(infoStr);
-        alert(`设备: ${info.brand} ${info.device}\nAndroid: ${info.android}\nAPI: ${info.api}\n屏幕: ${info.screenWidth}x${info.screenHeight}`);
-        logMessage(`设备信息: ${infoStr}`);
-    } catch (e) {
-        logMessage(`获取设备信息失败: ${e.message}`);
-    }
-}
-
-// 获取网络信息
-function getNetworkInfo() {
-    try {
-        const infoStr = UINPlugin.getNetworkInfo();
-        const info = JSON.parse(infoStr);
-        if (info.connected) {
-            alert(`网络状态: 已连接\n类型: ${info.type}\nWiFi: ${info.isWifi ? '是' : '否'}`);
-        } else {
-            alert('网络未连接');
-        }
-    } catch (e) {
-        logMessage(`获取网络信息失败: ${e.message}`);
-    }
-}
-
-// ==================== 存储功能 ====================
+// ==================== 存储 ====================
 
 function saveData() {
-    const key = document.getElementById('storage-key').value;
-    const value = document.getElementById('storage-value').value;
-    if (key) {
-        UINPlugin.setStorage(key, value);
-        showToast(`已保存: ${key} = ${value}`);
-        logMessage(`保存数据: ${key} = ${value}`);
-    } else {
-        alert('请输入键名');
-    }
+    UINPlugin.setStorage('key', 'value');
+    showToast('已保存');
 }
 
 function loadData() {
-    const key = document.getElementById('storage-key').value;
-    if (key) {
-        const value = UINPlugin.getStorage(key);
-        if (value) {
-            document.getElementById('storage-value').value = value;
-            showToast(`读取成功: ${key} = ${value}`);
-        } else {
-            showToast('键不存在');
-        }
-    } else {
-        alert('请输入键名');
-    }
+    const value = UINPlugin.getStorage('key');
+    showToast('读取: ' + value);
 }
 
 function clearStorage() {
     UINPlugin.clearStorage();
-    showToast('已清空所有存储数据');
-    document.getElementById('storage-key').value = '';
-    document.getElementById('storage-value').value = '';
+    showToast('已清空');
 }
 
-// ==================== 系统功能 ====================
+// ==================== 生命周期 ====================
 
-// 打开系统设置
-function openSettings() {
-    UINPlugin.openSettings();
-}
-
-// 打开应用设置
-function openAppSettings() {
-    UINPlugin.openAppSettings();
-}
-
-// 修改标题
-function setTitle(title) {
-    UINPlugin.setTitle(title);
-    showToast(`标题已改为: ${title}`);
-}
-
-// 震动
-function vibrate() {
-    UINPlugin.callHost('vibrate', '200');
-    showToast('震动');
-}
-
-// 分享
-function shareText() {
-    UINPlugin.callHost('share', '分享来自 UIN Tool Web 插件的内容');
-}
-
-// ==================== 生命周期事件 ====================
-
-// 页面加载完成
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Web 插件已加载');
-    logMessage('插件启动成功');
-    getPluginInfo();
 });
 
-// 插件恢复运行
 window.addEventListener('resume', () => {
-    console.log('插件恢复运行');
-    logMessage('插件恢复运行');
+    console.log('插件恢复');
 });
 
-// 插件暂停运行
 window.addEventListener('pause', () => {
-    console.log('插件暂停运行');
-    logMessage('插件暂停运行');
-    // 暂停时停止传感器
-    stopSensor();
+    console.log('插件暂停');
+    stopSensor(); // 暂停时停止传感器
 });
 
-// 插件销毁
 window.addEventListener('destroy', () => {
-    console.log('插件被销毁');
-    logMessage('插件被销毁');
-    if (currentSensorCallback) {
-        stopSensor();
-    }
+    console.log('插件销毁');
+    stopSensor();
 });
 ```
 
@@ -929,138 +482,136 @@ onDestroy 插件销毁 ❌ 否 插件被关闭时
 onBackPressed 返回键按下 ❌ 否 用户按下返回键时
 onSaveInstanceState 保存状态 ❌ 否 系统需要保存状态时
 onActivityResult Activity 结果 ❌ 否 startActivityForResult 返回时
+onRequestPermissionsResult 权限请求结果 ❌ 否 权限请求完成时
 
-完整实现示例
+完整实现示例 (Kotlin)
 
-```java
-package com.example;
+```kotlin
+package com.example
 
-import android.content.Context;
-import android.content.Intent;
-import android.os.Bundle;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import com.UIN.Tool.core.plugin.PluginInterface
 
-import com.UIN.Tool.plugin.PluginInterface;
+class MainPlugin : PluginInterface {
 
-public class MainPlugin implements PluginInterface {
+    private var context: Context? = null
+    private var rootView: View? = null
+    private var counterText: TextView? = null
+    private var clickCount = 0
 
-    private Context context;
-    private View rootView;
-    private TextView counterText;
-    private int clickCount = 0;
+    override fun onCreateView(
+        context: Context,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        this.context = context
+        val appContext = context.applicationContext
 
-    @Override
-    public View onCreateView(Context context, ViewGroup container, Bundle savedInstanceState) {
-        this.context = context;
-        Context appContext = context.getApplicationContext();
+        val layout = LinearLayout(appContext).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 50, 50, 50)
+        }
 
-        LinearLayout layout = new LinearLayout(appContext);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(50, 50, 50, 50);
+        val title = TextView(appContext).apply {
+            text = "我的插件"
+            textSize = 24f
+            setTextColor(0xFF37474F.toInt())
+            setPadding(0, 0, 0, 20)
+        }
 
-        // 标题
-        TextView title = new TextView(appContext);
-        title.setText("我的插件");
-        title.setTextSize(24);
-        title.setTextColor(0xFF37474F);
-        title.setPadding(0, 0, 0, 20);
+        counterText = TextView(appContext).apply {
+            text = "点击次数: 0"
+            textSize = 16f
+            setTextColor(0xFF666666.toInt())
+            setPadding(0, 0, 0, 20)
+        }
 
-        // 计数器
-        counterText = new TextView(appContext);
-        counterText.setText("点击次数: 0");
-        counterText.setTextSize(16);
-        counterText.setTextColor(0xFF666666);
-        counterText.setPadding(0, 0, 0, 20);
-
-        // 按钮
-        Button button = new Button(appContext);
-        button.setText("点击我");
-        button.setBackgroundColor(0xFF37474F);
-        button.setTextColor(0xFFFFFFFF);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                clickCount++;
-                counterText.setText("点击次数: " + clickCount);
-                Toast.makeText(context, "点击了 " + clickCount + " 次", Toast.LENGTH_SHORT).show();
+        val button = Button(appContext).apply {
+            text = "点击我"
+            setBackgroundColor(0xFF37474F.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            setOnClickListener {
+                clickCount++
+                counterText?.text = "点击次数: $clickCount"
+                Toast.makeText(context, "点击了 $clickCount 次", Toast.LENGTH_SHORT).show()
             }
-        });
+        }
 
-        // 重置按钮
-        Button resetButton = new Button(appContext);
-        resetButton.setText("重置");
-        resetButton.setBackgroundColor(0xFF607D8B);
-        resetButton.setTextColor(0xFFFFFFFF);
-        resetButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                clickCount = 0;
-                counterText.setText("点击次数: 0");
-                Toast.makeText(context, "已重置", Toast.LENGTH_SHORT).show();
+        val resetButton = Button(appContext).apply {
+            text = "重置"
+            setBackgroundColor(0xFF607D8B.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            setOnClickListener {
+                clickCount = 0
+                counterText?.text = "点击次数: 0"
+                Toast.makeText(context, "已重置", Toast.LENGTH_SHORT).show()
             }
-        });
+        }
 
-        layout.addView(title);
-        layout.addView(counterText);
-        layout.addView(button);
-        layout.addView(resetButton);
+        layout.addView(title)
+        layout.addView(counterText)
+        layout.addView(button)
+        layout.addView(resetButton)
 
-        rootView = layout;
-        
+        rootView = layout
+
         // 恢复保存的状态
-        if (savedInstanceState != null) {
-            clickCount = savedInstanceState.getInt("clickCount", 0);
-            counterText.setText("点击次数: " + clickCount);
+        savedInstanceState?.let {
+            clickCount = it.getInt("clickCount", 0)
+            counterText?.text = "点击次数: $clickCount"
         }
-        
-        return rootView;
+
+        return rootView
     }
 
-    @Override
-    public void onResume() {
-        Toast.makeText(context, "插件恢复", Toast.LENGTH_SHORT).show();
+    override fun onResume() {
+        Toast.makeText(context, "插件恢复", Toast.LENGTH_SHORT).show()
     }
 
-    @Override
-    public void onPause() {
-        Toast.makeText(context, "插件暂停", Toast.LENGTH_SHORT).show();
+    override fun onPause() {
+        Toast.makeText(context, "插件暂停", Toast.LENGTH_SHORT).show()
     }
 
-    @Override
-    public void onDestroy() {
-        if (rootView != null) {
-            // 清理资源
+    override fun onDestroy() {
+        rootView = null
+        Toast.makeText(context, "插件销毁", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onBackPressed(): Boolean {
+        return if (clickCount > 0) {
+            Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
+            clickCount = 0
+            counterText?.text = "点击次数: 0"
+            true
+        } else {
+            false
         }
-        Toast.makeText(context, "插件销毁", Toast.LENGTH_SHORT).show();
     }
 
-    @Override
-    public boolean onBackPressed() {
-        if (clickCount > 0) {
-            Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show();
-            clickCount = 0;
-            counterText.setText("点击次数: 0");
-            return true;
+    override fun onSaveInstanceState(): Bundle? {
+        return Bundle().apply {
+            putInt("clickCount", clickCount)
         }
-        return false;
     }
 
-    @Override
-    public Bundle onSaveInstanceState() {
-        Bundle bundle = new Bundle();
-        bundle.putInt("clickCount", clickCount);
-        return bundle;
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        Toast.makeText(context, "Activity 返回: $requestCode", Toast.LENGTH_SHORT).show()
     }
-    
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // 处理 Activity 返回结果
-        Toast.makeText(context, "Activity 返回: " + requestCode, Toast.LENGTH_SHORT).show();
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        // 处理权限请求结果
     }
 }
 ```
@@ -1078,7 +629,7 @@ UINPlugin.callHost('toast', '消息内容');
 // 关闭插件
 UINPlugin.callHost('finish', '');
 
-// 输出日志到宿主 Log
+// 输出日志
 UINPlugin.callHost('log', '调试信息');
 
 // 显示弹窗
@@ -1110,7 +661,6 @@ window.UINPluginCallbacks[callbackId] = function(response) {
     const data = JSON.parse(response);
     if (data.success) {
         console.log('请求成功:', data.data);
-        // data.data 是响应内容字符串
     } else {
         console.error('请求失败:', data.error);
     }
@@ -1118,54 +668,26 @@ window.UINPluginCallbacks[callbackId] = function(response) {
 UINPlugin.httpGet('https://api.example.com/data', callbackId);
 
 // POST 请求
-const postCallbackId = 'post_' + Date.now();
 const postData = JSON.stringify({key: 'value'});
-window.UINPluginCallbacks[postCallbackId] = function(response) {
-    const data = JSON.parse(response);
-    if (data.success) {
-        console.log('POST 成功:', data.data);
-    }
-};
-UINPlugin.httpPost('https://api.example.com/submit', postData, postCallbackId);
+UINPlugin.httpPost('https://api.example.com/submit', postData, callbackId);
 ```
 
-startSensor / stopSensor - 传感器
+传感器 API
 
 ```javascript
 // 启动传感器
-const sensorCallbackId = 'sensor_' + Date.now();
-window.UINPluginCallbacks[sensorCallbackId] = function(data) {
-    const sensorData = JSON.parse(data);
-    if (sensorData.success) {
-        // 加速度计: sensorData.x, sensorData.y, sensorData.z
-        // 陀螺仪: sensorData.x, sensorData.y, sensorData.z
-        // 光线: sensorData.lux
-        // 接近: sensorData.distance
-        // 压力: sensorData.pressure
-        console.log('传感器数据:', sensorData);
-    }
-};
-UINPlugin.startSensor('accelerometer', sensorCallbackId);
+const callbackId = 'sensor_' + Date.now();
+UINPlugin.startSensor('accelerometer', callbackId);
 
 // 停止传感器
 UINPlugin.stopSensor();
 
 // 获取可用传感器
 const sensors = JSON.parse(UINPlugin.getAvailableSensors());
-console.log('可用传感器:', sensors);
-// 返回值示例:
-// {
-//   "accelerometer": true,
-//   "gyroscope": true,
-//   "magneticField": true,
-//   "light": true,
-//   "proximity": true,
-//   "pressure": true,
-//   "temperature": false
-// }
+// 返回: { accelerometer: true, gyroscope: true, ... }
 ```
 
-支持的传感器类型
+支持的传感器类型：
 
 类型 说明 回调数据
 accelerometer 加速度计 x, y, z
@@ -1189,80 +711,9 @@ const deleted = UINPlugin.deleteFile('test.txt');
 
 // 列出文件
 const files = UINPlugin.listFiles('');
-console.log('文件列表:', files);
 
 // 获取插件目录
 const pluginDir = UINPlugin.getPluginDir();
-console.log('插件目录:', pluginDir);
-```
-
-getPluginInfo - 获取插件信息
-
-```javascript
-const infoStr = UINPlugin.getPluginInfo();
-const info = JSON.parse(infoStr);
-console.log(info.name);        // 插件名称
-console.log(info.pluginId);    // 插件ID
-console.log(info.versionName); // 版本名
-console.log(info.author);      // 作者
-console.log(info.description); // 描述
-console.log(info.uiType);      // UI类型: native/web
-```
-
-getDeviceInfo - 获取设备信息
-
-```javascript
-const infoStr = UINPlugin.getDeviceInfo();
-const info = JSON.parse(infoStr);
-console.log(info.brand);        // 品牌
-console.log(info.device);       // 型号
-console.log(info.android);      // Android 版本
-console.log(info.api);          // API 级别
-console.log(info.screenWidth);  // 屏幕宽度(px)
-console.log(info.screenHeight); // 屏幕高度(px)
-console.log(info.screenDensity); // 屏幕密度
-console.log(info.screenDensityDpi); // 屏幕DPI
-```
-
-getNetworkInfo - 获取网络信息
-
-```javascript
-const infoStr = UINPlugin.getNetworkInfo();
-const info = JSON.parse(infoStr);
-console.log(info.connected);    // 是否连接
-console.log(info.type);         // 网络类型 (WIFI/MOBILE)
-console.log(info.isWifi);       // 是否 WiFi
-console.log(info.isMobile);     // 是否移动网络
-```
-
-getCurrentTime - 获取当前时间
-
-```javascript
-const time = UINPlugin.getCurrentTime();
-console.log(time); // 2026-06-09 12:00:00
-```
-
-getAppVersion - 获取宿主版本
-
-```javascript
-const version = UINPlugin.getAppVersion();
-console.log('宿主版本:', version);
-```
-
-setTitle - 设置标题
-
-```javascript
-UINPlugin.setTitle('新标题');
-```
-
-setFullscreen - 全屏模式
-
-```javascript
-// 进入全屏
-UINPlugin.setFullscreen(true);
-
-// 退出全屏
-UINPlugin.setFullscreen(false);
 ```
 
 存储 API
@@ -1281,170 +732,53 @@ UINPlugin.removeStorage('key');
 UINPlugin.clearStorage();
 ```
 
-粘贴 API
+信息获取 API
 
 ```javascript
-// 从剪贴板粘贴
-const text = UINPlugin.paste();
-console.log(text);
+// 获取插件信息
+const info = JSON.parse(UINPlugin.getPluginInfo());
+
+// 获取设备信息
+const device = JSON.parse(UINPlugin.getDeviceInfo());
+
+// 获取网络信息
+const network = JSON.parse(UINPlugin.getNetworkInfo());
+
+// 获取当前时间
+const time = UINPlugin.getCurrentTime();
+
+// 获取宿主版本
+const version = UINPlugin.getAppVersion();
 ```
 
 系统 API
 
 ```javascript
+// 设置标题
+UINPlugin.setTitle('新标题');
+
+// 全屏模式
+UINPlugin.setFullscreen(true);  // 进入全屏
+UINPlugin.setFullscreen(false); // 退出全屏
+
 // 打开系统设置
 UINPlugin.openSettings();
 
 // 打开应用设置
 UINPlugin.openAppSettings();
+
+// 权限检查
+const granted = UINPlugin.checkPermission('android.permission.CAMERA');
+
+// 请求权限
+UINPlugin.requestPermission('android.permission.CAMERA', callbackId);
 ```
 
-完整使用示例
+粘贴 API
 
 ```javascript
-// 创建插件对象
-const MyPlugin = {
-    // 显示消息
-    showMessage(msg) {
-        UINPlugin.callHost('toast', msg);
-    },
-    
-    // 关闭
-    close() {
-        UINPlugin.callHost('finish', '');
-    },
-    
-    // 获取插件信息
-    getInfo() {
-        return JSON.parse(UINPlugin.getPluginInfo());
-    },
-    
-    // 获取设备信息
-    getDevice() {
-        return JSON.parse(UINPlugin.getDeviceInfo());
-    },
-    
-    // 保存设置
-    saveSetting(key, value) {
-        UINPlugin.setStorage(key, value);
-        this.showMessage(`已保存: ${key}`);
-    },
-    
-    // 加载设置
-    loadSetting(key) {
-        return UINPlugin.getStorage(key);
-    },
-    
-    // 复制文本
-    copy(text) {
-        UINPlugin.callHost('copy', text);
-        this.showMessage('已复制');
-    },
-    
-    // 粘贴文本
-    paste() {
-        return UINPlugin.paste();
-    },
-    
-    // HTTP GET 请求
-    get(url, callback) {
-        const callbackId = 'get_' + Date.now();
-        window.UINPluginCallbacks = window.UINPluginCallbacks || {};
-        window.UINPluginCallbacks[callbackId] = function(response) {
-            const data = JSON.parse(response);
-            callback(data);
-            delete window.UINPluginCallbacks[callbackId];
-        };
-        UINPlugin.httpGet(url, callbackId);
-    },
-    
-    // HTTP POST 请求
-    post(url, data, callback) {
-        const callbackId = 'post_' + Date.now();
-        const postData = JSON.stringify(data);
-        window.UINPluginCallbacks = window.UINPluginCallbacks || {};
-        window.UINPluginCallbacks[callbackId] = function(response) {
-            const result = JSON.parse(response);
-            callback(result);
-            delete window.UINPluginCallbacks[callbackId];
-        };
-        UINPlugin.httpPost(url, postData, callbackId);
-    },
-    
-    // 启动传感器
-    startSensor(type, onData) {
-        const callbackId = 'sensor_' + Date.now();
-        window.UINPluginCallbacks = window.UINPluginCallbacks || {};
-        window.UINPluginCallbacks[callbackId] = function(data) {
-            const sensorData = JSON.parse(data);
-            onData(sensorData);
-        };
-        UINPlugin.startSensor(type, callbackId);
-        return callbackId;
-    },
-    
-    // 停止传感器
-    stopSensor(callbackId) {
-        if (callbackId) {
-            delete window.UINPluginCallbacks[callbackId];
-        }
-        UINPlugin.stopSensor();
-    },
-    
-    // 写入文件
-    writeFile(name, content) {
-        return UINPlugin.writeFile(name, content);
-    },
-    
-    // 读取文件
-    readFile(name) {
-        return UINPlugin.readFile(name);
-    },
-    
-    // 列出文件
-    listFiles() {
-        return UINPlugin.listFiles('');
-    },
-    
-    // 删除文件
-    deleteFile(name) {
-        return UINPlugin.deleteFile(name);
-    },
-    
-    // 获取插件目录
-    getPluginDir() {
-        return UINPlugin.getPluginDir();
-    }
-};
-
-// 页面加载完成
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('插件已启动');
-    MyPlugin.showMessage('插件加载成功');
-    
-    // 加载保存的设置
-    const theme = MyPlugin.loadSetting('theme');
-    if (theme) {
-        document.body.className = theme;
-    }
-    
-    // 显示插件信息
-    const info = MyPlugin.getInfo();
-    console.log('插件名称:', info.name);
-});
-
-// 生命周期事件
-window.addEventListener('resume', () => {
-    console.log('插件恢复');
-});
-
-window.addEventListener('pause', () => {
-    console.log('插件暂停');
-});
-
-window.addEventListener('destroy', () => {
-    console.log('插件销毁');
-});
+const text = UINPlugin.paste();
+console.log('剪贴板内容:', text);
 ```
 
 ---
@@ -1455,48 +789,43 @@ window.addEventListener('destroy', () => {
 
 方式一：使用向导打包
 
-1. 在「开发」页面点击「创建新插件」
+1. 在「开发」页面点击「创建原生插件」或「创建 Web 插件」
 2. 按照向导完成配置
-3. 在最后一步点击「生成项目文件」
-4. 系统自动生成 TPK 文件到工作目录
-5. 工作目录默认：/storage/emulated/0/UIN_Tool/
+3. 在最后一步点击「完成」
+4. 系统自动生成项目文件和 TPK 包
+5. 工作目录：/storage/emulated/0/UIN_Tool/
 
 方式二：手动打包
 
 1. 将插件文件整理到文件夹中
-2. 确保有 plugin.json 和 web/index.html（Web插件）或 plugin.dex（原生插件）
+2. 确保有 plugin.json 和必要文件
 3. 压缩为 ZIP 格式
 4. 重命名为 .tpk 扩展名
 
-文件结构检查
+文件结构
 
-原生插件结构
-
-```
-plugin.tpk
-├── plugin.json      # 必需
-├── icon.png         # 可选，建议提供
-├── plugin.dex       # 必需
-├── src/             # 可选，源码
-│   └── com/example/MainPlugin.java
-└── res/             # 可选，资源文件
-    └── drawable/
-        └── icon.png
-```
-
-Web 插件结构
+原生插件结构：
 
 ```
 plugin.tpk
 ├── plugin.json      # 必需
-├── icon.png         # 可选，建议提供
+├── icon.png         # 可选
+├── plugin.dex       # 必需（当前需手动编译）
+├── src/             # 可选
+└── res/             # 可选
+```
+
+Web 插件结构：
+
+```
+plugin.tpk
+├── plugin.json      # 必需
+├── icon.png         # 可选
 └── web/             # 必需
     ├── index.html   # 必需
     ├── style.css    # 可选
     ├── script.js    # 可选
-    └── assets/      # 可选，其他资源
-        ├── image.png
-        └── font.ttf
+    └── assets/      # 可选
 ```
 
 plugin.json 完整字段
@@ -1510,142 +839,248 @@ name string 插件名称 ✅
 author string 作者 ❌
 description string 描述 ❌
 icon string 图标文件名 ❌
-mainClass string 主类名，原生插件必填 原生✅
+mainClass string 主类名（原生插件） 原生✅
 updateUrl string 更新检查 URL ❌
-apiLevel int 最低 API 级别，默认 21 ❌
-category string 分类，默认"未分类" ❌
-uiType string UI类型: native/web，默认 native ❌
-entry string 入口文件，Web插件必填 Web✅
+apiLevel int 最低 API 级别 ❌
+category string 分类 ❌
+uiType string native/web ❌
+entry string 入口文件（Web 插件） Web✅
+permissions array 所需权限列表 ❌
+dependencies array 依赖插件列表 ❌
 
-导入步骤
+---
 
-1. 打开 UIN Tool App
-2. 点击底部「管理」标签
-3. 点击「插件管理」
-4. 点击「导入插件」按钮
-5. 选择 .tpk 文件
-6. 等待导入完成
-7. 在「工具」标签中查看插件
+插件权限系统
 
-批量导入
+权限声明
 
-1. 在插件管理页面点击「批量导入」
-2. 选择多个 .tpk 文件
-3. 系统自动依次导入
-4. 显示导入进度和结果统计
+在 plugin.json 中声明插件需要的权限：
 
-插件集导入
+```json
+{
+    "pluginId": "com.example.myplugin",
+    "name": "我的插件",
+    "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION"
+    ]
+}
+```
 
-1. 将多个插件打包成一个 ZIP 文件
-2. 在插件管理页面点击「插件集」
-3. 选择 ZIP 文件
-4. 系统自动解压并导入所有插件
+权限类型
+
+权限 说明 类型
+READ_EXTERNAL_STORAGE 读取存储 普通
+WRITE_EXTERNAL_STORAGE 写入存储 普通
+MANAGE_EXTERNAL_STORAGE 管理所有文件 特殊
+INTERNET 访问网络 普通
+CAMERA 相机 普通
+RECORD_AUDIO 录音 普通
+ACCESS_FINE_LOCATION 精确位置 普通
+ACCESS_BACKGROUND_LOCATION 后台位置 特殊
+SYSTEM_ALERT_WINDOW 悬浮窗 特殊
+WRITE_SETTINGS 修改系统设置 特殊
+REQUEST_INSTALL_PACKAGES 安装未知应用 特殊
+ACCESSIBILITY 无障碍权限 特殊
+
+权限请求流程
+
+1. 插件安装时：系统记录插件声明的权限
+2. 插件启动时：自动检查权限状态
+3. 权限缺失时：显示权限说明对话框
+4. 用户授权：分组请求权限
+5. 权限授予后：正常加载插件
+
+权限状态查看
+
+在「管理」→「权限管理」→「插件权限」中：
+
+· 查看每个插件的权限状态
+· 手动请求未授予的权限
+· 查看权限详细说明
 
 ---
 
 发布到插件仓库
 
-🆕 v2.0.0 新增功能：UIN Tool 现在支持从 GitHub 官方仓库直接安装插件。开发者可以将自己的插件发布到官方仓库，让用户更方便地发现和安装。
-
 仓库要求
 
-要将插件发布到官方仓库，需要满足以下要求：
-
 要求 说明
-仓库名称 必须为插件 ID（如 com.example.myplugin）
+仓库名称 必须为插件 ID
 仓库描述 必须为插件名称
-Release 标签 格式：{版本代码}-{版本名称}（如 1-1.0.0）
+Release Tag 格式：{版本代码}-{版本名称}
 Release 资产 必须包含 .tpk 文件
 仓库可见性 必须是公开仓库
 
 发布步骤
 
 1. 创建 GitHub 仓库
-
-· 登录 GitHub
-· 在 UIN-Tool-Plugins 组织中创建新仓库（或在自己账号下创建后申请收录）
-· 仓库名称设置为插件 ID（如 com.example.myplugin）
-· 仓库描述设置为插件名称
-· 选择公开仓库
-
+   · 在 UIN-Tool-Plugins 组织中创建仓库
+   · 仓库名称设置为插件 ID
 2. 上传插件文件
+   ```bash
+   git clone https://github.com/UIN-Tool-Plugins/your.plugin.id
+   cd your.plugin.id
+   cp your-plugin.tpk .
+   git add your-plugin.tpk
+   git commit -m "Add plugin v1.0.0"
+   git push
+   ```
+3. 创建 Release
+   · Tag: 1-1.0.0 (格式：版本代码-版本名称)
+   · 上传 .tpk 文件到 Assets
+4. 强制更新
+   · Tag 格式：{版本代码}-{版本名称}-1
+   · 例：2-1.0.1-1 表示强制更新
+
+---
+
+终端功能开发（基于 Termux）
+
+概述
+
+UIN Tool 内置完整的终端环境，核心引擎基于 Termux 改编。终端功能为插件开发者提供了强大的 Linux 命令行工具链。
+
+终端特性
+
+特性 说明
+Shell 支持 bash、zsh、fish 等
+包管理器 APT (Debian/Ubuntu 软件源)
+开发工具 gcc、clang、make、git
+脚本语言 Python、Node.js、Ruby
+文本编辑器 vim、nano、emacs
+网络工具 curl、wget、openssh
+多会话 支持多个终端会话同时运行
+多窗口 Android 7.0+ 多窗口支持
+
+终端使用场景
+
+· 插件开发调试：在 Android 设备上直接编译和测试
+· 服务器管理：通过 SSH 管理远程服务器
+· 学习 Linux：无需 Root 即可体验完整的 Linux 环境
+· 自动化脚本：编写 Shell/Python 脚本
+
+终端常用命令
 
 ```bash
-# 克隆仓库
-git clone https://github.com/UIN-Tool-Plugins/your.plugin.id
-cd your.plugin.id
+# 更新软件源
+pkg update
 
-# 复制 TPK 文件
-cp your-plugin.tpk .
+# 安装 Python
+pkg install python
 
-# 提交并推送
-git add your-plugin.tpk
-git commit -m "Add plugin v1.0.0"
-git push
+# 安装 Node.js
+pkg install nodejs
+
+# 安装 git
+pkg install git
+
+# SSH 连接服务器
+ssh user@hostname
+
+# 查看存储目录
+ls ~/storage/shared/
 ```
 
-3. 创建 Release
+在插件中调用终端命令
 
-· 在 GitHub 仓库页面点击 "Releases"
-· 点击 "Create a new release"
-· 填写信息：
-  · Tag version: 1-1.0.0（格式：版本代码-版本名称）
-  · Release title: 版本 1.0.0
-  · Description: 更新日志
-· 上传 .tpk 文件到 Assets
-· 点击 "Publish release"
+原生插件可以通过 Runtime.exec() 执行终端命令，但建议使用 UIN Tool 提供的 RunCommandService：
 
-4. 自动验证
+```java
+// 通过 RunCommandService 执行命令
+Intent intent = new Intent(RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND);
+intent.setClass(context, RunCommandService.class);
+intent.putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, "/system/bin/sh");
+intent.putExtra(RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, new String[]{"-c", "echo hello"});
+context.startService(intent);
+```
 
-发布后，系统会自动：
+致谢 Termux
 
-· ✅ 验证 TPK 文件结构
-· ✅ 检查 plugin.json 格式
-· ✅ 验证命名规范
-· ✅ 在 Release 页面评论验证结果
+终端功能的实现基于 Termux 项目改编，感谢 Termux 团队的开源贡献！
 
-5. 验证通过后
+---
 
-插件会在 24 小时内 出现在 UIN Tool 的「仓库」页面中，用户可以直接浏览和安装。
+UI 个性化开发
 
-更新插件
+颜色系统
 
-1. 修改插件代码
-2. 更新 plugin.json 中的版本号
-3. 重新打包为 .tpk 文件
-4. 在 GitHub 创建新的 Release
-5. Tag 格式：{新版本代码}-{新版本名称}
+UIN Tool 提供 38+ 颜色配置项，全部可通过 UIConfig 自定义：
 
-强制更新
+```kotlin
+val uiConfig = UIConfig.getInstance()
 
-如果发布的是强制更新版本，Tag 格式为：{版本代码}-{版本名称}-1
+// 获取颜色
+val primaryColor = uiConfig.getPrimaryColor()
+val textPrimaryColor = uiConfig.getTextPrimaryColor()
 
-例如：2-1.0.1-1 表示强制更新版本
+// 更新颜色
+uiConfig.updateColor("primary", "#FF1A3A4A")
+uiConfig.updateColor("text_primary", "#FF212121")
 
-· forceFlag = 1：强制更新（用户无法跳过）
-· forceFlag = 0 或无：普通更新（用户可跳过）
+// 保存配置
+uiConfig.saveConfig()
+```
+
+颜色配置项
+
+分类 颜色项
+主色调 primary, primary_dark, primary_light, accent
+辅助色 success, warning, error, info
+文本色 text_primary, text_secondary, text_hint, text_primary_inverse
+背景色 background, surface, surface_variant
+边框色 divider, glass_background, disabled
+
+形状配置
+
+```kotlin
+// 获取圆角
+val cornerRadius = uiConfig.getCardCornerRadius()
+val buttonRadius = uiConfig.getButtonCornerRadius()
+
+// 更新圆角
+uiConfig.updateShape("cardCornerRadius", 16)
+uiConfig.updateShape("buttonCornerRadius", 12)
+```
+
+主题系统
+
+UIN Tool 使用 Jetpack Compose 主题系统：
+
+```kotlin
+// 在 Compose 中使用
+UINToolTheme {
+    // UI 内容
+}
+
+// 获取主题颜色
+val colorScheme = MaterialTheme.colorScheme
+val primary = colorScheme.primary
+val surface = colorScheme.surface
+```
 
 ---
 
 调试技巧
 
-1. 使用日志输出
+1. 日志输出
 
-原生插件
+原生插件：
 
-```java
-import com.UIN.Tool.utils.LogUtils;
+```kotlin
+import com.UIN.Tool.log.Logger
 
-LogUtils.i("TAG", "信息");
-LogUtils.d("TAG", "调试");
-LogUtils.e("TAG", "错误", exception);
-LogUtils.success("TAG", "成功");
-LogUtils.enter("TAG", "方法名");
-LogUtils.exit("TAG", "方法名", startTime);
-LogUtils.param("TAG", "参数名", 参数值);
+Logger.i("TAG", "信息")
+Logger.d("TAG", "调试")
+Logger.e("TAG", "错误", exception)
+Logger.success("TAG", "成功")
+Logger.enter("TAG", "方法名")
+Logger.exit("TAG", "方法名", startTime)
+Logger.param("TAG", "参数名", 参数值)
 ```
 
-Web 插件
+Web 插件：
 
 ```javascript
 UINPlugin.callHost('log', '调试信息');
@@ -1654,73 +1089,25 @@ console.log('控制台输出');
 
 2. 查看运行日志
 
-· 在「管理」标签点击「运行日志」
-· 可查看、导出、清空日志
-· 崩溃日志会自动保存
+· 在「管理」→「运行日志」中查看
+· 崩溃日志自动保存
 · 日志位置：/storage/emulated/0/UIN_Tool/logs/
 
 3. WebView 远程调试
 
 1. 在 Chrome 浏览器打开 chrome://inspect
 2. 确保 WebView 调试已启用
-3. 可以看到 WebView 页面并调试
-4. 支持断点、控制台、网络监控
+3. 支持断点、控制台、网络监控
 
-4. 使用 Toast 快速调试
-
-原生插件
-
-```java
-Toast.makeText(context, "调试信息", Toast.LENGTH_SHORT).show();
-```
-
-Web 插件
-
-```javascript
-UINPlugin.callHost('toast', '调试信息');
-```
-
-5. 文件系统调试
-
-· 插件工作目录：/storage/emulated/0/UIN_Tool/{pluginId}/
-· 日志目录：/storage/emulated/0/UIN_Tool/logs/
-· 可通过文件管理器查看文件
-· 导出模板位置：/storage/emulated/0/UIN_Tool/
-
-6. 传感器调试
+4. 传感器调试
 
 ```javascript
 // 检查可用传感器
 const sensors = JSON.parse(UINPlugin.getAvailableSensors());
 console.log('可用传感器:', sensors);
 
-// 启动传感器后查看回调数据
+// 启动传感器并查看数据
 UINPlugin.startSensor('accelerometer', callbackId);
-
-// 在回调中打印数据
-window.UINPluginCallbacks[callbackId] = function(data) {
-    console.log('传感器数据:', data);
-    const sensorData = JSON.parse(data);
-    if (sensorData.success) {
-        console.log('X:', sensorData.x, 'Y:', sensorData.y, 'Z:', sensorData.z);
-    }
-};
-```
-
-7. 网络请求调试
-
-```javascript
-// 在回调中打印详细数据
-window.UINPluginCallbacks[callbackId] = function(response) {
-    console.log('原始响应:', response);
-    const data = JSON.parse(response);
-    console.log('解析后数据:', data);
-    if (data.success) {
-        console.log('响应内容:', data.data);
-    } else {
-        console.error('错误信息:', data.error);
-    }
-};
 ```
 
 ---
@@ -1735,40 +1122,41 @@ Q1: 插件导入失败？
 · 缺少 plugin.json 文件
 · JSON 格式错误
 · 原生插件缺少 plugin.dex
-· Web插件缺少 web/index.html
+· Web 插件缺少 web/index.html
 · 签名验证失败
 
 解决方案：
 
 · 确保使用正确的打包方式
-· 检查 plugin.json 格式是否正确
-· 重新打包后再试
-· 在开发者选项中可忽略签名验证
+· 检查 plugin.json 格式
+· 在开发者选项中可忽略签名验证（仅测试用）
 
-Q2: Web 插件修改后不生效？
+Q2: 原生插件编译失败？
 
-Web 插件修改 HTML/CSS/JS 后，只需关闭并重新打开插件即可，无需重新编译或重新导入。
+当前状态： 原生插件编译功能暂时禁用（Android 环境缺少 tools.jar 支持）
 
-Q3: 插件无法调用宿主权限？
+临时方案：
+
+1. 使用 PC 端编译 Java → DEX
+2. 或使用 Web 插件替代
+3. 等待后续版本更新
+
+Q3: Web 插件修改后不生效？
+
+Web 插件修改 HTML/CSS/JS 后，关闭并重新打开插件即可，无需重新编译。
+
+Q4: 插件无法调用宿主权限？
 
 在「管理」→「权限管理」→「插件权限」中为插件授予所需权限。
 
-Q4: 如何调试插件？
+Q5: 如何调试插件？
 
-1. 使用 LogUtils 输出日志
+1. 使用 Logger 输出日志
 2. 在「管理」→「运行日志」中查看
-3. 崩溃日志会自动保存
-4. Web插件可用 Chrome DevTools 调试
+3. 崩溃日志自动保存
+4. Web 插件可用 Chrome DevTools 调试
 
-Q5: 插件支持哪些 Android 版本？
-
-最低支持 Android 5.0 (API 21)，推荐使用 Android 8.0+。
-
-Q6: 如何更新插件？
-
-重新导入同 ID 的插件即可覆盖更新。
-
-Q7: Web 插件如何传递复杂数据？
+Q6: Web 插件如何传递复杂数据？
 
 使用 JSON 格式：
 
@@ -1779,75 +1167,34 @@ UINPlugin.callPlugin('processData', JSON.stringify({
 }));
 ```
 
-Q8: 插件图标显示不出来？
+Q7: 强制更新是什么？
 
-· 确保图标文件名为 icon.png
-· 图标放在插件根目录
-· 推荐使用 128x128 像素的 PNG 图片
+当 Release Tag 格式为 {版本代码}-{版本名称}-1 时，会强制用户更新，无法跳过。
 
-Q9: 如何让插件开机自启？
-
-插件本身不支持开机自启，但可以通过无障碍服务实现自动化。
-
-Q10: 如何分享插件？
-
-1. 在插件管理页面选择要导出的插件
-2. 点击「导出」
-3. 选择导出位置
-4. 分享生成的 ZIP 文件
-
-Q11: 如何管理插件分类？
-
-在插件详情弹窗中点击「修改分类」：
-
-· 选择已有分类
-· 选择「新建分类」创建新分类
-· 在分类管理对话框中可长按删除自定义分类
-
-Q12: 小部件不显示插件？
-
-· 检查小部件是否已配置插件
-· 尝试重新配置小部件
-· 检查是否有已安装插件
-· 刷新小部件列表
-
-Q13: 如何将插件发布到官方仓库？
-
-详见 发布到插件仓库 章节。
-
-Q14: Web 插件网络请求失败？
-
-· 检查 URL 是否正确
-· 确认网络连接正常
-· 检查是否需要配置网络安全策略
-· 查看日志中的错误信息
-
-Q15: 传感器没有数据？
-
-· 检查设备是否支持该传感器
-· 使用 getAvailableSensors() 检查可用传感器
-· 确认已授予传感器权限
-· 检查传感器是否被其他应用占用
-
-Q16: 文件读写失败？
-
-· 确认文件名不包含非法字符
-· 检查文件路径是否在插件目录内
-· 确认有存储权限
-· 检查磁盘空间是否充足
-
-Q17: 强制更新是什么？
-
-当 Release Tag 格式为 {版本代码}-{版本名称}-1 时，会强制用户更新，无法跳过。普通版本（-0 或没有 -1）用户可以选择忽略。
-
-Q18: GitHub 加速功能如何使用？
+Q8: GitHub 加速功能如何使用？
 
 在「管理」→「GitHub 加速」中：
 
-· 可添加自定义镜像站
-· 勾选要启用的镜像站
+· 添加自定义镜像站
+· 勾选启用的镜像站
 · 开启 CDN 加速
 · 点击「保存设置」
+
+Q9: 终端功能如何使用？
+
+点击底部「开发」→「打开终端」，首次使用会自动安装 Linux 环境。
+
+Q10: 插件权限系统有什么作用？
+
+插件在 plugin.json 中声明所需权限，启动前自动检查并请求，确保插件安全运行。
+
+Q11: 如何恢复 UI 配置？
+
+在「管理」→「UI 个性化」中点击「重置」按钮。
+
+Q12: 如何导出开发模板？
+
+在「开发」页面点击「导出模板」，系统自动生成到工作目录。
 
 ---
 
@@ -1855,116 +1202,47 @@ Q18: GitHub 加速功能如何使用？
 
 1. 命名规范
 
-· 插件ID：使用域名倒序，如 com.example.myplugin
-· 包名：与插件ID一致或相关
-· 类名：使用 PascalCase，如 MainPlugin
+· 插件ID：域名倒序，如 com.example.myplugin
+· 类名：PascalCase，如 MainPlugin
+· 包名：与插件ID一致
 
 2. 性能优化
 
 · 避免在 onCreateView 中执行耗时操作
-· 使用异步任务处理 I/O 操作
-· Web插件注意优化图片大小和 CSS 选择器
-· 传感器使用完毕后及时停止
-· 避免在 UI 线程进行网络请求
+· 使用协程处理异步任务
+· Web 插件优化图片和 CSS 选择器
+· 传感器使用后及时停止
 
 3. 内存管理
 
 · 在 onDestroy 中释放资源
-· 避免内存泄漏（如静态变量持有 Context）
-· Web插件注意清理 WebView
+· 使用 Application Context 创建 View
+· Web 插件注意清理 WebView
 · 及时注销传感器监听器
-· 使用 Application Context 创建 View 避免主题问题
 
-4. 用户体验
-
-· 提供插件图标
-· 添加插件描述
-· 使用合适的分类
-· 响应返回键确认退出
-· 显示加载状态和错误提示
-
-5. 安全性
+4. 安全性
 
 · 不要存储敏感信息明文
 · 验证输入数据
-· 使用 HTTPS 进行网络请求
+· 使用 HTTPS
 · 验证文件路径防止目录遍历
+
+5. 权限声明
+
+```json
+{
+    "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.VIBRATE"
+    ]
+}
+```
 
 6. 版本管理
 
 · 使用语义化版本号
-· 保持 minHostVersion 合理
 · 发布时使用正确的 Release Tag 格式
-· 强制更新时使用 -1 后缀
-
-7. 代码组织
-
-```
-src/
-└── com/example/
-    ├── MainPlugin.java      # 主入口
-    ├── utils/               # 工具类
-    │   └── Helper.java
-    ├── ui/                  # UI组件
-    │   └── CustomView.java
-    └── model/               # 数据模型
-        └── DataModel.java
-```
-
-8. 错误处理
-
-```java
-try {
-    // 可能出错的代码
-} catch (Exception e) {
-    LogUtils.e("Plugin", "错误", e);
-    // 显示友好提示
-    Toast.makeText(context, "操作失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-}
-```
-
-9. Web 插件最佳实践
-
-· 使用事件监听处理生命周期
-· 及时清理传感器和网络请求回调
-· 使用 window.UINPluginCallbacks 管理异步回调
-· 对大文件使用分块读写
-· 添加加载动画提升用户体验
-
-10. 传感器使用建议
-
-```javascript
-// 检查传感器可用性
-const sensors = JSON.parse(UINPlugin.getAvailableSensors());
-if (!sensors.accelerometer) {
-    alert('设备不支持加速度计');
-    return;
-}
-
-// 启动传感器
-let sensorRunning = false;
-function startWithTimeout() {
-    startAccelerometer();
-    sensorRunning = true;
-    // 30秒后自动停止
-    setTimeout(() => {
-        if (sensorRunning) {
-            stopSensor();
-            sensorRunning = false;
-        }
-    }, 30000);
-}
-```
-
-11. 导出模板使用
-
-开发页面提供了「导出模板」功能，可以快速获取：
-
-· native_plugin_template.tpk - 原生插件模板
-· web_plugin_template.tpk - Web 插件模板
-· docs/ - 完整开发文档
-
-这些模板可以作为新插件开发的基础，大大提高开发效率。
+· 强制更新使用 -1 后缀
 
 ---
 
@@ -1981,9 +1259,9 @@ function startWithTimeout() {
 文档信息
 
 项目 信息
-文档版本 3.10.0
-对应应用版本 v3.10.0 (Build 9)
-最后更新 2026年6月9日
+文档版本 4.0.0
+对应应用版本 v4.0.0 (Build 10)
+最后更新 2026年7月14日
 
 ---
 
