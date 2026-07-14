@@ -3,17 +3,23 @@ package com.UIN.Tool.ui.screen.backup
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.BackupInfo
 import com.UIN.Tool.log.Logger
@@ -157,13 +163,11 @@ fun BackupScreen() {
                     java.io.FileOutputStream(backupFile)
                 ).use { zos ->
                     
-                    // ========== 1. 备份插件 ==========
                     progressValue = 0.1f
                     progressMessage = "正在打包 ${plugins.size} 个插件..."
                     addDirToZip(zos, pluginDir, "plugins/")
                     Logger.d("Backup", "插件目录已打包")
                     
-                    // ========== 2. 备份 UI 配置 ==========
                     if (includeUiConfig) {
                         progressValue = 0.4f
                         progressMessage = "正在备份 UI 配置..."
@@ -176,7 +180,6 @@ fun BackupScreen() {
                         }
                     }
                     
-                    // ========== 3. 备份 SharedPreferences ==========
                     if (includeSettings) {
                         progressValue = 0.55f
                         progressMessage = "正在备份应用设置..."
@@ -195,7 +198,6 @@ fun BackupScreen() {
                         }
                     }
                     
-                    // ========== 4. 备份工作目录配置 ==========
                     progressValue = 0.7f
                     progressMessage = "正在备份工作目录配置..."
                     val configJson = org.json.JSONObject().apply {
@@ -210,7 +212,6 @@ fun BackupScreen() {
                     addFileToZip(zos, tempConfig, "config/work_folder.json")
                     tempConfig.delete()
                     
-                    // ========== 5. 备份应用设置 ==========
                     if (includeSettings) {
                         progressValue = 0.8f
                         progressMessage = "正在备份应用设置..."
@@ -226,7 +227,6 @@ fun BackupScreen() {
                         tempSettings.delete()
                     }
                     
-                    // ========== 6. 备份 GitHub 镜像配置 ==========
                     progressValue = 0.85f
                     progressMessage = "正在备份镜像配置..."
                     val mirrorPrefs = context.getSharedPreferences("github_mirror", Context.MODE_PRIVATE)
@@ -280,7 +280,6 @@ fun BackupScreen() {
                 progressValue = 0.1f
                 progressMessage = "解压备份文件..."
                 
-                // 解压备份文件
                 java.util.zip.ZipFile(backup.file).use { zipFile ->
                     val entries = zipFile.entries()
                     while (entries.hasMoreElements()) {
@@ -302,7 +301,6 @@ fun BackupScreen() {
                 progressValue = 0.3f
                 progressMessage = "解压完成，准备恢复..."
                 
-                // ========== 恢复插件 ==========
                 val pluginsBackup = File(tempDir, "plugins")
                 if (pluginsBackup.exists()) {
                     progressValue = 0.4f
@@ -316,7 +314,6 @@ fun BackupScreen() {
                     Logger.success("Backup", "✅ 插件恢复完成")
                 }
                 
-                // ========== 恢复 UI 配置 ==========
                 val uiConfigBackup = File(tempDir, "config/ui_config.json")
                 if (uiConfigBackup.exists()) {
                     progressValue = 0.6f
@@ -324,7 +321,6 @@ fun BackupScreen() {
                     val destUiConfig = File(context.filesDir, "ui_config.json")
                     uiConfigBackup.copyTo(destUiConfig, overwrite = true)
                     
-                    // 使用 UIConfig 重新加载
                     val uiConfig = UIConfig.getInstance()
                     try {
                         val configJson = destUiConfig.readText()
@@ -403,7 +399,6 @@ fun BackupScreen() {
                     }
                 }
                 
-                // ========== 恢复 SharedPreferences ==========
                 val prefsBackupDir = File(tempDir, "config/shared_prefs")
                 if (prefsBackupDir.exists()) {
                     progressValue = 0.7f
@@ -417,7 +412,6 @@ fun BackupScreen() {
                     Logger.success("Backup", "✅ SharedPreferences 恢复完成")
                 }
                 
-                // ========== 恢复工作目录配置 ==========
                 val workFolderBackup = File(tempDir, "config/work_folder.json")
                 if (workFolderBackup.exists()) {
                     progressValue = 0.8f
@@ -435,7 +429,6 @@ fun BackupScreen() {
                     }
                 }
                 
-                // ========== 恢复应用设置 ==========
                 val settingsBackup = File(tempDir, "config/settings.json")
                 if (settingsBackup.exists()) {
                     progressValue = 0.85f
@@ -454,7 +447,6 @@ fun BackupScreen() {
                     }
                 }
                 
-                // ========== 恢复 GitHub 镜像配置 ==========
                 val mirrorBackup = File(tempDir, "config/github_mirror.json")
                 if (mirrorBackup.exists()) {
                     progressValue = 0.9f
@@ -472,12 +464,10 @@ fun BackupScreen() {
                     }
                 }
                 
-                // ========== 清理临时文件 ==========
                 progressValue = 0.95f
                 progressMessage = "清理临时文件..."
                 FileUtils.deleteRecursively(tempDir)
                 
-                // ========== 刷新 ==========
                 progressMessage = "刷新插件列表..."
                 pluginManager.refreshPlugins()
                 
@@ -553,7 +543,10 @@ fun BackupScreen() {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp)
+                .padding(vertical = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            )
         ) {
             Column(
                 modifier = Modifier
@@ -623,10 +616,10 @@ fun BackupScreen() {
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(backups) { backup ->
-                    BackupItemCard(
+                    BackupItemCardCompact(
                         backup = backup,
                         onRestore = {
                             restoreTarget = backup
@@ -668,52 +661,132 @@ fun BackupScreen() {
     }
 }
 
+// ==================== 紧凑版备份卡片 ====================
 @Composable
-fun BackupItemCard(
+fun BackupItemCardCompact(
     backup: BackupInfo,
     onRestore: () -> Unit,
     onDelete: () -> Unit
 ) {
-    UIComponents.Card(
-        modifier = Modifier.fillMaxWidth()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            // 左侧：文件信息
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // 文件名（无限制）
                 Text(
                     text = backup.name,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF1A1A1A),
+                        fontSize = 13.sp
+                    )
                 )
+                
+                Spacer(modifier = Modifier.height(2.dp))
+                
+                // 文件信息行
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    UIComponents.CaptionText(backup.getFormattedDate())
-                    UIComponents.CaptionText("•")
-                    UIComponents.CaptionText(backup.getFormattedSize())
+                    Text(
+                        text = backup.getFormattedDate(),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFF999999),
+                            fontSize = 10.sp
+                        )
+                    )
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFFCCCCCC),
+                            fontSize = 10.sp
+                        )
+                    )
+                    Text(
+                        text = backup.getFormattedSize(),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFF999999),
+                            fontSize = 10.sp
+                        )
+                    )
                     if (backup.pluginCount > 0) {
-                        UIComponents.CaptionText("• ${backup.pluginCount} 个插件")
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFFCCCCCC),
+                                fontSize = 10.sp
+                            )
+                        )
+                        Text(
+                            text = "${backup.pluginCount}个",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFF999999),
+                                fontSize = 10.sp
+                            )
+                        )
                     }
                 }
             }
-
-            Row {
-                UIComponents.SecondaryButton(
-                    text = "恢复",
+            
+            // 右侧：操作按钮
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // 恢复按钮
+                Button(
                     onClick = onRestore,
-                    modifier = Modifier.height(36.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                UIComponents.SecondaryButton(
-                    text = "删除",
+                    modifier = Modifier
+                        .height(28.dp)
+                        .width(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1A3A4A),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp)
+                ) {
+                    Text(
+                        text = "恢复",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                
+                // 删除按钮
+                Button(
                     onClick = onDelete,
-                    modifier = Modifier.height(36.dp)
-                )
+                    modifier = Modifier
+                        .height(28.dp)
+                        .width(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFFEBEE),
+                        contentColor = Color(0xFFD32F2F)
+                    ),
+                    shape = RoundedCornerShape(4.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp)
+                ) {
+                    Text(
+                        text = "删除",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

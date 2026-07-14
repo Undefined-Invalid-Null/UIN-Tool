@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.FullColorPickerDialog
@@ -213,7 +217,7 @@ private fun saveConfigToUIConfig(config: ConfigState) {
     // 保存到文件
     uiConfig.saveConfig()
     
-    Logger.success(TAG, "✅ UI配置保存成功")
+    Logger.success(TAG, "UI配置保存成功")
 }
 
 // ==================== UIConfigScreen - UI 入口 ====================
@@ -254,12 +258,12 @@ fun UIConfigScreen(
 
         try {
             saveConfigToUIConfig(configState)
-            saveMessage = "✅ 配置已保存"
+            saveMessage = "配置已保存"
             Toast.makeText(context, "配置已保存", Toast.LENGTH_SHORT).show()
-            Logger.success(TAG, "✅ 配置保存成功")
+            Logger.success(TAG, "配置保存成功")
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ 保存异常", e)
-            saveMessage = "❌ 保存失败: ${e.message}"
+            Logger.e(TAG, "保存异常", e)
+            saveMessage = "保存失败: ${e.message}"
             Toast.makeText(context, "保存异常: ${e.message}", Toast.LENGTH_SHORT).show()
         } finally {
             scope.launch {
@@ -369,10 +373,10 @@ fun UIConfigScreen(
                 
                 Toast.makeText(context, "配置已导入", Toast.LENGTH_SHORT).show()
                 tempFile.delete()
-                Logger.success(TAG, "✅ UI配置导入成功")
+                Logger.success(TAG, "UI配置导入成功")
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ 导入配置失败", e)
+            Logger.e(TAG, "导入配置失败", e)
             Toast.makeText(context, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
@@ -387,9 +391,9 @@ fun UIConfigScreen(
                 output.write(json.toByteArray())
             }
             Toast.makeText(context, "配置已导出", Toast.LENGTH_SHORT).show()
-            Logger.success(TAG, "✅ UI配置导出成功")
+            Logger.success(TAG, "UI配置导出成功")
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ 导出配置失败", e)
+            Logger.e(TAG, "导出配置失败", e)
             Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
@@ -528,25 +532,36 @@ fun UIConfigScreen(
                                 else -> "#FFFFFFFF"
                             }
 
-                            UIComponents.Card(
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
                                         selectedColorKey = key
                                         showColorPicker = true
-                                    }
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(8.dp),
+                                        .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    UIComponents.BodyText(displayName)
+                                    Text(
+                                        displayName,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF1A1A1A)
+                                    )
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        UIComponents.CaptionText(
+                                        Text(
                                             colorValue,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF666666),
                                             modifier = Modifier.padding(end = 8.dp)
                                         )
                                         Box(
@@ -588,14 +603,31 @@ fun UIConfigScreen(
                                 else -> 8f
                             }
 
-                            UIComponents.Card {
-                                Column {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        UIComponents.BodyText(displayName)
-                                        UIComponents.CaptionText("${value.toInt()} dp")
+                                        Text(
+                                            displayName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF1A1A1A)
+                                        )
+                                        Text(
+                                            "${value.toInt()} dp",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF666666)
+                                        )
                                     }
                                     Slider(
                                         value = value,
@@ -674,14 +706,31 @@ fun UIConfigScreen(
                                 else -> 0f..100f
                             }
 
-                            UIComponents.Card {
-                                Column {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        UIComponents.BodyText(displayName)
-                                        UIComponents.CaptionText("${value.toInt()} dp")
+                                        Text(
+                                            displayName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF1A1A1A)
+                                        )
+                                        Text(
+                                            "${value.toInt()} dp",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF666666)
+                                        )
                                     }
                                     Slider(
                                         value = value,
@@ -718,14 +767,31 @@ fun UIConfigScreen(
                     
                     3 -> {
                         item {
-                            UIComponents.Card {
-                                Column {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        UIComponents.BodyText("标题字体大小")
-                                        UIComponents.CaptionText("${configState.titleTextSize.toInt()} sp")
+                                        Text(
+                                            "标题字体大小",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF1A1A1A)
+                                        )
+                                        Text(
+                                            "${configState.titleTextSize.toInt()} sp",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF666666)
+                                        )
                                     }
                                     Slider(
                                         value = configState.titleTextSize,
@@ -745,14 +811,31 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            UIComponents.Card {
-                                Column {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        UIComponents.BodyText("正文字体大小")
-                                        UIComponents.CaptionText("${configState.bodyTextSize.toInt()} sp")
+                                        Text(
+                                            "正文字体大小",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF1A1A1A)
+                                        )
+                                        Text(
+                                            "${configState.bodyTextSize.toInt()} sp",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF666666)
+                                        )
                                     }
                                     Slider(
                                         value = configState.bodyTextSize,
@@ -772,14 +855,31 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            UIComponents.Card {
-                                Column {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        UIComponents.BodyText("辅助字体大小")
-                                        UIComponents.CaptionText("${configState.captionTextSize.toInt()} sp")
+                                        Text(
+                                            "辅助字体大小",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF1A1A1A)
+                                        )
+                                        Text(
+                                            "${configState.captionTextSize.toInt()} sp",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF666666)
+                                        )
                                     }
                                     Slider(
                                         value = configState.captionTextSize,
@@ -799,14 +899,31 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            UIComponents.Card {
-                                Column {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        UIComponents.BodyText("章节标题大小")
-                                        UIComponents.CaptionText("${configState.sectionTitleTextSize.toInt()} sp")
+                                        Text(
+                                            "章节标题大小",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF1A1A1A)
+                                        )
+                                        Text(
+                                            "${configState.sectionTitleTextSize.toInt()} sp",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF666666)
+                                        )
                                     }
                                     Slider(
                                         value = configState.sectionTitleTextSize,
@@ -826,16 +943,33 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            UIComponents.Card {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    UIComponents.BodyText("文字加粗")
-                                    UIComponents.ToggleSwitch(
+                                    Text(
+                                        "文字加粗",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF1A1A1A)
+                                    )
+                                    Switch(
                                         checked = configState.enableBold,
-                                        onCheckedChange = { configState = configState.copy(enableBold = it) }
+                                        onCheckedChange = { configState = configState.copy(enableBold = it) },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = safeParseColor(configState.primaryColor),
+                                            checkedTrackColor = safeParseColor(configState.primaryColor).copy(alpha = 0.5f)
+                                        )
                                     )
                                 }
                             }
@@ -844,46 +978,99 @@ fun UIConfigScreen(
                     
                     4 -> {
                         item {
-                            UIComponents.Card {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    UIComponents.BodyText("玻璃效果")
-                                    UIComponents.ToggleSwitch(
-                                        checked = configState.enableGlassEffect,
-                                        onCheckedChange = { configState = configState.copy(enableGlassEffect = it) }
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            UIComponents.Card {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    UIComponents.BodyText("波纹效果")
-                                    UIComponents.ToggleSwitch(
-                                        checked = configState.enableRipple,
-                                        onCheckedChange = { configState = configState.copy(enableRipple = it) }
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            UIComponents.GlassCard(
-                                modifier = Modifier.fillMaxWidth()
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
-                                if (configState.enableGlassEffect) {
-                                    UIComponents.BodyText("玻璃效果预览")
-                                    UIComponents.CaptionText("这是一个玻璃效果卡片")
-                                } else {
-                                    UIComponents.BodyText("玻璃效果已禁用")
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "玻璃效果",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF1A1A1A)
+                                    )
+                                    Switch(
+                                        checked = configState.enableGlassEffect,
+                                        onCheckedChange = { configState = configState.copy(enableGlassEffect = it) },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = safeParseColor(configState.primaryColor),
+                                            checkedTrackColor = safeParseColor(configState.primaryColor).copy(alpha = 0.5f)
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "波纹效果",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF1A1A1A)
+                                    )
+                                    Switch(
+                                        checked = configState.enableRipple,
+                                        onCheckedChange = { configState = configState.copy(enableRipple = it) },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = safeParseColor(configState.primaryColor),
+                                            checkedTrackColor = safeParseColor(configState.primaryColor).copy(alpha = 0.5f)
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (configState.enableGlassEffect) 
+                                        Color(0xE6FFFFFF) 
+                                    else 
+                                        Color(0xFFF5F5F5)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = if (configState.enableGlassEffect) 4.dp else 1.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        "玻璃效果预览",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color(0xFF1A1A1A)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        if (configState.enableGlassEffect) "这是一个玻璃效果卡片" else "玻璃效果已禁用",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF666666)
+                                    )
                                 }
                             }
                         }
@@ -894,19 +1081,40 @@ fun UIConfigScreen(
                     saveMessage?.let {
                         Text(
                             it,
-                            color = if (it.contains("✅")) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            color = if (it.contains("保存成功") || it.contains("已保存")) Color(0xFF4CAF50) else Color(0xFFF44336),
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
                     
-                    UIComponents.PrimaryButton(
-                        text = if (isSaving) "保存中..." else "保存配置",
-                        icon = Icons.Default.Save,
+                    Button(
                         onClick = { saveConfig() },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSaving,
-                        loading = isSaving
-                    )
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = safeParseColor(configState.primaryColor),
+                            contentColor = safeParseColor(configState.textPrimaryInverseColor)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isSaving
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = safeParseColor(configState.textPrimaryInverseColor)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        } else {
+                            Icon(
+                                Icons.Default.Save,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(if (isSaving) "保存中..." else "保存配置", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
@@ -940,7 +1148,6 @@ fun UIConfigScreen(
             }
         }
 
-        // 使用完整的颜色选择器
         val initialColor = safeParseColor(colorValue)
         FullColorPickerDialog(
             initialColor = initialColor,
@@ -979,13 +1186,90 @@ fun UIConfigScreen(
         )
     }
 
-    // ==================== 重置对话框 ====================
+    // ==================== 重置对话框（白色背景） ====================
     if (showResetDialog) {
-        UIComponents.ConfirmDialog(
-            title = "确认重置",
-            message = "确定要重置所有 UI 配置为默认值吗？此操作不可撤销。",
-            onConfirm = { resetConfig() },
-            onDismiss = { showResetDialog = false }
-        )
+        Dialog(
+            onDismissRequest = { showResetDialog = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "确认重置",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A1A1A)
+                        )
+                    }
+                    
+                    Text(
+                        text = "确定要重置所有 UI 配置为默认值吗？此操作不可撤销。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF444444),
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { showResetDialog = false },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEEEEEE),
+                                contentColor = Color(0xFF666666)
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("取消", fontSize = 15.sp)
+                        }
+                        
+                        Button(
+                            onClick = { resetConfig() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFD32F2F),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("重置", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
