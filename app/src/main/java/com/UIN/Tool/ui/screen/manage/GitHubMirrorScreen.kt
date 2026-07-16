@@ -20,11 +20,14 @@ import androidx.navigation.NavController
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.data.remote.MirrorManager
 import com.UIN.Tool.domain.model.MirrorItem
-import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+
+private const val TAG = "GitHubMirrorScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,10 +87,10 @@ fun GitHubMirrorScreen(
                     }
                 }
                 showTestResult = "成功导入 $count 个镜像站"
-                Logger.success("GitHubMirror", "导入 $count 个镜像站")
+                AppLog.success(TAG, "导入 $count 个镜像站")
             } catch (e: Exception) {
                 showTestResult = "导入失败: ${e.message}"
-                Logger.e("GitHubMirror", "导入镜像失败", e)
+                AppLog.e(TAG, "导入镜像失败", e)
             } finally {
                 isLoading = false
             }
@@ -105,10 +108,10 @@ fun GitHubMirrorScreen(
             }
             context.contentResolver.openOutputStream(uri)?.write(content.toString().toByteArray())
             showTestResult = "导出成功"
-            Logger.success("GitHubMirror", "导出镜像站列表")
+            AppLog.success(TAG, "导出镜像站列表")
         } catch (e: Exception) {
             showTestResult = "导出失败: ${e.message}"
-            Logger.e("GitHubMirror", "导出镜像失败", e)
+            AppLog.e(TAG, "导出镜像失败", e)
         }
     }
 
@@ -121,10 +124,10 @@ fun GitHubMirrorScreen(
                 mirrors = tested
                 val reachableCount = tested.count { it.reachable == true }
                 showTestResult = "测试完成，$reachableCount/${tested.size} 个可达"
-                Logger.success("GitHubMirror", "测试完成")
+                AppLog.success(TAG, "测试完成")
             } catch (e: Exception) {
                 showTestResult = "测试失败: ${e.message}"
-                Logger.e("GitHubMirror", "测试镜像失败", e)
+                AppLog.e(TAG, "测试镜像失败", e)
             } finally {
                 isLoading = false
             }
@@ -310,7 +313,7 @@ fun GitHubMirrorScreen(
                                                         Text("默认")
                                                     }
                                                 }
-                                            ) {}
+                                            ) { }
                                         }
                                         mirror.reachable?.let {
                                             BadgedBox(
@@ -322,10 +325,10 @@ fun GitHubMirrorScreen(
                                                             MaterialTheme.colorScheme.errorContainer
                                                         }
                                                     ) {
-                                                        Text(if (it) "✅ 可达" else "❌ 不可达")
+                                                        Text(if (it) "可达" else "不可达")
                                                     }
                                                 }
-                                            ) {}
+                                            ) { }
                                         }
                                     }
                                     UIComponents.CaptionText(mirror.url)
@@ -350,7 +353,7 @@ fun GitHubMirrorScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             UIComponents.PrimaryButton(
                 text = "保存设置",
                 onClick = {
@@ -364,6 +367,7 @@ fun GitHubMirrorScreen(
         }
     }
 
+    // 确认重置对话框
     if (showResetDialog) {
         UIComponents.ConfirmDialog(
             title = "确认重置",
@@ -373,11 +377,12 @@ fun GitHubMirrorScreen(
         )
     }
 
+    // 添加镜像对话框
     if (showAddDialog) {
         var name by remember { mutableStateOf("") }
         var url by remember { mutableStateOf("") }
         var remark by remember { mutableStateOf("") }
-        
+
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
             title = { Text("添加镜像站") },

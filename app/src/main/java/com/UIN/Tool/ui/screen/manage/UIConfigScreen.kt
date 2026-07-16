@@ -2,7 +2,6 @@
 package com.UIN.Tool.ui.screen.manage
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -24,12 +23,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
-import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.FullColorPickerDialog
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.FileUtils
 import com.UIN.Tool.utils.UIConfig
 import kotlinx.coroutines.delay
@@ -39,7 +37,6 @@ import java.io.File
 
 private const val TAG = "UIConfigScreen"
 
-// ==================== 安全颜色解析 ====================
 private fun safeParseColor(colorString: String): Color {
     return try {
         if (colorString.isNotEmpty() && colorString.startsWith("#") && colorString.length >= 7) {
@@ -52,7 +49,6 @@ private fun safeParseColor(colorString: String): Color {
     }
 }
 
-// ==================== 配置数据类 ====================
 private data class ConfigState(
     val primaryColor: String,
     val primaryDarkColor: String,
@@ -101,7 +97,6 @@ private data class ConfigState(
     val enableBold: Boolean
 )
 
-// ==================== 从 UIConfig 加载配置 ====================
 private fun loadConfigFromUIConfig(): ConfigState {
     val uiConfig = UIConfig.getInstance()
     return ConfigState(
@@ -153,13 +148,11 @@ private fun loadConfigFromUIConfig(): ConfigState {
     )
 }
 
-// ==================== 保存配置到 UIConfig ====================
 private fun saveConfigToUIConfig(config: ConfigState) {
-    Logger.i(TAG, "========== 保存UI配置到 UIConfig ==========")
-    
+    AppLog.i(TAG, "========== 保存UI配置到 UIConfig ==========")
+
     val uiConfig = UIConfig.getInstance()
-    
-    // 颜色
+
     uiConfig.updateColor("primary", config.primaryColor)
     uiConfig.updateColor("primary_dark", config.primaryDarkColor)
     uiConfig.updateColor("primary_light", config.primaryLightColor)
@@ -178,8 +171,7 @@ private fun saveConfigToUIConfig(config: ConfigState) {
     uiConfig.updateColor("divider", config.dividerColor)
     uiConfig.updateColor("glass_background", config.glassBackgroundColor)
     uiConfig.updateColor("disabled", config.disabledColor)
-    
-    // 形状
+
     uiConfig.updateShape("cornerRadiusSmall", config.cornerRadiusSmall.toInt())
     uiConfig.updateShape("cornerRadiusMedium", config.cornerRadiusMedium.toInt())
     uiConfig.updateShape("cornerRadiusLarge", config.cornerRadiusLarge.toInt())
@@ -188,8 +180,7 @@ private fun saveConfigToUIConfig(config: ConfigState) {
     uiConfig.updateShape("cardCornerRadius", config.cardCornerRadius.toInt())
     uiConfig.updateShape("dialogCornerRadius", config.dialogCornerRadius.toInt())
     uiConfig.updateShape("inputCornerRadius", config.inputCornerRadius.toInt())
-    
-    // 尺寸
+
     uiConfig.updateSize("buttonHeight", config.buttonHeight.toInt())
     uiConfig.updateSize("buttonMinWidth", config.buttonMinWidth.toInt())
     uiConfig.updateSize("buttonElevation", config.buttonElevation.toInt())
@@ -202,25 +193,21 @@ private fun saveConfigToUIConfig(config: ConfigState) {
     uiConfig.updateSize("iconSizeMedium", config.iconSizeMedium.toInt())
     uiConfig.updateSize("iconSizeLarge", config.iconSizeLarge.toInt())
     uiConfig.updateSize("progressHeight", config.progressHeight.toInt())
-    
-    // 字体
+
     uiConfig.updateSize("titleTextSize", config.titleTextSize.toInt())
     uiConfig.updateSize("bodyTextSize", config.bodyTextSize.toInt())
     uiConfig.updateSize("captionTextSize", config.captionTextSize.toInt())
     uiConfig.updateSize("sectionTitleTextSize", config.sectionTitleTextSize.toInt())
-    
-    // 特效
+
     uiConfig.updateBoolean("enableGlassEffect", config.enableGlassEffect)
     uiConfig.updateBoolean("enableRipple", config.enableRipple)
     uiConfig.updateBoolean("enableBold", config.enableBold)
-    
-    // 保存到文件
+
     uiConfig.saveConfig()
-    
-    Logger.success(TAG, "UI配置保存成功")
+
+    AppLog.success(TAG, "UI配置保存成功")
 }
 
-// ==================== UIConfigScreen - UI 入口 ====================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UIConfigScreen(
@@ -230,7 +217,6 @@ fun UIConfigScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // ==================== 状态 ====================
     var configState by remember { mutableStateOf(loadConfigFromUIConfig()) }
     var isSaving by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
@@ -239,32 +225,29 @@ fun UIConfigScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
 
-    // ==================== 加载配置 ====================
     LaunchedEffect(Unit) {
-        Logger.i(TAG, "========== 从 UIConfig 加载配置 ==========")
+        AppLog.i(TAG, "========== 从 UIConfig 加载配置 ==========")
         configState = loadConfigFromUIConfig()
-        Logger.success(TAG, "配置加载完成")
+        AppLog.success(TAG, "配置加载完成")
     }
 
-    // ==================== 保存配置 ====================
     fun saveConfig() {
         if (isSaving) {
-            Logger.d(TAG, "保存正在进行中，跳过")
+            AppLog.d(TAG, "保存正在进行中，跳过")
             return
         }
-        
+
         isSaving = true
-        Logger.i(TAG, "========== 用户点击保存 ==========")
+        AppLog.i(TAG, "========== 用户点击保存 ==========")
 
         try {
             saveConfigToUIConfig(configState)
             saveMessage = "配置已保存"
-            Toast.makeText(context, "配置已保存", Toast.LENGTH_SHORT).show()
-            Logger.success(TAG, "配置保存成功")
+            AppToast.success(context, "配置已保存")
         } catch (e: Exception) {
-            Logger.e(TAG, "保存异常", e)
+            AppLog.e(TAG, "保存异常", e)
             saveMessage = "保存失败: ${e.message}"
-            Toast.makeText(context, "保存异常: ${e.message}", Toast.LENGTH_SHORT).show()
+            AppToast.error(context, "保存异常: ${e.message}")
         } finally {
             scope.launch {
                 delay(500)
@@ -275,26 +258,24 @@ fun UIConfigScreen(
         }
     }
 
-    // ==================== 重置配置 ====================
     fun resetConfig() {
-        Logger.i(TAG, "重置配置")
+        AppLog.i(TAG, "重置配置")
         val uiConfig = UIConfig.getInstance()
         uiConfig.resetToDefault()
         configState = loadConfigFromUIConfig()
-        Toast.makeText(context, "已重置为默认配置", Toast.LENGTH_SHORT).show()
+        AppToast.info(context, "已重置为默认配置")
         showResetDialog = false
-        Logger.success(TAG, "配置已重置")
+        AppLog.success(TAG, "配置已重置")
     }
 
-    // ==================== 导入配置 ====================
     fun importConfig(uri: Uri) {
         try {
-            Logger.i(TAG, "========== 开始导入UI配置 ==========")
+            AppLog.i(TAG, "========== 开始导入UI配置 ==========")
             val tempFile = File(context.cacheDir, "ui_config_import.json")
             if (FileUtils.copyUriToFile(context, uri, tempFile)) {
                 val json = tempFile.readText()
                 val obj = JSONObject(json)
-                
+
                 val uiConfig = UIConfig.getInstance()
                 val theme = obj.optJSONObject("theme")
                 if (theme != null) {
@@ -324,7 +305,7 @@ fun UIConfigScreen(
                         }
                     }
                 }
-                
+
                 val shape = obj.optJSONObject("shape")
                 if (shape != null) {
                     uiConfig.updateShape("cornerRadiusSmall", shape.optInt("cornerRadiusSmall", 8))
@@ -336,7 +317,7 @@ fun UIConfigScreen(
                     uiConfig.updateShape("dialogCornerRadius", shape.optInt("dialogCornerRadius", 20))
                     uiConfig.updateShape("inputCornerRadius", shape.optInt("inputCornerRadius", 8))
                 }
-                
+
                 val size = obj.optJSONObject("size")
                 if (size != null) {
                     uiConfig.updateSize("buttonHeight", size.optInt("buttonHeight", 44))
@@ -356,49 +337,47 @@ fun UIConfigScreen(
                     uiConfig.updateSize("captionTextSize", size.optInt("captionTextSize", 12))
                     uiConfig.updateSize("sectionTitleTextSize", size.optInt("sectionTitleTextSize", 18))
                 }
-                
+
                 val experimental = obj.optJSONObject("experimental")
                 if (experimental != null) {
                     uiConfig.updateBoolean("enableGlassEffect", experimental.optBoolean("enableGlassEffect", true))
                     uiConfig.updateBoolean("enableRipple", experimental.optBoolean("enableRipple", true))
                 }
-                
+
                 val font = obj.optJSONObject("font")
                 if (font != null) {
                     uiConfig.updateBoolean("enableBold", font.optBoolean("enableBold", true))
                 }
-                
+
                 uiConfig.saveConfig()
                 configState = loadConfigFromUIConfig()
-                
-                Toast.makeText(context, "配置已导入", Toast.LENGTH_SHORT).show()
+
+                AppToast.success(context, "配置已导入")
                 tempFile.delete()
-                Logger.success(TAG, "UI配置导入成功")
+                AppLog.success(TAG, "UI配置导入成功")
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "导入配置失败", e)
-            Toast.makeText(context, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            AppLog.e(TAG, "导入配置失败", e)
+            AppToast.error(context, "导入失败: ${e.message}")
         }
     }
 
-    // ==================== 导出配置 ====================
     fun exportConfig(uri: Uri) {
         try {
-            Logger.i(TAG, "========== 开始导出UI配置 ==========")
+            AppLog.i(TAG, "========== 开始导出UI配置 ==========")
             val uiConfig = UIConfig.getInstance()
             val json = uiConfig.getConfig().toString(4)
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(json.toByteArray())
             }
-            Toast.makeText(context, "配置已导出", Toast.LENGTH_SHORT).show()
-            Logger.success(TAG, "UI配置导出成功")
+            AppToast.success(context, "配置已导出")
+            AppLog.success(TAG, "UI配置导出成功")
         } catch (e: Exception) {
-            Logger.e(TAG, "导出配置失败", e)
-            Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            AppLog.e(TAG, "导出配置失败", e)
+            AppToast.error(context, "导出失败: ${e.message}")
         }
     }
 
-    // ==================== Launcher ====================
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -411,7 +390,6 @@ fun UIConfigScreen(
         if (uri != null) exportConfig(uri)
     }
 
-    // ==================== UI ====================
     Scaffold(
         topBar = {
             TopAppBar(
@@ -441,10 +419,10 @@ fun UIConfigScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = safeParseColor(configState.primaryColor),
-                    titleContentColor = safeParseColor(configState.textPrimaryInverseColor),
-                    navigationIconContentColor = safeParseColor(configState.textPrimaryInverseColor),
-                    actionIconContentColor = safeParseColor(configState.textPrimaryInverseColor)
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -457,7 +435,7 @@ fun UIConfigScreen(
             // 标签页
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.surface,
                 edgePadding = 0.dp
             ) {
                 listOf("颜色", "形状", "尺寸", "字体", "特效").forEachIndexed { index, title ->
@@ -467,13 +445,13 @@ fun UIConfigScreen(
                         text = {
                             Text(
                                 title,
-                                color = if (selectedTab == index) 
-                                    safeParseColor(configState.primaryColor) 
-                                else 
-                                    Color(0xFF9AA6B2),
-                                fontWeight = if (selectedTab == index) 
-                                    FontWeight.Bold 
-                                else 
+                                color = if (selectedTab == index)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (selectedTab == index)
+                                    FontWeight.Bold
+                                else
                                     FontWeight.Normal
                             )
                         }
@@ -541,7 +519,7 @@ fun UIConfigScreen(
                                     },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -555,13 +533,13 @@ fun UIConfigScreen(
                                     Text(
                                         displayName,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Color(0xFF1A1A1A)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             colorValue,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color(0xFF666666),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(end = 8.dp)
                                         )
                                         Box(
@@ -577,7 +555,7 @@ fun UIConfigScreen(
                             }
                         }
                     }
-                    
+
                     1 -> {
                         val shapeKeys = listOf(
                             "cornerRadiusSmall" to "小圆角",
@@ -607,7 +585,7 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -621,12 +599,12 @@ fun UIConfigScreen(
                                         Text(
                                             displayName,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF1A1A1A)
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             "${value.toInt()} dp",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color(0xFF666666)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Slider(
@@ -648,16 +626,16 @@ fun UIConfigScreen(
                                         valueRange = 0f..50f,
                                         steps = 10,
                                         colors = SliderDefaults.colors(
-                                            thumbColor = safeParseColor(configState.primaryColor),
-                                            activeTrackColor = safeParseColor(configState.primaryColor),
-                                            inactiveTrackColor = Color(0xFFE0E4E8)
+                                            thumbColor = MaterialTheme.colorScheme.primary,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                                         )
                                     )
                                 }
                             }
                         }
                     }
-                    
+
                     2 -> {
                         val sizeKeys = listOf(
                             "buttonHeight" to "按钮高度",
@@ -710,7 +688,7 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -724,12 +702,12 @@ fun UIConfigScreen(
                                         Text(
                                             displayName,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF1A1A1A)
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             "${value.toInt()} dp",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color(0xFF666666)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Slider(
@@ -755,23 +733,23 @@ fun UIConfigScreen(
                                         valueRange = range,
                                         steps = 10,
                                         colors = SliderDefaults.colors(
-                                            thumbColor = safeParseColor(configState.primaryColor),
-                                            activeTrackColor = safeParseColor(configState.primaryColor),
-                                            inactiveTrackColor = Color(0xFFE0E4E8)
+                                            thumbColor = MaterialTheme.colorScheme.primary,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                                         )
                                     )
                                 }
                             }
                         }
                     }
-                    
+
                     3 -> {
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -785,12 +763,12 @@ fun UIConfigScreen(
                                         Text(
                                             "标题字体大小",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF1A1A1A)
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             "${configState.titleTextSize.toInt()} sp",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color(0xFF666666)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Slider(
@@ -801,9 +779,9 @@ fun UIConfigScreen(
                                         valueRange = 14f..36f,
                                         steps = 11,
                                         colors = SliderDefaults.colors(
-                                            thumbColor = safeParseColor(configState.primaryColor),
-                                            activeTrackColor = safeParseColor(configState.primaryColor),
-                                            inactiveTrackColor = Color(0xFFE0E4E8)
+                                            thumbColor = MaterialTheme.colorScheme.primary,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                                         )
                                     )
                                 }
@@ -815,7 +793,7 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -829,12 +807,12 @@ fun UIConfigScreen(
                                         Text(
                                             "正文字体大小",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF1A1A1A)
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             "${configState.bodyTextSize.toInt()} sp",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color(0xFF666666)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Slider(
@@ -845,9 +823,9 @@ fun UIConfigScreen(
                                         valueRange = 10f..22f,
                                         steps = 6,
                                         colors = SliderDefaults.colors(
-                                            thumbColor = safeParseColor(configState.primaryColor),
-                                            activeTrackColor = safeParseColor(configState.primaryColor),
-                                            inactiveTrackColor = Color(0xFFE0E4E8)
+                                            thumbColor = MaterialTheme.colorScheme.primary,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                                         )
                                     )
                                 }
@@ -859,7 +837,7 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -873,12 +851,12 @@ fun UIConfigScreen(
                                         Text(
                                             "辅助字体大小",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF1A1A1A)
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             "${configState.captionTextSize.toInt()} sp",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color(0xFF666666)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Slider(
@@ -889,9 +867,9 @@ fun UIConfigScreen(
                                         valueRange = 8f..16f,
                                         steps = 4,
                                         colors = SliderDefaults.colors(
-                                            thumbColor = safeParseColor(configState.primaryColor),
-                                            activeTrackColor = safeParseColor(configState.primaryColor),
-                                            inactiveTrackColor = Color(0xFFE0E4E8)
+                                            thumbColor = MaterialTheme.colorScheme.primary,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                                         )
                                     )
                                 }
@@ -903,7 +881,7 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -917,12 +895,12 @@ fun UIConfigScreen(
                                         Text(
                                             "章节标题大小",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF1A1A1A)
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             "${configState.sectionTitleTextSize.toInt()} sp",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color(0xFF666666)
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Slider(
@@ -933,9 +911,9 @@ fun UIConfigScreen(
                                         valueRange = 12f..28f,
                                         steps = 8,
                                         colors = SliderDefaults.colors(
-                                            thumbColor = safeParseColor(configState.primaryColor),
-                                            activeTrackColor = safeParseColor(configState.primaryColor),
-                                            inactiveTrackColor = Color(0xFFE0E4E8)
+                                            thumbColor = MaterialTheme.colorScheme.primary,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                                         )
                                     )
                                 }
@@ -947,7 +925,7 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -961,28 +939,28 @@ fun UIConfigScreen(
                                     Text(
                                         "文字加粗",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Color(0xFF1A1A1A)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Switch(
                                         checked = configState.enableBold,
                                         onCheckedChange = { configState = configState.copy(enableBold = it) },
                                         colors = SwitchDefaults.colors(
-                                            checkedThumbColor = safeParseColor(configState.primaryColor),
-                                            checkedTrackColor = safeParseColor(configState.primaryColor).copy(alpha = 0.5f)
+                                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                                         )
                                     )
                                 }
                             }
                         }
                     }
-                    
+
                     4 -> {
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -996,14 +974,14 @@ fun UIConfigScreen(
                                     Text(
                                         "玻璃效果",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Color(0xFF1A1A1A)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Switch(
                                         checked = configState.enableGlassEffect,
                                         onCheckedChange = { configState = configState.copy(enableGlassEffect = it) },
                                         colors = SwitchDefaults.colors(
-                                            checkedThumbColor = safeParseColor(configState.primaryColor),
-                                            checkedTrackColor = safeParseColor(configState.primaryColor).copy(alpha = 0.5f)
+                                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                                         )
                                     )
                                 }
@@ -1015,7 +993,7 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
@@ -1029,14 +1007,14 @@ fun UIConfigScreen(
                                     Text(
                                         "波纹效果",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Color(0xFF1A1A1A)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Switch(
                                         checked = configState.enableRipple,
                                         onCheckedChange = { configState = configState.copy(enableRipple = it) },
                                         colors = SwitchDefaults.colors(
-                                            checkedThumbColor = safeParseColor(configState.primaryColor),
-                                            checkedTrackColor = safeParseColor(configState.primaryColor).copy(alpha = 0.5f)
+                                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                                         )
                                     )
                                 }
@@ -1048,10 +1026,10 @@ fun UIConfigScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (configState.enableGlassEffect) 
-                                        Color(0xE6FFFFFF) 
-                                    else 
-                                        Color(0xFFF5F5F5)
+                                    containerColor = if (configState.enableGlassEffect)
+                                        Color.White.copy(alpha = 0.9f)
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = if (configState.enableGlassEffect) 4.dp else 1.dp)
                             ) {
@@ -1063,13 +1041,13 @@ fun UIConfigScreen(
                                     Text(
                                         "玻璃效果预览",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Color(0xFF1A1A1A)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         if (configState.enableGlassEffect) "这是一个玻璃效果卡片" else "玻璃效果已禁用",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF666666)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -1081,19 +1059,22 @@ fun UIConfigScreen(
                     saveMessage?.let {
                         Text(
                             it,
-                            color = if (it.contains("保存成功") || it.contains("已保存")) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            color = if (it.contains("保存成功") || it.contains("已保存"))
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
-                    
+
                     Button(
                         onClick = { saveConfig() },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = safeParseColor(configState.primaryColor),
-                            contentColor = safeParseColor(configState.textPrimaryInverseColor)
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(12.dp),
                         enabled = !isSaving
@@ -1102,7 +1083,7 @@ fun UIConfigScreen(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
-                                color = safeParseColor(configState.textPrimaryInverseColor)
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         } else {
@@ -1186,90 +1167,16 @@ fun UIConfigScreen(
         )
     }
 
-    // ==================== 重置对话框（白色背景） ====================
+    // ==================== 重置对话框 ====================
     if (showResetDialog) {
-        Dialog(
-            onDismissRequest = { showResetDialog = false },
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = false
-            )
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .wrapContentHeight(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Warning,
-                            contentDescription = null,
-                            tint = Color(0xFFFF9800),
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "确认重置",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A1A1A)
-                        )
-                    }
-                    
-                    Text(
-                        text = "确定要重置所有 UI 配置为默认值吗？此操作不可撤销。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF444444),
-                        modifier = Modifier.padding(bottom = 20.dp)
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = { showResetDialog = false },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFEEEEEE),
-                                contentColor = Color(0xFF666666)
-                            ),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("取消", fontSize = 15.sp)
-                        }
-                        
-                        Button(
-                            onClick = { resetConfig() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFD32F2F),
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("重置", fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-            }
-        }
+        UIComponents.ConfirmDialog(
+            title = "确认重置",
+            message = "确定要重置所有 UI 配置为默认值吗？此操作不可撤销。",
+            confirmText = "重置",
+            dismissText = "取消",
+            onConfirm = { resetConfig() },
+            onDismiss = { showResetDialog = false },
+            isDestructive = true
+        )
     }
 }

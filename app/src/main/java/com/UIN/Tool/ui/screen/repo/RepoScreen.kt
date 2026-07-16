@@ -16,12 +16,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.RepoPluginInfo
-import com.UIN.Tool.log.Logger
-import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.viewmodel.RepoViewModel
+import com.UIN.Tool.utils.AppLog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val TAG = "RepoScreen"
 
 @Composable
 fun RepoScreen() {
@@ -32,7 +33,7 @@ fun RepoScreen() {
     LaunchedEffect(Unit) {
         repoViewModel.init(context)
         repoViewModel.loadPlugins()
-        Logger.i("RepoScreen", "开始加载插件列表")
+        AppLog.i(TAG, "开始加载插件列表")
     }
 
     val uiState by repoViewModel.uiState.collectAsState()
@@ -142,60 +143,35 @@ fun RepoScreen() {
         }
     }
 
-    // 插件详情对话框
-    showDetailDialog?.let { plugin ->
-        AlertDialog(
-            onDismissRequest = { showDetailDialog = null },
-            title = { Text(plugin.name) },
-            text = {
-                Column {
-                    UIComponents.BodyText("ID: ${plugin.pluginId}")
-                    UIComponents.BodyText("版本: ${plugin.versionName}")
-                    UIComponents.BodyText("作者: ${plugin.author}")
-                    UIComponents.BodyText("大小: ${plugin.getFormattedSize()}")
-                    UIComponents.BodyText("更新: ${plugin.getFormattedDate()}")
-                    if (plugin.description.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Divider()
-                        Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.BodyText(plugin.description)
-                    }
-                    if (plugin.updateLog.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Divider()
-                        Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.CaptionText("更新日志:")
-                        UIComponents.BodyText(plugin.updateLog.take(200))
-                    }
+    // ==================== 插件详情对话框 ====================
+    if (showDetailDialog != null) {
+        val plugin = showDetailDialog!!
+        UIComponents.ConfirmDialog(
+            title = plugin.name,
+            message = buildString {
+                append("ID: ${plugin.pluginId}\n")
+                append("版本: ${plugin.versionName}\n")
+                append("作者: ${plugin.author}\n")
+                append("大小: ${plugin.getFormattedSize()}\n")
+                append("更新: ${plugin.getFormattedDate()}\n")
+                if (plugin.description.isNotEmpty()) {
+                    append("\n描述: ${plugin.description}\n")
+                }
+                if (plugin.updateLog.isNotEmpty()) {
+                    append("\n更新日志:\n${plugin.updateLog.take(200)}${if (plugin.updateLog.length > 200) "..." else ""}")
                 }
             },
-            confirmButton = {
+            confirmText = if (installedIds.contains(plugin.pluginId)) "打开" else "安装",
+            dismissText = "关闭",
+            onConfirm = {
                 if (installedIds.contains(plugin.pluginId)) {
-                    UIComponents.PrimaryButton(
-                        text = "打开",
-                        onClick = {
-                            pluginManager.openPlugin(plugin.pluginId, context)
-                            showDetailDialog = null
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    pluginManager.openPlugin(plugin.pluginId, context)
                 } else {
-                    UIComponents.PrimaryButton(
-                        text = "安装",
-                        onClick = {
-                            repoViewModel.downloadAndInstall(plugin)
-                            showDetailDialog = null
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    repoViewModel.downloadAndInstall(plugin)
                 }
+                showDetailDialog = null
             },
-            dismissButton = {
-                UIComponents.TextButton(
-                    text = "关闭",
-                    onClick = { showDetailDialog = null }
-                )
-            }
+            onDismiss = { showDetailDialog = null }
         )
     }
 }
@@ -234,7 +210,7 @@ fun RepoPluginCard(
                                 Text("已安装")
                             }
                         }
-                    ) {}
+                    ) { }
                 }
             }
             UIComponents.CaptionText(plugin.pluginId)

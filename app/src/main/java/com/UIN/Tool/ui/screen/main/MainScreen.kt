@@ -1,3 +1,4 @@
+// app/src/main/java/com/UIN/Tool/ui/screen/main/MainScreen.kt
 package com.UIN.Tool.ui.screen.main
 
 import androidx.compose.foundation.layout.Box
@@ -24,21 +25,20 @@ fun MainScreen(
     checkUpdate: Boolean = false
 ) {
     var selectedTab by remember { mutableStateOf(initialTab) }
-    
+
     val tabs = listOf(
         "开发" to R.drawable.ic_developer_mode,
         "工具" to R.drawable.ic_grid_view,
         "仓库" to R.drawable.ic_repo,
         "管理" to R.drawable.ic_settings
     )
-    
-    // 处理检查更新
+
     LaunchedEffect(checkUpdate) {
         if (checkUpdate) {
-            selectedTab = 3 // 切换到管理页面
+            selectedTab = 3
         }
     }
-    
+
     Scaffold(
         bottomBar = {
             NavigationBar(

@@ -25,7 +25,7 @@ fun SplashScreen(
             onNavigate()
         }, 1500)
     }
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -40,13 +40,13 @@ fun SplashScreen(
                 contentDescription = "App Icon",
                 modifier = Modifier.size(120.dp)
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             UIComponents.TitleText("UIN Tool")
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             UIComponents.CaptionText(
                 "版本 ${Constants.APP_VERSION} (Build ${Constants.APP_VERSION_CODE})"
             )

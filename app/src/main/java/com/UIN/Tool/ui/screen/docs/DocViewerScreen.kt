@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.MarkdownRenderer
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -46,7 +47,12 @@ fun DocViewerScreen() {
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         onClick = { activity?.finish() }
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -95,7 +101,7 @@ private suspend fun loadDocument(docType: String, onResult: (String) -> Unit) {
         reader.close()
         onResult(content)
     } catch (e: Exception) {
-        Logger.e("DocViewer", "加载文档失败: $fileName", e)
+        AppLog.e("DocViewer", "加载文档失败: $fileName", e)
         onResult("加载文档失败: ${e.message}")
     }
 }

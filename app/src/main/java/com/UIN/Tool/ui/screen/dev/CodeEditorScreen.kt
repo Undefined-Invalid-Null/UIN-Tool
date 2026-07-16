@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
+
+private const val TAG = "CodeEditorScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +53,7 @@ fun CodeEditorScreen(
     var files by remember { mutableStateOf(fileList.toMutableList()) }
     var contents by remember { mutableStateOf(fileContents.toMutableMap()) }
     var hasChanges by remember { mutableStateOf(false) }
-    
+
     var isDarkTheme by remember { mutableStateOf(false) }
     var showAddFileDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
@@ -78,7 +81,7 @@ fun CodeEditorScreen(
             contents[currentFile] = newContent
             editedContent = newContent
             hasChanges = false
-            Logger.i("CodeEditor", "保存文件: $currentFile")
+            AppLog.i(TAG, "保存文件: $currentFile")
         }
     }
 
@@ -89,7 +92,7 @@ fun CodeEditorScreen(
             currentFile = fileName
             editedContent = content
             hasChanges = false
-            Logger.i("CodeEditor", "添加文件: $fileName")
+            AppLog.i(TAG, "添加文件: $fileName")
         }
     }
 
@@ -101,7 +104,7 @@ fun CodeEditorScreen(
             currentFile = files.firstOrNull() ?: ""
             editedContent = contents[currentFile] ?: ""
         }
-        Logger.i("CodeEditor", "删除文件: $fileName")
+        AppLog.i(TAG, "删除文件: $fileName")
     }
 
     fun getFileIcon(fileName: String): String {
@@ -379,7 +382,7 @@ fun CodeEditorScreen(
         }
     }
 
-    // 添加文件对话框
+    // ==================== 添加文件对话框 ====================
     if (showAddFileDialog) {
         var newFileName by remember { mutableStateOf("") }
         var newFileContent by remember { mutableStateOf("") }
@@ -428,16 +431,19 @@ fun CodeEditorScreen(
         )
     }
 
-    // 删除确认对话框
+    // ==================== 删除确认对话框 ====================
     if (showDeleteConfirm != null) {
         UIComponents.ConfirmDialog(
             title = "确认删除",
             message = "确定要删除 \"${showDeleteConfirm}\" 吗？",
+            confirmText = "删除",
+            dismissText = "取消",
             onConfirm = {
                 deleteFile(showDeleteConfirm!!)
                 showDeleteConfirm = null
             },
-            onDismiss = { showDeleteConfirm = null }
+            onDismiss = { showDeleteConfirm = null },
+            isDestructive = true
         )
     }
 }
@@ -494,8 +500,6 @@ fun FileTreeItem(
         )
     }
 }
-
-// ==================== PinchZoomEditText ====================
 
 class PinchZoomEditText(context: android.content.Context) : EditText(context) {
 

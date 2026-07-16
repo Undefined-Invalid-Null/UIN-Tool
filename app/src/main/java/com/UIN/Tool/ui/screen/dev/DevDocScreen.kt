@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,9 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppToast
 
 data class DevDocItem(
-    val icon: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val title: String,
     val description: String,
     val id: String
@@ -31,11 +32,11 @@ fun DevDocScreen() {
     val activity = context as? android.app.Activity
 
     val docs = listOf(
-        DevDocItem("📖", "使用帮助", "使用帮助、常见问题解答", "help"),
-        DevDocItem("🛠️", "开发文档", "插件开发文档、API 参考", "dev"),
-        DevDocItem("📝", "更新日志", "版本更新历史记录", "changelog"),
-        DevDocItem("ℹ️", "关于", "关于应用、版本信息", "about"),
-        DevDocItem("👥", "贡献者", "贡献者名单", "contributors")
+        DevDocItem(Icons.Default.Help, "使用帮助", "使用帮助、常见问题解答", "help"),
+        DevDocItem(Icons.Default.DeveloperMode, "开发文档", "插件开发文档、API 参考", "dev"),
+        DevDocItem(Icons.Default.Update, "更新日志", "版本更新历史记录", "changelog"),
+        DevDocItem(Icons.Default.Info, "关于", "关于应用、版本信息", "about"),
+        DevDocItem(Icons.Default.People, "贡献者", "贡献者名单", "contributors")
     )
 
     Scaffold(
@@ -68,11 +69,7 @@ fun DevDocScreen() {
                                 intent.putExtra("doc_type", doc.id)
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "无法打开文档: ${e.message}",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
+                                AppToast.error(context, "无法打开文档: ${e.message}")
                             }
                         }
                 ) {
@@ -82,10 +79,11 @@ fun DevDocScreen() {
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = doc.icon,
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.size(48.dp)
+                        Icon(
+                            doc.icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {

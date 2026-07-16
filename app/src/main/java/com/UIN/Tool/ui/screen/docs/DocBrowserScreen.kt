@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppToast
 
 data class DocItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -31,7 +32,7 @@ fun DocBrowserScreen() {
     val activity = context as? android.app.Activity
 
     val docs = listOf(
-        DocItem(Icons.Default.Info, "使用帮助", "使用帮助、常见问题解答", "help"),
+        DocItem(Icons.Default.Help, "使用帮助", "使用帮助、常见问题解答", "help"),
         DocItem(Icons.Default.DeveloperMode, "开发文档", "插件开发文档、API 参考", "dev"),
         DocItem(Icons.Default.Update, "更新日志", "版本更新历史记录", "changelog"),
         DocItem(Icons.Default.Info, "关于", "关于应用、版本信息", "about"),
@@ -47,7 +48,12 @@ fun DocBrowserScreen() {
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         onClick = { activity?.finish() }
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -68,11 +74,7 @@ fun DocBrowserScreen() {
                             intent.putExtra("title", doc.title)
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "无法打开文档: ${e.message}",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+                            AppToast.error(context, "无法打开文档: ${e.message}")
                         }
                     }
                 ) {

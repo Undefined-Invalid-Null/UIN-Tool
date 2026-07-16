@@ -22,11 +22,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.FileUtils
 import com.UIN.Tool.utils.formatFileSize
 import java.io.File
-
-// ==================== 辅助函数 ====================
 
 private fun loadBitmapFromFile(path: String): Bitmap? {
     return try {
@@ -66,8 +65,6 @@ private fun handleResourceSelection(
         // 忽略异常
     }
 }
-
-// ==================== 步骤1：配置信息 ====================
 
 @Composable
 fun PluginConfigStep(
@@ -176,8 +173,6 @@ fun PluginConfigStep(
     }
 }
 
-// ==================== 步骤2：图标选择 ====================
-
 @Composable
 fun PluginIconStep(
     iconPath: String,
@@ -255,8 +250,6 @@ fun PluginIconStep(
     }
 }
 
-// ==================== 步骤3：原生代码 ====================
-
 @Composable
 fun NativeCodeStep(
     onOpenEditor: () -> Unit,
@@ -268,7 +261,7 @@ fun NativeCodeStep(
         ) {
             UIComponents.BodyText(
                 """
-                    📌 原生插件开发提示
+                    原生插件开发提示
 
                     • 必须实现 PluginInterface 接口的所有方法
                     • UI 必须通过 Java 代码动态创建，不能使用 XML
@@ -293,8 +286,6 @@ fun NativeCodeStep(
     }
 }
 
-// ==================== 步骤3：Web配置 ====================
-
 @Composable
 fun WebConfigStep(
     templateType: Int,
@@ -307,7 +298,7 @@ fun WebConfigStep(
         ) {
             UIComponents.BodyText(
                 """
-                    📌 Web 插件说明
+                    Web 插件说明
 
                     • Web 插件不需要编写 Java 代码
                     • UI 界面请编辑 web/index.html、web/style.css、web/script.js
@@ -365,8 +356,6 @@ fun WebConfigStep(
         }
     }
 }
-
-// ==================== 步骤4：资源文件 ====================
 
 @Composable
 fun ResourcesStep(
@@ -465,8 +454,6 @@ fun ResourcesStep(
     }
 }
 
-// ==================== 步骤5：打包 ====================
-
 @Composable
 fun PackageStep(
     isCompiling: Boolean,
@@ -509,7 +496,7 @@ fun PackageStep(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UIComponents.TitleText("✅ 打包成功！")
+                        UIComponents.TitleText("打包成功！")
                         Spacer(modifier = Modifier.height(8.dp))
                         UIComponents.CaptionText(tpkFile.absolutePath)
                         UIComponents.CaptionText("大小: ${formatFileSize(tpkFile.length())}")
