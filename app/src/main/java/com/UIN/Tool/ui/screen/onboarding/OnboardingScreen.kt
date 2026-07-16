@@ -38,26 +38,26 @@ fun OnboardingScreen(
 ) {
     val scope = rememberCoroutineScope()
     val colorScheme = MaterialTheme.colorScheme
-    
+
     val items = if (isVersionUpdate) {
         listOf(
             OnboardingItem(
-                "版本更新", 
+                "版本更新",
                 "UIN Tool 已更新到 v${versionName ?: "4.0.0"}\n\n新功能、优化和修复已就绪！",
                 Icons.Outlined.SystemUpdate
             ),
             OnboardingItem(
-                "插件管理", 
+                "插件管理",
                 "• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理",
                 Icons.Outlined.Folder
             ),
             OnboardingItem(
-                "插件开发", 
+                "插件开发",
                 "• 可视化插件创建向导\n• 内置代码编辑器\n• 支持原生和Web插件",
                 Icons.Outlined.DeveloperMode
             ),
             OnboardingItem(
-                "开始使用", 
+                "开始使用",
                 "现在开始探索 UIN Tool 的新功能吧！",
                 Icons.Outlined.RocketLaunch
             )
@@ -65,38 +65,38 @@ fun OnboardingScreen(
     } else {
         listOf(
             OnboardingItem(
-                "欢迎使用 UIN Tool", 
+                "欢迎使用 UIN Tool",
                 "UIN Tool 是一个强大的插件化工具平台\n\n支持原生 Java 插件和 Web 插件\n让您轻松扩展应用功能",
                 Icons.Outlined.RocketLaunch
             ),
             OnboardingItem(
-                "插件管理", 
+                "插件管理",
                 "• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理\n• 备份恢复所有数据",
                 Icons.Outlined.Folder
             ),
             OnboardingItem(
-                "插件开发工具", 
+                "插件开发工具",
                 "• 可视化插件创建向导\n• 内置代码编辑器\n• 打包为 TPK 文件",
                 Icons.Outlined.DeveloperMode
             ),
             OnboardingItem(
-                "Web 插件支持", 
+                "Web 插件支持",
                 "• 使用 HTML/CSS/JS 开发\n• 无需编译，即改即用\n• JS 桥接调用原生功能",
                 Icons.Outlined.Language
             ),
             OnboardingItem(
-                "一切就绪", 
+                "一切就绪",
                 "现在开始探索 UIN Tool 的更多功能吧！",
                 Icons.Outlined.CheckCircle
             )
         )
     }
-    
+
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount = { items.size }
     )
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -116,7 +116,7 @@ fun OnboardingScreen(
                 textAlign = TextAlign.End
             )
         }
-        
+
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f)
@@ -128,13 +128,12 @@ fun OnboardingScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // 图标 - 颜色浅一些
                 Box(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(CircleShape)
                         .background(
-                            colorScheme.primaryContainer.copy(alpha = 0.15f)  // 更浅的背景
+                            colorScheme.primaryContainer.copy(alpha = 0.15f)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -142,12 +141,12 @@ fun OnboardingScreen(
                         imageVector = items[page].icon,
                         contentDescription = null,
                         modifier = Modifier.size(40.dp),
-                        tint = colorScheme.primary.copy(alpha = 0.7f)  // 透明度70%，颜色更浅
+                        tint = colorScheme.primary.copy(alpha = 0.7f)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Text(
                     text = items[page].title,
                     style = MaterialTheme.typography.titleLarge.copy(
@@ -155,9 +154,9 @@ fun OnboardingScreen(
                     ),
                     textAlign = TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Text(
                     text = items[page].description,
                     style = MaterialTheme.typography.bodyMedium.copy(
@@ -167,8 +166,8 @@ fun OnboardingScreen(
                 )
             }
         }
-        
-        // 指示器 - 适应主题色
+
+        // 指示器
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -182,15 +181,15 @@ fun OnboardingScreen(
                         .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
                         .clip(CircleShape)
                         .background(
-                            if (index == pagerState.currentPage) 
+                            if (index == pagerState.currentPage)
                                 colorScheme.primary
-                            else 
+                            else
                                 colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         )
                 )
             }
         }
-        
+
         // 按钮
         Button(
             onClick = {

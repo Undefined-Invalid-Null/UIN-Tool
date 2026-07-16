@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.UIN.Tool.ui.theme.AppDimens
 
 // ==================== 玻璃卡片 ====================
 
@@ -32,18 +33,18 @@ fun GlassCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(AppDimens.cardCornerRadius)
     
     Surface(
         modifier = modifier
             .clip(shape)
             .clickable(enabled = onClick != null) { onClick?.invoke() },
         color = Color.White.copy(alpha = 0.85f),
-        shadowElevation = 2.dp,
+        shadowElevation = AppDimens.cardElevation,
         shape = shape
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(AppDimens.cardPadding),
             content = content
         )
     }
@@ -60,19 +61,19 @@ fun GlassButton(
     icon: ImageVector? = null,
     colors: GlassButtonColors = GlassButtonColors.default()
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
     
     Surface(
         modifier = modifier
             .clip(shape)
             .clickable(enabled = enabled) { onClick() },
-        color = colors.backgroundColor,
-        shadowElevation = 2.dp,
+        color = colors.backgroundColor ?: Color.White.copy(alpha = 0.85f),
+        shadowElevation = AppDimens.buttonElevation,
         shape = shape
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = AppDimens.spacingXLarge, vertical = AppDimens.spacingLarge),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -80,16 +81,16 @@ fun GlassButton(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = colors.contentColor,
-                    modifier = Modifier.size(20.dp)
+                    tint = colors.contentColor ?: Color(0xFF1A1A1A),
+                    modifier = Modifier.size(AppDimens.iconMedium)
                 )
-                if (text != null) Spacer(modifier = Modifier.width(8.dp))
+                if (text != null) Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
             }
             if (text != null) {
                 Text(
                     text = text,
-                    color = colors.contentColor,
-                    fontSize = 14.sp,
+                    color = colors.contentColor ?: Color(0xFF1A1A1A),
+                    fontSize = AppDimens.bodyTextSize.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -98,8 +99,8 @@ fun GlassButton(
 }
 
 data class GlassButtonColors(
-    val backgroundColor: Color,
-    val contentColor: Color
+    val backgroundColor: Color? = null,
+    val contentColor: Color? = null
 ) {
     companion object {
         fun default() = GlassButtonColors(
@@ -133,7 +134,7 @@ fun GlassTextField(
     singleLine: Boolean = true,
     isError: Boolean = false
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(AppDimens.inputCornerRadius)
     
     OutlinedTextField(
         value = value,
@@ -161,7 +162,7 @@ fun GlassTextField(
     )
 }
 
-// ==================== 玻璃弹窗 ====================
+// ==================== 玻璃对话框 ====================
 
 @Composable
 fun GlassDialog(
@@ -193,9 +194,9 @@ fun GlassDialog(
             ) {
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
+                        .fillMaxWidth(AppDimens.dialogWidthFraction)
                         .wrapContentHeight()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(AppDimens.dialogCornerRadius))
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
@@ -205,13 +206,13 @@ fun GlassDialog(
                             )
                         )
                         .border(
-                            width = 0.5.dp,
-                            color = Color.White.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(20.dp)
+                            width = AppDimens.dividerThickness,
+                            color = Color.White.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(AppDimens.dialogCornerRadius)
                         ),
                     color = Color.Transparent,
-                    shadowElevation = 24.dp,
-                    shape = RoundedCornerShape(20.dp)
+                    shadowElevation = AppDimens.dialogElevation,
+                    shape = RoundedCornerShape(AppDimens.dialogCornerRadius)
                 ) {
                     content()
                 }
@@ -235,25 +236,25 @@ fun GlassConfirmDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(AppDimens.dialogPadding)
         ) {
             Text(
                 text = title,
-                fontSize = 18.sp,
+                fontSize = AppDimens.titleTextSize.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1A1A1A)
             )
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(AppDimens.spacingMedium))
             
             Text(
                 text = message,
-                fontSize = 14.sp,
+                fontSize = AppDimens.bodyTextSize.sp,
                 color = Color(0xFF666666),
                 lineHeight = 20.sp
             )
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(AppDimens.spacingXLarge))
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -263,7 +264,7 @@ fun GlassConfirmDialog(
                     Text(dismissText, color = Color(0xFF666666))
                 }
                 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
                 
                 Button(
                     onClick = onConfirm,
@@ -271,7 +272,7 @@ fun GlassConfirmDialog(
                         containerColor = Color(0xFF1A1A1A),
                         contentColor = Color.White
                     ),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(AppDimens.radiusLarge)
                 ) {
                     Text(confirmText)
                 }
@@ -313,7 +314,7 @@ fun GlassBottomSheet(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                        .clip(RoundedCornerShape(topStart = AppDimens.radiusXXLarge, topEnd = AppDimens.radiusXXLarge))
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
@@ -323,19 +324,19 @@ fun GlassBottomSheet(
                             )
                         )
                         .border(
-                            width = 0.5.dp,
-                            color = Color.White.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                            width = AppDimens.dividerThickness,
+                            color = Color.White.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(topStart = AppDimens.radiusXXLarge, topEnd = AppDimens.radiusXXLarge)
                         ),
                     color = Color.Transparent,
-                    shadowElevation = 16.dp,
-                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                    shadowElevation = AppDimens.cardElevation,
+                    shape = RoundedCornerShape(topStart = AppDimens.radiusXXLarge, topEnd = AppDimens.radiusXXLarge)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
-                            .padding(bottom = 24.dp),
+                            .padding(AppDimens.spacingXLarge)
+                            .padding(bottom = AppDimens.spacingXXLarge),
                         content = content
                     )
                 }
@@ -354,7 +355,7 @@ fun GlassLoadingIndicator(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(32.dp),
+                .padding(AppDimens.spacingXXXLarge),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             CircularProgressIndicator(
@@ -363,11 +364,11 @@ fun GlassLoadingIndicator(
                 strokeWidth = 3.dp
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(AppDimens.spacingXLarge))
             
             Text(
                 text = message,
-                fontSize = 14.sp,
+                fontSize = AppDimens.bodyTextSize.sp,
                 color = Color(0xFF666666)
             )
         }
@@ -397,18 +398,18 @@ fun GlassListItem(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = if (leadingContent != null) 12.dp else 0.dp)
+                    .padding(start = if (leadingContent != null) AppDimens.spacingLarge else 0.dp)
             ) {
                 Text(
                     text = title,
-                    fontSize = 14.sp,
+                    fontSize = AppDimens.bodyTextSize.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color(0xFF1A1A1A)
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
-                        fontSize = 12.sp,
+                        fontSize = AppDimens.captionTextSize.sp,
                         color = Color(0xFF666666)
                     )
                 }

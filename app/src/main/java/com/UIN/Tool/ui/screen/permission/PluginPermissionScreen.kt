@@ -25,7 +25,11 @@ import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.PermissionUtils
+
+private const val TAG = "PluginPermissionScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,11 +66,10 @@ fun PluginPermissionScreen() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         refreshPermissions()
-        Toast.makeText(
+        AppToast.info(
             context,
-            if (granted) "权限已授予" else "权限被拒绝",
-            Toast.LENGTH_SHORT
-        ).show()
+            if (granted) "权限已授予" else "权限被拒绝"
+        )
     }
 
     fun requestAllPermissions() {
@@ -75,11 +78,10 @@ fun PluginPermissionScreen() {
             PluginPermissionManager.requestPermissions(context, pluginId) { allGranted ->
                 isLoading = false
                 refreshPermissions()
-                Toast.makeText(
+                AppToast.info(
                     context,
-                    if (allGranted) "所有权限已授予" else "部分权限被拒绝",
-                    Toast.LENGTH_SHORT
-                ).show()
+                    if (allGranted) "所有权限已授予" else "部分权限被拒绝"
+                )
             }
         }
     }
@@ -122,7 +124,13 @@ fun PluginPermissionScreen() {
                         icon = Icons.Default.Refresh,
                         onClick = { refreshPermissions() }
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -156,7 +164,7 @@ fun PluginPermissionScreen() {
                 return@Scaffold
             }
 
-            // ==================== 插件选择下拉框（白色背景） ====================
+            // 插件选择下拉框
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -167,7 +175,6 @@ fun PluginPermissionScreen() {
                 var expanded by remember { mutableStateOf(false) }
                 val selectedPlugin = plugins.find { it.pluginId == selectedPluginId }
 
-                // ✅ 白色背景下拉框
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = it }
@@ -179,34 +186,33 @@ fun PluginPermissionScreen() {
                         modifier = Modifier
                             .weight(0.7f)
                             .menuAnchor()
-                            .background(Color.White, RoundedCornerShape(8.dp)),
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp)),
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF1A3A4A),
-                            unfocusedBorderColor = Color(0xFFE0E0E0),
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            cursorColor = Color(0xFF1A3A4A)
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            cursorColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(8.dp),
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFF1A1A1A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
-                        containerColor = Color.White,
-                        shape = RoundedCornerShape(8.dp)
+                        containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         plugins.forEach { plugin ->
                             DropdownMenuItem(
                                 text = {
                                     Text(
                                         plugin.name,
-                                        color = Color(0xFF1A1A1A),
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         fontSize = 14.sp
                                     )
                                 },
@@ -215,7 +221,6 @@ fun PluginPermissionScreen() {
                                     loadPluginPermissions(plugin.pluginId)
                                     expanded = false
                                 }
-                                // ✅ 移除 MenuItemDefaults.colors
                             )
                         }
                     }
@@ -247,7 +252,7 @@ fun PluginPermissionScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 插件信息
+            // 插件信息 - 移除 📦
             selectedPluginId?.let { pluginId ->
                 val plugin = plugins.find { it.pluginId == pluginId }
                 if (plugin != null) {
@@ -259,7 +264,7 @@ fun PluginPermissionScreen() {
                                 .fillMaxWidth()
                                 .padding(12.dp)
                         ) {
-                            UIComponents.BodyText("📦 ${plugin.name}")
+                            UIComponents.BodyText("插件: ${plugin.name}")
                             UIComponents.CaptionText("ID: ${plugin.pluginId} | 版本: ${plugin.versionName}")
                             UIComponents.CaptionText("声明权限: ${plugin.permissions.size} 个")
                         }
@@ -322,7 +327,7 @@ fun PluginPermissionScreen() {
                                             text = PermissionUtils.getPermissionDisplayName(permission),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = if (granted) {
-                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                                MaterialTheme.colorScheme.primary
                                             } else {
                                                 MaterialTheme.colorScheme.onSurface
                                             }
@@ -330,8 +335,8 @@ fun PluginPermissionScreen() {
                                         UIComponents.CaptionText(permission)
                                         if (PermissionUtils.isSpecialPermission(permission)) {
                                             UIComponents.CaptionText(
-                                                "⚠️ 特殊权限，需在系统设置中手动开启",
-                                                color = MaterialTheme.colorScheme.tertiary
+                                                "特殊权限，需在系统设置中手动开启",
+                                                color = MaterialTheme.colorScheme.error
                                             )
                                         }
                                     }

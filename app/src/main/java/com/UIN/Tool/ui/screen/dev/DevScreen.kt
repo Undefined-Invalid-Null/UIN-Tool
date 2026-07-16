@@ -1,5 +1,4 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/dev/DevScreen.kt
-
 package com.UIN.Tool.ui.screen.dev
 
 import android.content.Intent
@@ -19,6 +18,8 @@ import com.UIN.Tool.app.activities.SettingsActivity
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
 import java.io.File
 
@@ -73,14 +74,10 @@ fun DevScreen() {
                             val intent = Intent(context, TermuxActivity::class.java)
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             context.startActivity(intent)
-                            Logger.i(TAG, "启动终端成功")
+                            AppLog.i(TAG, "启动终端成功")
                         } catch (e: Exception) {
-                            Logger.e(TAG, "启动终端失败", e)
-                            Toast.makeText(
-                                context,
-                                "启动终端失败: ${e.message}",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            AppLog.e(TAG, "启动终端失败", e)
+                            AppToast.error(context, "启动终端失败: ${e.message}")
                         }
                     },
                     modifier = Modifier.weight(1f)
@@ -93,10 +90,10 @@ fun DevScreen() {
                         try {
                             val intent = Intent(context, SettingsActivity::class.java)
                             context.startActivity(intent)
-                            Logger.i(TAG, "打开终端设置")
+                            AppLog.i(TAG, "打开终端设置")
                         } catch (e: Exception) {
-                            Logger.e(TAG, "启动终端设置失败", e)
-                            Toast.makeText(context, "启动设置失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            AppLog.e(TAG, "启动终端设置失败", e)
+                            AppToast.error(context, "启动设置失败: ${e.message}")
                         }
                     },
                     modifier = Modifier.weight(1f)
@@ -127,14 +124,10 @@ fun DevScreen() {
                         val intent = Intent(context, BasePluginWizardActivity::class.java)
                         intent.putExtra("ui_type", "native")
                         context.startActivity(intent)
-                        Logger.i(TAG, "启动原生插件向导")
+                        AppLog.i(TAG, "启动原生插件向导")
                     } catch (e: Exception) {
-                        Logger.e(TAG, "跳转原生插件向导失败", e)
-                        Toast.makeText(
-                            context,
-                            "功能开发中: ${e.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        AppLog.e(TAG, "跳转原生插件向导失败", e)
+                        AppToast.warning(context, "原生插件编译功能开发中，请使用Web插件")
                     }
                 },
                 modifier = Modifier
@@ -150,14 +143,10 @@ fun DevScreen() {
                         val intent = Intent(context, BasePluginWizardActivity::class.java)
                         intent.putExtra("ui_type", "web")
                         context.startActivity(intent)
-                        Logger.i(TAG, "启动Web插件向导")
+                        AppLog.i(TAG, "启动Web插件向导")
                     } catch (e: Exception) {
-                        Logger.e(TAG, "跳转Web插件向导失败", e)
-                        Toast.makeText(
-                            context,
-                            "功能开发中: ${e.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        AppLog.e(TAG, "跳转Web插件向导失败", e)
+                        AppToast.error(context, "功能开发中: ${e.message}")
                     }
                 },
                 modifier = Modifier
@@ -205,28 +194,17 @@ fun DevScreen() {
                         val intent = Intent(context, DocBrowserActivity::class.java)
                         context.startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(context, "文档功能开发中", Toast.LENGTH_SHORT).show()
+                        AppToast.warning(context, "文档功能开发中")
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
-        // ============================================================
-        // 已移除「工具和设置」卡片
-        //    这些功能已移至「管理」页面
-        // ============================================================
-
-        // ============================================================
-        // 底部留白
-        // ============================================================
         Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
-/**
- * 导出模板文件到工作目录
- */
 private fun exportTemplates(
     context: android.content.Context,
     onComplete: () -> Unit
@@ -262,14 +240,13 @@ private fun exportTemplates(
                     }
                 }
                 successCount++
-                Logger.d(TAG, "导出模板文件: $fileName")
+                AppLog.d(TAG, "导出模板文件: $fileName")
             } catch (e: Exception) {
-                Logger.w(TAG, "复制文件失败: $assetPath - ${e.message}")
+                AppLog.w(TAG, "复制文件失败: $assetPath - ${e.message}")
                 failCount++
             }
         }
 
-        // 创建模板说明文件
         val readmeFile = File(templateDir, "README.txt")
         readmeFile.writeText(
             """
@@ -313,12 +290,12 @@ private fun exportTemplates(
             "导出完成 (成功 $successCount 个, 失败 $failCount 个)\n${templateDir.absolutePath}"
         }
 
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-        Logger.success(TAG, "模板导出完成: ${templateDir.absolutePath} (成功 $successCount, 失败 $failCount)")
+        AppToast.showLong(context, message)
+        AppLog.success(TAG, "模板导出完成: ${templateDir.absolutePath} (成功 $successCount, 失败 $failCount)")
 
     } catch (e: Exception) {
-        Logger.e(TAG, "导出模板失败", e)
-        Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        AppLog.e(TAG, "导出模板失败", e)
+        AppToast.error(context, "导出失败: ${e.message}")
     } finally {
         onComplete()
     }

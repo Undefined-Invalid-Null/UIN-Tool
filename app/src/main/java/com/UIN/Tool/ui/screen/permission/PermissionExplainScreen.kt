@@ -28,7 +28,12 @@ fun PermissionExplainScreen(
                         icon = Icons.Default.ArrowBack,
                         onClick = { navController.navigateUp() }
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -46,37 +51,37 @@ fun PermissionExplainScreen(
 
             PermissionExplainCard(
                 icon = Icons.Default.Folder,
-                title = "📁 存储权限",
+                title = "存储权限",
                 description = """
                     • 导入/导出插件文件 (.tpk, .zip)
                     • 备份和恢复插件数据
                     • 读取和写入工作目录
                     • 导出日志文件
 
-                    💡 提示：我们不会读取您的个人文件，仅操作 UIN_Tool 目录下的文件。
+                    提示：我们不会读取您的个人文件，仅操作 UIN_Tool 目录下的文件。
                 """.trimIndent()
             )
 
             PermissionExplainCard(
                 icon = Icons.Default.Wifi,
-                title = "🌐 网络权限",
+                title = "网络权限",
                 description = """
                     • 从 GitHub 插件仓库下载插件
                     • 检查应用更新
                     • 插件网络请求功能
 
-                    💡 提示：仅用于插件下载和更新功能。
+                    提示：仅用于插件下载和更新功能。
                 """.trimIndent()
             )
 
             PermissionExplainCard(
                 icon = Icons.Default.Camera,
-                title = "📷 相机/麦克风权限",
+                title = "相机/麦克风权限",
                 description = """
                     • 插件可能需要调用相机拍照
                     • 插件可能需要录音功能
 
-                    💡 提示：这些权限仅在您安装的插件需要时才会使用。
+                    提示：这些权限仅在您安装的插件需要时才会使用。
                 """.trimIndent()
             )
 

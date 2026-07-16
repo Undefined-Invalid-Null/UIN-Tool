@@ -1,0 +1,228 @@
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:14: * ⚠️ 注意：当前为占位实现，原生插件编译功能暂时禁用
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:50:        Logger.d(TAG, "📊 进度: $message")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:72:        Logger.w(TAG, "⚠️ 原生插件编译功能暂时禁用")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:79:        updateProgress("⚠️ 原生插件编译功能暂时禁用")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:136:                    Logger.d(TAG, "  ✅ plugin.json (${jsonFile.length()} bytes)")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:138:                    Logger.w(TAG, "  ⚠️ plugin.json 不存在")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:145:                    Logger.d(TAG, "  ✅ icon.png (${iconFile.length()} bytes)")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:153:                        Logger.d(TAG, "  ✅ web/ 目录")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:158:                        Logger.d(TAG, "  ✅ web/index.html (默认)")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:165:                    Logger.w(TAG, "  ⚠️ plugin.dex (占位文件)")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:171:                        Logger.d(TAG, "  ✅ src/ 目录")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:178:                        Logger.d(TAG, "  ✅ res/ 目录")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:186:                    Logger.d(TAG, "  ✅ README.md (${readmeFile.length()} bytes)")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:190:            Logger.success(TAG, "✅ TPK 打包完成: ${outputTpk.absolutePath} (${outputTpk.length() / 1024} KB)")
+app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt:199:            Logger.e(TAG, "❌ TPK 打包失败", e)
+app/src/main/java/com/UIN/Tool/log/Logger.kt:16:        SUCCESS(2, "✓"),
+app/src/main/java/com/UIN/Tool/log/Logger.kt:20:        PARAM(2, "📌"),
+app/src/main/java/com/UIN/Tool/log/Logger.kt:155:    fun param(tag: String, key: String, value: Any?) = write(Level.PARAM, tag, "📌 $key = $value")
+app/src/main/java/com/UIN/Tool/log/Logger.kt:181:        i(tag, "📁 $operation: ${file.absolutePath}$size")
+app/src/main/java/com/UIN/Tool/plugin/PluginContext.kt:1:// ✅ 包名与 Java 版本完全一致：com.UIN.Tool.plugin
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:81:        // ✅ 检查并请求权限
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:147:     * ✅ 检查并请求插件权限
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:189:     * ✅ 显示权限说明对话框
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:201:                append("📱 普通权限：\n")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:210:                append("⚙️ 特殊权限（需在系统设置中手动开启）：\n")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:236:     * ✅ 显示详细权限信息
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:243:            append("📋 权限详细说明\n\n")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:246:                append("📌 ${PluginPermissionManager.getPermissionDisplayName(permission)}\n")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:247:                append("📝 ${PluginPermissionManager.getPermissionDescription(permission)}\n")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:249:                    append("⚠️ 特殊权限：需要手动在系统设置中开启\n")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:266:     * ✅ 内部权限请求
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:304:            // ✅ 处理普通权限结果
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:313:                Logger.success(TAG, "✅ 所有普通权限已授予")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:328:                Logger.w(TAG, "⚠️ 部分权限被拒绝")
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:354:     * ✅ 请求特殊权限
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:395:     * ✅ 打开特殊权限设置
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:454:     * ✅ 从设置返回后检查特殊权限
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:487:     * ✅ 打开应用设置
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:709:                                <h1>⚠️ 加载失败</h1>
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:772:                    <button onclick="UINPlugin.callHost('toast', 'Hello from ${info.name}!')">📱 点我</button>
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:773:                    <button onclick="UINPlugin.callHost('finish', '')">❌ 关闭</button>
+app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt:800:            // ✅ 从设置返回后检查权限状态
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:255:                // ✅ 安装成功后请求权限
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:275:     * ✅ 安装后请求权限
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:293:                    Logger.success(TAG, "✅ 插件 ${info.name} 所有权限已授予")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:295:                    Logger.w(TAG, "⚠️ 插件 ${info.name} 部分权限被拒绝，可能无法正常运行")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:435:                // ✅ 清理权限配置
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:544:        // ✅ 检查权限状态
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:592:            Logger.e(TAG, "❌ 插件信息不存在: $pluginId")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:598:        // ✅ 检查权限
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:601:            Logger.w(TAG, "⚠️ 插件缺少权限: ${missing.joinToString()}")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:621:                    Logger.e(TAG, "❌ 插件目录不存在: ${pluginDir.absolutePath}")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:631:                    Logger.e(TAG, "❌ DEX文件不存在: ${dexFile.absolutePath}")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:654:                Logger.success(TAG, "✅ DexClassLoader 创建成功")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:656:                Logger.d(TAG, "✅ ClassLoader 已存在，复用")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:669:                    Logger.success(TAG, "✅ 主类加载成功: ${info.mainClass}")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:675:                    Logger.success(TAG, "✅ 插件实例化成功")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:677:                    Logger.e(TAG, "❌ 主类未找到: ${info.mainClass}", e)
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:685:                    Logger.e(TAG, "❌ 插件未实现 PluginInterface", e)
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:690:                Logger.d(TAG, "✅ 插件实例已存在，复用")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:699:                Logger.success(TAG, "✅ 插件视图创建成功")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:701:                Logger.e(TAG, "❌ 插件视图创建失败（返回 null）")
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:709:            Logger.e(TAG, "❌ ClassNotFoundException: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:713:            Logger.e(TAG, "❌ ClassCastException: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt:717:            Logger.e(TAG, "❌ 加载原生插件失败: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/plugin/PluginPermissionManager.kt:89:    // ✅ 添加缺失的方法
+app/src/main/java/com/UIN/Tool/plugin/PluginPermissionManager.kt:417:                append("\n\n⚠️ 特殊权限需要在系统设置中手动开启。")
+app/src/main/java/com/UIN/Tool/ui/components/unified/UnifiedComponents.kt:18:import androidx.compose.ui.draw.clip          // ✅ 添加这行
+app/src/main/java/com/UIN/Tool/ui/components/unified/UnifiedComponents.kt:19:import androidx.compose.ui.draw.shadow      // ✅ 添加这行
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:244:                AppLog.success("Backup", "✅ 备份创建成功")
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:249:                AppLog.e("Backup", "❌ 创建备份异常", e)
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:306:                    AppLog.success("Backup", "✅ 插件恢复完成")
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:388:                        AppLog.success("Backup", "✅ UI 配置恢复完成")
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:404:                    AppLog.success("Backup", "✅ SharedPreferences 恢复完成")
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:470:                AppLog.success("Backup", "✅ 备份恢复成功")
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:474:                AppLog.e("Backup", "❌ 恢复备份异常", e)
+app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt:650:            message = "⚠️ 恢复操作将覆盖现有插件、配置和 UI 主题！\n\n确定要继续吗？",
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:145:                    viewModel.compileMessage.value = "❌ 生成项目文件失败"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:171:                        viewModel.compileMessage.value = "✅ 编译打包完成!"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:176:                        AppToast.success(context, "✅ 编译打包成功!\n${outputTpk.absolutePath}")
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:181:                        viewModel.compileMessage.value = "❌ 编译失败: $error"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:212:                        viewModel.compileMessage.value = "✅ Web 插件打包完成!"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:217:                        AppToast.success(context, "✅ Web 插件打包成功!\n${outputTpk.absolutePath}")
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:222:                        viewModel.compileMessage.value = "❌ 打包失败: $error"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt:238:                viewModel.compileMessage.value = "❌ 异常: ${e.message}"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:112:            fileName.endsWith(".java") -> "☕"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:113:            fileName.endsWith(".kt") -> "📘"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:114:            fileName.endsWith(".kts") -> "📘"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:115:            fileName.endsWith(".xml") -> "📄"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:116:            fileName.endsWith(".html") -> "🌐"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:117:            fileName.endsWith(".css") -> "🎨"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:118:            fileName.endsWith(".js") -> "📜"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:119:            fileName.endsWith(".json") -> "📦"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt:120:            else -> "📄"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/PluginWizardSteps.kt:98:                "⚠️ 格式应为域名倒序，如 com.example.myplugin"
+app/src/main/java/com/UIN/Tool/ui/screen/dev/PluginWizardSteps.kt:161:                    "⚠️ 必须包含包名，如 com.example.MainPlugin"
+app/src/main/java/com/UIN/Tool/ui/screen/log/LogViewerScreen.kt:160:                                "⚠️ 应用发生异常",
+app/src/main/java/com/UIN/Tool/ui/screen/log/LogViewerScreen.kt:218:                            line.contains("[SUCCESS]") || line.contains("[✓]") -> MaterialTheme.colorScheme.primary
+app/src/main/java/com/UIN/Tool/ui/screen/manage/ManageScreen.kt:123:                        // ✅ 移除 Emoji
+app/src/main/java/com/UIN/Tool/ui/screen/manage/ManageScreen.kt:143:                    // ✅ 移除 Emoji
+app/src/main/java/com/UIN/Tool/ui/screen/manage/ManageScreen.kt:385:    // ✅ 使用 AlertDialog 保持原有 UI
+app/src/main/java/com/UIN/Tool/ui/screen/manage/ManageScreen.kt:434:                        // ✅ 移除 Emoji
+app/src/main/java/com/UIN/Tool/ui/screen/manage/GitHubMirrorScreen.kt:328:                                                        Text(if (it) "✅ 可达" else "❌ 不可达")
+app/src/main/java/com/UIN/Tool/ui/screen/manage/GitHubMirrorScreen.kt:370:    // ✅ 统一使用 UIComponents.ConfirmDialog
+app/src/main/java/com/UIN/Tool/ui/screen/manage/GitHubMirrorScreen.kt:380:    // ✅ 统一使用 UIComponents.ConfirmDialog 替代 AlertDialog
+app/src/main/java/com/UIN/Tool/ui/screen/manage/PluginManageScreen.kt:751:                append("⚠️ ${summary.denied} 项权限未授予")
+app/src/main/java/com/UIN/Tool/ui/screen/manage/PluginManageScreen.kt:1053:                    val status = if (granted) "✅ 已授予" else "❌ 未授权"
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionExplainScreen.kt:61:                    💡 提示：我们不会读取您的个人文件，仅操作 UIN_Tool 目录下的文件。
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionExplainScreen.kt:73:                    💡 提示：仅用于插件下载和更新功能。
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionExplainScreen.kt:84:                    💡 提示：这些权限仅在您安装的插件需要时才会使用。
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionManagerScreen.kt:327:                    "💡 提示：部分权限（如悬浮窗、修改系统设置）需要在系统设置中手动开启"
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionScreen.kt:267:                            UIComponents.BodyText("📦 ${plugin.name}")
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionScreen.kt:338:                                                "⚠️ 特殊权限，需在系统设置中手动开启",
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt:92:                    progressMessage = "✅ 所有权限已授予"
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt:94:                    progressMessage = "⚠️ 部分权限被拒绝"
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt:157:                        text = "📦 ${plugin.name}",
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt:263:                                progressMessage.contains("✅") -> MaterialTheme.colorScheme.primary
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt:264:                                progressMessage.contains("⚠️") -> MaterialTheme.colorScheme.error
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt:307:                        text = if (allGranted) "✅ 所有权限已授予" else "一键授权所有",
+app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt:387:                        text = "⚠️ 特殊权限：需在系统设置中手动开启",
+app/src/main/java/com/UIN/Tool/ui/screen/tools/ToolsScreen.kt:11:import androidx.compose.foundation.lazy.items          // ✅ 关键 import
+app/src/main/java/com/UIN/Tool/ui/screen/tools/ToolsScreen.kt:141:                // ✅ 现在 items 扩展函数可见，正确匹配 List 版本
+app/src/main/java/com/UIN/Tool/utils/ErrorHandler.kt:95:        Log.i(tag, "✓ $operation 成功")
+app/src/main/java/com/UIN/Tool/utils/ErrorHandler.kt:104:        val message = "✗ $operation 失败" + (reason?.let { ": $it" } ?: "")
+app/src/main/java/com/UIN/Tool/utils/ErrorHandler.kt:115:        Log.d(tag, "  📌 $key = $valueStr")
+app/src/main/java/com/UIN/Tool/utils/Logger.kt:21:        SUCCESS(2, "✓"),
+app/src/main/java/com/UIN/Tool/utils/Logger.kt:25:        PARAM(2, "📌"),
+app/src/main/java/com/UIN/Tool/utils/Logger.kt:191:    fun param(tag: String, key: String, value: Any?) = write(Level.PARAM, tag, "📌 $key = $value")
+app/src/main/java/com/UIN/Tool/utils/Logger.kt:204:        i(tag, "📁 $operation: ${file.absolutePath}$size")
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:46:            html.append("    <div class='toc-header' onclick='toggleToc()'>📑 目录 <span class='toc-toggle'>▼</span></div>\n")
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:277:                    btn.textContent = '❌ 失败';
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:279:                        btn.textContent = '📋 复制';
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:286:                btn.textContent = '✓ 已复制';
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:289:                    btn.textContent = '📋 复制';
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:304:                        btn.textContent = '📋 复制';
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:383:                    result.append("</code></pre><button class='copy-btn' onclick='copyCode(this)'>📋 复制</button></div>\n")
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:582:            result.append("<div class='code-block-wrapper'><pre><code>").append(escapeHtml(codeBlock.toString())).append("</code></pre><button class='copy-btn' onclick='copyCode(this)'>📋 复制</button></div>\n")
+app/src/main/java/com/UIN/Tool/utils/MarkdownRenderer.kt:776:                    <h1>📄 空文档</h1>
+app/src/main/java/com/UIN/Tool/utils/UIConfigManager.kt:213:        Logger.d(TAG, "📌 保存配置详情:")
+app/src/main/java/com/UIN/Tool/utils/UIConfigManager.kt:237:            Logger.success(TAG, "✅ 配置保存成功")
+app/src/main/java/com/UIN/Tool/utils/UIConfigManager.kt:241:            Logger.e(TAG, "❌ 保存配置失败", e)
+app/src/main/java/com/UIN/Tool/utils/UIConfigManager.kt:440:        Logger.d(TAG, "📌 当前配置:")
+app/src/main/java/com/UIN/Tool/utils/AppToast.kt:32:     * 显示成功 Toast - 使用 ✓ 代替 Emoji
+app/src/main/java/com/UIN/Tool/utils/AppToast.kt:35:        show(context, "[✓] $message")
+app/src/main/java/com/UIN/Tool/utils/AppToast.kt:40:     * 显示错误 Toast - 使用 ✗ 代替 Emoji
+app/src/main/java/com/UIN/Tool/utils/AppToast.kt:43:        show(context, "[✗] $message")
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:116:                    // ✅ 白色背景下拉框 - 位置1
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:130:                    // ✅ 白色背景下拉框 - 位置2
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:144:                    // ✅ 白色背景下拉框 - 位置3
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:159:                        "💡 未配置的位置将自动显示其他插件",
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:166:                    // ✅ 添加小部件说明和快捷方式按钮（仅在从管理页面打开时显示）
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:169:                        // 📌 提示卡片 - 如何添加小部件
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:222:                                    text = "💡 提示：添加后会自动应用当前配置",
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:233:                        // ✅ 添加快捷方式按钮（软件内添加）
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:254:                                Text("🔗 添加快捷方式")
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:261:                    // ✅ 保存/取消按钮
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:280:                                    // ✅ 强制刷新小部件
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:288:                                    // ✅ 重要：返回 RESULT_OK，告诉系统配置成功
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:303:                                    // ✅ 刷新所有小部件
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:307:                                    // ✅ 返回 RESULT_OK
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:317:                                // ✅ 延迟关闭，确保刷新完成
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:328:                                // ✅ 取消时返回 RESULT_CANCELED
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:478:                    // ✅ 白色背景下拉框
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:518:                                // ✅ 返回 RESULT_OK
+app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt:543:                                // ✅ 返回 RESULT_OK
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:119:            Logger.i(TAG, "[$time] 🔄 refreshAllWidgets 开始")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:126:                Logger.i(TAG, "[$time] 📊 找到 ${appWidgetIds.size} 个小部件")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:129:                    Logger.i(TAG, "[$time]   ➜ 刷新第 ${index + 1} 个小部件, ID: $appWidgetId")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:133:                Logger.i(TAG, "[$time] ✅ refreshAllWidgets 完成")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:136:                Logger.e(TAG, "[$time] ❌ refreshAllWidgets 异常: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:150:                Logger.d(TAG, "📤 刷新广播已发送")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:152:                Logger.e(TAG, "❌ sendRefreshIntent 异常: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:161:                Logger.w(TAG, "[$time] ⚠️ updateWidget: 无效的 appWidgetId，跳过")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:168:            Logger.i(TAG, "[$time] 🚀 开始更新小部件 ID: $appWidgetId")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:174:                Logger.i(TAG, "[$time] 📌 步骤1: 创建 RemoteViews")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:176:                Logger.success(TAG, "[$time] ✅ RemoteViews 创建成功")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:182:                Logger.i(TAG, "[$time] 📌 步骤2: 获取 PluginManager")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:184:                Logger.success(TAG, "[$time] ✅ PluginManager 获取成功")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:190:                Logger.i(TAG, "[$time] 📌 步骤3: 刷新插件列表")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:192:                Logger.success(TAG, "[$time] ✅ 插件列表已刷新")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:197:                Logger.i(TAG, "[$time] 📌 步骤4: 获取所有插件")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:204:                    Logger.w(TAG, "[$time] ⚠️ 没有已安装的插件!")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:211:                    Logger.w(TAG, "[$time] ⚠️ 已更新空小部件（无插件）")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:224:                Logger.i(TAG, "[$time] 📌 步骤5: 加载小部件配置")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:231:                    Logger.i(TAG, "[$time] ✅ 找到配置: pluginId1=${config.pluginId1}, pluginId2=${config.pluginId2}, pluginId3=${config.pluginId3}")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:260:                Logger.i(TAG, "[$time] 📌 步骤6: 设置标题")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:262:                Logger.success(TAG, "[$time] ✅ 标题设置完成: ${context.getString(R.string.app_name)}")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:267:                Logger.i(TAG, "[$time] 📌 步骤7: 设置 $MAX_PLUGINS 个插槽")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:286:                Logger.success(TAG, "[$time] ✅ 所有插槽设置完成")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:291:                Logger.i(TAG, "[$time] 📌 步骤8: 更新小部件")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:293:                Logger.success(TAG, "[$time] ✅ 小部件更新完成, appWidgetId: $appWidgetId")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:296:                Logger.i(TAG, "[$time] 📌 步骤9: 验证更新")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:305:                Logger.e(TAG, "[$time] ❌ updateWidget 异常: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:306:                Logger.e(TAG, "[$time] ❌ 异常堆栈: ${e.stackTraceToString()}")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:325:                    Logger.success(TAG, "[$time]    ✅ $position 添加成功: ${plugin.name}")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:327:                    Logger.w(TAG, "[$time]    ⚠️ $position 插件不存在: $pluginId")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:390:                    Logger.w(TAG, "[$time]        ⚠️ 使用默认图标")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:460:                            Logger.success(TAG, "[$time]          ✅ 图标加载成功: ${scaled.width}x${scaled.height}")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:463:                            Logger.w(TAG, "[$time]          ⚠️ 图标解码失败")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:466:                        Logger.w(TAG, "[$time]          ⚠️ 图标文件不存在")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:469:                    Logger.w(TAG, "[$time]          ⚠️ 插件目录不存在")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:472:                Logger.e(TAG, "[$time]          ❌ loadPluginIcon 异常: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:481:        Logger.i(TAG, "[$time] 📱 onUpdate 被系统调用")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:486:            Logger.w(TAG, "[$time] ⚠️ onUpdate: 没有小部件ID")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:491:            Logger.i(TAG, "[$time]   ➜ 更新小部件 ${index + 1}, ID: $appWidgetId")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:494:        Logger.i(TAG, "[$time] ✅ onUpdate 完成")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:500:        Logger.d(TAG, "[$time] 📨 onReceive: ${intent.action}")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:504:                Logger.i(TAG, "[$time] 🔄 收到刷新广播")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:516:                Logger.i(TAG, "[$time] ✅ 刷新广播处理完成")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:528:        Logger.i(TAG, "[$time] 🗑️ onDeleted: 小部件被删除")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:541:        Logger.i(TAG, "[$time] ✅ onEnabled: 小部件功能启用")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:553:        Logger.i(TAG, "[$time] ⛔ onDisabled: 小部件功能禁用")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:569:            Logger.i(TAG, "[$time] 🔄 refresh1x1Widgets 开始")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:579:                Logger.success(TAG, "[$time] ✅ refresh1x1Widgets 完成")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:581:                Logger.e(TAG, "[$time] ❌ refresh1x1Widgets 异常: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:603:            Logger.i(TAG, "[$time] 🚀 开始更新1x1小部件 ID: $appWidgetId")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:645:                        Logger.d(TAG, "[$time] ✅ 1x1绑定插件: ${info.name}")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:650:                Logger.success(TAG, "[$time] ✅ 1x1小部件更新完成")
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:653:                Logger.e(TAG, "[$time] ❌ update1x1Widget 异常: ${e.message}", e)
+app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt:726:        Logger.i(TAG, "[$time] 📨 SystemEventReceiver 收到事件: ${intent?.action}")
+app/src/main/java/com/UIN/Tool/MainActivity.kt:69:    // ✅ 使用 mutableStateOf 管理退出对话框状态
+app/src/main/java/com/UIN/Tool/MainActivity.kt:466:        // ✅ 直接修改状态，不需要重新 setContent
+app/src/main/java/com/UIN/Tool/MainActivity.kt:516:    // ✅ 退出对话框 - 使用 UIComponents.ConfirmDialog
+app/src/main/java/com/UIN/Tool/SplashActivity.kt:61:// ✅ 常量定义在文件顶部，可被所有函数访问
+app/src/main/java/com/UIN/Tool/SplashActivity.kt:462:            // ✅ 先延迟显示启动画面
+app/src/main/java/com/UIN/Tool/SplashActivity.kt:523:            // ✅ 非首次启动，延迟后导航
+app/src/main/java/com/UIN/Tool/UinApplication.kt:32:        // ★★★ 关键修复：在任何操作之前先安装 MultiDex ★★★
+app/src/main/java/com/UIN/Tool/TrampolineActivity.kt:85:            // ✅ 使用 ServiceLocator 获取 PluginManager

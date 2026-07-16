@@ -1,32 +1,107 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/build.gradle",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
       "selection": {
         "end": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 24,
+          "index": 470,
+          "line": 21
         },
         "start": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 24,
+          "index": 470,
+          "line": 21
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/ManageScreen.kt",
+      "selection": {
+        "end": {
+          "column": 73,
+          "index": 5708,
+          "line": 143
+        },
+        "start": {
+          "column": 20,
+          "index": 5655,
+          "line": 143
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.kt",
+      "selection": {
+        "end": {
+          "column": 39,
+          "index": 11945,
+          "line": 320
+        },
+        "start": {
+          "column": 35,
+          "index": 11941,
+          "line": 320
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/MainActivity.kt",
       "selection": {
         "end": {
           "column": 1,
-          "index": 7975,
-          "line": 251
+          "index": 21236,
+          "line": 593
         },
         "start": {
           "column": 1,
-          "index": 7975,
-          "line": 251
+          "index": 21236,
+          "line": 593
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/AppToast.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 1909,
+          "line": 80
+        },
+        "start": {
+          "column": 1,
+          "index": 1909,
+          "line": 80
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionExplainScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 4090,
+          "line": 125
+        },
+        "start": {
+          "column": 1,
+          "index": 4090,
+          "line": 125
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionManagerScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 14531,
+          "line": 337
+        },
+        "start": {
+          "column": 1,
+          "index": 14531,
+          "line": 337
         }
       }
     },
@@ -35,151 +110,76 @@
       "selection": {
         "end": {
           "column": 1,
-          "index": 34388,
-          "line": 792
+          "index": 33896,
+          "line": 784
         },
         "start": {
           "column": 1,
-          "index": 34388,
-          "line": 792
+          "index": 33896,
+          "line": 784
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/theme/Theme.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/log/LogViewerScreen.kt",
       "selection": {
         "end": {
-          "column": 30,
-          "index": 371,
-          "line": 10
+          "column": 1,
+          "index": 11265,
+          "line": 265
         },
         "start": {
-          "column": 30,
-          "index": 371,
-          "line": 10
+          "column": 1,
+          "index": 11265,
+          "line": 265
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/GitHubMirrorScreen.kt",
       "selection": {
         "end": {
-          "column": 46,
-          "index": 52611,
-          "line": 1370
+          "column": 1,
+          "index": 17979,
+          "line": 440
         },
         "start": {
-          "column": 46,
-          "index": 52611,
-          "line": 1370
+          "column": 1,
+          "index": 17979,
+          "line": 440
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingScreen.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionScreen.kt",
       "selection": {
         "end": {
           "column": 1,
-          "index": 7522,
-          "line": 220
+          "index": 15627,
+          "line": 364
         },
         "start": {
           "column": 1,
-          "index": 7522,
-          "line": 220
+          "index": 15627,
+          "line": 364
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/colors.xml",
-      "selection": {
-        "end": {
-          "column": 14,
-          "index": 354,
-          "line": 8
-        },
-        "start": {
-          "column": 14,
-          "index": 354,
-          "line": 8
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/res/values/themes.xml",
-      "selection": {
-        "end": {
-          "column": 0,
-          "index": 0,
-          "line": 0
-        },
-        "start": {
-          "column": 0,
-          "index": 0,
-          "line": 0
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/WidgetConfigScreen.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt",
       "selection": {
         "end": {
           "column": 1,
-          "index": 15264,
-          "line": 396
+          "index": 15913,
+          "line": 414
         },
         "start": {
           "column": 1,
-          "index": 15264,
-          "line": 396
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/PluginManageScreen.kt",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 84349,
-          "line": 2070
-        },
-        "start": {
-          "column": 1,
-          "index": 84349,
-          "line": 2070
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/manage/UIConfigScreen.kt",
-      "selection": {
-        "end": {
-          "column": 1,
-          "index": 66741,
-          "line": 1274
-        },
-        "start": {
-          "column": 1,
-          "index": 66741,
-          "line": 1274
-        }
-      }
-    },
-    {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt",
-      "selection": {
-        "end": {
-          "column": 0,
-          "index": 21374,
-          "line": 541
-        },
-        "start": {
-          "column": 0,
-          "index": 21374,
-          "line": 541
+          "index": 15913,
+          "line": 414
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/AppToast.kt"
 }

@@ -47,20 +47,25 @@ import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.screen.onboarding.OnboardingActivity
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
 import com.UIN.Tool.utils.MarkdownRenderer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
+// ✅ 常量定义在文件顶部，可被所有函数访问
+private const val SPLASH_DELAY = 1500L
+private const val UPDATE_CHECK_TIMEOUT = 5000L
+
 class SplashActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "SplashActivity"
-        private const val SPLASH_DELAY = 1500L
-        private const val UPDATE_CHECK_TIMEOUT = 5000L
     }
 
     private lateinit var preferenceManager: PreferenceManager
@@ -77,12 +82,12 @@ class SplashActivity : ComponentActivity() {
     ) { results ->
         val allGranted = results.values.all { it }
         if (allGranted) {
-            Logger.success(TAG, "所有存储权限已授予")
+            AppLog.success(TAG, "所有存储权限已授予")
             createWorkDirectory()
             navigateToOnboardingOrMain()
         } else {
             val deniedPermissions = results.filter { !it.value }.keys
-            Logger.w(TAG, "部分权限被拒绝: $deniedPermissions")
+            AppLog.w(TAG, "部分权限被拒绝: $deniedPermissions")
             
             val shouldShowRationale = deniedPermissions.any { permission ->
                 shouldShowRequestPermissionRationale(permission)
@@ -124,7 +129,7 @@ class SplashActivity : ComponentActivity() {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             startActivity(intent)
                         } catch (e: Exception) {
-                            Logger.e(TAG, "打开浏览器失败", e)
+                            AppLog.e(TAG, "打开浏览器失败", e)
                             Toast.makeText(this, "无法打开链接", Toast.LENGTH_SHORT).show()
                         }
                     },
@@ -150,13 +155,15 @@ class SplashActivity : ComponentActivity() {
 
     private fun checkPermissionAfterReturn() {
         if (hasStoragePermission()) {
-            Logger.success(TAG, "权限已授予")
+            AppLog.success(TAG, "权限已授予")
             showPermissionExplain = false
             showPermissionDenied = false
             createWorkDirectory()
-            navigateToOnboardingOrMain()
+            Handler(Looper.getMainLooper()).postDelayed({
+                navigateToOnboardingOrMain()
+            }, SPLASH_DELAY)
         } else {
-            Logger.w(TAG, "权限仍未授予")
+            AppLog.w(TAG, "权限仍未授予")
             showPermissionExplain = false
             showPermissionDenied = true
         }
@@ -183,7 +190,7 @@ class SplashActivity : ComponentActivity() {
         if (hasRequestedPermission) return
         hasRequestedPermission = true
 
-        Logger.i(TAG, "请求存储权限")
+        AppLog.i(TAG, "请求存储权限")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -192,7 +199,7 @@ class SplashActivity : ComponentActivity() {
                     intent.data = Uri.parse("package:$packageName")
                     manageStorageLauncher.launch(intent)
                 } catch (e: Exception) {
-                    Logger.e(TAG, "打开存储权限设置失败", e)
+                    AppLog.e(TAG, "打开存储权限设置失败", e)
                     requestNormalStoragePermission()
                 }
             }
@@ -231,21 +238,21 @@ class SplashActivity : ComponentActivity() {
                 val dir = File(path)
                 if (!dir.exists()) {
                     dir.mkdirs()
-                    Logger.d(TAG, "创建目录: $path")
+                    AppLog.d(TAG, "创建目录: $path")
                 }
             }
 
             Logger.init(Constants.LOG_DIR)
-            Logger.i(TAG, "══════════════════════════════════════════════════")
-            Logger.i(TAG, "应用启动 - UIN Tool v${Constants.APP_VERSION}")
-            Logger.i(TAG, "工作目录: ${Constants.WORK_DIR}")
-            Logger.i(TAG, "══════════════════════════════════════════════════")
+            AppLog.i(TAG, "══════════════════════════════════════════════════")
+            AppLog.i(TAG, "应用启动 - UIN Tool v${Constants.APP_VERSION}")
+            AppLog.i(TAG, "工作目录: ${Constants.WORK_DIR}")
+            AppLog.i(TAG, "══════════════════════════════════════════════════")
 
             preferenceManager.setWorkFolder(Constants.WORK_DIR)
-            Logger.success(TAG, "工作目录创建成功")
+            AppLog.success(TAG, "工作目录创建成功")
 
         } catch (e: Exception) {
-            Logger.e(TAG, "创建工作目录失败", e)
+            AppLog.e(TAG, "创建工作目录失败", e)
             Toast.makeText(this, "创建目录失败: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
@@ -261,26 +268,25 @@ class SplashActivity : ComponentActivity() {
         if (versionName.isEmpty()) return
         val prefs = preferenceManager.getPrefs()
         prefs.edit().putString(Constants.KEY_IGNORE_VERSION, versionName).apply()
-        Logger.i(TAG, "忽略版本: $versionName")
+        AppLog.i(TAG, "忽略版本: $versionName")
     }
 
     private fun checkForUpdate() {
-        Logger.enter(TAG, "checkForUpdate")
+        AppLog.enter(TAG, "checkForUpdate")
 
         val updateChecker = UpdateChecker(this, preferenceManager)
         var isCompleted = false
 
-        // 设置超时处理 - 5秒后超时，继续启动
         Handler(Looper.getMainLooper()).postDelayed({
             if (!isCompleted) {
-                Logger.w(TAG, "检查更新超时 (${UPDATE_CHECK_TIMEOUT}ms)，继续启动")
+                AppLog.w(TAG, "检查更新超时 (${UPDATE_CHECK_TIMEOUT}ms)，继续启动")
                 navigateToNext()
             }
         }, UPDATE_CHECK_TIMEOUT)
 
         updateChecker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
             override fun onCheckStart() {
-                Logger.d(TAG, "开始检查更新")
+                AppLog.d(TAG, "开始检查更新")
             }
 
             override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
@@ -291,7 +297,7 @@ class SplashActivity : ComponentActivity() {
                     val latest = releases.first()
 
                     if (!forceUpdate && isVersionIgnored(latest.versionName)) {
-                        Logger.i(TAG, "用户已忽略版本: ${latest.versionName}")
+                        AppLog.i(TAG, "用户已忽略版本: ${latest.versionName}")
                         navigateToNext()
                         return
                     }
@@ -305,14 +311,14 @@ class SplashActivity : ComponentActivity() {
             override fun onCheckFailed(error: String) {
                 if (isCompleted) return
                 isCompleted = true
-                Logger.e(TAG, "检查更新失败: $error")
+                AppLog.e(TAG, "检查更新失败: $error")
                 navigateToNext()
             }
 
             override fun onNoUpdate(currentVersion: String) {
                 if (isCompleted) return
                 isCompleted = true
-                Logger.i(TAG, "当前已是最新版本: $currentVersion")
+                AppLog.i(TAG, "当前已是最新版本: $currentVersion")
                 navigateToNext()
             }
         })
@@ -339,7 +345,7 @@ class SplashActivity : ComponentActivity() {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             startActivity(intent)
                         } catch (e: Exception) {
-                            Logger.e(TAG, "打开浏览器失败", e)
+                            AppLog.e(TAG, "打开浏览器失败", e)
                             Toast.makeText(this, "无法打开链接", Toast.LENGTH_SHORT).show()
                         }
                         Handler(Looper.getMainLooper()).postDelayed({
@@ -356,10 +362,10 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun startDownload(releaseInfo: ReleaseInfo) {
-        Logger.enter(TAG, "startDownload")
+        AppLog.enter(TAG, "startDownload")
 
         if (releaseInfo.downloadUrl.isNullOrEmpty()) {
-            Logger.e(TAG, "下载链接为空")
+            AppLog.e(TAG, "下载链接为空")
             Toast.makeText(this, "下载链接无效，请稍后重试", Toast.LENGTH_SHORT).show()
             return
         }
@@ -367,18 +373,18 @@ class SplashActivity : ComponentActivity() {
         updateDownloader = UpdateDownloader(this)
         updateDownloader?.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
             override fun onStart() {
-                Logger.d(TAG, "开始下载")
+                AppLog.d(TAG, "开始下载")
             }
 
             override fun onProgress(progress: Int, downloaded: Long, total: Long) {}
 
             override fun onSuccess(file: File) {
-                Logger.success(TAG, "下载成功")
+                AppLog.success(TAG, "下载成功")
                 updateDownloader?.installApk(file)
             }
 
             override fun onFailed(error: String) {
-                Logger.e(TAG, "下载失败: $error")
+                AppLog.e(TAG, "下载失败: $error")
                 Toast.makeText(this@SplashActivity, "下载失败: $error", Toast.LENGTH_LONG).show()
             }
         })
@@ -408,9 +414,9 @@ class SplashActivity : ComponentActivity() {
             startActivity(intent)
             finish()
 
-            Logger.exit(TAG, "navigateToNext", System.currentTimeMillis())
+            AppLog.exit(TAG, "navigateToNext", System.currentTimeMillis())
         } catch (e: Exception) {
-            Logger.e(TAG, "导航失败", e)
+            AppLog.e(TAG, "导航失败", e)
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
@@ -419,7 +425,7 @@ class SplashActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         updateDownloader?.cancelDownload()
-        Logger.d(TAG, "onDestroy")
+        AppLog.d(TAG, "onDestroy")
     }
 }
 
@@ -453,24 +459,24 @@ fun SplashScreenWithUpdate(
 
     LaunchedEffect(hasStoragePermission, isFirstLaunch) {
         if (hasStoragePermission && isFirstLaunch) {
+            // ✅ 先延迟显示启动画面
             delay(SPLASH_DELAY)
             isChecking = true
 
             val updateChecker = UpdateChecker(context, preferenceManager)
             var isCompleted = false
 
-            // 设置超时处理 - 5秒后超时
             Handler(Looper.getMainLooper()).postDelayed({
                 if (!isCompleted) {
                     isChecking = false
-                    Logger.w("SplashScreen", "检查更新超时 (${UPDATE_CHECK_TIMEOUT}ms)，继续启动")
+                    AppLog.w("SplashScreen", "检查更新超时 (${UPDATE_CHECK_TIMEOUT}ms)，继续启动")
                     onNavigate()
                 }
             }, UPDATE_CHECK_TIMEOUT)
 
             updateChecker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
                 override fun onCheckStart() {
-                    Logger.d("SplashScreen", "开始检查更新")
+                    AppLog.d("SplashScreen", "开始检查更新")
                 }
 
                 override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
@@ -482,7 +488,7 @@ fun SplashScreenWithUpdate(
                         val latest = releases.first()
 
                         if (!forceUpdate && isVersionIgnored(preferenceManager, latest.versionName)) {
-                            Logger.i("SplashScreen", "用户已忽略版本: ${latest.versionName}")
+                            AppLog.i("SplashScreen", "用户已忽略版本: ${latest.versionName}")
                             onNavigate()
                             return
                         }
@@ -499,7 +505,7 @@ fun SplashScreenWithUpdate(
                     if (isCompleted) return
                     isCompleted = true
                     isChecking = false
-                    Logger.e("SplashScreen", "检查更新失败: $error")
+                    AppLog.e("SplashScreen", "检查更新失败: $error")
                     onNavigate()
                 }
 
@@ -507,13 +513,14 @@ fun SplashScreenWithUpdate(
                     if (isCompleted) return
                     isCompleted = true
                     isChecking = false
-                    Logger.i("SplashScreen", "当前已是最新版本: $currentVersion")
+                    AppLog.i("SplashScreen", "当前已是最新版本: $currentVersion")
                     onNavigate()
                 }
             })
 
             updateChecker.checkUpdate()
         } else if (hasStoragePermission && !isFirstLaunch) {
+            // ✅ 非首次启动，延迟后导航
             delay(SPLASH_DELAY)
             onNavigate()
         }
@@ -1122,7 +1129,7 @@ fun UpdateDialog(
                                 webViewClient = object : WebViewClient() {
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         super.onPageFinished(view, url)
-                                        Logger.d("UpdateDialog", "WebView 加载完成")
+                                        AppLog.d("UpdateDialog", "WebView 加载完成")
                                     }
                                 }
 
@@ -1364,8 +1371,5 @@ private fun setVersionIgnored(preferenceManager: PreferenceManager, versionName:
     if (versionName.isEmpty()) return
     val prefs = preferenceManager.getPrefs()
     prefs.edit().putString(Constants.KEY_IGNORE_VERSION, versionName).apply()
-    Logger.i("SplashScreen", "忽略版本: $versionName")
+    AppLog.i("SplashScreen", "忽略版本: $versionName")
 }
-
-private const val SPLASH_DELAY = 1500L
-private const val UPDATE_CHECK_TIMEOUT = 5000L

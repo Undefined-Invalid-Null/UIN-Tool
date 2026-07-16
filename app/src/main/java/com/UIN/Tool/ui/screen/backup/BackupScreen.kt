@@ -2,7 +2,6 @@
 package com.UIN.Tool.ui.screen.backup
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,9 +24,7 @@ import com.UIN.Tool.domain.model.BackupInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.utils.Constants
-import com.UIN.Tool.utils.FileUtils
-import com.UIN.Tool.utils.UIConfig
+import com.UIN.Tool.utils.*
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -41,7 +38,6 @@ private fun formatFileSize(size: Long): String {
     }
 }
 
-// ==================== 顶级辅助函数 ====================
 private fun addFileToZip(
     zos: java.util.zip.ZipOutputStream,
     file: File,
@@ -55,7 +51,7 @@ private fun addFileToZip(
         }
         zos.closeEntry()
     } catch (e: Exception) {
-        Logger.e("Backup", "添加文件到ZIP失败: $entryName", e)
+        AppLog.e("Backup", "添加文件到ZIP失败: $entryName", e)
     }
 }
 
@@ -80,7 +76,7 @@ private fun addDirToZip(
                 }
                 zos.closeEntry()
             } catch (e: Exception) {
-                Logger.e("Backup", "添加文件失败: $entryName", e)
+                AppLog.e("Backup", "添加文件失败: $entryName", e)
             }
         }
     }
@@ -91,7 +87,7 @@ fun BackupScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val pluginManager = ServiceLocator.getPluginManager()
-    
+
     var backups by remember { mutableStateOf<List<BackupInfo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf("") }
@@ -100,16 +96,16 @@ fun BackupScreen() {
     var deleteTarget by remember { mutableStateOf<BackupInfo?>(null) }
     var restoreTarget by remember { mutableStateOf<BackupInfo?>(null) }
     var showRestoreConfirm by remember { mutableStateOf(false) }
-    
+
     var includeUiConfig by remember { mutableStateOf(true) }
     var includeSettings by remember { mutableStateOf(true) }
-    
+
     val backupDir = File(Constants.BACKUP_DIR)
-    
+
     fun loadBackups() {
         try {
             if (!backupDir.exists()) backupDir.mkdirs()
-            
+
             val files = backupDir.listFiles()
                 ?.filter { it.isFile && it.name.endsWith(".zip") }
                 ?.map { file ->
@@ -117,7 +113,7 @@ fun BackupScreen() {
                         val parts = file.nameWithoutExtension.split("_")
                         parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 0
                     } catch (e: Exception) { 0 }
-                    
+
                     BackupInfo(
                         file = file,
                         name = file.name,
@@ -128,58 +124,58 @@ fun BackupScreen() {
                 }
                 ?.sortedByDescending { it.date }
                 ?: emptyList()
-            
+
             backups = files
-            Logger.d("BackupScreen", "加载了 ${files.size} 个备份文件")
+            AppLog.d("BackupScreen", "加载了 ${files.size} 个备份文件")
         } catch (e: Exception) {
-            Logger.e("BackupScreen", "加载备份列表失败", e)
+            AppLog.e("BackupScreen", "加载备份列表失败", e)
         }
     }
 
     fun createBackup() {
         scope.launch {
             try {
-                Logger.i("Backup", "========== 开始创建备份 ==========")
+                AppLog.i("Backup", "========== 开始创建备份 ==========")
                 isLoading = true
                 showProgress = true
                 progressValue = 0f
                 progressMessage = "正在创建备份..."
-                
+
                 val plugins = pluginManager.plugins.value
                 val pluginDir = File(Constants.PLUGIN_DIR)
-                
+
                 if (!pluginDir.exists()) {
                     progressMessage = "没有插件可备份"
                     showProgress = false
                     isLoading = false
-                    Toast.makeText(context, "没有插件可备份", Toast.LENGTH_SHORT).show()
+                    AppToast.info(context, "没有插件可备份")
                     return@launch
                 }
-                
+
                 val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                 val backupFile = File(backupDir, "UIN_Tool_Backup_${plugins.size}_$timestamp.zip")
-                
+
                 java.util.zip.ZipOutputStream(
                     java.io.FileOutputStream(backupFile)
                 ).use { zos ->
-                    
+
                     progressValue = 0.1f
                     progressMessage = "正在打包 ${plugins.size} 个插件..."
                     addDirToZip(zos, pluginDir, "plugins/")
-                    Logger.d("Backup", "插件目录已打包")
-                    
+                    AppLog.d("Backup", "插件目录已打包")
+
                     if (includeUiConfig) {
                         progressValue = 0.4f
                         progressMessage = "正在备份 UI 配置..."
                         val uiConfigFile = File(context.filesDir, "ui_config.json")
                         if (uiConfigFile.exists()) {
                             addFileToZip(zos, uiConfigFile, "config/ui_config.json")
-                            Logger.d("Backup", "UI 配置已备份")
+                            AppLog.d("Backup", "UI 配置已备份")
                         } else {
-                            Logger.w("Backup", "UI 配置文件不存在")
+                            AppLog.w("Backup", "UI 配置文件不存在")
                         }
                     }
-                    
+
                     if (includeSettings) {
                         progressValue = 0.55f
                         progressMessage = "正在备份应用设置..."
@@ -194,10 +190,10 @@ fun BackupScreen() {
                                     )
                                 }
                             }
-                            Logger.d("Backup", "SharedPreferences 已备份")
+                            AppLog.d("Backup", "SharedPreferences 已备份")
                         }
                     }
-                    
+
                     progressValue = 0.7f
                     progressMessage = "正在备份工作目录配置..."
                     val configJson = org.json.JSONObject().apply {
@@ -211,7 +207,7 @@ fun BackupScreen() {
                     tempConfig.writeText(configJson.toString(4))
                     addFileToZip(zos, tempConfig, "config/work_folder.json")
                     tempConfig.delete()
-                    
+
                     if (includeSettings) {
                         progressValue = 0.8f
                         progressMessage = "正在备份应用设置..."
@@ -226,7 +222,7 @@ fun BackupScreen() {
                         addFileToZip(zos, tempSettings, "config/settings.json")
                         tempSettings.delete()
                     }
-                    
+
                     progressValue = 0.85f
                     progressMessage = "正在备份镜像配置..."
                     val mirrorPrefs = context.getSharedPreferences("github_mirror", Context.MODE_PRIVATE)
@@ -239,24 +235,20 @@ fun BackupScreen() {
                     addFileToZip(zos, tempMirror, "config/github_mirror.json")
                     tempMirror.delete()
                 }
-                
+
                 progressValue = 0.95f
                 progressMessage = "备份完成！"
                 progressValue = 1f
-                
+
                 loadBackups()
-                Logger.success("Backup", "✅ 备份创建成功")
-                Logger.d("Backup", "备份文件大小: ${formatFileSize(backupFile.length())}")
-                Toast.makeText(
-                    context,
-                    "备份成功 (${formatFileSize(backupFile.length())})",
-                    Toast.LENGTH_SHORT
-                ).show()
-                
+                AppLog.success("Backup", "备份创建成功")
+                AppLog.d("Backup", "备份文件大小: ${formatFileSize(backupFile.length())}")
+                AppToast.success(context, "备份成功 (${formatFileSize(backupFile.length())})")
+
             } catch (e: Exception) {
-                Logger.e("Backup", "❌ 创建备份异常", e)
+                AppLog.e("Backup", "创建备份异常", e)
                 progressMessage = "备份失败: ${e.message}"
-                Toast.makeText(context, "备份失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                AppToast.error(context, "备份失败: ${e.message}")
             } finally {
                 showProgress = false
                 isLoading = false
@@ -268,18 +260,18 @@ fun BackupScreen() {
     fun restoreBackup(backup: BackupInfo) {
         scope.launch {
             try {
-                Logger.i("Backup", "========== 开始恢复备份 ==========")
+                AppLog.i("Backup", "========== 开始恢复备份 ==========")
                 isLoading = true
                 showProgress = true
                 progressValue = 0f
                 progressMessage = "正在恢复备份..."
-                
+
                 val tempDir = File(Constants.TEMP_DIR, "restore_${System.currentTimeMillis()}")
                 tempDir.mkdirs()
-                
+
                 progressValue = 0.1f
                 progressMessage = "解压备份文件..."
-                
+
                 java.util.zip.ZipFile(backup.file).use { zipFile ->
                     val entries = zipFile.entries()
                     while (entries.hasMoreElements()) {
@@ -297,10 +289,10 @@ fun BackupScreen() {
                         }
                     }
                 }
-                
+
                 progressValue = 0.3f
                 progressMessage = "解压完成，准备恢复..."
-                
+
                 val pluginsBackup = File(tempDir, "plugins")
                 if (pluginsBackup.exists()) {
                     progressValue = 0.4f
@@ -311,16 +303,16 @@ fun BackupScreen() {
                     }
                     pluginDir.mkdirs()
                     FileUtils.copyDirectory(pluginsBackup, pluginDir)
-                    Logger.success("Backup", "✅ 插件恢复完成")
+                    AppLog.success("Backup", "插件恢复完成")
                 }
-                
+
                 val uiConfigBackup = File(tempDir, "config/ui_config.json")
                 if (uiConfigBackup.exists()) {
                     progressValue = 0.6f
                     progressMessage = "正在恢复 UI 配置..."
                     val destUiConfig = File(context.filesDir, "ui_config.json")
                     uiConfigBackup.copyTo(destUiConfig, overwrite = true)
-                    
+
                     val uiConfig = UIConfig.getInstance()
                     try {
                         val configJson = destUiConfig.readText()
@@ -393,12 +385,12 @@ fun BackupScreen() {
                             uiConfig.updateBoolean("enableBold", font.optBoolean("enableBold", true))
                         }
                         uiConfig.saveConfig()
-                        Logger.success("Backup", "✅ UI 配置恢复完成")
+                        AppLog.success("Backup", "UI 配置恢复完成")
                     } catch (e: Exception) {
-                        Logger.e("Backup", "恢复UI配置失败", e)
+                        AppLog.e("Backup", "恢复UI配置失败", e)
                     }
                 }
-                
+
                 val prefsBackupDir = File(tempDir, "config/shared_prefs")
                 if (prefsBackupDir.exists()) {
                     progressValue = 0.7f
@@ -409,9 +401,9 @@ fun BackupScreen() {
                         val destFile = File(destPrefsDir, prefFile.name)
                         prefFile.copyTo(destFile, overwrite = true)
                     }
-                    Logger.success("Backup", "✅ SharedPreferences 恢复完成")
+                    AppLog.success("Backup", "SharedPreferences 恢复完成")
                 }
-                
+
                 val workFolderBackup = File(tempDir, "config/work_folder.json")
                 if (workFolderBackup.exists()) {
                     progressValue = 0.8f
@@ -425,10 +417,10 @@ fun BackupScreen() {
                             prefs.edit().putString("work_folder", workFolder).apply()
                         }
                     } catch (e: Exception) {
-                        Logger.e("Backup", "解析工作目录配置失败", e)
+                        AppLog.e("Backup", "解析工作目录配置失败", e)
                     }
                 }
-                
+
                 val settingsBackup = File(tempDir, "config/settings.json")
                 if (settingsBackup.exists()) {
                     progressValue = 0.85f
@@ -443,10 +435,10 @@ fun BackupScreen() {
                             putString("current_theme", settings.optString("current_theme", "default"))
                         }.apply()
                     } catch (e: Exception) {
-                        Logger.e("Backup", "解析应用设置失败", e)
+                        AppLog.e("Backup", "解析应用设置失败", e)
                     }
                 }
-                
+
                 val mirrorBackup = File(tempDir, "config/github_mirror.json")
                 if (mirrorBackup.exists()) {
                     progressValue = 0.9f
@@ -460,28 +452,28 @@ fun BackupScreen() {
                             putBoolean("use_cdn", config.optBoolean("use_cdn", true))
                         }.apply()
                     } catch (e: Exception) {
-                        Logger.e("Backup", "解析镜像配置失败", e)
+                        AppLog.e("Backup", "解析镜像配置失败", e)
                     }
                 }
-                
+
                 progressValue = 0.95f
                 progressMessage = "清理临时文件..."
                 FileUtils.deleteRecursively(tempDir)
-                
+
                 progressMessage = "刷新插件列表..."
                 pluginManager.refreshPlugins()
-                
+
                 progressValue = 1f
                 progressMessage = "恢复完成！"
-                
+
                 loadBackups()
-                Logger.success("Backup", "✅ 备份恢复成功")
-                Toast.makeText(context, "恢复成功", Toast.LENGTH_SHORT).show()
-                
+                AppLog.success("Backup", "备份恢复成功")
+                AppToast.success(context, "恢复成功")
+
             } catch (e: Exception) {
-                Logger.e("Backup", "❌ 恢复备份异常", e)
+                AppLog.e("Backup", "恢复备份异常", e)
                 progressMessage = "恢复失败: ${e.message}"
-                Toast.makeText(context, "恢复失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                AppToast.error(context, "恢复失败: ${e.message}")
             } finally {
                 showProgress = false
                 isLoading = false
@@ -495,14 +487,14 @@ fun BackupScreen() {
         try {
             if (backup.file.delete()) {
                 loadBackups()
-                Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show()
-                Logger.i("Backup", "删除备份: ${backup.name}")
+                AppToast.success(context, "已删除")
+                AppLog.i("Backup", "删除备份: ${backup.name}")
             } else {
-                Toast.makeText(context, "删除失败", Toast.LENGTH_SHORT).show()
+                AppToast.error(context, "删除失败")
             }
         } catch (e: Exception) {
-            Logger.e("BackupScreen", "删除备份失败", e)
-            Toast.makeText(context, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            AppLog.e("BackupScreen", "删除备份失败", e)
+            AppToast.error(context, "删除失败: ${e.message}")
         }
     }
 
@@ -510,7 +502,6 @@ fun BackupScreen() {
         loadBackups()
     }
 
-    // ==================== UI ====================
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -539,13 +530,13 @@ fun BackupScreen() {
             enabled = !isLoading
         )
 
-        // ==================== 备份选项 ====================
+        // 备份选项
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 4.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface
             )
         ) {
             Column(
@@ -556,6 +547,7 @@ fun BackupScreen() {
                 Text(
                     text = "备份选项",
                     style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Row(
@@ -563,18 +555,26 @@ fun BackupScreen() {
                 ) {
                     Checkbox(
                         checked = includeUiConfig,
-                        onCheckedChange = { includeUiConfig = it }
+                        onCheckedChange = { includeUiConfig = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary,
+                            uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
-                    Text("包含 UI 配置")
+                    Text("包含 UI 配置", color = MaterialTheme.colorScheme.onSurface)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
                         checked = includeSettings,
-                        onCheckedChange = { includeSettings = it }
+                        onCheckedChange = { includeSettings = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary,
+                            uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
-                    Text("包含应用设置")
+                    Text("包含应用设置", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -632,7 +632,6 @@ fun BackupScreen() {
         }
     }
 
-    // ==================== 对话框 ====================
     deleteTarget?.let { backup ->
         UIComponents.ConfirmDialog(
             title = "确认删除",
@@ -648,7 +647,7 @@ fun BackupScreen() {
     if (showRestoreConfirm && restoreTarget != null) {
         UIComponents.ConfirmDialog(
             title = "确认恢复",
-            message = "⚠️ 恢复操作将覆盖现有插件、配置和 UI 主题！\n\n确定要继续吗？",
+            message = "恢复操作将覆盖现有插件、配置和 UI 主题！\n\n确定要继续吗？",
             onConfirm = {
                 restoreTarget?.let { restoreBackup(it) }
                 restoreTarget = null
@@ -661,7 +660,6 @@ fun BackupScreen() {
     }
 }
 
-// ==================== 紧凑版备份卡片 ====================
 @Composable
 fun BackupItemCardCompact(
     backup: BackupInfo,
@@ -672,7 +670,7 @@ fun BackupItemCardCompact(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
@@ -683,23 +681,20 @@ fun BackupItemCardCompact(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 左侧：文件信息
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // 文件名（无限制）
                 Text(
                     text = backup.name,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF1A1A1A),
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 13.sp
                     )
                 )
-                
+
                 Spacer(modifier = Modifier.height(2.dp))
-                
-                // 文件信息行
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -707,21 +702,21 @@ fun BackupItemCardCompact(
                     Text(
                         text = backup.getFormattedDate(),
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFF999999),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 10.sp
                         )
                     )
                     Text(
                         text = "•",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFFCCCCCC),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 10.sp
                         )
                     )
                     Text(
                         text = backup.getFormattedSize(),
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFF999999),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 10.sp
                         )
                     )
@@ -729,34 +724,32 @@ fun BackupItemCardCompact(
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color(0xFFCCCCCC),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 10.sp
                             )
                         )
                         Text(
                             text = "${backup.pluginCount}个",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color(0xFF999999),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 10.sp
                             )
                         )
                     }
                 }
             }
-            
-            // 右侧：操作按钮
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 恢复按钮
                 Button(
                     onClick = onRestore,
                     modifier = Modifier
                         .height(28.dp)
                         .width(48.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1A3A4A),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(4.dp),
                     contentPadding = PaddingValues(horizontal = 6.dp)
@@ -767,16 +760,15 @@ fun BackupItemCardCompact(
                         fontWeight = FontWeight.Medium
                     )
                 }
-                
-                // 删除按钮
+
                 Button(
                     onClick = onDelete,
                     modifier = Modifier
                         .height(28.dp)
                         .width(48.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFFEBEE),
-                        contentColor = Color(0xFFD32F2F)
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ),
                     shape = RoundedCornerShape(4.dp),
                     contentPadding = PaddingValues(horizontal = 6.dp)
