@@ -24,55 +24,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-
-// 原来重构前的颜色定义
-object UITheme {
-    // 主色调 - 蓝灰色系（重构前）
-    val Primary = Color(0xFF1A3A4A)
-    val PrimaryDark = Color(0xFF0F2838)
-    val PrimaryLight = Color(0xFF2D5A70)
-    val Accent = Color(0xFF4A8A9E)
-    
-    // 辅助色
-    val Success = Color(0xFF4CAF50)
-    val Warning = Color(0xFFFF9800)
-    val Error = Color(0xFFF44336)
-    val Info = Color(0xFF2196F3)
-    
-    // 文本颜色
-    val TextPrimary = Color(0xFF212121)
-    val TextSecondary = Color(0xFF757575)
-    val TextHint = Color(0xFFBDBDBD)
-    
-    // 背景色
-    val Background = Color(0xFFF5F7FA)
-    val Surface = Color(0xFFFFFFFF)
-    val SurfaceVariant = Color(0xFFF5F7FA)
-    
-    // 边框和分割线
-    val Divider = Color(0xFFE0E4E8)
-    
-    // 卡片阴影
-    val CardShadow = Color(0x1A000000)
-    
-    // 间距
-    val SpacingSmall = 4.dp
-    val SpacingMedium = 8.dp
-    val SpacingLarge = 16.dp
-    val SpacingXLarge = 24.dp
-    
-    // 圆角
-    val RadiusSmall = 8.dp
-    val RadiusMedium = 12.dp
-    val RadiusLarge = 16.dp
-    val RadiusXLarge = 24.dp
-}
+import com.UIN.Tool.ui.theme.AppDimens
 
 object UIComponents {
 
-    // ======================== 按钮 ========================
+    // ==================== 按钮 ====================
 
     @Composable
     fun PrimaryButton(
@@ -87,36 +43,32 @@ object UIComponents {
             onClick = onClick,
             enabled = enabled,
             modifier = modifier
-                .height(48.dp)
-                .defaultMinSize(minWidth = 80.dp),
-            shape = RoundedCornerShape(UITheme.RadiusLarge),
+                .height(AppDimens.buttonHeight)
+                .defaultMinSize(minWidth = AppDimens.buttonMinWidth),
+            shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
             colors = ButtonDefaults.buttonColors(
-                containerColor = UITheme.Primary,
-                contentColor = Color.White,
-                disabledContainerColor = UITheme.TextHint,
-                disabledContentColor = Color.White.copy(alpha = 0.5f)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             ),
             elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 2.dp
+                defaultElevation = AppDimens.buttonElevation,
+                pressedElevation = AppDimens.buttonPressedElevation
             )
         ) {
             if (loading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimary,
                     strokeWidth = 2.dp
                 )
             } else {
                 icon?.let {
                     Icon(it, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(UITheme.SpacingSmall))
+                    Spacer(Modifier.width(AppDimens.spacingSmall))
                 }
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 14.sp
-                    )
-                )
+                Text(text)
             }
         }
     }
@@ -133,25 +85,20 @@ object UIComponents {
             onClick = onClick,
             enabled = enabled,
             modifier = modifier
-                .height(48.dp)
-                .defaultMinSize(minWidth = 80.dp),
-            shape = RoundedCornerShape(UITheme.RadiusLarge),
+                .height(AppDimens.buttonHeight)
+                .defaultMinSize(minWidth = AppDimens.buttonMinWidth),
+            shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = UITheme.Primary,
-                disabledContentColor = UITheme.TextHint
+                contentColor = MaterialTheme.colorScheme.primary,
+                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             ),
             border = ButtonDefaults.outlinedButtonBorder(enabled)
         ) {
             icon?.let {
                 Icon(it, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(UITheme.SpacingSmall))
+                Spacer(Modifier.width(AppDimens.spacingSmall))
             }
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 14.sp
-                )
-            )
+            Text(text)
         }
     }
 
@@ -168,8 +115,8 @@ object UIComponents {
             enabled = enabled,
             modifier = modifier,
             colors = ButtonDefaults.textButtonColors(
-                contentColor = UITheme.Primary,
-                disabledContentColor = UITheme.TextHint
+                contentColor = MaterialTheme.colorScheme.primary,
+                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             )
         ) {
             Text(
@@ -194,13 +141,13 @@ object UIComponents {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = tint ?: UITheme.TextPrimary,
+                tint = tint ?: MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(24.dp)
             )
         }
     }
 
-    // ======================== 卡片 ========================
+    // ==================== 卡片 ====================
 
     @Composable
     fun Card(
@@ -210,12 +157,13 @@ object UIComponents {
         shape: Shape? = null,
         content: @Composable ColumnScope.() -> Unit
     ) {
-        val finalElevation = elevation ?: 4.dp
-        val finalShape = shape ?: RoundedCornerShape(UITheme.RadiusLarge)
+        val finalElevation = elevation ?: AppDimens.cardElevation
+        val finalShape = shape ?: RoundedCornerShape(AppDimens.cardCornerRadius)
+
         val cardModifier = modifier
             .shadow(finalElevation, finalShape)
             .clip(finalShape)
-            .background(UITheme.Surface)
+            .background(MaterialTheme.colorScheme.surface)
 
         val clickableModifier = if (onClick != null) {
             cardModifier.clickable(
@@ -227,14 +175,14 @@ object UIComponents {
 
         Surface(
             modifier = clickableModifier,
-            color = UITheme.Surface,
+            color = MaterialTheme.colorScheme.surface,
             shape = finalShape,
             shadowElevation = 0.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(UITheme.SpacingLarge),
+                    .padding(AppDimens.cardPadding),
                 content = content
             )
         }
@@ -245,10 +193,10 @@ object UIComponents {
         modifier: Modifier = Modifier,
         content: @Composable ColumnScope.() -> Unit
     ) {
-        val shape = RoundedCornerShape(UITheme.RadiusLarge)
+        val shape = RoundedCornerShape(AppDimens.cardCornerRadius)
         Surface(
             modifier = modifier
-                .shadow(4.dp, shape)
+                .shadow(AppDimens.cardElevation, shape)
                 .clip(shape)
                 .background(Color.White.copy(alpha = 0.85f)),
             color = Color.White.copy(alpha = 0.85f),
@@ -258,13 +206,13 @@ object UIComponents {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(UITheme.SpacingLarge),
+                    .padding(AppDimens.cardPadding),
                 content = content
             )
         }
     }
 
-    // ======================== 输入框 ========================
+    // ==================== 输入框 ====================
 
     @Composable
     fun TextInput(
@@ -284,26 +232,26 @@ object UIComponents {
             value = value,
             onValueChange = onValueChange,
             modifier = modifier,
-            label = label?.let { { Text(it, fontSize = 14.sp) } },
-            placeholder = placeholder?.let { { Text(it, fontSize = 14.sp) } },
+            label = label?.let { { Text(it, fontSize = AppDimens.bodyTextSize.sp) } },
+            placeholder = placeholder?.let { { Text(it, fontSize = AppDimens.bodyTextSize.sp) } },
             leadingIcon = leadingIcon?.let { { Icon(it, null) } },
             trailingIcon = trailingIcon?.let { { Icon(it, null) } },
             singleLine = singleLine,
             isError = isError,
-            supportingText = supportingText?.let { { Text(it, fontSize = 12.sp) } },
+            supportingText = supportingText?.let { { Text(it, fontSize = AppDimens.captionTextSize.sp) } },
             enabled = enabled,
-            shape = RoundedCornerShape(UITheme.RadiusMedium),
+            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = UITheme.Primary,
-                unfocusedBorderColor = UITheme.Divider,
-                focusedLabelColor = UITheme.Primary,
-                cursorColor = UITheme.Primary
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary
             ),
-            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+            textStyle = LocalTextStyle.current.copy(fontSize = AppDimens.bodyTextSize.sp)
         )
     }
 
-    // ======================== 对话框 ========================
+    // ==================== 对话框 ====================
 
     @Composable
     fun ConfirmDialog(
@@ -312,28 +260,32 @@ object UIComponents {
         onConfirm: () -> Unit,
         onDismiss: () -> Unit,
         confirmText: String = "确定",
-        dismissText: String = "取消"
+        dismissText: String = "取消",
+        isDestructive: Boolean = false
     ) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(title, style = MaterialTheme.typography.titleLarge.copy(fontSize = 18.sp)) },
-            text = { Text(message, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp)) },
-            confirmButton = {
-                PrimaryButton(
-                    text = confirmText,
-                    onClick = onConfirm,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            dismissButton = {
-                TextButton(
-                    text = dismissText,
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            containerColor = UITheme.Surface,
-            shape = RoundedCornerShape(UITheme.RadiusXLarge)
+        com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog(
+            title = title,
+            message = message,
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
+            confirmText = confirmText,
+            dismissText = dismissText,
+            isDestructive = isDestructive
+        )
+    }
+
+    @Composable
+    fun InfoDialog(
+        title: String,
+        message: String,
+        onDismiss: () -> Unit,
+        buttonText: String = "确定"
+    ) {
+        com.UIN.Tool.ui.components.unified.UnifiedInfoDialog(
+            title = title,
+            message = message,
+            onDismiss = onDismiss,
+            buttonText = buttonText
         )
     }
 
@@ -342,41 +294,13 @@ object UIComponents {
         message: String,
         onCancel: (() -> Unit)? = null
     ) {
-        Dialog(
-            onDismissRequest = { onCancel?.invoke() },
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = false
-            )
-        ) {
-            Surface(
-                shape = RoundedCornerShape(UITheme.RadiusXLarge),
-                color = UITheme.Surface,
-                shadowElevation = 4.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(UITheme.SpacingXLarge),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(color = UITheme.Primary)
-                    Spacer(Modifier.height(UITheme.SpacingMedium))
-                    Text(message, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp))
-                    if (onCancel != null) {
-                        Spacer(Modifier.height(UITheme.SpacingMedium))
-                        TextButton(
-                            text = "取消",
-                            onClick = onCancel,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-        }
+        com.UIN.Tool.ui.components.unified.UnifiedLoadingDialog(
+            message = message,
+            onCancel = onCancel
+        )
     }
 
-    // ======================== 列表项 ========================
+    // ==================== 列表项 ====================
 
     @Composable
     fun ListItem(
@@ -394,27 +318,27 @@ object UIComponents {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(UITheme.SpacingLarge),
+                    .padding(AppDimens.cardPadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 leadingContent?.invoke()
-                if (leadingContent != null) Spacer(Modifier.width(UITheme.SpacingMedium))
+                if (leadingContent != null) Spacer(Modifier.width(AppDimens.spacingMedium))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 14.sp,
+                            fontSize = AppDimens.bodyTextSize.sp,
                             fontWeight = FontWeight.Medium
                         ),
-                        color = UITheme.TextPrimary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     subtitle?.let {
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 13.sp
+                                fontSize = AppDimens.captionTextSize.sp
                             ),
-                            color = UITheme.TextSecondary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -423,36 +347,29 @@ object UIComponents {
         }
     }
 
-    // ======================== 加载指示器 ========================
+    // ==================== 加载指示器 ====================
 
     @Composable
     fun FullScreenLoading(message: String = "加载中...") {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(color = UITheme.Primary)
-                Spacer(Modifier.height(UITheme.SpacingMedium))
-                Text(message, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp))
-            }
-        }
+        com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator(
+            message = message
+        )
     }
 
     @Composable
     fun LinearProgressIndicator(progress: Float) {
         androidx.compose.material3.LinearProgressIndicator(
             progress = { progress.coerceIn(0f, 1f) },
-            color = UITheme.Primary,
-            trackColor = UITheme.Divider,
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.outlineVariant,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .height(AppDimens.progressHeight)
+                .clip(RoundedCornerShape(AppDimens.progressCornerRadius))
         )
     }
 
-    // ======================== 文本 ========================
+    // ==================== 文本 ====================
 
     @Composable
     fun TitleText(
@@ -464,10 +381,10 @@ object UIComponents {
         Text(
             text = text,
             style = MaterialTheme.typography.titleLarge.copy(
-                fontSize = 20.sp,
+                fontSize = AppDimens.titleTextSize.sp,
                 fontWeight = FontWeight.Bold
             ),
-            color = color ?: UITheme.Primary,
+            color = color ?: MaterialTheme.colorScheme.onSurface,
             modifier = modifier,
             textAlign = textAlign
         )
@@ -483,9 +400,9 @@ object UIComponents {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 14.sp
+                fontSize = AppDimens.bodyTextSize.sp
             ),
-            color = color ?: UITheme.TextSecondary,
+            color = color ?: MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier,
             textAlign = textAlign
         )
@@ -501,9 +418,9 @@ object UIComponents {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 12.sp
+                fontSize = AppDimens.captionTextSize.sp
             ),
-            color = color ?: UITheme.TextHint,
+            color = color ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             modifier = modifier,
             textAlign = textAlign
         )
@@ -518,15 +435,15 @@ object UIComponents {
         Text(
             text = text,
             style = MaterialTheme.typography.headlineSmall.copy(
-                fontSize = 16.sp,
+                fontSize = AppDimens.sectionTitleTextSize.sp,
                 fontWeight = FontWeight.SemiBold
             ),
-            color = color ?: UITheme.TextPrimary,
-            modifier = modifier.padding(vertical = UITheme.SpacingSmall)
+            color = color ?: MaterialTheme.colorScheme.onSurface,
+            modifier = modifier.padding(vertical = AppDimens.spacingSmall)
         )
     }
 
-    // ======================== 开关 ========================
+    // ==================== 开关 ====================
 
     @Composable
     fun ToggleSwitch(
@@ -541,15 +458,15 @@ object UIComponents {
             modifier = modifier,
             enabled = enabled,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = UITheme.Primary,
-                checkedTrackColor = UITheme.PrimaryLight,
-                uncheckedThumbColor = UITheme.TextHint,
-                uncheckedTrackColor = UITheme.Divider
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
             )
         )
     }
 
-    // ======================== 标签（Chip）- 白色背景 ========================
+    // ==================== 标签 ====================
 
     @Composable
     fun Chip(
@@ -562,29 +479,38 @@ object UIComponents {
     ) {
         AssistChip(
             onClick = onClick,
-            label = { 
+            label = {
                 Text(
                     text = label,
-                    fontSize = 13.sp
-                ) 
+                    fontSize = AppDimens.captionTextSize.sp
+                )
             },
             modifier = modifier,
             enabled = enabled,
             leadingIcon = leadingIcon,
             colors = AssistChipDefaults.assistChipColors(
-                containerColor = if (selected) UITheme.Primary else UITheme.Surface,  // 白色背景
-                labelColor = if (selected) Color.White else UITheme.TextPrimary,
-                leadingIconContentColor = if (selected) Color.White else UITheme.TextPrimary
+                containerColor = if (selected)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.surface,
+                labelColor = if (selected)
+                    MaterialTheme.colorScheme.onPrimary
+                else
+                    MaterialTheme.colorScheme.onSurface,
+                leadingIconContentColor = if (selected)
+                    MaterialTheme.colorScheme.onPrimary
+                else
+                    MaterialTheme.colorScheme.onSurface
             ),
             border = if (selected) null else AssistChipDefaults.assistChipBorder(
-                borderColor = UITheme.Divider,
+                borderColor = MaterialTheme.colorScheme.outline,
                 enabled = enabled
             ),
-            shape = RoundedCornerShape(UITheme.RadiusLarge)
+            shape = RoundedCornerShape(AppDimens.radiusXXXLarge)
         )
     }
 
-    // ======================== 空状态 ========================
+    // ==================== 空状态 ====================
 
     @Composable
     fun EmptyState(
@@ -593,31 +519,11 @@ object UIComponents {
         icon: ImageVector = Icons.Default.Info,
         modifier: Modifier = Modifier
     ) {
-        Column(
+        com.UIN.Tool.ui.components.unified.UnifiedEmptyState(
+            title = title,
+            description = description,
+            icon = icon,
             modifier = modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = UITheme.TextHint
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            TitleText(
-                text = title,
-                textAlign = TextAlign.Center
-            )
-            if (!description.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                BodyText(
-                    text = description,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
+        )
     }
 }

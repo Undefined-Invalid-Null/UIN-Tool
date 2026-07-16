@@ -14,6 +14,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.MarkdownRenderer
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -35,7 +37,7 @@ fun HelpScreen() {
             content = reader.readText()
             reader.close()
         } catch (e: Exception) {
-            Logger.e("HelpScreen", "加载帮助文档失败", e)
+            AppLog.e("HelpScreen", "加载帮助文档失败", e)
             content = "加载帮助文档失败: ${e.message}"
         }
         isLoading = false
@@ -50,7 +52,12 @@ fun HelpScreen() {
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         onClick = { activity?.finish() }
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->

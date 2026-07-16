@@ -1,21 +1,21 @@
+// app/src/main/java/com/UIN/Tool/ui/screen/dev/PluginWizardViewModel.kt
 package com.UIN.Tool.ui.screen.dev
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.Constants
 import com.UIN.Tool.utils.TemplateUtils
 import java.io.File
+
+private const val TAG = "PluginWizardViewModel"
 
 class PluginWizardViewModel(
     private val context: Context,
     val uiType: String
 ) : ViewModel() {
-
-    companion object {
-        private const val TAG = "PluginWizardViewModel"
-    }
 
     // ==================== 插件信息 ====================
     var pluginId = mutableStateOf("com.example.myplugin")
@@ -43,7 +43,6 @@ class PluginWizardViewModel(
     var tpkFile = mutableStateOf<File?>(null)
     var projectDir = mutableStateOf<File?>(null)
 
-    // ==================== 初始化默认文件 ====================
     fun initDefaultFiles() {
         if (fileList.value.isEmpty() || fileContents.value.isEmpty()) {
             if (uiType == "native") {
@@ -54,7 +53,6 @@ class PluginWizardViewModel(
         }
     }
 
-    // ==================== 生成原生代码 ====================
     fun generateNativeCode() {
         val className = mainClass.value.substringAfterLast('.')
         val packageName = mainClass.value.substringBeforeLast('.')
@@ -71,7 +69,7 @@ class PluginWizardViewModel(
             "PLUGIN_AUTHOR" to pluginAuthor.value,
             "PLUGIN_DESCRIPTION" to pluginDescription.value
         )
-        
+
         try {
             val javaCode = TemplateUtils.generateJavaCode(context, "native", vars)
             if (javaCode.isNotEmpty()) {
@@ -79,18 +77,17 @@ class PluginWizardViewModel(
                 fileContents.value = mapOf(javaFilePath to javaCode)
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "生成Java代码失败", e)
+            AppLog.e(TAG, "生成Java代码失败", e)
         }
     }
 
-    // ==================== 生成 Web 模板 ====================
     fun generateWebTemplates() {
         val vars = mapOf(
             "PLUGIN_NAME" to pluginName.value,
             "PLUGIN_DESCRIPTION" to pluginDescription.value,
             "PLUGIN_ID" to pluginId.value
         )
-        
+
         try {
             val indexHtml = TemplateUtils.renderTemplate(
                 TemplateUtils.loadTemplate(context, "web/index.html"),
@@ -104,51 +101,44 @@ class PluginWizardViewModel(
                 TemplateUtils.loadTemplate(context, "web/script.js"),
                 vars
             )
-            
+
             val files = mutableMapOf<String, String>()
             files["web/index.html"] = indexHtml
             files["web/style.css"] = styleCss
             files["web/script.js"] = scriptJs
-            
+
             fileList.value = files.keys.toList()
             fileContents.value = files
-            
+
         } catch (e: Exception) {
-            Logger.e(TAG, "生成Web模板失败", e)
+            AppLog.e(TAG, "生成Web模板失败", e)
         }
     }
 
-    // ==================== 更新文件 ====================
     fun updateFiles(files: List<String>, contents: Map<String, String>) {
         fileList.value = files
         fileContents.value = contents
     }
 
-    // ==================== 生成项目文件 ====================
     suspend fun generateProjectFiles(workDir: File): Boolean {
         return try {
-            // 创建目录
             workDir.mkdirs()
 
-            // 生成 plugin.json
             val jsonContent = generatePluginJsonContent()
             val jsonFile = File(workDir, "plugin.json")
             jsonFile.writeText(jsonContent)
 
-            // 保存所有文件
             fileContents.value.forEach { (path, content) ->
                 val file = File(workDir, path)
                 file.parentFile?.mkdirs()
                 file.writeText(content)
             }
 
-            // 保存图标
             if (iconPath.value.isNotEmpty() && File(iconPath.value).exists()) {
                 val iconFile = File(workDir, "icon.png")
                 File(iconPath.value).copyTo(iconFile, overwrite = true)
             }
 
-            // 保存资源文件
             if (resourcePaths.value.isNotEmpty()) {
                 val resDir = File(workDir, "res")
                 resDir.mkdirs()
@@ -161,19 +151,17 @@ class PluginWizardViewModel(
                 }
             }
 
-            // 生成 README.md
             generateReadme(workDir)
 
-            Logger.success(TAG, "项目文件生成成功: ${workDir.absolutePath}")
+            AppLog.success(TAG, "项目文件生成成功: ${workDir.absolutePath}")
             true
 
         } catch (e: Exception) {
-            Logger.e(TAG, "生成项目文件失败", e)
+            AppLog.e(TAG, "生成项目文件失败", e)
             false
         }
     }
 
-    // ==================== 生成 plugin.json ====================
     private fun generatePluginJsonContent(): String {
         return if (uiType == "web") {
             """
@@ -212,7 +200,6 @@ class PluginWizardViewModel(
         }
     }
 
-    // ==================== 生成 README ====================
     private fun generateReadme(workDir: File) {
         try {
             val vars = mapOf(
@@ -226,7 +213,7 @@ class PluginWizardViewModel(
             val readme = TemplateUtils.generateReadme(context, vars)
             File(workDir, "README.md").writeText(readme)
         } catch (e: Exception) {
-            Logger.e(TAG, "生成README失败", e)
+            AppLog.e(TAG, "生成README失败", e)
         }
     }
 }

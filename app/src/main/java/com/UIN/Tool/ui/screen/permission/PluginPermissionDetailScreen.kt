@@ -1,4 +1,4 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailActivity.kt
+// app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt
 package com.UIN.Tool.ui.screen.permission
 
 import android.os.Bundle
@@ -26,17 +26,18 @@ import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.utils.AppToast
 import kotlinx.coroutines.launch
 
 class PluginPermissionDetailActivity : ComponentActivity() {
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         val pluginId = intent.getStringExtra("plugin_id") ?: ""
         val pluginManager = ServiceLocator.getPluginManager()
         val plugin = pluginManager.getPluginInfo(pluginId)
-        
+
         setContent {
             UINToolTheme {
                 PluginPermissionDetailScreen(
@@ -57,28 +58,28 @@ fun PluginPermissionDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val pluginManager = ServiceLocator.getPluginManager()
-    
+
     var permissions by remember {
         mutableStateOf(emptyMap<String, Boolean>())
     }
     var isRequesting by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf("") }
-    
+
     fun loadPermissions() {
         if (plugin != null) {
             permissions = pluginManager.getPluginPermissionStatus(plugin.pluginId)
         }
     }
-    
+
     LaunchedEffect(plugin) {
         loadPermissions()
     }
-    
+
     fun requestAllPermissions() {
         if (plugin == null || isRequesting) return
         isRequesting = true
         progressMessage = "正在请求权限..."
-        
+
         pluginManager.requestPluginPermissionsByGroups(
             plugin.pluginId,
             onProgress = { group, current, total ->
@@ -88,14 +89,14 @@ fun PluginPermissionDetailScreen(
                 isRequesting = false
                 loadPermissions()
                 if (granted) {
-                    progressMessage = "✅ 所有权限已授予"
+                    progressMessage = "所有权限已授予"
                 } else {
-                    progressMessage = "⚠️ 部分权限被拒绝"
+                    progressMessage = "部分权限被拒绝"
                 }
             }
         )
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -115,7 +116,13 @@ fun PluginPermissionDetailScreen(
                             onClick = { loadPermissions() }
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -132,8 +139,8 @@ fun PluginPermissionDetailScreen(
                 )
                 return@Scaffold
             }
-            
-            // 插件信息
+
+            // 插件信息 - 移除 📦
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -147,9 +154,10 @@ fun PluginPermissionDetailScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "📦 ${plugin.name}",
+                        text = "插件: ${plugin.name}",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -164,9 +172,9 @@ fun PluginPermissionDetailScreen(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // 权限列表
             if (permissions.isEmpty()) {
                 Card(
@@ -200,7 +208,7 @@ fun PluginPermissionDetailScreen(
                 // 统计信息
                 val grantedCount = permissions.values.count { it }
                 val totalCount = permissions.size
-                
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -218,23 +226,24 @@ fun PluginPermissionDetailScreen(
                         Text(
                             text = "权限状态",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "$grantedCount / $totalCount 已授予",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (grantedCount == totalCount)
-                                Color(0xFF4CAF50)
+                                MaterialTheme.colorScheme.primary
                             else
-                                Color(0xFFFF9800)
+                                MaterialTheme.colorScheme.error
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
-                // 进度消息
+
+                // 进度消息 - 移除 ✅ 和 ⚠️
                 if (progressMessage.isNotEmpty()) {
                     Card(
                         modifier = Modifier
@@ -251,17 +260,17 @@ fun PluginPermissionDetailScreen(
                                 .fillMaxWidth()
                                 .padding(12.dp),
                             color = when {
-                                progressMessage.contains("✅") -> Color(0xFF4CAF50)
-                                progressMessage.contains("⚠️") -> Color(0xFFFF9800)
+                                progressMessage.contains("所有权限已授予") -> MaterialTheme.colorScheme.primary
+                                progressMessage.contains("部分权限被拒绝") -> MaterialTheme.colorScheme.error
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 // 权限列表
                 LazyColumn(
                     modifier = Modifier.weight(1f),
@@ -284,10 +293,10 @@ fun PluginPermissionDetailScreen(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // 操作按钮
+
+            // 操作按钮 - 移除 ✅
             if (permissions.isNotEmpty()) {
                 val allGranted = permissions.values.all { it }
                 Row(
@@ -295,13 +304,13 @@ fun PluginPermissionDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     UIComponents.PrimaryButton(
-                        text = if (allGranted) "✅ 所有权限已授予" else "一键授权所有",
+                        text = if (allGranted) "所有权限已授予" else "一键授权所有",
                         onClick = { requestAllPermissions() },
                         modifier = Modifier.weight(1f),
                         enabled = !allGranted && !isRequesting,
                         loading = isRequesting
                     )
-                    
+
                     UIComponents.SecondaryButton(
                         text = "刷新",
                         icon = Icons.Default.Refresh,
@@ -338,7 +347,6 @@ fun PermissionDetailItem(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 状态图标 - 使用 Surface 替代 Box + background
             Surface(
                 modifier = Modifier.size(36.dp),
                 shape = RoundedCornerShape(18.dp),
@@ -355,10 +363,9 @@ fun PermissionDetailItem(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(14.dp))
-            
-            // 权限信息
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = PluginPermissionManager.getPermissionDisplayName(permission),
@@ -377,14 +384,13 @@ fun PermissionDetailItem(
                 )
                 if (PluginPermissionManager.isSpecialPermission(permission)) {
                     Text(
-                        text = "⚠️ 特殊权限：需在系统设置中手动开启",
+                        text = "特殊权限：需在系统设置中手动开启",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFFF9800)
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
-            
-            // 状态标签或操作按钮
+
             if (granted) {
                 Surface(
                     color = Color(0xFFE8F5E9),

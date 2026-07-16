@@ -5,10 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items          // ✅ 关键 import
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,10 +20,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
-import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.PluginShortcutHelper
 import kotlinx.coroutines.launch
+
+private const val TAG = "ToolsScreen"
 
 @Composable
 fun ToolsScreen() {
@@ -137,7 +138,11 @@ fun ToolsScreen() {
                 }
             }
             else -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // ✅ 现在 items 扩展函数可见，正确匹配 List 版本
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     items(filteredPlugins) { plugin ->
                         PluginListItem(
                             plugin = plugin,

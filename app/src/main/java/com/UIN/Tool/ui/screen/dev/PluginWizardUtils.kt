@@ -1,3 +1,4 @@
+// app/src/main/java/com/UIN/Tool/ui/screen/dev/PluginWizardUtils.kt
 package com.UIN.Tool.ui.screen.dev
 
 import android.content.Context
@@ -5,9 +6,6 @@ import android.widget.Toast
 import com.UIN.Tool.utils.TemplateUtils
 import java.io.File
 
-/**
- * 查找 Web 项目目录
- */
 fun findWebDirectory(dir: File): File? {
     val webDir = File(dir, "web")
     if (webDir.exists() && webDir.isDirectory) return webDir
@@ -23,9 +21,6 @@ fun findWebDirectory(dir: File): File? {
     return null
 }
 
-/**
- * 生成 plugin.json 内容
- */
 fun generatePluginJson(
     uiType: String,
     pluginId: String,
@@ -74,9 +69,6 @@ fun generatePluginJson(
     }
 }
 
-/**
- * 生成 README.md
- */
 fun generateReadme(
     context: Context,
     workDir: File,
@@ -103,9 +95,6 @@ fun generateReadme(
     }
 }
 
-/**
- * 验证当前步骤
- */
 fun validateCurrentStep(
     currentStep: Int,
     pluginId: String,
@@ -125,16 +114,13 @@ fun validateCurrentStep(
             }
             true
         }
-        1 -> true // 图标步骤可选
-        2 -> true // 代码步骤可选
-        3 -> true // 资源步骤可选
+        1 -> true
+        2 -> true
+        3 -> true
         else -> true
     }
 }
 
-/**
- * 格式化文件大小
- */
 fun formatFileSize(size: Long): String {
     return when {
         size < 1024 -> "$size B"

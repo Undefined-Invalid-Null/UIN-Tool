@@ -19,10 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.UIN.Tool.R
 import com.UIN.Tool.core.compiler.JavaToDexCompiler
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
 import com.UIN.Tool.utils.FileUtils
 import kotlinx.coroutines.launch
@@ -46,7 +47,6 @@ fun BasePluginWizardScreen(
     var currentStep by remember { mutableStateOf(0) }
     val totalSteps = 5
 
-    // ==================== 导入 Web 项目 ====================
     val webImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -54,7 +54,7 @@ fun BasePluginWizardScreen(
             try {
                 val tempFile = File(context.cacheDir, "web_import_${System.currentTimeMillis()}.zip")
                 if (!FileUtils.copyUriToFile(context, uri, tempFile)) {
-                    Toast.makeText(context, "无法读取文件", Toast.LENGTH_SHORT).show()
+                    AppToast.error(context, "无法读取文件")
                     return@rememberLauncherForActivityResult
                 }
 
@@ -73,27 +73,26 @@ fun BasePluginWizardScreen(
                         }
                         if (files.isNotEmpty()) {
                             viewModel.updateFiles(files.keys.toList(), files)
-                            Toast.makeText(context, "Web项目导入成功，共 ${files.size} 个文件", Toast.LENGTH_LONG).show()
+                            AppToast.success(context, "Web项目导入成功，共 ${files.size} 个文件")
                         } else {
-                            Toast.makeText(context, "Web项目为空", Toast.LENGTH_SHORT).show()
+                            AppToast.warning(context, "Web项目为空")
                         }
                     } else {
-                        Toast.makeText(context, "未找到有效的Web项目", Toast.LENGTH_LONG).show()
+                        AppToast.warning(context, "未找到有效的Web项目")
                     }
                 } else {
-                    Toast.makeText(context, "解压ZIP文件失败", Toast.LENGTH_SHORT).show()
+                    AppToast.error(context, "解压ZIP文件失败")
                 }
 
                 FileUtils.deleteRecursively(extractDir)
                 tempFile.delete()
 
             } catch (e: Exception) {
-                Toast.makeText(context, "导入失败: ${e.message}", Toast.LENGTH_LONG).show()
+                AppToast.error(context, "导入失败: ${e.message}")
             }
         }
     }
 
-    // ==================== 代码编辑器 Launcher ====================
     val codeEditorLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -102,11 +101,10 @@ fun BasePluginWizardScreen(
             val updatedFiles = data?.getStringArrayListExtra("file_list") ?: emptyList()
             val updatedContents = data?.getSerializableExtra("file_contents") as? HashMap<String, String> ?: emptyMap()
             viewModel.updateFiles(updatedFiles, updatedContents)
-            Toast.makeText(context, "代码已更新，共 ${updatedFiles.size} 个文件", Toast.LENGTH_SHORT).show()
+            AppToast.info(context, "代码已更新，共 ${updatedFiles.size} 个文件")
         }
     }
 
-    // ==================== 打开代码编辑器 ====================
     fun openCodeEditor() {
         viewModel.initDefaultFiles()
 
@@ -121,7 +119,6 @@ fun BasePluginWizardScreen(
         codeEditorLauncher.launch(intent)
     }
 
-    // ==================== 编译打包 ====================
     fun startCompileAndPackage() {
         scope.launch {
             try {
@@ -133,37 +130,33 @@ fun BasePluginWizardScreen(
                     .replace("/", "_")
                     .replace("\\", "_")
                     .replace(":", "_")
-                
+
                 val workDir = File(Constants.PLUGIN_DIR, safePluginId)
                 val outputTpk = File(Constants.TPK_DIR, "$safePluginId.tpk")
-                
-                // 确保目录存在
+
                 workDir.mkdirs()
                 outputTpk.parentFile?.mkdirs()
 
-                // 先保存所有项目文件
                 viewModel.compileMessage.value = "生成项目文件..."
                 viewModel.compileProgress.value = 10
-                
+
                 val saveSuccess = viewModel.generateProjectFiles(workDir)
                 if (!saveSuccess) {
                     viewModel.compileMessage.value = "❌ 生成项目文件失败"
                     viewModel.isCompiling.value = false
-                    Toast.makeText(context, "生成项目文件失败", Toast.LENGTH_SHORT).show()
+                    AppToast.error(context, "生成项目文件失败")
                     return@launch
                 }
 
                 viewModel.compileMessage.value = "项目文件已生成"
                 viewModel.compileProgress.value = 30
 
-                // 如果是原生插件，执行编译打包
                 if (uiType == "native") {
                     viewModel.compileMessage.value = "开始编译 Java 代码..."
                     viewModel.compileProgress.value = 40
 
                     val compiler = JavaToDexCompiler(context)
-                    
-                    // 设置进度监听
+
                     compiler.setOnProgressListener { message ->
                         viewModel.compileMessage.value = message
                         when {
@@ -179,13 +172,8 @@ fun BasePluginWizardScreen(
                         viewModel.compileProgress.value = 100
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
-                        
-                        Toast.makeText(
-                            context,
-                            "✅ 编译打包成功!\n${outputTpk.absolutePath}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        
+
+                        AppToast.success(context, "✅ 编译打包成功!\n${outputTpk.absolutePath}")
                         onFinish()
                     }
 
@@ -193,13 +181,12 @@ fun BasePluginWizardScreen(
                         viewModel.compileMessage.value = "❌ 编译失败: $error"
                         viewModel.compileProgress.value = 0
                         viewModel.isCompiling.value = false
-                        Toast.makeText(context, "编译失败: $error", Toast.LENGTH_LONG).show()
+                        AppToast.error(context, "编译失败: $error")
                     }
 
-                    // 执行编译打包
                     val srcDir = File(workDir, "src")
                     val mainClass = viewModel.mainClass.value
-                    
+
                     compiler.compileAndPackage(
                         javaSrcDir = srcDir,
                         projectDir = workDir,
@@ -209,12 +196,11 @@ fun BasePluginWizardScreen(
                     )
 
                 } else {
-                    // Web 插件：直接打包 TPK（不需要编译）
                     viewModel.compileMessage.value = "打包 Web 插件..."
                     viewModel.compileProgress.value = 60
 
                     val compiler = JavaToDexCompiler(context)
-                    
+
                     compiler.setOnProgressListener { message ->
                         viewModel.compileMessage.value = message
                         when {
@@ -227,13 +213,8 @@ fun BasePluginWizardScreen(
                         viewModel.compileProgress.value = 100
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
-                        
-                        Toast.makeText(
-                            context,
-                            "✅ Web 插件打包成功!\n${outputTpk.absolutePath}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        
+
+                        AppToast.success(context, "✅ Web 插件打包成功!\n${outputTpk.absolutePath}")
                         onFinish()
                     }
 
@@ -241,10 +222,9 @@ fun BasePluginWizardScreen(
                         viewModel.compileMessage.value = "❌ 打包失败: $error"
                         viewModel.compileProgress.value = 0
                         viewModel.isCompiling.value = false
-                        Toast.makeText(context, "打包失败: $error", Toast.LENGTH_LONG).show()
+                        AppToast.error(context, "打包失败: $error")
                     }
 
-                    // ✅ Web 插件直接打包（调用公共方法）
                     compiler.packageTpk(
                         projectDir = workDir,
                         outputTpk = outputTpk,
@@ -254,15 +234,14 @@ fun BasePluginWizardScreen(
                 }
 
             } catch (e: Exception) {
-                Logger.e(TAG, "编译打包异常", e)
+                AppLog.e(TAG, "编译打包异常", e)
                 viewModel.compileMessage.value = "❌ 异常: ${e.message}"
                 viewModel.isCompiling.value = false
-                Toast.makeText(context, "编译打包异常: ${e.message}", Toast.LENGTH_LONG).show()
+                AppToast.error(context, "编译打包异常: ${e.message}")
             }
         }
     }
 
-    // ==================== 步骤标题 ====================
     fun getStepTitle(): String {
         return when (currentStep) {
             0 -> "配置插件信息"
@@ -283,27 +262,26 @@ fun BasePluginWizardScreen(
         }
     }
 
-    // ==================== 验证当前步骤 ====================
     fun validateCurrentStep(): Boolean {
         return when (currentStep) {
             0 -> {
                 if (viewModel.pluginId.value.isEmpty() || viewModel.pluginName.value.isEmpty()) {
-                    Toast.makeText(context, "请填写插件ID和名称", Toast.LENGTH_SHORT).show()
+                    AppToast.warning(context, "请填写插件ID和名称")
                     return false
                 }
                 if (!viewModel.pluginId.value.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                    Toast.makeText(context, "插件ID格式不正确，应为域名倒序格式", Toast.LENGTH_SHORT).show()
+                    AppToast.warning(context, "插件ID格式不正确，应为域名倒序格式")
                     return false
                 }
                 true
             }
             2 -> {
                 if (uiType == "native" && viewModel.mainClass.value.isEmpty()) {
-                    Toast.makeText(context, "请填写主类名", Toast.LENGTH_SHORT).show()
+                    AppToast.warning(context, "请填写主类名")
                     return false
                 }
                 if (uiType == "native" && !viewModel.mainClass.value.contains(".")) {
-                    Toast.makeText(context, "主类名必须包含包名，如 com.example.MainPlugin", Toast.LENGTH_SHORT).show()
+                    AppToast.warning(context, "主类名必须包含包名，如 com.example.MainPlugin")
                     return false
                 }
                 true
@@ -312,7 +290,6 @@ fun BasePluginWizardScreen(
         }
     }
 
-    // ==================== UI ====================
     Scaffold(
         topBar = {
             TopAppBar(
@@ -415,7 +392,6 @@ fun BasePluginWizardScreen(
                 }
             }
 
-            // 步骤标题
             UIComponents.TitleText(
                 getStepTitle(),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -428,7 +404,6 @@ fun BasePluginWizardScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 步骤内容
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -491,7 +466,6 @@ fun BasePluginWizardScreen(
     }
 }
 
-// ==================== 查找 Web 目录 ====================
 private fun findWebDir(dir: File): File? {
     val webDir = File(dir, "web")
     if (webDir.exists() && webDir.isDirectory) {

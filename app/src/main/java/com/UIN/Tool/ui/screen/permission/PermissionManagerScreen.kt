@@ -25,7 +25,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.PermissionUtils
+
+private const val TAG = "PermissionManagerScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,14 +79,14 @@ fun PermissionManagerScreen() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         refreshKey++
-        Toast.makeText(context, "权限状态已刷新", Toast.LENGTH_SHORT).show()
+        AppToast.info(context, "权限状态已刷新")
     }
 
     val settingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
         refreshKey++
-        Toast.makeText(context, "权限状态已刷新", Toast.LENGTH_SHORT).show()
+        AppToast.info(context, "权限状态已刷新")
     }
 
     fun requestPermission(permission: String) {
@@ -133,7 +137,13 @@ fun PermissionManagerScreen() {
                         icon = Icons.Default.Refresh,
                         onClick = { refreshKey++ }
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
@@ -144,7 +154,7 @@ fun PermissionManagerScreen() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // ==================== 插件权限管理入口卡片 ====================
+            // 插件权限管理入口卡片
             item {
                 Card(
                     modifier = Modifier
@@ -153,7 +163,7 @@ fun PermissionManagerScreen() {
                             try {
                                 context.startActivity(Intent(context, PluginPermissionActivity::class.java))
                             } catch (e: Exception) {
-                                Toast.makeText(context, "插件权限功能开发中", Toast.LENGTH_SHORT).show()
+                                AppToast.warning(context, "插件权限功能开发中")
                             }
                         },
                     shape = RoundedCornerShape(12.dp),
@@ -167,7 +177,6 @@ fun PermissionManagerScreen() {
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 图标 - 使用 Surface 替代 Box + background
                         Surface(
                             modifier = Modifier.size(48.dp),
                             shape = RoundedCornerShape(10.dp),
@@ -184,9 +193,9 @@ fun PermissionManagerScreen() {
                                 )
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.width(16.dp))
-                        
+
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "插件权限管理",
@@ -200,7 +209,7 @@ fun PermissionManagerScreen() {
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
                         }
-                        
+
                         Icon(
                             Icons.Default.KeyboardArrowRight,
                             contentDescription = null,
@@ -275,7 +284,8 @@ fun PermissionManagerScreen() {
                         ) {
                             Text(
                                 text = PermissionUtils.getPermissionDisplayName(item.permission),
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = item.category,
@@ -310,11 +320,11 @@ fun PermissionManagerScreen() {
                 }
             }
 
-            // 底部提示
+            // 底部提示 - 移除 Emoji
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 UIComponents.CaptionText(
-                    "💡 提示：部分权限（如悬浮窗、修改系统设置）需要在系统设置中手动开启"
+                    "提示：部分权限（如悬浮窗、修改系统设置）需要在系统设置中手动开启"
                 )
             }
         }

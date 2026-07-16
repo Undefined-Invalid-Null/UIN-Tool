@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
 import com.UIN.Tool.utils.CrashLogUtils
 import java.io.File
@@ -58,7 +61,7 @@ fun LogViewerScreen(
                 }
             }
         } catch (e: Exception) {
-            Logger.e("LogViewer", "加载日志失败", e)
+            AppLog.e("LogViewer", "加载日志失败", e)
             logLines = listOf("加载日志失败: ${e.message}")
         }
         isLoading = false
@@ -75,16 +78,16 @@ fun LogViewerScreen(
         try {
             val logFile = File(Constants.LOG_DIR, "uin_tool_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log")
             if (!logFile.exists()) {
-                android.widget.Toast.makeText(context, "没有日志可导出", android.widget.Toast.LENGTH_SHORT).show()
+                AppToast.warning(context, "没有日志可导出")
                 return
             }
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 logFile.inputStream().use { input -> input.copyTo(output) }
             }
-            android.widget.Toast.makeText(context, "日志已导出", android.widget.Toast.LENGTH_SHORT).show()
-            Logger.success("LogViewer", "日志已导出")
+            AppToast.success(context, "日志已导出")
+            AppLog.success("LogViewer", "日志已导出")
         } catch (e: Exception) {
-            android.widget.Toast.makeText(context, "导出失败: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+            AppToast.error(context, "导出失败: ${e.message}")
         }
     }
 
@@ -93,7 +96,7 @@ fun LogViewerScreen(
         var count = 0
         logDir.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".log") && it.delete()) count++ }
         loadLogs()
-        android.widget.Toast.makeText(context, "已删除 $count 个日志文件", android.widget.Toast.LENGTH_SHORT).show()
+        AppToast.info(context, "已删除 $count 个日志文件")
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -128,12 +131,18 @@ fun LogViewerScreen(
                             exportLauncher.launch("UIN_Tool_Log_$timestamp.txt")
                         }
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            // 崩溃提示
+            // 崩溃提示 - 使用 Material Icon 替换 ⚠️
             if (showCrashMessage) {
                 UIComponents.Card(
                     modifier = Modifier
@@ -147,20 +156,32 @@ fun LogViewerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            UIComponents.BodyText(
-                                "⚠️ 应用发生异常",
-                                color = Color(0xFF856404)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Warning,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.error
                             )
-                            UIComponents.CaptionText(
-                                "请查看下方的崩溃日志了解详情",
-                                color = Color(0xFF856404)
-                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                UIComponents.BodyText(
+                                    "应用发生异常",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                UIComponents.CaptionText(
+                                    "请查看下方的崩溃日志了解详情",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                         UIComponents.IconButton(
                             icon = Icons.Default.Close,
                             onClick = { showCrashMessage = false },
-                            tint = Color(0xFF856404)
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
