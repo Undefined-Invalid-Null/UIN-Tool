@@ -1,7 +1,7 @@
 plugins {
     id "com.android.application"
     id "org.jetbrains.kotlin.android"
-    id "org.jetbrains.kotlin.plugin.compose" version "2.0.20"
+    id "org.jetbrains.kotlin.plugin.compose" version "2.1.0"
 }
 
 ext {
@@ -143,20 +143,14 @@ android {
 }
 
 // ============================================================
-// 🔥 修复依赖冲突 - 强制使用最新版本
+// 修复依赖冲突 - 强制使用最新版本
 // ============================================================
 configurations.all {
-    
-    
     // 排除 Atlassian 的旧版 commonmark
     exclude group: 'com.atlassian.commonmark', module: 'commonmark'
     
-    // ⭐ 强制版本策略（移除旧的 force，使用新版本）
     resolutionStrategy {
-        
-    force "org.commonmark:commonmark:0.22.0"
-        
-        // 可选：强制其他关键库版本
+        force "org.commonmark:commonmark:0.22.0"
         force "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
         force "androidx.core:core-ktx:1.13.1"
         force "com.squareup.okhttp3:okhttp:4.12.0"
@@ -174,7 +168,6 @@ dependencies {
     
     // MultiDex
     implementation 'androidx.multidex:multidex:2.0.1'
-    
     
     implementation "io.noties.markwon:core:4.6.2"
     implementation "io.noties.markwon:ext-strikethrough:4.6.2"
@@ -220,10 +213,18 @@ dependencies {
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.2.0"
     implementation "androidx.core:core-splashscreen:1.0.1"
 
-    // Sora Editor
-    implementation "io.github.Rosemoe.sora-editor:editor:0.23.5"
-    implementation "io.github.Rosemoe.sora-editor:language-textmate:0.23.5"
-    implementation "io.github.Rosemoe.sora-editor:language-java:0.23.5"
+    // ==================== Sora Editor (使用 BOM) ====================
+    // ✅ BOM 统一管理版本
+    implementation platform("io.github.rosemoe:editor-bom:0.24.4")
+    
+    // 核心编辑器
+    implementation "io.github.rosemoe:editor"
+    
+    // TextMate 语言支持（语法高亮）
+    implementation "io.github.rosemoe:language-textmate"
+    
+    // Java 语言支持（可选，如果不需要可以移除）
+    implementation "io.github.rosemoe:language-java"
 
     // 编译器
     compileOnly files("libs/host-sdk.jar")
