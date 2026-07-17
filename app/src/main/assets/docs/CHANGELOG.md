@@ -12,6 +12,111 @@
 
 ---
 
+## [4.1.0] - 2026-07-17
+
+### 🎉 重大更新：代码编辑器升级 (Sora Editor)
+
+#### 代码编辑器全面升级
+
+- **Sora Editor 集成**：替换原有简陋编辑器，采用专业的 Sora Editor 引擎
+  - 基于 `io.github.rosemoe:sora-editor` 0.24.4
+  - 使用 `AndroidView` 在 Compose 中完美嵌入
+  - 支持 30+ 种编程语言语法高亮
+
+- **TextMate 语法高亮**：使用 `language-textmate` 模块提供专业级语法高亮
+  - 支持 Java、Kotlin、Python、JavaScript、TypeScript
+  - 支持 HTML、CSS、JSON、XML、Markdown
+  - 支持 Shell、SQL、Go、Rust、PHP、Ruby、Swift
+  - 支持 Dart、Lua、Scala、Perl、Haskell、Elixir
+  - 支持 Erlang、Clojure、Groovy、Dockerfile、Makefile
+  - 支持 INI、Properties、TOML、YAML 等 30+ 种语言
+
+- **主题系统**：内置 28+ 种代码编辑器主题
+  - 深色主题：dark-plus、dracula、one-dark-pro、material-theme 等
+  - 浅色主题：vitesse-light、github-light、solarized-light 等
+  - 一键切换主题，实时生效
+  - 主题自动分类（深色/浅色）
+
+- **编辑器功能增强**：
+  - 行号显示
+  - 代码折叠
+  - 括号匹配高亮
+  - 智能自动缩进
+  - 撤销/重做历史
+  - 搜索与替换
+  - 文件树管理（侧边栏）
+  - 文件类型图标（Material Icon）
+  - 自定义配色方案
+
+#### 技术实现
+
+- **TextMate 初始化**：在 `UinApplication` 中全局初始化
+  - 使用 `ThemeRegistry` 管理主题
+  - 使用 `GrammarRegistry` 管理语法
+  - 使用 `FileProviderRegistry` 管理 Assets 文件访问
+  - 动态扫描 `assets/textmate/` 目录加载语法文件
+
+- **编辑器集成**：
+  - 使用 `AndroidView` 包装 `CodeEditor`
+  - 通过 `ContentChangeEvent` 监听文本变化
+  - 通过 `SelectionChangeEvent` 监听选择变化
+  - 自动检测文件类型并设置对应语言
+
+#### 编辑器主题切换
+
+- 调色板图标一键打开主题选择器
+- 深色/浅色主题分类展示
+- 当前主题高亮显示
+- 主题切换即时生效
+
+---
+
+### 🎨 UI 统一与优化
+
+#### Toast 统一
+
+- 移除所有 Emoji，使用 Material Icon 风格
+  - 成功：[✓] 消息
+  - 错误：[✗] 消息
+  - 警告：[!] 消息
+  - 信息：[i] 消息
+
+#### 弹窗统一
+
+- 统一使用 `UIComponents.ConfirmDialog`
+- 统一使用 `UIComponents.InfoDialog`
+- 统一使用 `UIComponents.LoadingDialog`
+- 统一使用 **淡入淡出** 动画效果
+- 移除所有 Emoji，替换为 Material Icon
+
+#### 主题选择器统一
+
+- 统一使用 `ThemeSelectionDialog`
+- 28+ 主题完整列表
+- 深色/浅色自动分类
+- 当前主题高亮显示
+
+---
+
+### 🐛 问题修复
+
+- 修复插件权限管理 UI
+- 修复备份恢复功能
+- 优化应用启动速度
+- 修复退出应用取消按钮无效问题
+- 移除 "已启用签名验证" 和 "当前已是最新版本" 前的 Emoji
+
+---
+
+### 📝 文档更新
+
+- 更新 README.md 至 v4.1.0
+- 更新开发文档，增加 Sora Editor 集成说明
+- 更新使用帮助，增加代码编辑器使用指南
+- 更新更新日志至 v4.1.0
+
+---
+
 ## [4.0.0] - 2026-07-14
 
 ### 🎉 重大重构：Kotlin + Jetpack Compose 全面升级
@@ -194,14 +299,6 @@
   - 导入已有 Web 项目（ZIP 格式）
   - 自动生成 plugin.json
 
-#### 代码编辑器
-
-- **缩放功能**：双指缩放调整字体大小
-- **文件管理**：添加/删除/切换文件
-- **语法高亮**：Java、Kotlin、HTML、CSS、JS、XML、JSON
-- **实时保存**：自动保存修改
-- **侧边栏**：可隐藏的文件树
-
 #### 编译系统
 
 - **Java 源码编译**：集成 ECJ + D8
@@ -221,7 +318,7 @@
   - 工作目录、视图模式、图标着色
   - 启动状态、更新相关、崩溃相关
   - 插件签名、插件权限
-  - 镜像站、主题、UI配置
+  - 镜像站、主题、UI 配置
 - **IPluginRepository**：插件管理
   - 插件列表、安装/卸载
   - 搜索、分类、打开插件
@@ -640,6 +737,15 @@
 
 ## 升级指南
 
+### 从 v4.0.0 升级到 v4.1.0
+
+v4.1.0 是代码编辑器升级版本，升级前请注意：
+
+1. **编辑器功能增强**：Sora Editor 提供专业级代码编辑体验
+2. **语法高亮**：新增 30+ 种编程语言支持
+3. **主题系统**：28+ 种编辑器主题可选
+4. **兼容性**：完全向下兼容，所有旧功能保持不变
+
 ### 从 v3.x 升级到 v4.0.0
 
 v4.0.0 是一次重大重构，升级前请注意：
@@ -657,9 +763,11 @@ v4.0.0 是一次重大重构，升级前请注意：
 
 ---
 
-**文档版本:** 4.0.0
-**最后更新:** 2026年7月14日
-**对应应用版本:** v4.0.0 (Build 10)
+| 项目 | 信息 |
+|------|------|
+| 文档版本 | 4.1.0 |
+| 最后更新 | 2026年7月17日 |
+| 对应应用版本 | v4.1.0 (Build 11) |
 
 ---
 
