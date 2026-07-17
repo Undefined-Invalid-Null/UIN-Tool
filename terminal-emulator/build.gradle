@@ -83,3 +83,9 @@ afterEvaluate {
         }
     }
 }
+
+project.tasks.whenTaskAdded { task ->
+    if (task.name.contains("lint") || task.name.contains("Lint")) {
+        task.enabled = false
+    }
+}

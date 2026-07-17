@@ -1,10 +1,10 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-4.0.0-blue)
-![Build](https://img.shields.io/badge/build-10-green)
+![Version](https://img.shields.io/badge/version-4.1.0-blue)
+![Build](https://img.shields.io/badge/build-11-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.0.20-purple)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.09.00-blue)
 
 ## 应用简介
@@ -56,19 +56,60 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v4.0.0 (Build 10)
+### 当前版本：v4.1.0 (Build 11)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 4.0.0 |
-| 版本代码 | 10 |
-| 更新日期 | 2026年7月14日 |
+| 版本号 | 4.1.0 |
+| 版本代码 | 11 |
+| 更新日期 | 2026年7月17日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
 | 架构 | arm64-v8a |
 
 ### 版本历史
+
+#### v4.1.0 (2026年7月17日) - 🎉 代码编辑器升级
+
+**🎉 重大更新：Sora Editor 集成**
+
+**代码编辑器全面升级：**
+- **Sora Editor 集成**：替换原有简陋编辑器，采用专业的 Sora Editor 引擎
+- **TextMate 语法高亮**：支持 30+ 种编程语言的语法高亮
+- **主题系统**：内置 28+ 种代码编辑器主题（深色/浅色）
+- **语言支持**：Java、Kotlin、Python、JavaScript、TypeScript、HTML、CSS、JSON、XML、Markdown、Shell、SQL、Go、Rust、PHP、Ruby、Swift、Dart、Lua、Scala、Perl、Haskell、Elixir、Erlang、Clojure、Groovy、Dockerfile、Makefile、INI、Properties、TOML、YAML 等
+- **行号显示**：支持行号显示
+- **代码折叠**：支持代码块折叠
+- **括号匹配**：自动高亮匹配括号
+- **自动缩进**：智能自动缩进
+- **撤销/重做**：完整的撤销/重做历史
+- **主题切换**：一键切换编辑器主题
+- **深色/浅色模式**：跟随系统或手动切换
+- **文件树管理**：侧边栏文件列表，支持添加/删除文件
+- **文件图标**：根据文件类型显示不同图标
+- **自定义配色**：支持 EditorColorScheme 自定义
+
+**Sora Editor 技术实现：**
+- 使用 `AndroidView` 在 Compose 中嵌入原生编辑器
+- 通过 `ContentChangeEvent` 监听文本变化
+- TextMate 主题通过 `ThemeRegistry` 统一管理
+- 语言支持通过 `GrammarRegistry` 动态加载
+- 支持从 assets 加载语法文件和主题
+
+**其他优化：**
+- 修复插件权限管理 UI
+- 修复备份恢复功能
+- 优化应用启动速度
+- 统一 Toast 样式（去掉 Emoji）
+- 统一弹窗样式（淡入淡出效果）
+- 统一主题选择器 UI
+
+**技术细节：**
+- Sora Editor 版本：0.24.4
+- 使用 editor-bom 统一管理版本
+- language-textmate 模块提供语法高亮
+- 支持从 assets 动态加载语法文件
 
 #### v4.0.0 (2026年7月14日) - 🎉 重大重构
 
@@ -211,7 +252,9 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 | **文档系统** | 开发文档 | ✅ | 插件开发指南 |
 | **开发工具** | 原生插件向导 | ✅ | Kotlin/Java 插件 |
 | **开发工具** | Web 插件向导 | ✅ | Web 插件创建 |
-| **开发工具** | 代码编辑器 | ✅ | 内置编辑器 |
+| **开发工具** | 代码编辑器 | ✅ | Sora Editor 引擎 |
+| **开发工具** | 语法高亮 | ✅ | 30+ 种语言 |
+| **开发工具** | 编辑器主题 | ✅ | 28+ 种主题 |
 | **开发工具** | 模板导出 | ✅ | 导出模板文档 |
 | **实用工具** | 备份恢复 | ✅ | 备份所有数据 |
 | **实用工具** | 日志查看 | ✅ | 查看导出日志 |
@@ -332,7 +375,7 @@ UIN_Tool/
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Kotlin | 2.0.20 | 主要开发语言 |
+| Kotlin | 2.1.0 | 主要开发语言 |
 | Jetpack Compose | 2024.09.00 | 声明式 UI 框架 |
 | Compose Material 3 | 1.3.0 | Material 3 组件 |
 | Compose Navigation | 2.7.7 | 页面导航 |
@@ -342,7 +385,8 @@ UIN_Tool/
 | Retrofit | 2.11.0 | REST API |
 | Gson | 2.11.0 | JSON 解析 |
 | CommonMark | 0.22.0 | Markdown 渲染 |
-| Sora Editor | 0.23.5 | 代码编辑器 |
+| Sora Editor | 0.24.4 | 代码编辑器 |
+| Sora Editor TextMate | 0.24.4 | 语法高亮 |
 | MultiDex | 2.0.1 | 多 DEX 支持 |
 | Desugar | 2.0.4 | Java 8+ 兼容 |
 | NDK | 29.0.14033849 | C/C++ 原生支持 |
@@ -435,6 +479,17 @@ ls ~/storage/shared/
 3. 按照向导填写插件信息
 4. 点击「完成」生成项目文件
 
+使用代码编辑器
+
+1. 在插件创建向导中进入代码编辑器
+2. 左侧边栏显示项目文件列表
+3. 点击文件即可编辑
+4. 支持 30+ 种编程语言语法高亮
+5. 点击调色板图标可切换编辑器主题
+6. 支持撤销/重做功能
+7. 支持添加/删除文件
+8. 点击「完成」保存所有更改
+
 ---
 
 开源协议
@@ -474,8 +529,10 @@ UIN Tool 的终端功能基于 Termux 项目改编。Termux 是一个功能强�
 
 Termux 项目地址：https://github.com/termux/termux-app
 
-此外感谢这个项目，我们的Termux源码及BootStrap均由此生成（进行了一些修改）。
+此外感谢这个项目，我们的 Termux 源码及 BootStrap 均由此生成（进行了一些修改）：
 https://github.com/robertkirkman/termux-generator
+
+---
 
 贡献者名单
 
@@ -563,12 +620,21 @@ Q: 插件权限如何管理？
 
 A: 插件在 plugin.json 中声明权限，安装后会自动请求，可在「权限管理」→「插件权限」中查看状态。
 
+Q: 代码编辑器支持哪些语言？
+
+A: 支持 Java、Kotlin、Python、JavaScript、TypeScript、HTML、CSS、JSON、XML、Markdown、Shell、SQL、Go、Rust、PHP、Ruby、Swift、Dart、Lua、Scala、Perl、Haskell、Elixir、Erlang、Clojure、Groovy、Dockerfile、Makefile、INI、Properties、TOML、YAML 等 30+ 种编程语言。
+
+Q: 代码编辑器如何切换主题？
+
+A: 点击编辑器右上角的调色板图标，在弹出对话框中选择喜欢的主题即可。
+
 ---
 
 最后更新
 
-本文档最后更新于：2026年7月14日
+本文档最后更新于：2026年7月17日
 
 ---
 
 © 2026 UIN Team. All Rights Reserved.
+
