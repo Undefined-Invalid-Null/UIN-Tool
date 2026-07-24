@@ -1,35 +1,50 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/UinApplication.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.kt",
       "selection": {
         "end": {
           "column": 1,
-          "index": 13713,
-          "line": 392
+          "index": 52549,
+          "line": 1370
         },
         "start": {
           "column": 1,
-          "index": 13713,
-          "line": 392
+          "index": 52549,
+          "line": 1370
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingActivity.kt",
       "selection": {
         "end": {
           "column": 1,
-          "index": 39288,
-          "line": 939
+          "index": 1062,
+          "line": 32
         },
         "start": {
           "column": 1,
-          "index": 39288,
-          "line": 939
+          "index": 1062,
+          "line": 32
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingScreen.kt",
+      "selection": {
+        "end": {
+          "column": 72,
+          "index": 10771,
+          "line": 235
+        },
+        "start": {
+          "column": 72,
+          "index": 10771,
+          "line": 235
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingScreen.kt"
 }

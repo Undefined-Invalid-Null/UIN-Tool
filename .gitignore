@@ -26,3 +26,6 @@ app/build/
 
 # 日志
 *.log
+
+app/src/main/assets/bootstrap-aarch64.tar.xz
+.acside/

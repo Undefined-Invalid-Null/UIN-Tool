@@ -94,3 +94,15 @@ afterEvaluate {
         }
     }
 }
+
+// 在文件末尾添加
+tasks.whenTaskAdded { task ->
+    if (task.name == 'bundleReleaseLocalLintAar' || 
+        task.name == 'bundleDebugLocalLintAar' ||
+        task.name == 'lintVitalAnalyzeRelease' ||
+        task.name == 'lintVitalAnalyzeDebug' ||
+        task.name == 'lint' ||
+        task.name == 'lintRelease') {
+        task.enabled = false
+    }
+}

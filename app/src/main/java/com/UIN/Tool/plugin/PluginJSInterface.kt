@@ -1,4 +1,4 @@
-// app/src/main/java/com/UIN/Tool/plugin/PluginJSInterface.kt
+// plugin/PluginJSInterface.kt
 package com.UIN.Tool.plugin
 
 import android.app.Activity
@@ -8,10 +8,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
@@ -25,21 +21,25 @@ import com.UIN.Tool.utils.Constants
 import com.UIN.Tool.utils.PermissionUtils
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+/**
+ * Web 插件 JS 接口 - 所有方法必须添加 @JavascriptInterface 注解
+ */
 class PluginJSInterface(
     private val context: Context,
     private val pluginId: String,
     private val pluginInfo: PluginInfo
 ) {
 
-    private val TAG = "PluginJSInterface"
-    private var sensorManager: SensorManager? = null
-    private var sensorListener: SensorEventListener? = null
+    companion object {
+        private const val TAG = "PluginJSInterface"
+    }
 
     private val pendingPermissionCallbacks = mutableMapOf<String, String>()
 
@@ -50,22 +50,9 @@ class PluginJSInterface(
         .cache(Cache(File(Constants.CACHE_DIR, "okhttp_cache"), Constants.CACHE_SIZE))
         .build()
 
-    // ==================== 权限检查 ====================
-
-    private fun hasPermission(permission: String): Boolean {
-        return PermissionUtils.hasPermission(context, permission) ||
-                PermissionUtils.hasSpecialPermission(context, permission)
-    }
-
-    private fun checkPermissionAndLog(permission: String, action: String): Boolean {
-        val result = hasPermission(permission)
-        if (!result) {
-            Logger.w(TAG, "插件 $pluginId 缺少权限 $permission，无法执行 $action")
-        }
-        return result
-    }
-
-    // ==================== 基础功能 ====================
+    // ============================================================
+    // 基础功能
+    // ============================================================
 
     @JavascriptInterface
     fun callHost(action: String, data: String?) {
@@ -82,6 +69,8 @@ class PluginJSInterface(
             "copy" -> copyToClipboard(params)
             "openUrl" -> openUrl(params)
             "share" -> share(params)
+            "setTitle" -> setTitle(params)
+            "setFullscreen" -> setFullscreen(params.toBoolean())
             else -> Logger.w(TAG, "未知调用: $action")
         }
     }
@@ -89,19 +78,189 @@ class PluginJSInterface(
     @JavascriptInterface
     fun callPlugin(method: String, params: String?) {
         Logger.i(TAG, "调用插件方法: $method -> $params")
-        val plugin = PluginManager.getInstance(context).getPluginInstance(pluginId)
-        if (plugin != null) {
-            Logger.d(TAG, "插件实例存在，转发方法调用: $method")
-        } else {
-            Logger.w(TAG, "插件实例不存在，无法调用方法: $method")
+        // 由 PluginManager 处理
+    }
+
+    // ============================================================
+    // ✅ 修复：所有 Native 接口必须添加 @JavascriptInterface
+    // ============================================================
+
+    @JavascriptInterface
+    fun getPluginInfo(): String {
+        Logger.d(TAG, "getPluginInfo() 被调用")
+        return pluginInfo.toJson()
+    }
+
+    @JavascriptInterface
+    fun getAppVersion(): String {
+        Logger.d(TAG, "getAppVersion() 被调用")
+        return try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+        } catch (e: Exception) {
+            "unknown"
         }
     }
 
-    // ==================== 网络请求 ====================
+    @JavascriptInterface
+    fun getDeviceInfo(): String {
+        Logger.d(TAG, "getDeviceInfo() 被调用")
+        val dm = context.resources.displayMetrics
+        return JSONObject().apply {
+            put("android", Build.VERSION.RELEASE)
+            put("api", Build.VERSION.SDK_INT)
+            put("device", Build.MODEL)
+            put("manufacturer", Build.MANUFACTURER)
+            put("brand", Build.BRAND)
+            put("product", Build.PRODUCT)
+            put("screenWidth", dm.widthPixels)
+            put("screenHeight", dm.heightPixels)
+            put("screenDensity", dm.density)
+            put("screenDensityDpi", dm.densityDpi)
+        }.toString()
+    }
+
+    @JavascriptInterface
+    fun getNetworkInfo(): String {
+        Logger.d(TAG, "getNetworkInfo() 被调用")
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = cm.activeNetworkInfo
+        return JSONObject().apply {
+            val isConnected = activeNetwork != null && activeNetwork.isConnected
+            put("connected", isConnected)
+            if (isConnected && activeNetwork != null) {
+                put("type", activeNetwork.typeName ?: "")
+                activeNetwork.subtypeName?.let { put("subtype", it) }
+                put("isWifi", activeNetwork.type == ConnectivityManager.TYPE_WIFI)
+                put("isMobile", activeNetwork.type == ConnectivityManager.TYPE_MOBILE)
+            }
+        }.toString()
+    }
+
+    @JavascriptInterface
+    fun getBackendStatus(): String {
+        Logger.d(TAG, "getBackendStatus() 被调用")
+        val activity = context as? PluginHostActivity
+        if (activity != null) {
+            val port = activity.getBackendPort()
+            if (port > 0) {
+                return "running:$port"
+            } else {
+                return "starting"
+            }
+        }
+        return "unknown"
+    }
+
+    @JavascriptInterface
+    fun getPluginDir(): String {
+        Logger.d(TAG, "getPluginDir() 被调用")
+        val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
+        if (!pluginDir.exists()) {
+            pluginDir.mkdirs()
+        }
+        return pluginDir.absolutePath
+    }
+
+    @JavascriptInterface
+    fun getCurrentTime(): String {
+        Logger.d(TAG, "getCurrentTime() 被调用")
+        return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+    }
+
+    @JavascriptInterface
+    fun getBatteryInfo(): String {
+        Logger.d(TAG, "getBatteryInfo() 被调用")
+        return try {
+            val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager
+            val level = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            val status = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_STATUS)
+
+            JSONObject().apply {
+                put("level", level)
+                put("isCharging", status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
+                        status == android.os.BatteryManager.BATTERY_STATUS_FULL)
+            }.toString()
+        } catch (e: Exception) {
+            JSONObject().apply {
+                put("level", 0)
+                put("isCharging", false)
+            }.toString()
+        }
+    }
+
+    // ============================================================
+    // Storage 操作
+    // ============================================================
+
+    @JavascriptInterface
+    fun setStorage(key: String, value: String) {
+        Logger.d(TAG, "setStorage() 被调用: $key")
+        if (key.isEmpty()) {
+            Logger.e(TAG, "Storage key不能为空")
+            return
+        }
+        context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
+            .edit()
+            .putString(key, value)
+            .apply()
+    }
+
+    @JavascriptInterface
+    fun getStorage(key: String): String {
+        Logger.d(TAG, "getStorage() 被调用: $key")
+        if (key.isEmpty()) {
+            Logger.e(TAG, "Storage key不能为空")
+            return ""
+        }
+        return context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
+            .getString(key, "") ?: ""
+    }
+
+    @JavascriptInterface
+    fun removeStorage(key: String) {
+        Logger.d(TAG, "removeStorage() 被调用: $key")
+        if (key.isEmpty()) return
+        context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
+            .edit()
+            .remove(key)
+            .apply()
+    }
+
+    @JavascriptInterface
+    fun clearStorage() {
+        Logger.d(TAG, "clearStorage() 被调用")
+        context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
+
+    // ============================================================
+    // HTTP API 调用（供 JS 使用）
+    // ============================================================
+
+    @JavascriptInterface
+    fun callBackendApi(path: String, method: String, body: String?, callbackId: String) {
+        Logger.d(TAG, "callBackendApi() 被调用: $path")
+        val activity = context as? PluginHostActivity
+        if (activity == null) {
+            sendCallback(callbackId, "{\"error\":\"无法获取Activity\"}")
+            return
+        }
+
+        activity.callBackendApi(path, method, body) { success, response ->
+            val result = JSONObject().apply {
+                put("success", success)
+                put("data", response ?: "")
+            }
+            sendCallback(callbackId, result.toString())
+        }
+    }
 
     @JavascriptInterface
     fun httpGet(url: String, callbackId: String) {
-        if (!checkPermissionAndLog(android.Manifest.permission.INTERNET, "HTTP GET")) {
+        Logger.d(TAG, "httpGet() 被调用: $url")
+        if (!hasPermission(android.Manifest.permission.INTERNET)) {
             sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少网络权限\"}")
             return
         }
@@ -110,8 +269,6 @@ class PluginJSInterface(
             sendCallback(callbackId, "{\"success\":false,\"error\":\"URL不能为空\"}")
             return
         }
-
-        Logger.i(TAG, "HTTP GET: $url")
 
         val request = Request.Builder()
             .url(url)
@@ -141,7 +298,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun httpPost(url: String, jsonBody: String, callbackId: String) {
-        if (!checkPermissionAndLog(android.Manifest.permission.INTERNET, "HTTP POST")) {
+        Logger.d(TAG, "httpPost() 被调用: $url")
+        if (!hasPermission(android.Manifest.permission.INTERNET)) {
             sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少网络权限\"}")
             return
         }
@@ -151,10 +309,8 @@ class PluginJSInterface(
             return
         }
 
-        Logger.i(TAG, "HTTP POST: $url")
-
         val mediaType = "application/json; charset=utf-8".toMediaType()
-        val body = RequestBody.create(mediaType, jsonBody)
+        val body = jsonBody.toRequestBody(mediaType)
 
         val request = Request.Builder()
             .url(url)
@@ -181,11 +337,14 @@ class PluginJSInterface(
         })
     }
 
-    // ==================== 文件系统 ====================
+    // ============================================================
+    // 文件系统
+    // ============================================================
 
     @JavascriptInterface
     fun writeFile(fileName: String, content: String): Boolean {
-        if (!checkPermissionAndLog(android.Manifest.permission.WRITE_EXTERNAL_STORAGE, "写入文件")) {
+        Logger.d(TAG, "writeFile() 被调用: $fileName")
+        if (!hasPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             return false
         }
 
@@ -217,7 +376,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun readFile(fileName: String): String? {
-        if (!checkPermissionAndLog(android.Manifest.permission.READ_EXTERNAL_STORAGE, "读取文件")) {
+        Logger.d(TAG, "readFile() 被调用: $fileName")
+        if (!hasPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)) {
             return null
         }
 
@@ -245,6 +405,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun deleteFile(fileName: String): Boolean {
+        Logger.d(TAG, "deleteFile() 被调用: $fileName")
         if (fileName.isEmpty()) return false
 
         return try {
@@ -265,6 +426,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun listFiles(dirPath: String?): Array<String> {
+        Logger.d(TAG, "listFiles() 被调用: $dirPath")
         return try {
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
             val targetDir = if (dirPath.isNullOrEmpty()) pluginDir else File(pluginDir, dirPath)
@@ -283,6 +445,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun fileExists(path: String): Boolean {
+        Logger.d(TAG, "fileExists() 被调用: $path")
         return try {
             val file = File(path)
             file.exists()
@@ -291,271 +454,20 @@ class PluginJSInterface(
         }
     }
 
-    // ==================== 传感器 ====================
-
-    @JavascriptInterface
-    fun startSensor(sensorType: String, callbackId: String) {
-        if (!checkPermissionAndLog(android.Manifest.permission.VIBRATE, "传感器")) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少传感器权限\"}")
-            return
-        }
-
-        if (sensorType.isEmpty()) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"传感器类型不能为空\"}")
-            return
-        }
-
-        if (sensorManager == null) {
-            sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        }
-
-        sensorListener?.let {
-            sensorManager?.unregisterListener(it)
-        }
-
-        val sensorTypeInt = getSensorType(sensorType)
-        if (sensorTypeInt == -1) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"不支持的传感器类型: $sensorType\"}")
-            return
-        }
-
-        val sensor = sensorManager?.getDefaultSensor(sensorTypeInt)
-        if (sensor == null) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"设备不支持该传感器: $sensorType\"}")
-            return
-        }
-
-        sensorListener = object : SensorEventListener {
-            override fun onSensorChanged(event: SensorEvent) {
-                val data = JSONObject().apply {
-                    put("success", true)
-                    put("type", sensorType)
-                    put("timestamp", event.timestamp)
-                    put("accuracy", event.accuracy)
-
-                    when (sensorTypeInt) {
-                        Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_GYROSCOPE, Sensor.TYPE_MAGNETIC_FIELD -> {
-                            put("x", event.values[0])
-                            put("y", event.values[1])
-                            put("z", event.values[2])
-                        }
-                        Sensor.TYPE_LIGHT -> put("lux", event.values[0])
-                        Sensor.TYPE_PROXIMITY -> put("distance", event.values[0])
-                        Sensor.TYPE_PRESSURE -> put("pressure", event.values[0])
-                        else -> put("values", event.values)
-                    }
-                }
-                sendCallback(callbackId, data.toString())
-            }
-
-            override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
-                val data = JSONObject().apply {
-                    put("type", "accuracy")
-                    put("sensorType", sensorType)
-                    put("accuracy", accuracy)
-                }
-                sendCallback(callbackId, data.toString())
-            }
-        }
-
-        sensorManager?.registerListener(sensorListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
-        sendCallback(callbackId, "{\"success\":true,\"message\":\"传感器启动成功: $sensorType\"}")
-        Logger.i(TAG, "启动传感器: $sensorType")
-    }
-
-    @JavascriptInterface
-    fun stopSensor() {
-        sensorListener?.let {
-            sensorManager?.unregisterListener(it)
-            sensorListener = null
-            Logger.i(TAG, "停止所有传感器")
-        }
-    }
-
-    @JavascriptInterface
-    fun getAvailableSensors(): String {
-        if (sensorManager == null) {
-            sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        }
-
-        val result = JSONObject().apply {
-            put("accelerometer", sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null)
-            put("gyroscope", sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null)
-            put("magneticField", sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null)
-            put("light", sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT) != null)
-            put("proximity", sensorManager?.getDefaultSensor(Sensor.TYPE_PROXIMITY) != null)
-            put("pressure", sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE) != null)
-            put("temperature", sensorManager?.getDefaultSensor(Sensor.TYPE_TEMPERATURE) != null)
-        }
-        return result.toString()
-    }
-
-    private fun getSensorType(sensorType: String): Int {
-        return when (sensorType.lowercase()) {
-            "accelerometer" -> Sensor.TYPE_ACCELEROMETER
-            "gyroscope" -> Sensor.TYPE_GYROSCOPE
-            "magnetic", "magneticfield" -> Sensor.TYPE_MAGNETIC_FIELD
-            "light" -> Sensor.TYPE_LIGHT
-            "proximity" -> Sensor.TYPE_PROXIMITY
-            "pressure" -> Sensor.TYPE_PRESSURE
-            "temperature" -> Sensor.TYPE_TEMPERATURE
-            else -> -1
-        }
-    }
-
-    // ==================== 获取信息 ====================
-
-    @JavascriptInterface
-    fun getPluginInfo(): String {
-        return pluginInfo.toJson()
-    }
-
-    @JavascriptInterface
-    fun getAppVersion(): String {
-        return try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
-        } catch (e: Exception) {
-            "unknown"
-        }
-    }
-
-    @JavascriptInterface
-    fun getDeviceInfo(): String {
-        val dm = context.resources.displayMetrics
-        return JSONObject().apply {
-            put("android", Build.VERSION.RELEASE)
-            put("api", Build.VERSION.SDK_INT)
-            put("device", Build.MODEL)
-            put("manufacturer", Build.MANUFACTURER)
-            put("brand", Build.BRAND)
-            put("product", Build.PRODUCT)
-            put("screenWidth", dm.widthPixels)
-            put("screenHeight", dm.heightPixels)
-            put("screenDensity", dm.density)
-            put("screenDensityDpi", dm.densityDpi)
-        }.toString()
-    }
-
-    @JavascriptInterface
-    fun getNetworkInfo(): String {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetwork = cm.activeNetworkInfo
-        return JSONObject().apply {
-            val isConnected = activeNetwork != null && activeNetwork.isConnected
-            put("connected", isConnected)
-            if (isConnected && activeNetwork != null) {
-                put("type", activeNetwork.typeName ?: "")
-                activeNetwork.subtypeName?.let { put("subtype", it) }
-                put("isWifi", activeNetwork.type == ConnectivityManager.TYPE_WIFI)
-                put("isMobile", activeNetwork.type == ConnectivityManager.TYPE_MOBILE)
-            }
-        }.toString()
-    }
-
-    @JavascriptInterface
-    fun getCurrentTime(): String {
-        return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-    }
-
-    // ==================== UI操作 ====================
-
-    @JavascriptInterface
-    fun setTitle(title: String) {
-        Logger.i(TAG, "设置标题: $title")
-        (context as? Activity)?.runOnUiThread {
-            (context as? Activity)?.title = title
-            if (context is PluginHostActivity) {
-                context.setPluginTitle(title)
-            }
-        }
-    }
-
-    @JavascriptInterface
-    fun setFullscreen(fullscreen: Boolean) {
-        (context as? Activity)?.runOnUiThread {
-            if (fullscreen) {
-                context.window?.decorView?.systemUiVisibility = (
-                        android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
-                                android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                                android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        )
-            } else {
-                context.window?.decorView?.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
-            }
-        }
-    }
-
-    // ==================== 存储操作 ====================
-
-    @JavascriptInterface
-    fun setStorage(key: String, value: String) {
-        if (key.isEmpty()) {
-            Logger.e(TAG, "Storage key不能为空")
-            return
-        }
-        context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
-            .edit()
-            .putString(key, value)
-            .apply()
-        Logger.i(TAG, "存储数据: $key = ${value.take(50)}")
-    }
-
-    @JavascriptInterface
-    fun getStorage(key: String): String {
-        if (key.isEmpty()) {
-            Logger.e(TAG, "Storage key不能为空")
-            return ""
-        }
-        return context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
-            .getString(key, "") ?: ""
-    }
-
-    @JavascriptInterface
-    fun removeStorage(key: String) {
-        if (key.isEmpty()) return
-        context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
-            .edit()
-            .remove(key)
-            .apply()
-        Logger.i(TAG, "删除数据: $key")
-    }
-
-    @JavascriptInterface
-    fun clearStorage() {
-        context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .apply()
-        Logger.i(TAG, "清空所有存储数据")
-    }
-
-    // ==================== 系统操作 ====================
-
-    @JavascriptInterface
-    fun openSettings() {
-        val intent = Intent(Settings.ACTION_SETTINGS)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-        Logger.i(TAG, "打开系统设置")
-    }
-
-    @JavascriptInterface
-    fun openAppSettings() {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-        intent.data = Uri.parse("package:${context.packageName}")
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-        Logger.i(TAG, "打开应用设置")
-    }
+    // ============================================================
+    // 权限
+    // ============================================================
 
     @JavascriptInterface
     fun checkPermission(permission: String): Boolean {
+        Logger.d(TAG, "checkPermission() 被调用: $permission")
         if (permission.isEmpty()) return false
         return hasPermission(permission)
     }
 
     @JavascriptInterface
     fun requestPermission(permission: String, callbackId: String) {
+        Logger.d(TAG, "requestPermission() 被调用: $permission")
         if (permission.isEmpty()) {
             sendCallback(callbackId, "{\"success\":false,\"error\":\"权限名不能为空\"}")
             return
@@ -579,63 +491,31 @@ class PluginJSInterface(
         }
     }
 
-    fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        if (requestCode == 1002) {
-            permissions.forEachIndexed { index, permission ->
-                val callbackId = pendingPermissionCallbacks.remove(permission)
-                if (callbackId != null) {
-                    val granted = grantResults.getOrNull(index) == PackageManager.PERMISSION_GRANTED
-                    sendCallback(
-                        callbackId,
-                        "{\"success\":$granted,\"message\":\"${if (granted) "权限已授予" else "权限被拒绝"}\"}"
-                    )
-                    Logger.i(TAG, "权限请求结果: $permission -> ${if (granted) "已授予" else "被拒绝"}")
-                }
-            }
-        }
-    }
-
-    // ==================== 插件目录 ====================
+    // ============================================================
+    // 系统操作
+    // ============================================================
 
     @JavascriptInterface
-    fun getPluginDir(): String {
-        val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
-        if (!pluginDir.exists()) {
-            pluginDir.mkdirs()
-        }
-        Logger.i(TAG, "插件目录: ${pluginDir.absolutePath}")
-        return pluginDir.absolutePath
+    fun openSettings() {
+        Logger.d(TAG, "openSettings() 被调用")
+        val intent = Intent(Settings.ACTION_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
     }
 
-    // ==================== 高级功能 ====================
-
     @JavascriptInterface
-    fun getBatteryInfo(): String {
-        return try {
-            val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager
-            val level = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            val status = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_STATUS)
-
-            JSONObject().apply {
-                put("level", level)
-                put("isCharging", status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
-                        status == android.os.BatteryManager.BATTERY_STATUS_FULL)
-            }.toString()
-        } catch (e: Exception) {
-            JSONObject().apply {
-                put("level", 0)
-                put("isCharging", false)
-            }.toString()
-        }
+    fun openAppSettings() {
+        Logger.d(TAG, "openAppSettings() 被调用")
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        intent.data = Uri.parse("package:${context.packageName}")
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
     }
 
     @JavascriptInterface
     fun takeScreenshot() {
-        if (!checkPermissionAndLog(android.Manifest.permission.WRITE_EXTERNAL_STORAGE, "截图")) {
+        Logger.d(TAG, "takeScreenshot() 被调用")
+        if (!hasPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             return
         }
 
@@ -665,19 +545,27 @@ class PluginJSInterface(
         }
     }
 
-    // ==================== 私有方法 ====================
+    // ============================================================
+    // 私有方法
+    // ============================================================
+
+    private fun hasPermission(permission: String): Boolean {
+        return PermissionUtils.hasPermission(context, permission) ||
+                PermissionUtils.hasSpecialPermission(context, permission)
+    }
 
     private fun sendCallback(callbackId: String, data: String) {
         if (callbackId.isEmpty()) return
 
         (context as? Activity)?.runOnUiThread {
-            if (context is PluginHostActivity) {
+            val activity = context
+            if (activity is PluginHostActivity) {
                 val js = """
                     if(window.UINPluginCallbacks && window.UINPluginCallbacks['$callbackId']) {
                         window.UINPluginCallbacks['$callbackId']($data);
                     }
                 """.trimIndent()
-                context.evaluateJavascript(js)
+                activity.evaluateJavascript(js)
             }
         }
     }
@@ -717,7 +605,7 @@ class PluginJSInterface(
     }
 
     private fun vibrate(durationMs: String) {
-        if (!checkPermissionAndLog(android.Manifest.permission.VIBRATE, "震动")) {
+        if (!hasPermission(android.Manifest.permission.VIBRATE)) {
             return
         }
 
@@ -795,11 +683,50 @@ class PluginJSInterface(
         }
     }
 
-    // ==================== 通过 PluginHostActivity 执行 JS ====================
+    private fun setTitle(title: String) {
+        (context as? Activity)?.runOnUiThread {
+            (context as? Activity)?.title = title
+            if (context is PluginHostActivity) {
+                context.setPluginTitle(title)
+            }
+        }
+    }
 
-    private fun evaluateJavascript(script: String) {
-        if (context is PluginHostActivity) {
-            context.evaluateJavascript(script)
+    private fun setFullscreen(fullscreen: Boolean) {
+        (context as? Activity)?.runOnUiThread {
+            if (fullscreen) {
+                context.window?.decorView?.systemUiVisibility = (
+                        android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                                android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                                android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        )
+            } else {
+                context.window?.decorView?.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_VISIBLE
+            }
+        }
+    }
+
+    // ============================================================
+    // 权限请求结果处理
+    // ============================================================
+
+    fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == 1002) {
+            permissions.forEachIndexed { index, permission ->
+                val callbackId = pendingPermissionCallbacks.remove(permission)
+                if (callbackId != null) {
+                    val granted = grantResults.getOrNull(index) == PackageManager.PERMISSION_GRANTED
+                    sendCallback(
+                        callbackId,
+                        "{\"success\":$granted,\"message\":\"${if (granted) "权限已授予" else "权限被拒绝"}\"}"
+                    )
+                    Logger.i(TAG, "权限请求结果: $permission -> ${if (granted) "已授予" else "被拒绝"}")
+                }
+            }
         }
     }
 }

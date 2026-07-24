@@ -47,18 +47,15 @@ import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.screen.onboarding.OnboardingActivity
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
-import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
 import com.UIN.Tool.utils.MarkdownRenderer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
-// ✅ 常量定义在文件顶部，可被所有函数访问
 private const val SPLASH_DELAY = 1500L
 private const val UPDATE_CHECK_TIMEOUT = 5000L
 
@@ -394,12 +391,13 @@ class SplashActivity : ComponentActivity() {
 
     private fun navigateToNext() {
         try {
-            val isFirstLaunch = preferenceManager.isFirstLaunch()
             val lastVersion = preferenceManager.getLastVersion()
             val currentVersion = Constants.APP_VERSION
             val isVersionUpdated = lastVersion != currentVersion && !isFirstLaunch
 
-            preferenceManager.setFirstLaunch(false)
+            if (isFirstLaunch) {
+                preferenceManager.setFirstLaunch(false)
+            }
             preferenceManager.setLastVersion(currentVersion)
 
             val intent = if (isFirstLaunch || isVersionUpdated) {
@@ -459,7 +457,6 @@ fun SplashScreenWithUpdate(
 
     LaunchedEffect(hasStoragePermission, isFirstLaunch) {
         if (hasStoragePermission && isFirstLaunch) {
-            // ✅ 先延迟显示启动画面
             delay(SPLASH_DELAY)
             isChecking = true
 
@@ -520,7 +517,6 @@ fun SplashScreenWithUpdate(
 
             updateChecker.checkUpdate()
         } else if (hasStoragePermission && !isFirstLaunch) {
-            // ✅ 非首次启动，延迟后导航
             delay(SPLASH_DELAY)
             onNavigate()
         }
@@ -551,7 +547,7 @@ fun SplashScreenWithUpdate(
         return
     }
 
-    // ==================== 启动画面 - 纯白色背景 ====================
+    // ==================== 启动画面 ====================
     Box(
         modifier = Modifier
             .fillMaxSize()

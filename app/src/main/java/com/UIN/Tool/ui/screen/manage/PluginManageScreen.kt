@@ -1,4 +1,4 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/manage/PluginManageScreen.kt
+// ui/screen/manage/PluginManageScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
 import android.net.Uri
@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -670,7 +669,7 @@ fun PluginManageScreen(
         )
     }
 
-    // ==================== 插件详情对话框 ====================
+    // ==================== 插件详情对话框（包含说明，无 emoji） ====================
     if (showDetailDialog != null) {
         UIComponents.ConfirmDialog(
             title = showDetailDialog!!.name,
@@ -731,6 +730,10 @@ private fun addPluginDirToZip(
     }
 }
 
+// ============================================================
+// buildDetailMessage 包含 notice 字段（无 emoji）
+// ============================================================
+
 private fun buildDetailMessage(plugin: PluginInfo): String {
     return buildString {
         append("ID: ${plugin.pluginId}\n")
@@ -740,6 +743,10 @@ private fun buildDetailMessage(plugin: PluginInfo): String {
         if (plugin.description.isNotEmpty()) {
             append("\n描述: ${plugin.description}\n")
         }
+        // 显示插件说明（如果存在）
+        if (plugin.hasNotice()) {
+            append("\n说明:\n${plugin.notice}\n")
+        }
         if (plugin.dependencies.isNotEmpty()) {
             append("\n依赖: ${plugin.dependencies.joinToString(", ")}\n")
         }
@@ -748,7 +755,7 @@ private fun buildDetailMessage(plugin: PluginInfo): String {
             val summary = pluginManager.getPluginPermissionSummary(plugin.pluginId)
             append("\n权限状态: ${summary.granted}/${summary.total}\n")
             if (!summary.isAllGranted) {
-                append("⚠️ ${summary.denied} 项权限未授予")
+                append("${summary.denied} 项权限未授予")
             }
         }
     }
@@ -1050,7 +1057,7 @@ fun PermissionDetailDialog(
                 append("该插件没有声明任何权限")
             } else {
                 permissions.entries.forEach { (permission, granted) ->
-                    val status = if (granted) "✅ 已授予" else "❌ 未授权"
+                    val status = if (granted) "已授予" else "未授权"
                     append("• ${PluginPermissionManager.getPermissionDisplayName(permission)}: $status\n")
                 }
             }

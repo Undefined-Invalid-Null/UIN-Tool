@@ -1,31 +1,13 @@
+// domain/model/PluginInfo.kt
 package com.UIN.Tool.domain.model
 
-import org.json.JSONObject
+import org.json.JSONObject  // ✅ 添加这个导入
 
 /**
  * 插件信息数据模型
- * 包含插件的完整元数据
- * 
- * 字段说明：
- * - pluginId: 插件唯一标识
- * - version: 版本代码 (整数)
- * - versionName: 版本名称 (如 "1.0.0")
- * - minHostVersion: 最低宿主版本
- * - name: 插件显示名称
- * - author: 作者
- * - description: 描述
- * - icon: 图标文件名
- * - mainClass: 原生插件的主类名
- * - updateUrl: 更新检查URL
- * - apiLevel: 最低API级别
- * - category: 分类
- * - signature: 签名 (自动生成)
- * - uiType: "native" 或 "web"
- * - entry: Web插件的入口文件
- * - permissions: 需要的权限列表
- * - dependencies: 依赖的插件ID列表
  */
 data class PluginInfo(
+    // ==================== 基础信息 ====================
     var pluginId: String = "",
     var version: Int = 1,
     var versionName: String = "1.0.0",
@@ -42,12 +24,172 @@ data class PluginInfo(
     var uiType: String = "native",
     var entry: String = "web/index.html",
     var permissions: List<String> = emptyList(),
-    var dependencies: List<String> = emptyList()
+    var dependencies: List<String> = emptyList(),
+
+    // ==================== 插件说明 ====================
+    var notice: String = "",
+
+    // ==================== 后端配置 ====================
+    var backend: String = "",
+    var backendPort: Int = 0,
+    var backendEntry: String = "scripts/backend/server.py",
+    var backendAutoStart: Boolean = true,
+    var backendKeepAlive: Boolean = false,
+    var backendEnv: Map<String, String> = emptyMap(),
+    var backendTimeout: Int = 30,
+    var backendHealthCheck: String = "/health",
+    var backendMaxRetries: Int = 3,
+    var backendLogLevel: String = "info",
+    var backendArgs: List<String> = emptyList(),
+
+    // ==================== 二进制程序配置 ====================
+    var backendBinary: String = "",
+    var backendInstallCmd: String = "",
+    var backendCheckCmd: String = "",
+
+    // ==================== PHP 专用配置 ====================
+    var backendPhpDocRoot: String = "",
+
+    // ==================== Java 专用配置 ====================
+    var backendJavaClass: String = "",
+    var backendJavaJar: String = "",
+
+    // ==================== 前端配置 ====================
+    var frontendConfig: Map<String, Any> = emptyMap(),
+
+    // ==================== 资源限制 ====================
+    var maxMemory: Int = 512,
+    var maxCpuTime: Int = 60,
+    var maxConcurrentTasks: Int = 5,
+
+    // ==================== 运行时状态 ====================
+    var isBackendRunning: Boolean = false,
+    var currentBackendPort: Int = 0,
+    var backendPid: Int = -1,
+    var lastStartTime: Long = 0
 ) {
 
-    /**
-     * 转换为JSON字符串
-     */
+    fun hasBackend(): Boolean = backend.isNotEmpty() && backendAutoStart
+
+    fun isWebPlugin(): Boolean = uiType == "web"
+    fun isNativePlugin(): Boolean = uiType == "native"
+    fun hasNotice(): Boolean = notice.isNotEmpty()
+
+    fun getBackendDisplayName(): String {
+        return when (backend.lowercase()) {
+            "python" -> "Python"
+            "node" -> "Node.js"
+            "php" -> "PHP"
+            "binary" -> "二进制程序"
+            "deno" -> "Deno"
+            "go" -> "Go"
+            "ruby" -> "Ruby"
+            "perl" -> "Perl"
+            "lua" -> "Lua"
+            "java" -> "Java"
+            "rust" -> "Rust"
+            else -> "未知"
+        }
+    }
+
+    fun getInterpreter(): String {
+        return when (backend.lowercase()) {
+            "python" -> "python"
+            "node" -> "node"
+            "php" -> "php"
+            "binary" -> backendBinary.ifEmpty { "bash" }
+            "deno" -> "deno"
+            "go" -> "go"
+            "ruby" -> "ruby"
+            "perl" -> "perl"
+            "lua" -> "lua"
+            "java" -> "java"
+            "rust" -> "cargo"
+            else -> "bash"
+        }
+    }
+
+    fun getBackendEntryPath(pluginDir: String): String {
+        return "$pluginDir/$backendEntry"
+    }
+
+    fun getBackendCommand(pluginDir: String): List<String> {
+        val entryPath = getBackendEntryPath(pluginDir)
+        val port = if (backendPort > 0) backendPort else 8000
+
+        return when (backend.lowercase()) {
+            "python" -> listOf("python", entryPath)
+            "node" -> listOf("node", entryPath)
+            "php" -> {
+                val docRoot = backendPhpDocRoot.ifEmpty { pluginDir }
+                listOf("php", "-S", "127.0.0.1:$port", "-t", docRoot)
+            }
+            "binary" -> {
+                val binary = if (backendBinary.isNotEmpty()) backendBinary else entryPath
+                listOf(binary) + backendArgs
+            }
+            "deno" -> listOf("deno", "run", "--allow-net", "--allow-read", entryPath)
+            "go" -> listOf("go", "run", entryPath)
+            "ruby" -> listOf("ruby", entryPath)
+            "perl" -> listOf("perl", entryPath)
+            "lua" -> listOf("lua", entryPath)
+            "java" -> {
+                if (backendJavaJar.isNotEmpty()) {
+                    listOf("java", "-jar", "$pluginDir/${backendJavaJar}")
+                } else if (backendJavaClass.isNotEmpty()) {
+                    listOf("java", "-cp", pluginDir, backendJavaClass)
+                } else {
+                    listOf("java", entryPath)
+                }
+            }
+            "rust" -> {
+                val binaryName = entryPath.substringAfterLast("/").substringBeforeLast(".")
+                listOf("cargo", "run", "--release", "--bin", binaryName)
+            }
+            else -> listOf("bash", entryPath)
+        }
+    }
+
+    fun getInstallCommand(): String {
+        return backendInstallCmd.ifEmpty {
+            when (backend.lowercase()) {
+                "python" -> "pkg install python"
+                "node" -> "pkg install nodejs"
+                "php" -> "pkg install php"
+                "deno" -> "pkg install deno"
+                "go" -> "pkg install golang"
+                "ruby" -> "pkg install ruby"
+                "perl" -> "pkg install perl"
+                "lua" -> "pkg install lua"
+                "java" -> "pkg install openjdk-17"
+                "rust" -> "pkg install rust"
+                else -> ""
+            }
+        }
+    }
+
+    fun getCheckCommand(): String {
+        return backendCheckCmd.ifEmpty {
+            when (backend.lowercase()) {
+                "python" -> "python --version"
+                "node" -> "node --version"
+                "php" -> "php --version"
+                "deno" -> "deno --version"
+                "go" -> "go version"
+                "ruby" -> "ruby --version"
+                "perl" -> "perl --version"
+                "lua" -> "lua --version"
+                "java" -> "java -version"
+                "rust" -> "rustc --version"
+                else -> "which ${getInterpreter()}"
+            }
+        }
+    }
+
+    fun getHealthCheckPath(): String {
+        return if (backendHealthCheck.startsWith("/")) backendHealthCheck else "/$backendHealthCheck"
+    }
+
     fun toJson(): String {
         return JSONObject().apply {
             put("pluginId", pluginId)
@@ -67,37 +209,30 @@ data class PluginInfo(
             put("entry", entry)
             put("permissions", permissions.joinToString(","))
             put("dependencies", dependencies.joinToString(","))
+            put("notice", notice)
+            put("backend", backend)
+            put("backendPort", backendPort)
+            put("backendEntry", backendEntry)
+            put("backendAutoStart", backendAutoStart)
+            put("backendKeepAlive", backendKeepAlive)
+            put("backendTimeout", backendTimeout)
+            put("backendHealthCheck", backendHealthCheck)
+            put("backendMaxRetries", backendMaxRetries)
+            put("backendLogLevel", backendLogLevel)
+            put("backendArgs", backendArgs.joinToString(","))
+            put("backendBinary", backendBinary)
+            put("backendInstallCmd", backendInstallCmd)
+            put("backendCheckCmd", backendCheckCmd)
+            put("backendPhpDocRoot", backendPhpDocRoot)
+            put("backendJavaClass", backendJavaClass)
+            put("backendJavaJar", backendJavaJar)
+            put("maxMemory", maxMemory)
+            put("maxCpuTime", maxCpuTime)
+            put("maxConcurrentTasks", maxConcurrentTasks)
         }.toString()
     }
 
-    /**
-     * 检查插件是否兼容当前Android版本
-     */
-    fun isCompatible(): Boolean {
-        return minHostVersion <= android.os.Build.VERSION.SDK_INT
-    }
-
-    /**
-     * 检查是否是Web插件
-     */
-    fun isWebPlugin(): Boolean = uiType == "web"
-
-    /**
-     * 检查是否是原生插件
-     */
-    fun isNativePlugin(): Boolean = uiType == "native"
-
-    /**
-     * 检查是否缺少依赖
-     */
-    fun getMissingDependencies(installedIds: Set<String>): List<String> {
-        return dependencies.filter { !installedIds.contains(it) }
-    }
-
     companion object {
-        /**
-         * 从JSON字符串解析
-         */
         fun fromJson(json: String): PluginInfo? {
             return try {
                 val obj = JSONObject(json)
@@ -118,32 +253,31 @@ data class PluginInfo(
                     uiType = obj.optString("uiType", "native"),
                     entry = obj.optString("entry", "web/index.html"),
                     permissions = obj.optString("permissions", "").split(",").filter { it.isNotEmpty() },
-                    dependencies = obj.optString("dependencies", "").split(",").filter { it.isNotEmpty() }
+                    dependencies = obj.optString("dependencies", "").split(",").filter { it.isNotEmpty() },
+                    notice = obj.optString("notice", ""),
+                    backend = obj.optString("backend", ""),
+                    backendPort = obj.optInt("backendPort", 0),
+                    backendEntry = obj.optString("backendEntry", "scripts/backend/server.py"),
+                    backendAutoStart = obj.optBoolean("backendAutoStart", true),
+                    backendKeepAlive = obj.optBoolean("backendKeepAlive", false),
+                    backendTimeout = obj.optInt("backendTimeout", 30),
+                    backendHealthCheck = obj.optString("backendHealthCheck", "/health"),
+                    backendMaxRetries = obj.optInt("backendMaxRetries", 3),
+                    backendLogLevel = obj.optString("backendLogLevel", "info"),
+                    backendArgs = obj.optString("backendArgs", "").split(",").filter { it.isNotEmpty() },
+                    backendBinary = obj.optString("backendBinary", ""),
+                    backendInstallCmd = obj.optString("backendInstallCmd", ""),
+                    backendCheckCmd = obj.optString("backendCheckCmd", ""),
+                    backendPhpDocRoot = obj.optString("backendPhpDocRoot", ""),
+                    backendJavaClass = obj.optString("backendJavaClass", ""),
+                    backendJavaJar = obj.optString("backendJavaJar", ""),
+                    maxMemory = obj.optInt("maxMemory", 512),
+                    maxCpuTime = obj.optInt("maxCpuTime", 60),
+                    maxConcurrentTasks = obj.optInt("maxConcurrentTasks", 5)
                 )
             } catch (e: Exception) {
                 null
             }
-        }
-
-        /**
-         * 创建默认插件信息
-         */
-        fun createDefault(
-            pluginId: String,
-            name: String,
-            author: String = "开发者",
-            description: String = "",
-            uiType: String = "native"
-        ): PluginInfo {
-            return PluginInfo(
-                pluginId = pluginId,
-                name = name,
-                author = author,
-                description = description,
-                uiType = uiType,
-                version = 1,
-                versionName = "1.0.0"
-            )
         }
     }
 }

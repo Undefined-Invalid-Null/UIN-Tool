@@ -1,8 +1,9 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/dev/DevScreen.kt
+// ui/screen/dev/DevScreen.kt
 package com.UIN.Tool.ui.screen.dev
 
 import android.content.Intent
-import android.widget.Toast
+// ui/screen/dev/DevScreen.kt - 添加缺失的 import
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,7 +11,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.app.TermuxActivity
@@ -31,6 +34,13 @@ fun DevScreen() {
     val scrollState = rememberScrollState()
     var isExporting by remember { mutableStateOf(false) }
 
+    // 创建插件对话框状态
+    var showCreatePluginDialog by remember { mutableStateOf(false) }
+    var selectedUiType by remember { mutableStateOf("") }
+    var showBackendDialog by remember { mutableStateOf(false) }
+    var selectedBackend by remember { mutableStateOf("") }
+    var isWebViewOnly by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -38,9 +48,6 @@ fun DevScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ============================================================
-        // 标题
-        // ============================================================
         UIComponents.TitleText("开发")
 
         // ============================================================
@@ -50,18 +57,12 @@ fun DevScreen() {
             modifier = Modifier.fillMaxWidth()
         ) {
             UIComponents.SectionTitle("终端")
-
             Text(
-                text = "启动完整的 Linux 终端环境\n" +
-                        "基于 Termux 核心引擎\n" +
-                        "支持 bash、zsh 等 Shell\n" +
-                        "支持 apt 包管理\n" +
-                        "支持 Python、Node.js 等运行时",
+                text = "启动完整的 Linux 终端环境\n基于 Termux 核心引擎",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -82,7 +83,6 @@ fun DevScreen() {
                     },
                     modifier = Modifier.weight(1f)
                 )
-
                 UIComponents.SecondaryButton(
                     text = "终端设置",
                     icon = Icons.Default.Settings,
@@ -108,50 +108,18 @@ fun DevScreen() {
             modifier = Modifier.fillMaxWidth()
         ) {
             UIComponents.SectionTitle("插件开发工具")
-
             Text(
-                text = "创建、开发和导出 UIN Tool 插件",
+                text = "创建 UIN Tool 插件，支持原生和 Web 两种前端，多种后端语言",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
             UIComponents.PrimaryButton(
-                text = "创建原生插件",
-                icon = Icons.Default.Code,
-                onClick = {
-                    try {
-                        val intent = Intent(context, BasePluginWizardActivity::class.java)
-                        intent.putExtra("ui_type", "native")
-                        context.startActivity(intent)
-                        AppLog.i(TAG, "启动原生插件向导")
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "跳转原生插件向导失败", e)
-                        AppToast.warning(context, "原生插件编译功能开发中，请使用Web插件")
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
-
-            UIComponents.PrimaryButton(
-                text = "创建 Web 插件",
-                icon = Icons.Default.Web,
-                onClick = {
-                    try {
-                        val intent = Intent(context, BasePluginWizardActivity::class.java)
-                        intent.putExtra("ui_type", "web")
-                        context.startActivity(intent)
-                        AppLog.i(TAG, "启动Web插件向导")
-                    } catch (e: Exception) {
-                        AppLog.e(TAG, "跳转Web插件向导失败", e)
-                        AppToast.error(context, "功能开发中: ${e.message}")
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                text = "创建插件",
+                icon = Icons.Default.Add,
+                onClick = { showCreatePluginDialog = true },
+                modifier = Modifier.fillMaxWidth()
             )
 
             UIComponents.SecondaryButton(
@@ -163,7 +131,7 @@ fun DevScreen() {
                         isExporting = true
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
             )
         }
 
@@ -174,18 +142,16 @@ fun DevScreen() {
             modifier = Modifier.fillMaxWidth()
         ) {
             UIComponents.SectionTitle("快速开始")
-
             Text(
-                text = "1. 选择「创建原生插件」或「创建 Web 插件」\n" +
+                text = "1. 点击「创建插件」选择类型\n" +
                         "2. 填写插件基本信息\n" +
-                        "3. 编写插件代码 (Kotlin/Java 或 HTML/CSS/JS)\n" +
+                        "3. 编写代码或选择二进制文件\n" +
                         "4. 导出 TPK 文件\n" +
                         "5. 在「管理」「插件管理」中导入运行",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-
             UIComponents.SecondaryButton(
                 text = "查看开发文档",
                 icon = Icons.Default.Info,
@@ -203,8 +169,188 @@ fun DevScreen() {
 
         Spacer(modifier = Modifier.height(80.dp))
     }
+
+    // ============================================================
+    // 创建插件对话框（白色背景）
+    // ============================================================
+    if (showCreatePluginDialog) {
+        AlertDialog(
+            onDismissRequest = { showCreatePluginDialog = false },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    "选择前端类型",
+                    color = Color(0xFF1A1A1A)
+                )
+            },
+            text = {
+                Text(
+                    "请选择插件的前端 UI 类型：",
+                    color = Color(0xFF555555)
+                )
+            },
+            confirmButton = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 原生 UI
+                    Button(
+                        onClick = {
+                            selectedUiType = "native"
+                            showCreatePluginDialog = false
+                            navigateToWizard(context, "native", "")
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1A3A4A),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("原生 UI (Android View)")
+                    }
+                    
+                    // ✅ 纯 WebView（无后端）
+                    Button(
+                        onClick = {
+                            selectedUiType = "web"
+                            isWebViewOnly = true
+                            showCreatePluginDialog = false
+                            // 无后端，直接跳转
+                            navigateToWizard(context, "web", "")
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF455A64),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Web UI (纯前端, 无后端)")
+                    }
+                    
+                    // WebView + 后端
+                    Button(
+                        onClick = {
+                            selectedUiType = "web"
+                            isWebViewOnly = false
+                            showCreatePluginDialog = false
+                            showBackendDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF37474F),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Web UI + 后端")
+                    }
+                    
+                    TextButton(
+                        onClick = { showCreatePluginDialog = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color(0xFF888888)
+                        )
+                    ) {
+                        Text("取消")
+                    }
+                }
+            },
+            dismissButton = null
+        )
+    }
+
+    // ============================================================
+    // 后端选择对话框（白色背景）
+    // ============================================================
+    if (showBackendDialog) {
+        AlertDialog(
+            onDismissRequest = { showBackendDialog = false },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    "选择后端语言",
+                    color = Color(0xFF1A1A1A)
+                )
+            },
+            text = {
+                Text(
+                    "请选择 Web 插件的后端语言：",
+                    color = Color(0xFF555555)
+                )
+            },
+            confirmButton = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val backends = listOf(
+                        "python" to "Python",
+                        "node" to "Node.js",
+                        "php" to "PHP",
+                        "binary" to "二进制文件"
+                    )
+                    backends.forEach { (key, label) ->
+                        Button(
+                            onClick = {
+                                selectedBackend = key
+                                showBackendDialog = false
+                                navigateToWizard(context, "web", key)
+                            },
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = when (key) {
+                                    "python" -> Color(0xFF1A3A4A)
+                                    "node" -> Color(0xFF2E7D32)
+                                    "php" -> Color(0xFFE65100)
+                                    else -> Color(0xFF455A64)
+                                },
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(label)
+                        }
+                    }
+                    TextButton(
+                        onClick = { showBackendDialog = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color(0xFF888888)
+                        )
+                    ) {
+                        Text("取消")
+                    }
+                }
+            },
+            dismissButton = null
+        )
+    }
 }
 
+// ============================================================
+// 导航到向导页面
+// ============================================================
+private fun navigateToWizard(context: android.content.Context, uiType: String, backend: String) {
+    try {
+        val intent = Intent(context, BasePluginWizardActivity::class.java).apply {
+            putExtra("ui_type", uiType)
+            putExtra("backend_type", backend)
+        }
+        context.startActivity(intent)
+        AppLog.i(TAG, "启动插件向导: uiType=$uiType, backend=$backend")
+    } catch (e: Exception) {
+        AppLog.e(TAG, "跳转插件向导失败", e)
+        AppToast.error(context, "功能开发中: ${e.message}")
+    }
+}
+
+// ============================================================
+// 导出模板
+// ============================================================
 private fun exportTemplates(
     context: android.content.Context,
     onComplete: () -> Unit
@@ -218,6 +364,7 @@ private fun exportTemplates(
         val assetFiles = listOf(
             "templates/native_template.tpk" to "native_plugin_template.tpk",
             "templates/web_template.tpk" to "web_plugin_template.tpk",
+            "templates/python_template.tpk" to "python_plugin_template.tpk",
             "templates/NativeTestPlugin.tpk" to "NativeTestPlugin.tpk",
             "template.tpk" to "plugin_template.tpk",
             "docs/README.md" to "docs/README.md",
@@ -260,6 +407,7 @@ private fun exportTemplates(
             ------------------------------------------------------------
             ├── native_plugin_template.tpk  原生插件模板
             ├── web_plugin_template.tpk     Web 插件模板  
+            ├── python_plugin_template.tpk  Python 后端插件模板
             ├── NativeTestPlugin.tpk        测试插件示例
             ├── plugin_template.tpk         通用插件模板
             └── docs/                       文档目录

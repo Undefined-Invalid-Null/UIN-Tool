@@ -1,4 +1,4 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/dev/PluginWizardViewModel.kt
+// ui/screen/dev/PluginWizardViewModel.kt
 package com.UIN.Tool.ui.screen.dev
 
 import android.content.Context
@@ -8,13 +8,15 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.Constants
 import com.UIN.Tool.utils.TemplateUtils
+import org.json.JSONObject
 import java.io.File
 
 private const val TAG = "PluginWizardViewModel"
 
 class PluginWizardViewModel(
     private val context: Context,
-    val uiType: String
+    val uiType: String,
+    val backendType: String = ""
 ) : ViewModel() {
 
     // ==================== 插件信息 ====================
@@ -28,6 +30,9 @@ class PluginWizardViewModel(
     var entryPath = mutableStateOf("web/index.html")
     var webTemplateType = mutableStateOf(0)
 
+    // ==================== 插件说明 ====================
+    var pluginNotice = mutableStateOf("")
+
     // ==================== 文件管理 ====================
     var fileList = mutableStateOf<List<String>>(emptyList())
     var fileContents = mutableStateOf<Map<String, String>>(emptyMap())
@@ -36,6 +41,9 @@ class PluginWizardViewModel(
     var iconPath = mutableStateOf("")
     var resourcePaths = mutableStateOf<List<String>>(emptyList())
 
+    // ==================== 二进制文件 ====================
+    var binaryFilePath = mutableStateOf("")
+
     // ==================== 编译状态 ====================
     var isCompiling = mutableStateOf(false)
     var compileMessage = mutableStateOf("")
@@ -43,12 +51,22 @@ class PluginWizardViewModel(
     var tpkFile = mutableStateOf<File?>(null)
     var projectDir = mutableStateOf<File?>(null)
 
+    init {
+        if (uiType == "web" && backendType == "binary") {
+            entryPath.value = "backend/myapp"
+        }
+        initDefaultFiles()
+    }
+
     fun initDefaultFiles() {
         if (fileList.value.isEmpty() || fileContents.value.isEmpty()) {
             if (uiType == "native") {
                 generateNativeCode()
             } else {
                 generateWebTemplates()
+                if (backendType.isNotEmpty() && backendType != "binary") {
+                    generateBackendFiles()
+                }
             }
         }
     }
@@ -82,30 +100,11 @@ class PluginWizardViewModel(
     }
 
     fun generateWebTemplates() {
-        val vars = mapOf(
-            "PLUGIN_NAME" to pluginName.value,
-            "PLUGIN_DESCRIPTION" to pluginDescription.value,
-            "PLUGIN_ID" to pluginId.value
-        )
-
         try {
-            val indexHtml = TemplateUtils.renderTemplate(
-                TemplateUtils.loadTemplate(context, "web/index.html"),
-                vars
-            )
-            val styleCss = TemplateUtils.renderTemplate(
-                TemplateUtils.loadTemplate(context, "web/style.css"),
-                vars
-            )
-            val scriptJs = TemplateUtils.renderTemplate(
-                TemplateUtils.loadTemplate(context, "web/script.js"),
-                vars
-            )
-
             val files = mutableMapOf<String, String>()
-            files["web/index.html"] = indexHtml
-            files["web/style.css"] = styleCss
-            files["web/script.js"] = scriptJs
+            files["web/index.html"] = ""
+            files["web/style.css"] = ""
+            files["web/script.js"] = ""
 
             fileList.value = files.keys.toList()
             fileContents.value = files
@@ -113,6 +112,39 @@ class PluginWizardViewModel(
         } catch (e: Exception) {
             AppLog.e(TAG, "生成Web模板失败", e)
         }
+    }
+
+    private fun generateBackendFiles() {
+        if (uiType != "web" || backendType.isEmpty() || backendType == "binary") {
+            return
+        }
+
+        val files = fileContents.value.toMutableMap()
+        val fileNames = fileList.value.toMutableList()
+
+        val backendFile = when (backendType) {
+            "python" -> "scripts/backend/server.py"
+            "node" -> "scripts/backend/server.js"
+            "php" -> "scripts/backend/index.php"
+            "deno" -> "scripts/backend/server.ts"
+            "go" -> "scripts/backend/main.go"
+            "ruby" -> "scripts/backend/server.rb"
+            "perl" -> "scripts/backend/server.pl"
+            "lua" -> "scripts/backend/server.lua"
+            "java" -> "scripts/backend/Main.java"
+            else -> null
+        }
+
+        if (backendFile != null) {
+            files[backendFile] = ""
+            if (backendFile !in fileNames) {
+                fileNames.add(backendFile)
+            }
+            entryPath.value = backendFile
+        }
+
+        fileList.value = fileNames
+        fileContents.value = files
     }
 
     fun updateFiles(files: List<String>, contents: Map<String, String>) {
@@ -163,41 +195,51 @@ class PluginWizardViewModel(
     }
 
     private fun generatePluginJsonContent(): String {
-        return if (uiType == "web") {
-            """
-            {
-                "pluginId": "${pluginId.value}",
-                "version": ${pluginVersion.value.toIntOrNull() ?: 1},
-                "versionName": "${pluginVersionName.value}",
-                "minHostVersion": 1,
-                "name": "${pluginName.value}",
-                "author": "${pluginAuthor.value}",
-                "description": "${pluginDescription.value}",
-                "icon": "icon.png",
-                "mainClass": "",
-                "apiLevel": 21,
-                "uiType": "web",
-                "entry": "${entryPath.value}"
+        val json = JSONObject().apply {
+            put("pluginId", pluginId.value)
+            put("version", pluginVersion.value.toIntOrNull() ?: 1)
+            put("versionName", pluginVersionName.value)
+            put("minHostVersion", 1)
+            put("name", pluginName.value)
+            put("author", pluginAuthor.value)
+            put("description", pluginDescription.value)
+            put("icon", "icon.png")
+            put("mainClass", if (uiType == "native") mainClass.value else "")
+            put("apiLevel", 21)
+            put("uiType", uiType)
+            put("entry", if (uiType == "web") entryPath.value else "")
+            put("permissions", "")
+            put("dependencies", "")
+            put("notice", pluginNotice.value)
+
+            if (uiType == "web" && backendType.isNotEmpty()) {
+                put("backend", backendType)
+                put("backendPort", 8000)
+                if (backendType == "binary") {
+                    val binaryName = File(binaryFilePath.value).name
+                    put("backendEntry", "backend/$binaryName")
+                    put("backendBinary", binaryName)
+                } else {
+                    val backendFile = when (backendType) {
+                        "python" -> "scripts/backend/server.py"
+                        "node" -> "scripts/backend/server.js"
+                        "php" -> "scripts/backend/index.php"
+                        "deno" -> "scripts/backend/server.ts"
+                        "go" -> "scripts/backend/main.go"
+                        "ruby" -> "scripts/backend/server.rb"
+                        "perl" -> "scripts/backend/server.pl"
+                        "lua" -> "scripts/backend/server.lua"
+                        "java" -> "scripts/backend/Main.java"
+                        else -> "scripts/backend/server"
+                    }
+                    put("backendEntry", backendFile)
+                }
+                put("backendAutoStart", true)
+                put("backendTimeout", 30)
+                put("backendHealthCheck", "/health")
             }
-            """.trimIndent()
-        } else {
-            """
-            {
-                "pluginId": "${pluginId.value}",
-                "version": ${pluginVersion.value.toIntOrNull() ?: 1},
-                "versionName": "${pluginVersionName.value}",
-                "minHostVersion": 1,
-                "name": "${pluginName.value}",
-                "author": "${pluginAuthor.value}",
-                "description": "${pluginDescription.value}",
-                "icon": "icon.png",
-                "mainClass": "${mainClass.value}",
-                "apiLevel": 21,
-                "uiType": "native",
-                "entry": ""
-            }
-            """.trimIndent()
         }
+        return json.toString()
     }
 
     private fun generateReadme(workDir: File) {
