@@ -1,4 +1,4 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingActivity.kt
+// OnboardingActivity.kt
 package com.UIN.Tool.ui.screen.onboarding
 
 import android.content.Intent
@@ -14,7 +14,7 @@ class OnboardingActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         val isVersionUpdate = intent.getBooleanExtra("is_version_update", false)
-        val versionName = intent.getStringExtra("version_name") ?: "4.0.0"
+        val versionName = intent.getStringExtra("version_name") ?: "4.2.0"
         
         setContent {
             UINToolTheme {
@@ -22,6 +22,7 @@ class OnboardingActivity : ComponentActivity() {
                     isVersionUpdate = isVersionUpdate,
                     versionName = versionName,
                     onNavigateToMain = {
+                        // ✅ 只有用户点击按钮才跳转
                         startActivity(Intent(this, MainActivity::class.java))
                         finish()
                     }

@@ -1,3 +1,4 @@
+// ui/screen/dev/CodeEditorScreen.kt
 package com.UIN.Tool.ui.screen.dev
 
 import android.content.Context
@@ -42,6 +43,8 @@ import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.component.EditorAutoCompletion
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import org.eclipse.tm4e.core.registry.IThemeSource
+// ui/screen/dev/CodeEditorScreen.kt - 顶部添加导入
+import kotlinx.coroutines.delay
 
 private const val TAG = "CodeEditorScreen"
 private const val DEBUG_TAG = "EditorDebug"
@@ -489,7 +492,9 @@ fun FileTreeItem(
     }
 }
 
-// ==================== 主界面 ====================
+// ============================================================
+// ✅ 修复：主界面 - 高亮问题已修复
+// ============================================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodeEditorScreen(
@@ -523,25 +528,42 @@ fun CodeEditorScreen(
     val maxSidebarWidth = 300.dp
 
     var editorInstance by remember { mutableStateOf<CodeEditor?>(null) }
+    var isEditorReady by remember { mutableStateOf(false) }
 
     val currentContent = contents[currentFile] ?: ""
     var editedContent by remember { mutableStateOf(currentContent) }
 
-    LaunchedEffect(currentFile) {
-        val newContent = contents[currentFile] ?: ""
-        Log.d(DEBUG_TAG, "切换到文件: $currentFile, 内容长度: ${newContent.length}")
-        editedContent = newContent
-        hasChanges = false
+    // ============================================================
+    // ✅ 修复：切换文件时，使用 LaunchedEffect 确保应用高亮
+    // ============================================================
+    LaunchedEffect(currentFile, currentTheme) {
+        Log.d(DEBUG_TAG, "LaunchedEffect: currentFile=$currentFile, theme=$currentTheme")
+        // 延迟执行，确保编辑器已创建
+        delay(100)
         
         editorInstance?.let { editor ->
+            val newContent = contents[currentFile] ?: ""
+            Log.d(DEBUG_TAG, "更新编辑器: 文件=$currentFile, 内容长度=${newContent.length}")
+            
+            // 设置内容
             editor.setText(newContent)
+            editedContent = newContent
+            hasChanges = false
+            
+            // ✅ 关键修复：设置语言后立即应用主题
             setEditorLanguage(editor, currentFile)
+            
+            // ✅ 延迟一点再应用主题，确保语言已加载
+            delay(50)
             applyTheme(editor, currentTheme)
+            
+            // ✅ 强制刷新
+            editor.invalidate()
+            isEditorReady = true
+            Log.d(DEBUG_TAG, "✅ 编辑器更新完成: 语言和主题已应用")
+        } ?: run {
+            Log.d(DEBUG_TAG, "编辑器实例为 null，等待创建")
         }
-    }
-
-    LaunchedEffect(currentTheme) {
-        editorInstance?.let { applyTheme(it, currentTheme) }
     }
 
     fun saveCurrentFile() {
@@ -644,6 +666,7 @@ fun CodeEditorScreen(
         }
     ) { paddingValues ->
         Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            // 侧边栏
             if (isSidebarVisible) {
                 Box(
                     modifier = Modifier
@@ -698,6 +721,7 @@ fun CodeEditorScreen(
                         }
                     }
 
+                    // 拖动条
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
@@ -731,11 +755,13 @@ fun CodeEditorScreen(
                 }
             }
 
+            // 编辑器区域
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
             ) {
+                // 文件信息栏
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -776,9 +802,12 @@ fun CodeEditorScreen(
 
                 Divider()
 
+                // ============================================================
+                // ✅ 修复：AndroidView 使用 key 强制重建
+                // ============================================================
                 AndroidView(
                     factory = { ctx ->
-                        Log.d(DEBUG_TAG, "创建 CodeEditor 实例")
+                        Log.d(DEBUG_TAG, "创建 CodeEditor 实例 (factory)")
                         CodeEditor(ctx).apply {
                             layoutParams = ViewGroup.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -792,10 +821,16 @@ fun CodeEditorScreen(
                             isWordwrap = false
                             setTextSize(16f)
                             
-                            setText(editedContent)
-                            Log.d(DEBUG_TAG, "编辑器初始文本长度: ${editedContent.length}")
-
-                            // ✅ 简化监听 - 只在 SET_NEW_TEXT 时同步，避免循环
+                            // 设置初始内容
+                            val initialContent = contents[currentFile] ?: ""
+                            setText(initialContent)
+                            Log.d(DEBUG_TAG, "编辑器初始文本长度: ${initialContent.length}")
+                            
+                            // ✅ 立即设置语言和主题
+                            setEditorLanguage(this, currentFile)
+                            applyTheme(this, currentTheme)
+                            
+                            // 内容变更监听
                             subscribeEvent(ContentChangeEvent::class.java) { event, _ ->
                                 val actionName = when (event.action) {
                                     ContentChangeEvent.ACTION_INSERT -> "INSERT"
@@ -803,16 +838,9 @@ fun CodeEditorScreen(
                                     ContentChangeEvent.ACTION_SET_NEW_TEXT -> "SET_NEW_TEXT"
                                     else -> "UNKNOWN(${event.action})"
                                 }
-                                val changedText = event.getChangedText().toString()
-                                val start = event.getChangeStart()
-                                val end = event.getChangeEnd()
                                 
-                                Log.d(DEBUG_TAG, "ContentChange: action=$actionName, text='$changedText', start=(${start.line},${start.column}), end=(${end.line},${end.column})")
-
-                                // ✅ 只有 SET_NEW_TEXT 才同步内容（由 setText 触发）
                                 if (event.action == ContentChangeEvent.ACTION_SET_NEW_TEXT) {
-                                    val fullText = changedText
-                                    // ✅ 只在长度差异大时才更新，避免单个字符的循环
+                                    val fullText = event.getChangedText().toString()
                                     if (kotlin.math.abs(fullText.length - editedContent.length) > 1) {
                                         editedContent = fullText
                                         hasChanges = true
@@ -820,37 +848,35 @@ fun CodeEditorScreen(
                                             contents[currentFile] = fullText
                                         }
                                         Log.d(DEBUG_TAG, "全文替换，新长度: ${fullText.length}")
-                                    } else {
-                                        Log.d(DEBUG_TAG, "忽略小范围 SET_NEW_TEXT 避免循环")
                                     }
-                                } else {
-                                    // ✅ INSERT/DELETE 只记录日志，不更新 editedContent
-                                    // 让 update 块来处理同步
-                                    Log.d(DEBUG_TAG, "增量操作，由 update 块同步")
                                 }
                             }
 
                             subscribeEvent(SelectionChangeEvent::class.java) { event, _ ->
-                                val left = event.left
-                                val right = event.right
-                                Log.d(DEBUG_TAG, "SelectionChange: left=(${left.line},${left.column}), right=(${right.line},${right.column})")
+                                // 选择变化日志（可选）
                             }
                             
                             editorInstance = this
-                            setEditorLanguage(this, currentFile)
-                            applyTheme(this, currentTheme)
+                            isEditorReady = true
+                            Log.d(DEBUG_TAG, "✅ 编辑器创建完成")
                         }
                     },
                     update = { editor ->
-                        // ✅ 只在内容真正不同时更新
+                        // ✅ 只在内容真正不同时更新，避免循环
                         val currentText = editor.text.toString()
-                        if (currentText != editedContent && editedContent.isNotEmpty()) {
-                            Log.d(DEBUG_TAG, "更新编辑器文本，长度变化: ${currentText.length} -> ${editedContent.length}")
-                            editor.setText(editedContent)
+                        val targetContent = contents[currentFile] ?: ""
+                        if (currentText != targetContent && targetContent.isNotEmpty()) {
+                            Log.d(DEBUG_TAG, "更新编辑器文本，长度变化: ${currentText.length} -> ${targetContent.length}")
+                            editor.setText(targetContent)
+                            editedContent = targetContent
+                            hasChanges = false
                         }
                         editorInstance = editor
+                        
+                        // ✅ 每次 update 时重新应用语言和主题（确保高亮）
                         setEditorLanguage(editor, currentFile)
                         applyTheme(editor, currentTheme)
+                        editor.invalidate()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -860,6 +886,9 @@ fun CodeEditorScreen(
         }
     }
 
+    // ============================================================
+    // 对话框
+    // ============================================================
     if (showThemeDialog) {
         ThemeSelectionDialog(
             currentTheme = currentTheme,
@@ -870,7 +899,9 @@ fun CodeEditorScreen(
                 currentTheme = theme
                 prefs.edit().putString("selected_theme", theme).apply()
                 showThemeDialog = false
+                // ✅ 立即应用主题
                 applyTheme(editorInstance, theme)
+                editorInstance?.invalidate()
             },
             onDismiss = { showThemeDialog = false }
         )

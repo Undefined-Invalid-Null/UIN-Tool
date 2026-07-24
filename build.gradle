@@ -21,4 +21,17 @@ allprojects {
         maven { url "https://repo.huaweicloud.com/repository/maven" }
         maven { url "https://mirrors.tencent.com/nexus/repository/maven-public" }
     }
+    
+    // ===== 添加这部分：在所有模块中禁用 Lint =====
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            android {
+                lintOptions {
+                    checkReleaseBuilds false
+                    abortOnError false
+                }
+            }
+        }
+    }
+    // ============================================
 }

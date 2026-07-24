@@ -1,4 +1,4 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/dev/PluginWizardSteps.kt
+// ui/screen/dev/PluginWizardSteps.kt
 package com.UIN.Tool.ui.screen.dev
 
 import android.graphics.Bitmap
@@ -84,6 +84,8 @@ fun PluginConfigStep(
     onMainClassChange: (String) -> Unit,
     entryPath: String,
     onEntryPathChange: (String) -> Unit,
+    pluginNotice: String,
+    onPluginNoticeChange: (String) -> Unit,
     uiType: String
 ) {
     Column {
@@ -170,6 +172,22 @@ fun PluginConfigStep(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ✅ 插件说明
+        UIComponents.TextInput(
+            value = pluginNotice,
+            onValueChange = onPluginNoticeChange,
+            label = "插件说明（可选）",
+            placeholder = "首次打开时显示，用于说明插件功能",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = false
+        )
+        UIComponents.CaptionText(
+            "提示：首次打开插件时会显示此说明，用户可选择不再提示",
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+        )
     }
 }
 
@@ -287,9 +305,9 @@ fun NativeCodeStep(
 }
 
 @Composable
-fun WebConfigStep(
-    templateType: Int,
-    onTemplateTypeChange: (Int) -> Unit,
+fun WebCodeStep(
+    fileCount: Int,
+    onOpenEditor: () -> Unit,
     onImportWebProject: () -> Unit
 ) {
     Column {
@@ -298,13 +316,15 @@ fun WebConfigStep(
         ) {
             UIComponents.BodyText(
                 """
-                    Web 插件说明
+                    Web 插件开发
 
-                    • Web 插件不需要编写 Java 代码
-                    • UI 界面请编辑 web/index.html、web/style.css、web/script.js
+                    • 已生成空白 HTML/CSS/JS 模板文件
+                    • 点击「打开代码编辑器」修改文件
+                    • 也可以导入已有的 Web 项目 (ZIP)
                     • JavaScript 可通过 UINPlugin.callHost() 调用原生功能
                     • 修改 HTML/CSS/JS 后无需重新编译
-                    • 可以直接导入已有的 HTML/CSS/JS 项目
+
+                    当前已生成 ${if (fileCount > 0) fileCount else 0} 个文件
                 """.trimIndent(),
                 modifier = Modifier.padding(8.dp)
             )
@@ -312,48 +332,21 @@ fun WebConfigStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UIComponents.BodyText("选择模板类型：")
+        UIComponents.PrimaryButton(
+            text = "打开代码编辑器 (${fileCount} 个文件)",
+            icon = Icons.Default.Edit,
+            onClick = onOpenEditor,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            UIComponents.Chip(
-                label = "完整模板",
-                selected = templateType == 0,
-                onClick = { onTemplateTypeChange(0) },
-                modifier = Modifier.weight(1f)
-            )
-            UIComponents.Chip(
-                label = "空白模板",
-                selected = templateType == 1,
-                onClick = { onTemplateTypeChange(1) },
-                modifier = Modifier.weight(1f)
-            )
-            UIComponents.Chip(
-                label = "导入项目",
-                selected = templateType == 2,
-                onClick = { onTemplateTypeChange(2) },
-                modifier = Modifier.weight(1f)
-            )
-            UIComponents.Chip(
-                label = "跳过",
-                selected = templateType == 3,
-                onClick = { onTemplateTypeChange(3) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        if (templateType == 2) {
-            Spacer(modifier = Modifier.height(8.dp))
-            UIComponents.PrimaryButton(
-                text = "选择 ZIP 文件导入",
-                icon = Icons.Default.FileUpload,
-                onClick = onImportWebProject,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        UIComponents.SecondaryButton(
+            text = "导入已有 Web 项目 (ZIP)",
+            icon = Icons.Default.FileUpload,
+            onClick = onImportWebProject,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -520,5 +513,69 @@ fun PackageStep(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BinaryFileSelectionStep(
+    filePath: String,
+    onFileSelected: (String) -> Unit,
+    onFilePicker: () -> Unit
+) {
+    Column {
+        UIComponents.Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            UIComponents.BodyText(
+                """
+                    选择编译好的二进制可执行文件作为后端
+
+                    • 该文件将作为插件后端启动
+                    • 必须监听 127.0.0.1:8000 端口
+                    • 必须提供 /health 健康检查端点
+                    • 文件需要具有可执行权限
+                """.trimIndent(),
+                modifier = Modifier.padding(8.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (filePath.isNotEmpty()) {
+            UIComponents.Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        UIComponents.BodyText("已选择文件")
+                        UIComponents.CaptionText(File(filePath).name)
+                        UIComponents.CaptionText(
+                            "大小: ${formatFileSize(File(filePath).length())}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    UIComponents.IconButton(
+                        icon = Icons.Default.Close,
+                        onClick = { onFileSelected("") },
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        UIComponents.PrimaryButton(
+            text = if (filePath.isNotEmpty()) "更换二进制文件" else "选择二进制文件",
+            icon = Icons.Default.FileUpload,
+            onClick = onFilePicker,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

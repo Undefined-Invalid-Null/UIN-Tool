@@ -1,8 +1,7 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/dev/BasePluginWizardScreen.kt
+// ui/screen/dev/BasePluginWizardScreen.kt
 package com.UIN.Tool.ui.screen.dev
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -25,7 +24,6 @@ import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
-import com.UIN.Tool.utils.FileUtils
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -35,60 +33,48 @@ private const val TAG = "BasePluginWizardScreen"
 @Composable
 fun BasePluginWizardScreen(
     onFinish: () -> Unit,
-    uiType: String = "native"
+    uiType: String = "native",
+    backendType: String = ""
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val viewModel = remember {
-        PluginWizardViewModel(context, uiType)
+        PluginWizardViewModel(context, uiType, backendType)
     }
 
     var currentStep by remember { mutableStateOf(0) }
-    val totalSteps = 5
+    
+    val hasBackend = backendType.isNotEmpty()
+    
+    val totalSteps = if (uiType == "native") {
+        5
+    } else if (uiType == "web" && backendType == "binary") {
+        4
+    } else if (uiType == "web" && backendType.isEmpty()) {
+        4
+    } else {
+        5
+    }
+
+    val binaryFilePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            handleBinaryFileSelection(context, uri) { filePath ->
+                viewModel.binaryFilePath.value = filePath
+                AppToast.success(context, "二进制文件已选择")
+            }
+        }
+    }
 
     val webImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null && viewModel.webTemplateType.value == 2) {
-            try {
-                val tempFile = File(context.cacheDir, "web_import_${System.currentTimeMillis()}.zip")
-                if (!FileUtils.copyUriToFile(context, uri, tempFile)) {
-                    AppToast.error(context, "无法读取文件")
-                    return@rememberLauncherForActivityResult
-                }
-
-                val extractDir = File(context.cacheDir, "web_extract_${System.currentTimeMillis()}")
-                extractDir.mkdirs()
-
-                if (FileUtils.unzipFile(tempFile, extractDir)) {
-                    val webDir = findWebDir(extractDir)
-                    if (webDir != null) {
-                        val files = mutableMapOf<String, String>()
-                        webDir.listFiles()?.forEach { file ->
-                            if (file.isFile) {
-                                val relativePath = file.name
-                                files["web/$relativePath"] = file.readText()
-                            }
-                        }
-                        if (files.isNotEmpty()) {
-                            viewModel.updateFiles(files.keys.toList(), files)
-                            AppToast.success(context, "Web项目导入成功，共 ${files.size} 个文件")
-                        } else {
-                            AppToast.warning(context, "Web项目为空")
-                        }
-                    } else {
-                        AppToast.warning(context, "未找到有效的Web项目")
-                    }
-                } else {
-                    AppToast.error(context, "解压ZIP文件失败")
-                }
-
-                FileUtils.deleteRecursively(extractDir)
-                tempFile.delete()
-
-            } catch (e: Exception) {
-                AppToast.error(context, "导入失败: ${e.message}")
+        if (uri != null) {
+            handleWebProjectImport(context, uri) { files, contents ->
+                viewModel.updateFiles(files, contents)
+                AppToast.success(context, "Web项目导入成功，共 ${files.size} 个文件")
             }
         }
     }
@@ -107,7 +93,6 @@ fun BasePluginWizardScreen(
 
     fun openCodeEditor() {
         viewModel.initDefaultFiles()
-
         val intent = android.content.Intent(context, CodeEditorActivity::class.java)
         intent.putExtra("file_list", ArrayList(viewModel.fileList.value))
         intent.putExtra("file_contents", HashMap(viewModel.fileContents.value))
@@ -115,7 +100,6 @@ fun BasePluginWizardScreen(
         intent.putExtra("main_class", viewModel.mainClass.value)
         intent.putExtra("plugin_name", viewModel.pluginName.value)
         intent.putExtra("plugin_id", viewModel.pluginId.value)
-
         codeEditorLauncher.launch(intent)
     }
 
@@ -151,6 +135,18 @@ fun BasePluginWizardScreen(
                 viewModel.compileMessage.value = "项目文件已生成"
                 viewModel.compileProgress.value = 30
 
+                if (uiType == "web" && backendType == "binary") {
+                    val binaryPath = viewModel.binaryFilePath.value
+                    if (binaryPath.isNotEmpty()) {
+                        val srcFile = File(binaryPath)
+                        val destFile = File(workDir, "backend/myapp")
+                        destFile.parentFile?.mkdirs()
+                        srcFile.copyTo(destFile, overwrite = true)
+                        destFile.setExecutable(true)
+                        AppLog.d(TAG, "二进制文件已复制: ${destFile.absolutePath}")
+                    }
+                }
+
                 if (uiType == "native") {
                     viewModel.compileMessage.value = "开始编译 Java 代码..."
                     viewModel.compileProgress.value = 40
@@ -172,7 +168,6 @@ fun BasePluginWizardScreen(
                         viewModel.compileProgress.value = 100
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
-
                         AppToast.success(context, "✅ 编译打包成功!\n${outputTpk.absolutePath}")
                         onFinish()
                     }
@@ -196,7 +191,7 @@ fun BasePluginWizardScreen(
                     )
 
                 } else {
-                    viewModel.compileMessage.value = "打包 Web 插件..."
+                    viewModel.compileMessage.value = "打包插件..."
                     viewModel.compileProgress.value = 60
 
                     val compiler = JavaToDexCompiler(context)
@@ -209,12 +204,11 @@ fun BasePluginWizardScreen(
                     }
 
                     compiler.setOnCompleteListener { resultFile ->
-                        viewModel.compileMessage.value = "✅ Web 插件打包完成!"
+                        viewModel.compileMessage.value = "✅ 打包完成!"
                         viewModel.compileProgress.value = 100
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
-
-                        AppToast.success(context, "✅ Web 插件打包成功!\n${outputTpk.absolutePath}")
+                        AppToast.success(context, "✅ 打包成功!\n${outputTpk.absolutePath}")
                         onFinish()
                     }
 
@@ -246,8 +240,16 @@ fun BasePluginWizardScreen(
         return when (currentStep) {
             0 -> "配置插件信息"
             1 -> "设置插件图标"
-            2 -> if (uiType == "native") "编写插件代码" else "配置Web插件"
-            3 -> "添加资源文件"
+            2 -> when {
+                uiType == "web" && backendType == "binary" -> "选择二进制文件"
+                uiType == "web" -> "Web 代码编辑"
+                else -> "编写插件代码"
+            }
+            3 -> when {
+                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> "生成项目文件"
+                else -> "添加资源文件"
+            }
+            4 -> "生成项目文件"
             else -> "生成项目文件"
         }
     }
@@ -256,9 +258,17 @@ fun BasePluginWizardScreen(
         return when (currentStep) {
             0 -> "填写插件的基本配置信息"
             1 -> "选择一个 PNG 图片作为图标（可选）"
-            2 -> if (uiType == "native") "实现 PluginInterface 接口" else "选择Web插件模板类型"
-            3 -> "可选的图片、音频等资源文件"
-            else -> "生成项目结构并打包为 TPK"
+            2 -> when {
+                uiType == "web" && backendType == "binary" -> "选择编译好的可执行二进制文件"
+                uiType == "web" -> "编辑 HTML/CSS/JS 或导入已有项目"
+                else -> "实现 PluginInterface 接口"
+            }
+            3 -> when {
+                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> "生成项目文件并打包为 TPK"
+                else -> "可选的图片、音频等资源文件"
+            }
+            4 -> "生成项目结构并打包为 TPK"
+            else -> "生成项目文件"
         }
     }
 
@@ -276,15 +286,25 @@ fun BasePluginWizardScreen(
                 true
             }
             2 -> {
-                if (uiType == "native" && viewModel.mainClass.value.isEmpty()) {
-                    AppToast.warning(context, "请填写主类名")
-                    return false
+                if (uiType == "web" && backendType == "binary") {
+                    if (viewModel.binaryFilePath.value.isEmpty()) {
+                        AppToast.warning(context, "请选择二进制文件")
+                        return false
+                    }
+                    true
+                } else if (uiType == "native") {
+                    if (viewModel.mainClass.value.isEmpty()) {
+                        AppToast.warning(context, "请填写主类名")
+                        return false
+                    }
+                    if (!viewModel.mainClass.value.contains(".")) {
+                        AppToast.warning(context, "主类名必须包含包名，如 com.example.MainPlugin")
+                        return false
+                    }
+                    true
+                } else {
+                    true
                 }
-                if (uiType == "native" && !viewModel.mainClass.value.contains(".")) {
-                    AppToast.warning(context, "主类名必须包含包名，如 com.example.MainPlugin")
-                    return false
-                }
-                true
             }
             else -> true
         }
@@ -293,7 +313,16 @@ fun BasePluginWizardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (uiType == "native") "创建原生插件" else "创建Web插件") },
+                title = {
+                    Text(
+                        when {
+                            uiType == "native" -> "创建原生插件"
+                            backendType == "binary" -> "创建二进制后端插件"
+                            uiType == "web" && backendType.isEmpty() -> "创建 Web 插件"
+                            else -> "创建 Web + 后端插件"
+                        }
+                    )
+                },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.Default.ArrowBack,
@@ -301,7 +330,7 @@ fun BasePluginWizardScreen(
                     )
                 },
                 actions = {
-                    if (currentStep == 2) {
+                    if (currentStep == 2 && backendType != "binary") {
                         UIComponents.IconButton(
                             icon = Icons.Default.Edit,
                             onClick = { openCodeEditor() }
@@ -367,7 +396,6 @@ fun BasePluginWizardScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 步骤指示器
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -428,56 +456,63 @@ fun BasePluginWizardScreen(
                         onMainClassChange = { viewModel.mainClass.value = it },
                         entryPath = viewModel.entryPath.value,
                         onEntryPathChange = { viewModel.entryPath.value = it },
+                        pluginNotice = viewModel.pluginNotice.value,
+                        onPluginNoticeChange = { viewModel.pluginNotice.value = it },
                         uiType = uiType
                     )
                     1 -> PluginIconStep(
                         iconPath = viewModel.iconPath.value,
                         onIconSelected = { viewModel.iconPath.value = it }
                     )
-                    2 -> if (uiType == "native") {
-                        NativeCodeStep(
-                            onOpenEditor = { openCodeEditor() },
-                            fileCount = viewModel.fileList.value.size
-                        )
-                    } else {
-                        WebConfigStep(
-                            templateType = viewModel.webTemplateType.value,
-                            onTemplateTypeChange = { viewModel.webTemplateType.value = it },
-                            onImportWebProject = { webImportLauncher.launch("application/zip") }
+                    2 -> {
+                        if (uiType == "web" && backendType == "binary") {
+                            BinaryFileSelectionStep(
+                                filePath = viewModel.binaryFilePath.value,
+                                onFileSelected = { viewModel.binaryFilePath.value = it },
+                                onFilePicker = { binaryFilePickerLauncher.launch("*/*") }
+                            )
+                        } else if (uiType == "native") {
+                            NativeCodeStep(
+                                onOpenEditor = { openCodeEditor() },
+                                fileCount = viewModel.fileList.value.size
+                            )
+                        } else {
+                            WebCodeStep(
+                                fileCount = viewModel.fileList.value.size,
+                                onOpenEditor = { openCodeEditor() },
+                                onImportWebProject = { webImportLauncher.launch("application/zip") }
+                            )
+                        }
+                    }
+                    3 -> {
+                        if (uiType == "web" && (backendType == "binary" || backendType.isEmpty())) {
+                            PackageStep(
+                                isCompiling = viewModel.isCompiling.value,
+                                compileMessage = viewModel.compileMessage.value,
+                                compileProgress = viewModel.compileProgress.value,
+                                tpkFile = viewModel.tpkFile.value
+                            )
+                        } else {
+                            ResourcesStep(
+                                resourcePaths = viewModel.resourcePaths.value,
+                                onResourceAdded = { viewModel.resourcePaths.value = viewModel.resourcePaths.value + it },
+                                onResourceRemoved = { index ->
+                                    viewModel.resourcePaths.value = viewModel.resourcePaths.value
+                                        .filterIndexed { i, _ -> i != index }
+                                }
+                            )
+                        }
+                    }
+                    4 -> {
+                        PackageStep(
+                            isCompiling = viewModel.isCompiling.value,
+                            compileMessage = viewModel.compileMessage.value,
+                            compileProgress = viewModel.compileProgress.value,
+                            tpkFile = viewModel.tpkFile.value
                         )
                     }
-                    3 -> ResourcesStep(
-                        resourcePaths = viewModel.resourcePaths.value,
-                        onResourceAdded = { viewModel.resourcePaths.value = viewModel.resourcePaths.value + it },
-                        onResourceRemoved = { index ->
-                            viewModel.resourcePaths.value = viewModel.resourcePaths.value
-                                .filterIndexed { i, _ -> i != index }
-                        }
-                    )
-                    4 -> PackageStep(
-                        isCompiling = viewModel.isCompiling.value,
-                        compileMessage = viewModel.compileMessage.value,
-                        compileProgress = viewModel.compileProgress.value,
-                        tpkFile = viewModel.tpkFile.value
-                    )
                 }
             }
         }
     }
-}
-
-private fun findWebDir(dir: File): File? {
-    val webDir = File(dir, "web")
-    if (webDir.exists() && webDir.isDirectory) {
-        return webDir
-    }
-    dir.listFiles()?.forEach { file ->
-        if (file.isDirectory) {
-            val subWeb = File(file, "web")
-            if (subWeb.exists() && subWeb.isDirectory) {
-                return subWeb
-            }
-        }
-    }
-    return null
 }

@@ -1,42 +1,63 @@
-// app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt
+// plugin/PluginHostActivity.kt
 package com.UIN.Tool.plugin
 
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
-import android.webkit.*
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.webkit.WebChromeClient
 import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.Constants
-import com.UIN.Tool.utils.PermissionUtils
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class PluginHostActivity : AppCompatActivity() {
 
     companion object {
-        const val EXTRA_PLUGIN_ID = "plugin_id"
         private const val TAG = "PluginHostActivity"
+        const val EXTRA_PLUGIN_ID = "plugin_id"
         private const val KEY_PLUGIN_ID = "plugin_id"
         private const val KEY_WEBVIEW_STATE = "webview_state"
-        private const val PERMISSION_REQUEST_CODE = 1001
+        private const val BACKEND_START_TIMEOUT = 15000L
     }
 
     private lateinit var container: FrameLayout
     private var currentPluginId: String = ""
     private var webView: WebView? = null
-    private var pluginManager: PluginManager? = null
+    private lateinit var pluginManager: PluginManager
     private var pluginInfo: PluginInfo? = null
-    private var currentTitle: String = ""
     private var isDestroyed = false
-    private var isPermissionRequesting = false
+
+    private var backendPort = 0
+    private var isBackendReady = false
+    private var isBackendStarting = false
+
+    private var backendTimeoutHandler: Handler? = null
+    private var backendTimeoutRunnable: Runnable? = null
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,18 +69,12 @@ class PluginHostActivity : AppCompatActivity() {
         )
         setContentView(container)
 
-        // 从 Intent 或 savedInstanceState 获取插件ID
         if (savedInstanceState != null) {
             currentPluginId = savedInstanceState.getString(KEY_PLUGIN_ID) ?: ""
         }
-
         if (currentPluginId.isEmpty()) {
             currentPluginId = intent.getStringExtra(EXTRA_PLUGIN_ID) ?: ""
         }
-
-        Logger.i(TAG, "========================================")
-        Logger.i(TAG, "onCreate: 插件ID = $currentPluginId")
-        Logger.i(TAG, "========================================")
 
         if (currentPluginId.isEmpty()) {
             Logger.e(TAG, "插件ID为空")
@@ -69,7 +84,7 @@ class PluginHostActivity : AppCompatActivity() {
         }
 
         pluginManager = ServiceLocator.getPluginManager()
-        pluginInfo = pluginManager?.getPluginInfo(currentPluginId)
+        pluginInfo = pluginManager.getPluginInfo(currentPluginId)
 
         if (pluginInfo == null) {
             Logger.e(TAG, "插件不存在: $currentPluginId")
@@ -78,675 +93,482 @@ class PluginHostActivity : AppCompatActivity() {
             return
         }
 
-        // ✅ 检查并请求权限
-        checkAndRequestPermissions()
-    }
+        // 显示插件说明（使用 Compose 弹窗）
+        showPluginNoticeIfNeeded()
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        
-        val newPluginId = intent.getStringExtra(EXTRA_PLUGIN_ID) ?: ""
-        
-        Logger.i(TAG, "========================================")
-        Logger.i(TAG, "onNewIntent: 新插件ID = $newPluginId, 当前插件ID = $currentPluginId")
-        Logger.i(TAG, "========================================")
-        
-        if (newPluginId.isEmpty()) {
-            Logger.w(TAG, "onNewIntent: 插件ID为空，忽略")
-            return
-        }
-        
-        if (newPluginId != currentPluginId) {
-            Logger.i(TAG, "onNewIntent: 检测到不同插件，重新加载")
-            
-            // 清理旧插件
-            clearPlugin()
-            
-            // 更新当前插件ID
-            currentPluginId = newPluginId
-            setIntent(intent)
-            
-            // 重新获取插件信息
-            pluginInfo = pluginManager?.getPluginInfo(currentPluginId)
-            if (pluginInfo == null) {
-                Logger.e(TAG, "插件不存在: $currentPluginId")
-                Toast.makeText(this, "插件不存在: $currentPluginId", Toast.LENGTH_SHORT).show()
-                finish()
-                return
-            }
-            
-            // 重新检查权限并加载
-            checkAndRequestPermissions()
+        if (pluginInfo!!.hasBackend()) {
+            Logger.i(TAG, "插件需要后端: ${pluginInfo!!.backend}")
+            isBackendStarting = true
+            showLoadingState()
+            startBackendAndLoadPlugin()
+            setupBackendTimeout()
         } else {
-            Logger.d(TAG, "onNewIntent: 相同插件，忽略")
-        }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putString(KEY_PLUGIN_ID, currentPluginId)
-
-        webView?.let {
-            val bundle = Bundle()
-            it.saveState(bundle)
-            outState.putBundle(KEY_WEBVIEW_STATE, bundle)
-        }
-    }
-
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        val webViewState = savedInstanceState.getBundle(KEY_WEBVIEW_STATE)
-        webViewState?.let {
-            webView?.restoreState(it)
-        }
-    }
-
-    // ==================== 权限检查与请求 ====================
-
-    /**
-     * ✅ 检查并请求插件权限
-     */
-    private fun checkAndRequestPermissions() {
-        Logger.enter(TAG, "checkAndRequestPermissions")
-        Logger.param(TAG, "pluginId", currentPluginId)
-
-        val plugin = pluginInfo ?: run {
-            Logger.e(TAG, "插件信息为空")
-            finish()
-            return
-        }
-
-        if (plugin.permissions.isEmpty()) {
-            Logger.d(TAG, "插件没有声明权限，直接加载")
-            loadPlugin()
-            return
-        }
-
-        // 检查权限状态
-        val missingPermissions = pluginManager?.getPluginMissingPermissions(currentPluginId) ?: emptyList()
-        
-        if (missingPermissions.isEmpty()) {
-            Logger.success(TAG, "所有权限已授予，加载插件")
-            loadPlugin()
-            return
-        }
-
-        Logger.w(TAG, "插件缺少 ${missingPermissions.size} 个权限: ${missingPermissions.joinToString()}")
-
-        // 分离普通权限和特殊权限
-        val normalPermissions = missingPermissions.filter { 
-            !PluginPermissionManager.isSpecialPermission(it) 
-        }
-        val specialPermissions = missingPermissions.filter { 
-            PluginPermissionManager.isSpecialPermission(it) 
-        }
-
-        // 显示权限说明对话框
-        showPermissionExplanationDialog(normalPermissions, specialPermissions)
-    }
-
-    /**
-     * ✅ 显示权限说明对话框
-     */
-    private fun showPermissionExplanationDialog(
-        normalPermissions: List<String>,
-        specialPermissions: List<String>
-    ) {
-        val plugin = pluginInfo ?: return
-
-        val message = buildString {
-            append("插件 \"${plugin.name}\" 需要以下权限才能正常运行：\n\n")
-            
-            if (normalPermissions.isNotEmpty()) {
-                append("📱 普通权限：\n")
-                normalPermissions.forEach { permission ->
-                    append("  • ${PluginPermissionManager.getPermissionDisplayName(permission)}\n")
-                    append("    ${PluginPermissionManager.getPermissionDescription(permission)}\n")
-                }
-                append("\n")
-            }
-            
-            if (specialPermissions.isNotEmpty()) {
-                append("⚙️ 特殊权限（需在系统设置中手动开启）：\n")
-                specialPermissions.forEach { permission ->
-                    append("  • ${PluginPermissionManager.getPermissionDisplayName(permission)}\n")
-                    append("    ${PluginPermissionManager.getPermissionDescription(permission)}\n")
-                }
-            }
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("权限请求")
-            .setMessage(message)
-            .setCancelable(false)
-            .setPositiveButton("授权") { _, _ ->
-                requestPermissionsInternal(normalPermissions, specialPermissions)
-            }
-            .setNegativeButton("退出") { _, _ ->
-                finish()
-            }
-            .setNeutralButton("权限说明") { _, _ ->
-                // 显示详细权限说明
-                showDetailedPermissionInfo()
-            }
-            .show()
-    }
-
-    /**
-     * ✅ 显示详细权限信息
-     */
-    private fun showDetailedPermissionInfo() {
-        val plugin = pluginInfo ?: return
-        val missingPermissions = pluginManager?.getPluginMissingPermissions(currentPluginId) ?: emptyList()
-
-        val message = buildString {
-            append("📋 权限详细说明\n\n")
-            missingPermissions.forEach { permission ->
-                append("━━━━━━━━━━━━━━━━━━━━━━\n")
-                append("📌 ${PluginPermissionManager.getPermissionDisplayName(permission)}\n")
-                append("📝 ${PluginPermissionManager.getPermissionDescription(permission)}\n")
-                if (PluginPermissionManager.isSpecialPermission(permission)) {
-                    append("⚠️ 特殊权限：需要手动在系统设置中开启\n")
-                }
-                append("\n")
-            }
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("权限详情")
-            .setMessage(message)
-            .setPositiveButton("知道了", null)
-            .setNegativeButton("返回") { _, _ ->
-                checkAndRequestPermissions()
-            }
-            .show()
-    }
-
-    /**
-     * ✅ 内部权限请求
-     */
-    private fun requestPermissionsInternal(
-        normalPermissions: List<String>,
-        specialPermissions: List<String>
-    ) {
-        if (isPermissionRequesting) {
-            Logger.d(TAG, "权限请求正在进行中")
-            return
-        }
-
-        isPermissionRequesting = true
-
-        // 1. 请求普通权限
-        if (normalPermissions.isNotEmpty()) {
-            Logger.d(TAG, "请求普通权限: ${normalPermissions.joinToString()}")
-            requestPermissions(normalPermissions.toTypedArray(), PERMISSION_REQUEST_CODE)
-            return
-        }
-
-        // 2. 如果没有普通权限，直接处理特殊权限
-        if (specialPermissions.isNotEmpty()) {
-            requestSpecialPermissions(specialPermissions)
-        } else {
-            // 所有权限都已授予
-            isPermissionRequesting = false
             loadPlugin()
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    // ============================================================
+    // ✅ 使用 Compose 显示说明弹窗（与项目风格一致，不新建类）
+    // ============================================================
 
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            // ✅ 处理普通权限结果
-            val plugin = pluginInfo ?: return
-            
-            // 检查所有权限是否都已授予
-            val allGranted = permissions.indices.all { 
-                grantResults[it] == android.content.pm.PackageManager.PERMISSION_GRANTED 
-            }
+    private fun showPluginNoticeIfNeeded() {
+        val info = pluginInfo ?: return
+        if (!info.hasNotice()) return
+        if (pluginManager.isPluginNoticeIgnored(currentPluginId)) return
 
-            if (allGranted) {
-                Logger.success(TAG, "✅ 所有普通权限已授予")
-                // 检查是否有特殊权限需要请求
-                val missingSpecial = pluginManager?.getPluginMissingPermissions(currentPluginId)
-                    ?.filter { PluginPermissionManager.isSpecialPermission(it) } ?: emptyList()
-                
-                if (missingSpecial.isNotEmpty()) {
-                    // 请求特殊权限
-                    requestSpecialPermissions(missingSpecial)
-                } else {
-                    // 所有权限都已授予
-                    isPermissionRequesting = false
-                    loadPlugin()
+        // 使用 Compose 显示弹窗
+        setContent {
+            UINToolTheme {
+                var showDialog by remember { mutableStateOf(true) }
+
+                if (showDialog) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showDialog = false
+                        },
+                        title = { Text(info.name) },
+                        text = { Text(info.notice) },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showDialog = false
+                                    pluginManager.setPluginNoticeIgnored(currentPluginId, true)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Text("知道了")
+                            }
+                        },
+                        dismissButton = {
+                            Row {
+                                TextButton(
+                                    onClick = {
+                                        showDialog = false
+                                        pluginManager.setPluginNoticeIgnored(currentPluginId, true)
+                                    }
+                                ) {
+                                    Text("不再提示")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        showDialog = false
+                                    }
+                                ) {
+                                    Text("稍后提醒")
+                                }
+                            }
+                        },
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 }
+            }
+        }
+    }
+
+    // ============================================================
+    // 加载状态
+    // ============================================================
+
+    private fun showLoadingState() {
+        val loadingView = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            loadData(
+                """
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body {
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            height: 100vh;
+                            margin: 0;
+                            font-family: -apple-system, sans-serif;
+                            background: #f5f7fa;
+                        }
+                        .loader { text-align: center; }
+                        .spinner {
+                            width: 48px;
+                            height: 48px;
+                            border: 4px solid #e0e0e0;
+                            border-top-color: #1A3A4A;
+                            border-radius: 50%;
+                            animation: spin 0.8s linear infinite;
+                            margin: 0 auto;
+                        }
+                        @keyframes spin { to { transform: rotate(360deg); } }
+                        .title { margin-top: 20px; font-size: 16px; font-weight: 600; color: #1A3A4A; }
+                        .subtitle { margin-top: 8px; font-size: 13px; color: #888; }
+                        .progress-bar {
+                            margin-top: 16px;
+                            width: 200px;
+                            height: 4px;
+                            background: #e0e0e0;
+                            border-radius: 2px;
+                            overflow: hidden;
+                            margin: 16px auto 0;
+                        }
+                        .progress-fill {
+                            height: 100%;
+                            width: 0%;
+                            background: linear-gradient(90deg, #1A3A4A, #4A8A9E);
+                            border-radius: 2px;
+                            transition: width 0.3s ease;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="loader">
+                        <div class="spinner"></div>
+                        <div class="title" id="loaderTitle">正在启动后端服务</div>
+                        <div class="subtitle" id="loaderSubtitle">请稍候...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="loaderProgress"></div>
+                        </div>
+                    </div>
+                    <script>
+                        window._onBackendProgress = function(progress, message) {
+                            document.getElementById('loaderProgress').style.width = Math.min(progress, 100) + '%';
+                            if (message) document.getElementById('loaderSubtitle').textContent = message;
+                            if (progress >= 100) {
+                                document.getElementById('loaderTitle').textContent = '后端就绪';
+                            }
+                        };
+                        window._onBackendReady = function(port) {
+                            if (port) {
+                                document.getElementById('loaderTitle').textContent = '后端就绪 (端口 ' + port + ')';
+                                document.getElementById('loaderProgress').style.width = '100%';
+                            } else {
+                                document.getElementById('loaderTitle').textContent = '后端启动失败';
+                                document.getElementById('loaderSubtitle').textContent = '将使用降级模式';
+                            }
+                            setTimeout(function() {
+                                document.body.innerHTML = '<div style="text-align:center;padding:40px;color:#666;">加载完成，即将显示内容...</div>';
+                            }, 500);
+                        };
+                    </script>
+                </body>
+                </html>
+                """.trimIndent(),
+                "text/html",
+                "UTF-8"
+            )
+        }
+        container.addView(loadingView)
+    }
+
+    private fun setupBackendTimeout() {
+        backendTimeoutHandler = Handler(Looper.getMainLooper())
+        backendTimeoutRunnable = Runnable {
+            if (isBackendStarting) {
+                Logger.w(TAG, "后端启动超时，继续加载插件")
+                isBackendStarting = false
+                sendBackendProgress(0, "启动超时，继续加载")
+                loadPlugin()
+            }
+        }
+        backendTimeoutHandler?.postDelayed(backendTimeoutRunnable!!, BACKEND_START_TIMEOUT)
+    }
+
+    private fun startBackendAndLoadPlugin() {
+        sendBackendProgress(10, "正在检查后端环境...")
+
+        pluginManager.startBackend(currentPluginId) { success, port, error ->
+            backendTimeoutHandler?.removeCallbacks(backendTimeoutRunnable!!)
+
+            isBackendStarting = false
+            if (success) {
+                backendPort = port
+                isBackendReady = true
+                sendBackendProgress(100, "后端就绪 (端口 $port)")
+                Logger.success(TAG, "后端就绪，端口: $port")
             } else {
-                // 部分权限被拒绝
-                Logger.w(TAG, "⚠️ 部分权限被拒绝")
-                isPermissionRequesting = false
-                
-                // 检查是否还有权限被拒绝
-                val deniedPermissions = permissions.filterIndexed { index, _ ->
-                    grantResults[index] != android.content.pm.PackageManager.PERMISSION_GRANTED
-                }
-                
-                AlertDialog.Builder(this)
-                    .setTitle("权限被拒绝")
-                    .setMessage("插件 \"${plugin.name}\" 需要以下权限才能正常运行：\n\n${deniedPermissions.joinToString("\n") { "• ${PluginPermissionManager.getPermissionDisplayName(it)}" }}\n\n是否重新请求？")
-                    .setPositiveButton("重新请求") { _, _ ->
-                        requestPermissions(deniedPermissions.toTypedArray(), PERMISSION_REQUEST_CODE)
-                    }
-                    .setNegativeButton("退出") { _, _ ->
-                        finish()
-                    }
-                    .setNeutralButton("去设置") { _, _ ->
-                        openAppSettings()
-                    }
-                    .show()
+                sendBackendProgress(0, "后端启动失败: ${error ?: "未知错误"}")
+                Logger.e(TAG, "后端启动失败: $error")
             }
-        }
-    }
-
-    /**
-     * ✅ 请求特殊权限
-     */
-    private fun requestSpecialPermissions(specialPermissions: List<String>) {
-        Logger.d(TAG, "请求特殊权限: ${specialPermissions.joinToString()}")
-
-        // 检查哪些特殊权限已授予
-        val missing = specialPermissions.filter { 
-            !PermissionUtils.hasSpecialPermission(this, it) 
-        }
-
-        if (missing.isEmpty()) {
-            Logger.success(TAG, "所有特殊权限已授予")
-            isPermissionRequesting = false
             loadPlugin()
-            return
-        }
-
-        // 构建特殊权限提示
-        val message = buildString {
-            append("以下特殊权限需要在系统设置中手动开启：\n\n")
-            missing.forEach { permission ->
-                append("• ${PluginPermissionManager.getPermissionDisplayName(permission)}\n")
-                append("  ${PluginPermissionManager.getPermissionDescription(permission)}\n")
-            }
-            append("\n点击「去设置」打开系统设置页面。")
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("特殊权限")
-            .setMessage(message)
-            .setPositiveButton("去设置") { _, _ ->
-                openSpecialPermissionSettings(missing)
-            }
-            .setNegativeButton("取消") { _, _ ->
-                isPermissionRequesting = false
-                finish()
-            }
-            .show()
-    }
-
-    /**
-     * ✅ 打开特殊权限设置
-     */
-    private fun openSpecialPermissionSettings(permissions: List<String>) {
-        // 如果有多个特殊权限，打开应用详情页
-        if (permissions.size > 1) {
-            openAppSettings()
-            return
-        }
-
-        val permission = permissions.firstOrNull() ?: return
-        val intent = when (permission) {
-            "MANAGE_EXTERNAL_STORAGE" -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                        data = Uri.parse("package:$packageName")
-                    }
-                } else null
-            }
-            "SYSTEM_ALERT_WINDOW" -> {
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-            }
-            "WRITE_SETTINGS" -> {
-                Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-            }
-            "REQUEST_INSTALL_PACKAGES" -> {
-                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-            }
-            "PACKAGE_USAGE_STATS" -> {
-                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-            }
-            "ACCESSIBILITY" -> {
-                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-            }
-            else -> null
-        }
-
-        if (intent != null) {
-            try {
-                startActivity(intent)
-                // 用户从设置返回后检查权限
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    checkSpecialPermissionsAfterSettings()
-                }, 1000)
-            } catch (e: Exception) {
-                Logger.e(TAG, "打开特殊权限设置失败: ${e.message}", e)
-                openAppSettings()
-            }
-        } else {
-            openAppSettings()
         }
     }
 
-    /**
-     * ✅ 从设置返回后检查特殊权限
-     */
-    private fun checkSpecialPermissionsAfterSettings() {
-        val plugin = pluginInfo ?: return
-        val missingPermissions = pluginManager?.getPluginMissingPermissions(currentPluginId) ?: emptyList()
-        val missingSpecial = missingPermissions.filter { 
-            PluginPermissionManager.isSpecialPermission(it) 
-        }
-
-        if (missingSpecial.isEmpty()) {
-            // 所有特殊权限已授予
-            Logger.success(TAG, "所有特殊权限已授予")
-            isPermissionRequesting = false
-            loadPlugin()
-        } else {
-            // 仍有特殊权限未授予
-            Logger.w(TAG, "仍有特殊权限未授予: ${missingSpecial.joinToString()}")
-            
-            AlertDialog.Builder(this)
-                .setTitle("权限未完全授予")
-                .setMessage("部分特殊权限尚未授予，插件可能无法正常运行。\n\n缺少：\n${missingSpecial.joinToString("\n") { "• ${PluginPermissionManager.getPermissionDisplayName(it)}" }}")
-                .setPositiveButton("继续") { _, _ ->
-                    isPermissionRequesting = false
-                    loadPlugin() // 即使权限不全，也尝试加载
-                }
-                .setNegativeButton("退出") { _, _ ->
-                    finish()
-                }
-                .show()
+    private fun sendBackendProgress(progress: Int, message: String) {
+        webView?.evaluateJavascript(
+            "if (window._onBackendProgress) window._onBackendProgress($progress, '$message');",
+            null
+        )
+        if (progress < 100) {
+            Logger.d(TAG, "后端进度: $progress% - $message")
         }
     }
 
-    /**
-     * ✅ 打开应用设置
-     */
-    private fun openAppSettings() {
-        try {
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            intent.data = Uri.parse("package:$packageName")
-            startActivity(intent)
-        } catch (e: Exception) {
-            Logger.e(TAG, "打开应用设置失败: ${e.message}", e)
-        }
-    }
-
-    // ==================== 插件加载 ====================
+    // ============================================================
+    // 插件加载
+    // ============================================================
 
     private fun loadPlugin() {
-        Logger.enter(TAG, "loadPlugin")
-        
-        val plugin = pluginInfo ?: run {
-            Logger.e(TAG, "插件信息为空")
-            finish()
-            return
-        }
+        val info = pluginInfo ?: run { finish(); return }
 
-        Logger.i(TAG, "加载插件: ${plugin.name} (${plugin.uiType})")
-
-        // 设置标题
-        supportActionBar?.title = plugin.name
-        currentTitle = plugin.name
-
-        // 根据UI类型加载
-        when (plugin.uiType) {
-            "web" -> loadWebPlugin(plugin)
-            else -> loadNativePlugin(plugin)
-        }
-        
-        Logger.exit(TAG, "loadPlugin", System.currentTimeMillis())
-    }
-
-    private fun clearPlugin() {
-        Logger.d(TAG, "clearPlugin: 清理旧插件 $currentPluginId")
-        
-        webView?.let {
-            it.loadUrl("about:blank")
-            it.clearHistory()
-            it.clearCache(true)
-            it.clearFormData()
-            it.destroy()
-        }
-        webView = null
-        
-        container.removeAllViews()
-        pluginManager?.onPluginDestroy(currentPluginId)
-        PluginManager.removePluginWebView(currentPluginId)
-        
-        Logger.success(TAG, "clearPlugin: 清理完成")
-    }
-
-    private fun loadNativePlugin(info: PluginInfo) {
-        Logger.d(TAG, "加载原生插件: ${info.name}")
-
-        try {
-            val view = pluginManager?.getPluginViewSync(currentPluginId, this, container)
-
-            if (view != null) {
-                container.addView(view)
-                Logger.success(TAG, "原生插件加载成功: ${info.name}")
-            } else {
-                Logger.e(TAG, "加载原生插件失败")
-                Toast.makeText(this, "加载原生插件失败", Toast.LENGTH_SHORT).show()
-                finish()
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, "加载原生插件异常", e)
-            Toast.makeText(this, "插件加载异常: ${e.message}", Toast.LENGTH_LONG).show()
-            finish()
+        if (info.uiType == "web") {
+            loadWebPlugin()
+        } else {
+            loadNativePlugin()
         }
     }
 
-    private fun loadWebPlugin(info: PluginInfo) {
-        Logger.d(TAG, "加载Web插件: ${info.name}")
-
+    private fun loadWebPlugin() {
         val pluginDir = File(Constants.PLUGIN_DIR, currentPluginId)
         if (!pluginDir.exists()) {
-            Logger.e(TAG, "插件目录不存在")
+            Logger.e(TAG, "插件目录不存在: ${pluginDir.absolutePath}")
             Toast.makeText(this, "插件目录不存在", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
-        createWebView(pluginDir, info)
-    }
-
-    private fun createWebView(pluginDir: File, info: PluginInfo) {
-        webView?.let {
-            it.loadUrl("about:blank")
-            it.clearHistory()
-            it.clearCache(true)
-            it.destroy()
-        }
-        webView = null
+        container.removeAllViews()
 
         webView = WebView(this).apply {
             settings.apply {
                 javaScriptEnabled = true
-                javaScriptCanOpenWindowsAutomatically = true
                 domStorageEnabled = true
-                databaseEnabled = true
-                cacheMode = WebSettings.LOAD_DEFAULT
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                }
                 allowFileAccess = true
+                @Suppress("DEPRECATION")
                 allowFileAccessFromFileURLs = true
+                @Suppress("DEPRECATION")
                 allowUniversalAccessFromFileURLs = true
-                defaultTextEncodingName = "UTF-8"
+                setSupportZoom(true)
                 builtInZoomControls = true
                 displayZoomControls = false
-                setSupportZoom(true)
+                defaultTextEncodingName = "UTF-8"
                 loadWithOverviewMode = true
                 useWideViewPort = true
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                }
+            }
+
+            val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
+            addJavascriptInterface(jsInterface, "UINPlugin")
+            Logger.success(TAG, "UINPlugin JS 接口已注入 (加载前)")
+
+            webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    Logger.success(TAG, "WebView 加载完成")
+                    injectJSInterface()
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        notifyBackendStatus()
+                        webView?.evaluateJavascript(
+                            "if (window._onUINPluginReady) window._onUINPluginReady();",
+                            null
+                        )
+                    }, 300)
+                    if (isBackendStarting) {
+                        sendBackendProgress(30, "正在启动后端服务...")
+                    }
+                }
+
+                override fun onReceivedError(
+                    view: WebView?,
+                    errorCode: Int,
+                    description: String?,
+                    failingUrl: String?
+                ) {
+                    super.onReceivedError(view, errorCode, description, failingUrl)
+                    Logger.e(TAG, "WebView 加载错误: $description (code: $errorCode)")
+                }
             }
 
             webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {
+                    Logger.d("WebView", "Console: ${consoleMessage.message()}")
+                    return true
+                }
+
                 override fun onJsAlert(
-                    view: WebView,
-                    url: String,
-                    message: String,
-                    result: JsResult
+                    view: WebView?,
+                    url: String?,
+                    message: String?,
+                    result: android.webkit.JsResult?
                 ): Boolean {
-                    AlertDialog.Builder(this@PluginHostActivity)
+                    android.app.AlertDialog.Builder(this@PluginHostActivity)
                         .setTitle("提示")
                         .setMessage(message)
-                        .setPositiveButton("确定") { _, _ -> result.confirm() }
-                        .setCancelable(false)
+                        .setPositiveButton("确定") { _, _ -> result?.confirm() }
                         .show()
-                    result.confirm()
                     return true
                 }
 
                 override fun onJsConfirm(
-                    view: WebView,
-                    url: String,
-                    message: String,
-                    result: JsResult
+                    view: WebView?,
+                    url: String?,
+                    message: String?,
+                    result: android.webkit.JsResult?
                 ): Boolean {
-                    AlertDialog.Builder(this@PluginHostActivity)
+                    android.app.AlertDialog.Builder(this@PluginHostActivity)
                         .setTitle("确认")
                         .setMessage(message)
-                        .setPositiveButton("确定") { _, _ -> result.confirm() }
-                        .setNegativeButton("取消") { _, _ -> result.cancel() }
+                        .setPositiveButton("确定") { _, _ -> result?.confirm() }
+                        .setNegativeButton("取消") { _, _ -> result?.cancel() }
                         .show()
                     return true
                 }
-
-                override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
-                    Logger.d("WebView", "Console: ${consoleMessage.message()} (line ${consoleMessage.lineNumber()})")
-                    return true
-                }
-
-                override fun onProgressChanged(view: WebView, newProgress: Int) {
-                    super.onProgressChanged(view, newProgress)
-                    if (newProgress == 100) {
-                        Logger.success(TAG, "WebView加载完成: ${info.name}")
-                    }
-                }
-
-                override fun onReceivedTitle(view: WebView, title: String) {
-                    super.onReceivedTitle(view, title)
-                    supportActionBar?.title = title
-                    currentTitle = title
-                }
             }
 
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                    val url = request.url.toString()
-
-                    if (url.startsWith("http://") || url.startsWith("https://")) {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            startActivity(intent)
-                        } catch (e: Exception) {
-                            Logger.e(TAG, "打开外部链接失败", e)
-                            Toast.makeText(this@PluginHostActivity, "无法打开链接", Toast.LENGTH_SHORT).show()
-                        }
-                        return true
-                    }
-
-                    view.loadUrl(url)
-                    return true
-                }
-
-                override fun onPageFinished(view: WebView, url: String) {
-                    super.onPageFinished(view, url)
-                    Logger.success(TAG, "页面加载完成: $url")
-                }
-
-                override fun onReceivedError(
-                    view: WebView,
-                    errorCode: Int,
-                    description: String,
-                    failingUrl: String
-                ) {
-                    super.onReceivedError(view, errorCode, description, failingUrl)
-                    Logger.e(TAG, "WebView加载错误: $description (code: $errorCode)")
-
-                    val errorHtml = """
-                        <html>
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <style>
-                                body { font-family: sans-serif; padding: 40px 20px; text-align: center; background: #f5f5f5; margin: 0; }
-                                .error-card { max-width: 400px; margin: 40px auto; background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-                                h1 { color: #e74c3c; margin-bottom: 16px; }
-                                p { color: #666; margin-bottom: 8px; }
-                                .url { font-size: 12px; color: #999; word-break: break-all; }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="error-card">
-                                <h1>⚠️ 加载失败</h1>
-                                <p>$description</p>
-                                <p class="url">$failingUrl</p>
-                                <p style="margin-top:16px;font-size:12px;color:#999;">错误代码: $errorCode</p>
-                            </div>
-                        </body>
-                        </html>
-                    """.trimIndent()
-                    view.loadDataWithBaseURL(null, errorHtml, "text/html", "UTF-8", null)
-                }
-            }
-
-            val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, info)
-            addJavascriptInterface(jsInterface, "UINPlugin")
-
-            val entryPath = if (info.entry.isNotEmpty()) info.entry else Constants.PLUGIN_WEB_INDEX
-            val indexPath = "${pluginDir.absolutePath}/$entryPath"
-            val indexFile = File(indexPath)
-
-            if (indexFile.exists()) {
+            val entryPath = if (pluginInfo!!.entry.isNotEmpty()) pluginInfo!!.entry else "web/index.html"
+            val indexPath = "$pluginDir/$entryPath"
+            if (File(indexPath).exists()) {
                 loadUrl("file://$indexPath")
-                Logger.i(TAG, "加载Web插件入口: $indexPath")
+                Logger.i(TAG, "加载 Web 插件: $indexPath")
             } else {
-                val defaultHtml = createDefaultWebPage(info)
-                loadDataWithBaseURL(
-                    "file://${pluginDir.absolutePath}/",
-                    defaultHtml,
-                    "text/html",
-                    "UTF-8",
-                    null
-                )
-                Logger.w(TAG, "入口文件不存在，使用默认页面: $indexPath")
+                val defaultHtml = createDefaultHtml(pluginInfo!!)
+                loadDataWithBaseURL("file://$pluginDir/", defaultHtml, "text/html", "UTF-8", null)
+                Logger.w(TAG, "入口文件不存在，使用默认页面")
             }
         }
 
         container.addView(webView)
         PluginManager.putPluginWebView(currentPluginId, webView)
-        Logger.success(TAG, "Web插件已加载: ${info.name}")
     }
 
-    private fun createDefaultWebPage(info: PluginInfo): String {
+    private fun loadNativePlugin() {
+        try {
+            val view = pluginManager.getPluginViewSync(currentPluginId, this, container)
+            if (view != null) {
+                container.removeAllViews()
+                container.addView(view)
+                Logger.success(TAG, "原生插件加载成功: ${pluginInfo?.name}")
+            } else {
+                Logger.e(TAG, "原生插件加载失败")
+                Toast.makeText(this, "原生插件加载失败", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "原生插件加载异常", e)
+            Toast.makeText(this, "插件加载异常: ${e.message}", Toast.LENGTH_LONG).show()
+            finish()
+        }
+    }
+
+    // ============================================================
+    // JS 接口
+    // ============================================================
+
+    private fun injectJSInterface() {
+        webView?.let {
+            it.removeJavascriptInterface("UINPlugin")
+            val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
+            it.addJavascriptInterface(jsInterface, "UINPlugin")
+            Logger.success(TAG, "UINPlugin JS 接口已重新注入")
+        }
+    }
+
+    private fun notifyBackendStatus() {
+        if (isBackendReady) {
+            webView?.evaluateJavascript(
+                "if (window._onBackendReady) window._onBackendReady($backendPort);",
+                null
+            )
+        } else if (isBackendStarting) {
+            webView?.evaluateJavascript(
+                "if (window._onBackendProgress) window._onBackendProgress(20, '正在启动后端...');",
+                null
+            )
+        } else {
+            webView?.evaluateJavascript(
+                "if (window._onBackendReady) window._onBackendReady(null);",
+                null
+            )
+        }
+    }
+
+    fun evaluateJavascript(script: String) {
+        webView?.evaluateJavascript(script, null)
+    }
+
+    fun setPluginTitle(title: String) {
+        runOnUiThread {
+            supportActionBar?.title = title
+        }
+    }
+
+    // ============================================================
+    // HTTP API 调用
+    // ============================================================
+
+    fun callBackendApi(
+        path: String,
+        method: String = "GET",
+        body: String? = null,
+        callback: (Boolean, String?) -> Unit
+    ) {
+        if (!isBackendReady) {
+            callback(false, "后端未就绪")
+            return
+        }
+
+        Thread {
+            try {
+                val url = "http://127.0.0.1:$backendPort$path"
+                val builder = Request.Builder().url(url)
+
+                when (method.uppercase()) {
+                    "GET" -> builder.get()
+                    "POST" -> {
+                        val mediaType = "application/json; charset=utf-8".toMediaType()
+                        val requestBody = (body ?: "{}").toRequestBody(mediaType)
+                        builder.post(requestBody)
+                    }
+                    "PUT" -> {
+                        val mediaType = "application/json; charset=utf-8".toMediaType()
+                        val requestBody = (body ?: "{}").toRequestBody(mediaType)
+                        builder.put(requestBody)
+                    }
+                    "DELETE" -> builder.delete()
+                    else -> builder.get()
+                }
+
+                val response = okHttpClient.newCall(builder.build()).execute()
+                val responseBody = response.body?.string()
+                response.close()
+
+                if (response.isSuccessful) {
+                    callback(true, responseBody)
+                } else {
+                    callback(false, "HTTP ${response.code}: $responseBody")
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "调用API失败: ${e.message}", e)
+                callback(false, e.message)
+            }
+        }.start()
+    }
+
+    fun getBackendPort(): Int {
+        return if (isBackendReady) backendPort else 0
+    }
+
+    fun isBackendReady(): Boolean {
+        return isBackendReady
+    }
+
+    // ============================================================
+    // 默认 HTML 页面
+    // ============================================================
+
+    private fun createDefaultHtml(info: PluginInfo): String {
+        val backendInfo = if (info.hasBackend()) {
+            "<br>后端: ${info.getBackendDisplayName()}"
+        } else {
+            ""
+        }
+        val noticeInfo = if (info.hasNotice()) {
+            "<br>包含说明文档"
+        } else {
+            ""
+        }
         return """
             <!DOCTYPE html>
             <html>
@@ -755,71 +577,129 @@ class PluginHostActivity : AppCompatActivity() {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>${info.name}</title>
                 <style>
-                    body { font-family: sans-serif; padding: 20px; text-align: center; background: #f5f5f5; margin: 0; }
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: -apple-system, sans-serif; padding: 20px; text-align: center; background: #f5f5f5; }
                     .card { max-width: 400px; margin: 40px auto; background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-                    h1 { color: #37474F; margin-bottom: 16px; }
-                    p { color: #666; margin-bottom: 24px; line-height: 1.6; }
-                    button { background: #37474F; color: white; border: none; padding: 12px 24px; border-radius: 8px; margin: 8px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+                    button { background: #37474F; color: white; border: none; padding: 12px 24px; border-radius: 8px; margin: 8px; cursor: pointer; font-size: 14px; }
                     button:hover { background: #263238; }
                     .info { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 16px; text-align: left; font-size: 12px; color: #666; }
-                    .info strong { color: #37474F; }
+                    .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+                    .online { background: #4CAF50; }
+                    .offline { background: #f44336; }
+                    .starting { background: #FFC107; animation: blink 1s infinite; }
+                    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
                 </style>
             </head>
             <body>
-                <div class="card">
-                    <h1>${info.name}</h1>
-                    <p>${info.description ?: "Web插件"}</p>
-                    <button onclick="UINPlugin.callHost('toast', 'Hello from ${info.name}!')">📱 点我</button>
-                    <button onclick="UINPlugin.callHost('finish', '')">❌ 关闭</button>
-                    <div class="info">
-                        <strong>插件信息</strong><br>
-                        版本: ${info.versionName}<br>
-                        作者: ${info.author ?: "未知"}<br>
-                        ID: ${info.pluginId}<br>
-                        类型: Web插件
-                    </div>
+            <div class="card">
+                <h1>${info.name}</h1>
+                <p>${info.description ?: "Web插件"}</p>
+                <div id="backendStatus" style="margin: 12px 0;">
+                    后端: <span class="status-dot offline" id="statusDot"></span>
+                    <span id="statusText">检测中...</span>
                 </div>
-                <script>
-                    console.log('Web插件已加载: ${info.name}');
-                    console.log('插件信息:', JSON.parse(UINPlugin.getPluginInfo()));
-                    console.log('设备信息:', JSON.parse(UINPlugin.getDeviceInfo()));
-                    window.addEventListener('resume', function() { console.log('插件恢复'); });
-                    window.addEventListener('pause', function() { console.log('插件暂停'); });
-                    window.addEventListener('destroy', function() { console.log('插件销毁'); });
-                </script>
+                <button onclick="testBackend()">测试后端</button>
+                <button onclick="UINPlugin.callHost('finish','')">关闭</button>
+                <div class="info">
+                    <strong>插件信息</strong><br>
+                    版本: ${info.versionName}<br>
+                    作者: ${info.author ?: "未知"}<br>
+                    ID: ${info.pluginId}${backendInfo}${noticeInfo}
+                </div>
+            </div>
+            <script>
+                var backendReady = false;
+                var backendPort = 0;
+
+                window._onBackendReady = function(port) {
+                    var dot = document.getElementById('statusDot');
+                    var text = document.getElementById('statusText');
+                    if (port) {
+                        backendReady = true;
+                        backendPort = port;
+                        dot.className = 'status-dot online';
+                        text.textContent = '已连接 (端口 ' + port + ')';
+                    } else {
+                        dot.className = 'status-dot offline';
+                        text.textContent = '未连接';
+                    }
+                };
+
+                window._onBackendProgress = function(progress, message) {
+                    var dot = document.getElementById('statusDot');
+                    var text = document.getElementById('statusText');
+                    dot.className = 'status-dot starting';
+                    text.textContent = message || ('启动中 ' + progress + '%');
+                };
+
+                function testBackend() {
+                    var status = UINPlugin.getBackendStatus();
+                    if (status.startsWith('running:')) {
+                        alert('后端运行中，端口: ' + status.split(':')[1]);
+                    } else {
+                        alert('后端未运行');
+                    }
+                }
+
+                setTimeout(function() {
+                    try {
+                        var status = UINPlugin.getBackendStatus();
+                        if (status && status.startsWith('running:')) {
+                            var port = parseInt(status.split(':')[1]);
+                            window._onBackendReady(port);
+                        }
+                    } catch(e) {}
+                }, 500);
+            </script>
             </body>
             </html>
         """.trimIndent()
     }
 
+    // ============================================================
+    // 生命周期
+    // ============================================================
+
     override fun onResume() {
         super.onResume()
         if (!isDestroyed) {
-            pluginManager?.onPluginResume(currentPluginId)
-            
-            // ✅ 从设置返回后检查权限状态
-            if (isPermissionRequesting) {
-                checkSpecialPermissionsAfterSettings()
-            }
+            pluginManager.onPluginResume(currentPluginId)
         }
     }
 
     override fun onPause() {
         super.onPause()
         if (!isDestroyed) {
-            pluginManager?.onPluginPause(currentPluginId)
+            pluginManager.onPluginPause(currentPluginId)
         }
     }
 
     override fun onDestroy() {
         isDestroyed = true
         super.onDestroy()
-        pluginManager?.onPluginDestroy(currentPluginId)
-        isPermissionRequesting = false
+
+        backendTimeoutHandler?.removeCallbacks(backendTimeoutRunnable!!)
+        backendTimeoutHandler = null
+
+        val keepAlive = pluginInfo?.backendKeepAlive ?: false
+        if (!keepAlive && isBackendReady) {
+            pluginManager.stopBackend(currentPluginId)
+        }
+
+        webView?.let {
+            it.loadUrl("about:blank")
+            it.clearHistory()
+            it.clearCache(true)
+            it.destroy()
+        }
+        webView = null
+        PluginManager.removePluginWebView(currentPluginId)
+        pluginManager.onPluginDestroy(currentPluginId)
     }
 
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (pluginManager?.onPluginBackPressed(currentPluginId) == true) {
+        if (pluginManager.onPluginBackPressed(currentPluginId)) {
             return
         }
 
@@ -829,34 +709,42 @@ class PluginHostActivity : AppCompatActivity() {
                 return
             }
         }
+        super.onBackPressed()
+    }
 
-        finish()
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_PLUGIN_ID, currentPluginId)
+        webView?.saveState(outState.getBundle(KEY_WEBVIEW_STATE) ?: Bundle().also {
+            outState.putBundle(KEY_WEBVIEW_STATE, it)
+        })
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        val bundle = savedInstanceState.getBundle(KEY_WEBVIEW_STATE)
+        bundle?.let { webView?.restoreState(it) }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
-        val plugin = pluginManager?.getPluginInstance(currentPluginId)
+        val plugin = pluginManager.getPluginInstance(currentPluginId)
         plugin?.onActivityResult(requestCode, resultCode, data)
-
-        webView?.let {
-            val js = """
-                if(window.onActivityResult) {
-                    window.onActivityResult($requestCode, $resultCode, ${data != null});
-                }
-            """.trimIndent()
-            it.evaluateJavascript(js, null)
-        }
     }
 
-    fun setPluginTitle(title: String) {
-        currentTitle = title
-        runOnUiThread {
-            supportActionBar?.title = title
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        val plugin = pluginManager.getPluginInstance(currentPluginId)
+        plugin?.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        try {
+            val jsInterface = PluginJSInterface(this, currentPluginId, pluginInfo!!)
+            jsInterface.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        } catch (e: Exception) {
+            // 忽略
         }
-    }
-
-    fun evaluateJavascript(script: String) {
-        webView?.evaluateJavascript(script, null)
     }
 }

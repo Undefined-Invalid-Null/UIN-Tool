@@ -14,8 +14,8 @@ object AppConstants {
     
     // ==================== 应用信息 ====================
     const val APP_NAME = "UIN_Tool"
-    const val APP_VERSION = "4.0.0"
-    const val APP_VERSION_CODE = 10
+    const val APP_VERSION = "4.2.0"
+    const val APP_VERSION_CODE = 12
     
     // ==================== 目录路径 ====================
     val WORK_DIR = File(Environment.getExternalStorageDirectory(), APP_NAME).absolutePath
