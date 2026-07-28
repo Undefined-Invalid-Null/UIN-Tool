@@ -18,8 +18,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 12
-        versionName "4.2.0"
+        versionCode 13
+        versionName "4.4.0"
 
         multiDexEnabled true
         multiDexKeepProguard file('multidex-config.pro')

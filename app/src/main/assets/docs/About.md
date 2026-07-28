@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-4.2.0-blue)
-![Build](https://img.shields.io/badge/build-12-green)
+![Version](https://img.shields.io/badge/version-4.4.0-blue)
+![Build](https://img.shields.io/badge/build-13-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -14,12 +14,13 @@ UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框
 ### 核心理念
 
 - **开放**：任何人都可以开发插件，支持原生 Java 和 Web 技术栈
-- **安全**：插件权限独立管理，支持签名验证，防止恶意插件
+- **安全**：插件权限授权，支持签名验证，防止恶意插件
 - **高效**：原生性能，Web 插件支持热更新，无需重新编译
 - **易用**：可视化开发向导，无需复杂配置即可创建插件
 - **灵活**：支持网格/列表视图切换，支持分类管理
 - **现代化**：基于 Jetpack Compose 构建，Material 3 设计语言
 - **强大**：内置 Termux 终端环境，支持 Python/Node.js/PHP 后端
+- **持久化**：插件数据独立存储，更新时自动保留用户数据
 
 ---
 
@@ -57,13 +58,13 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v4.2.0 (Build 12)
+### 当前版本：v4.4.0 (Build 13)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 4.2.0 |
-| 版本代码 | 12 |
-| 更新日期 | 2026年7月24日 |
+| 版本号 | 4.4.0 |
+| 版本代码 | 13 |
+| 更新日期 | 2026年7月28日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
@@ -71,312 +72,372 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ### 版本历史
 
-#### v4.2.0 (2026年7月24日) - 🎉 Termux 后端集成
+#### v4.4.0 (2026年7月28日) - 🎉 持久化存储 + 权限系统完善
 
-**🎉 重大更新：插件后端支持**
+**🎉 重大更新：插件数据持久化存储**
 
-**Termux 后端集成：**
-- Web 插件可直接启动 Termux 后端服务（Python/Node.js/PHP/二进制）
-- 后端服务自动启动，用户完全无感知
-- HTTP API 通信（无需 WebSocket）
-- 后端必须提供 `/health` 健康检查端点
-- 后端进程生命周期管理（插件关闭时自动停止）
-- 端口自动分配（默认 8000）
+**核心存储系统：**
+- **统一数据存储**：基于 SharedPreferences 的键值对存储，支持 String/Int/Long/Boolean/Float/JSON 全类型
+- **独立存储隔离**：每个插件拥有独立的 `data/` 目录，数据互不干扰
+- **文件存储系统**：支持读写、删除、复制、移动、列出、获取大小等完整文件操作
+- **安全路径防护**：防止路径遍历攻击，确保文件只能在插件目录内操作
+- **磁盘空间检查**：写入前检查可用空间，防止磁盘写满
+- **并发安全**：使用 ReentrantReadWriteLock 保证多线程安全
+- **数据版本管理**：支持插件数据版本迁移，升级时自动迁移
+- **数据统计**：KV 数量、文件数量、总大小、缓存大小等信息
 
-**后端模板：**
-- 新增 `python_template.tpk` 模板
-- 使用 Python 内置 `http.server`，无需安装 Flask
-- 兼容 Python 3.14+（移除 `cgi` 模块依赖）
-- 支持计算、记录、查询、系统命令等 API
-
-**插件说明功能：**
-- 插件可在 `plugin.json` 中声明 `notice` 字段
-- 首次打开插件时自动显示说明弹窗
-- 用户可选择「不再提示」或「稍后提醒」
-- 插件管理页面可查看完整说明
-
-**插件创建向导优化：**
-- 统一「创建插件」入口，弹窗选择前端类型
-- 支持原生 UI、纯 WebView、WebView + 后端三种模式
-- 后端选择：Python、Node.js、PHP、二进制文件
-- Web 插件默认生成空白 HTML/CSS/JS 文件
-- 二进制后端支持直接选择可执行文件
-- 向导步骤根据类型动态调整（4-5 步）
-
-**后端管理增强：**
-- PluginBackendManager 统一管理后端进程
-- 支持多语言解释器路径自动查找
-- 输出监控（stdout/stderr）
-- 健康检查（等待服务就绪）
-- Python 路径优先使用 Termux 的 `python` 命令
-
-**UI 统一：**
-- 弹窗统一使用 Compose AlertDialog，白色背景 Material 3 风格
-- 开发页面按钮颜色统一
-- 移除所有 Emoji
-
-#### v4.1.0 (2026年7月17日) - 🎉 代码编辑器升级
-
-**🎉 重大更新：Sora Editor 集成**
-
-**代码编辑器全面升级：**
-- **Sora Editor 集成**：替换原有简陋编辑器，采用专业的 Sora Editor 引擎
-- **TextMate 语法高亮**：支持 30+ 种编程语言的语法高亮
-- **主题系统**：内置 28+ 种代码编辑器主题（深色/浅色）
-- **语言支持**：Java、Kotlin、Python、JavaScript、TypeScript、HTML、CSS、JSON、XML、Markdown、Shell、SQL、Go、Rust、PHP、Ruby、Swift、Dart、Lua、Scala、Perl、Haskell、Elixir、Erlang、Clojure、Groovy、Dockerfile、Makefile、INI、Properties、TOML、YAML 等
-- **行号显示**：支持行号显示
-- **代码折叠**：支持代码块折叠
-- **括号匹配**：自动高亮匹配括号
-- **自动缩进**：智能自动缩进
-- **撤销/重做**：完整的撤销/重做历史
-- **主题切换**：一键切换编辑器主题
-- **文件树管理**：侧边栏文件列表，支持添加/删除文件
-- **文件图标**：根据文件类型显示不同图标
-
-**其他优化：**
-- 修复插件权限管理 UI
-- 修复备份恢复功能
-- 优化应用启动速度
-- 统一 Toast 和弹窗样式
-
-**技术细节：**
-- Sora Editor 版本：0.24.4
-- 使用 editor-bom 统一管理版本
-- language-textmate 模块提供语法高亮
-
-#### v4.0.0 (2026年7月14日) - 🎉 重大重构
-
-**🎉 技术栈全面升级：**
-
-**架构重构：**
-- **Kotlin 迁移**：核心代码从 Java 迁移到 Kotlin
-- **Jetpack Compose**：UI 全面迁移到声明式 Compose 框架
-- **MVVM 架构**：引入 ViewModel + StateFlow 响应式状态管理
-- **依赖注入**：ServiceLocator 统一管理服务实例
-- **Repository 模式**：数据层与业务层分离
-
-**终端集成（基于 Termux）：**
-- **内置 Termux 引擎**：集成 Termux 终端模拟器核心
-- **完整 Linux 环境**：支持 APT 包管理、bash/zsh 等 Shell
-- **多会话管理**：支持同时运行多个终端会话
-- **终端设置**：字体、配色、键盘、快捷键全面可配置
-
-**UI 全面升级：**
-- **Material 3 设计**：采用最新 Material Design 规范
-- **深色模式支持**：完整的深色/浅色主题切换
-- **全新玻璃效果**：毛玻璃质感的 UI 组件
-- **完整颜色选择器**：RGB + Alpha 通道独立调节
-- **38+ 颜色配置项**：全部颜色可自定义
-- **7 种圆角配置**：全面控制 UI 形状
-
-**功能增强：**
-- **插件权限系统**：基于 Android 权限模型的插件权限管理
-- **插件依赖检查**：自动检查并提示缺失依赖
-- **UI 配置导入导出**：支持配置备份和分享
-- **完整的备份系统**：备份插件、配置、UI 主题
-
-**开发体验优化：**
-- **插件创建向导**：可视化步骤引导创建插件
-- **内置代码编辑器**：支持缩放、语法高亮、文件管理
-- **Web 项目导入**：支持导入已有的 Web 项目 ZIP 包
-
-**性能优化：**
-- 启动速度优化
-- 内存占用优化
-- 小部件刷新机制优化
-
-#### v3.10.0 (2026年6月9日)
-
-**🎉 重大更新：GitHub 加速 + 强制更新机制**
-
-- GitHub 加速管理页面（13+ 内置镜像站）
-- 强制更新机制（Release Tag 支持 `forceFlag`）
-- 镜像站导入/导出/测试功能
-- CDN 加速开关
-
-#### v3.5.0 (2026年6月8日)
-
-**🐛 修复：** 开发页面按钮显示问题
-
-#### v3.4.0 (2026年6月8日)
-
-**🎉 重大更新：** 应用快捷方式 + 自动更新 + UI 全面优化
-
-#### v3.0.0 (2026年6月8日)
-
-**🎉 重大更新：** 启动体验与文档系统
-
-#### v2.8.0 (2026年6月8日)
-
-**🎉 重大更新：** 应用内更新与版本管理
-
-#### v2.6.0 (2026年6月7日)
-
-**🎉 重大更新：** 插件功能全面增强（网络请求、文件系统、传感器支持）
-
-#### v2.0.0 (2026年6月7日)
-
-**🎉 重大更新：** 插件仓库功能
-
-#### v1.0.0 (2026年6月6日)
-
-首次正式发布
-
----
-
-## 功能清单
-
-### ✅ 已实现功能
-
-| 模块 | 功能 | 状态 | 说明 |
-|------|------|------|------|
-| **启动体验** | SplashActivity | ✅ | 应用启动页，权限检查 |
-| **启动体验** | 引导页系统 | ✅ | 首次启动引导页 |
-| **启动体验** | 应用图标快捷方式 | ✅ | 长按图标快捷菜单 |
-| **启动体验** | 权限请求对话框 | ✅ | 存储权限说明 |
-| **应用更新** | 自动更新检测 | ✅ | 启动时自动检查 |
-| **应用更新** | 强制更新机制 | ✅ | 支持强制更新 |
-| **应用更新** | 版本忽略功能 | ✅ | 可忽略版本 |
-| **应用更新** | 应用内下载 | ✅ | 显示下载进度 |
-| **GitHub 加速** | 镜像站管理 | ✅ | 独立管理页面 |
-| **GitHub 加速** | 内置镜像站 | ✅ | 13+ 个默认镜像 |
-| **GitHub 加速** | 自定义镜像 | ✅ | 手动添加镜像 |
-| **GitHub 加速** | 导入/导出 | ✅ | TXT 格式 |
-| **GitHub 加速** | CDN 加速 | ✅ | 可开关 |
-| **终端 (Termux)** | 终端模拟器 | ✅ | 基于 Termux 改编 |
-| **终端 (Termux)** | Linux 环境 | ✅ | APT 包管理 |
-| **终端 (Termux)** | 多会话支持 | ✅ | 同时运行多个会话 |
-| **终端 (Termux)** | 多窗口支持 | ✅ | Android 7.0+ |
-| **终端 (Termux)** | 终端设置 | ✅ | 字体/配色/快捷键 |
-| **后端集成** | Python 后端 | ✅ | 自动启动 Termux Python |
-| **后端集成** | Node.js 后端 | ✅ | 自动启动 Termux Node.js |
-| **后端集成** | PHP 后端 | ✅ | 自动启动 Termux PHP |
-| **后端集成** | 二进制后端 | ✅ | 选择可执行文件 |
-| **后端集成** | 健康检查 | ✅ | /health 端点 |
-| **后端集成** | 进程管理 | ✅ | 自动启动/停止 |
-| **插件引擎** | 动态加载 DEX | ✅ | DexClassLoader |
-| **插件引擎** | 资源隔离 | ✅ | 独立 Context |
-| **插件引擎** | 生命周期管理 | ✅ | 完整生命周期 |
-| **插件引擎** | WebView 支持 | ✅ | HTML/CSS/JS |
-| **插件引擎** | JS 桥接 API | ✅ | UINPlugin 对象 |
-| **插件引擎** | 网络请求 API | ✅ | HTTP GET/POST |
-| **插件引擎** | 文件系统 API | ✅ | 读写删除文件 |
-| **插件引擎** | 存储 API | ✅ | localStorage |
-| **插件管理** | 导入插件 | ✅ | TPK 文件导入 |
-| **插件管理** | 导出插件 | ✅ | ZIP 包导出 |
-| **插件管理** | 批量导入 | ✅ | 多个 TPK 文件 |
-| **插件管理** | 插件集导入 | ✅ | ZIP 批量导入 |
-| **插件管理** | 分类管理 | ✅ | 添加/删除分类 |
-| **插件管理** | 签名验证 | ✅ | SHA-256 验证 |
-| **插件管理** | 插件说明 | ✅ | notice 字段显示 |
-| **插件仓库** | GitHub 集成 | ✅ | 官方仓库 |
-| **插件权限** | 权限声明 | ✅ | plugin.json 声明 |
-| **插件权限** | 权限检查 | ✅ | 启动前检查 |
-| **插件权限** | 权限请求 | ✅ | 分组请求 |
-| **插件权限** | 权限状态 | ✅ | 可视化状态 |
-| **文档系统** | 文档中心 | ✅ | 集中管理文档 |
-| **开发工具** | 原生插件向导 | ✅ | Kotlin/Java 插件 |
-| **开发工具** | Web 插件向导 | ✅ | Web 插件创建 |
-| **开发工具** | 代码编辑器 | ✅ | Sora Editor 引擎 |
-| **开发工具** | 语法高亮 | ✅ | 30+ 种语言 |
-| **开发工具** | 编辑器主题 | ✅ | 28+ 种主题 |
-| **开发工具** | 模板导出 | ✅ | 导出模板文档 |
-| **UI 个性化** | 颜色配置 | ✅ | 38+ 颜色可调 |
-| **UI 个性化** | 颜色选择器 | ✅ | RGB + Alpha |
-| **UI 个性化** | 圆角配置 | ✅ | 7 种圆角 |
-| **UI 个性化** | 尺寸配置 | ✅ | 按钮/间距/图标 |
-| **UI 个性化** | 字体配置 | ✅ | 字体大小/加粗 |
-| **UI 个性化** | 导入/导出 | ✅ | 配置备份 |
-| **桌面小部件** | 3x3 小部件 | ✅ | 显示 9 个插件 |
-| **桌面小部件** | 1x1 快捷方式 | ✅ | 单个插件快捷方式 |
-
----
-
-## 项目结构
-
-```
-UIN_Tool/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/UIN/Tool/
-│   │   │   ├── app/                         # Termux 终端核心 (基于 Termux 改编)
-│   │   │   │   ├── TermuxActivity.java      # 终端主界面
-│   │   │   │   ├── TermuxService.java       # 终端服务
-│   │   │   │   ├── TermuxInstaller.java     # 环境安装器
-│   │   │   │   └── terminal/                # 终端视图组件
-│   │   │   ├── core/                        # 核心功能模块 (Kotlin)
-│   │   │   │   ├── compiler/                # Java→DEX 编译
-│   │   │   │   ├── di/                      # 依赖注入
-│   │   │   │   ├── plugin/                  # 插件核心框架
-│   │   │   │   └── update/                  # 更新系统
-│   │   │   ├── data/                        # 数据层
-│   │   │   ├── domain/                      # 领域层
-│   │   │   ├── plugin/                      # 插件框架
-│   │   │   │   ├── PluginManager.kt         # 插件管理器
-│   │   │   │   ├── PluginHostActivity.kt    # 插件宿主
-│   │   │   │   ├── PluginBackendManager.kt  # 后端管理器
-│   │   │   │   └── PluginJSInterface.kt     # JS 桥接
-│   │   │   ├── ui/                          # UI 界面 (Compose)
-│   │   │   │   ├── components/              # 可复用组件
-│   │   │   │   ├── screen/                  # 页面 Screen
-│   │   │   │   ├── theme/                   # 主题定义
-│   │   │   │   └── viewmodel/               # ViewModel
-│   │   │   ├── utils/                       # 工具类
-│   │   │   └── widget/                      # 桌面小部件
-│   │   ├── res/                             # 资源文件
-│   │   ├── assets/                          # 静态资源
-│   │   ├── cpp/                             # C/C++ 代码
-│   │   └── AndroidManifest.xml              # 清单文件
-│   └── build.gradle                         # 模块构建文件
-├── build.gradle                             # 项目构建文件
-└── README.md                                # 项目文档
+**插件数据目录结构：**
 ```
 
+/storage/emulated/0/UIN_Tool/plugins/
+└── {pluginId}/
+├── plugin.json          # 插件配置
+├── plugin.dex           # 原生插件 DEX
+├── web/                 # Web 插件文件
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+├── data/                # ✅ 插件数据目录
+│   ├── config.json      # 配置文件
+│   ├── settings.txt     # 用户设置
+│   └── images/          # 用户资源
+└── cache/               # ✅ 插件缓存目录
+└── temp_*.dat
+
+```
+
+**Web 插件存储 API（JavaScript）：**
+```javascript
+// KV 存储
+UINPlugin.setStorage('key', 'value');
+UINPlugin.getStorage('key');
+UINPlugin.setStorageInt('key', 123);
+UINPlugin.setStorageBool('key', true);
+UINPlugin.setStorageJSON('key', JSON.stringify({name: 'test'}));
+
+// 批量操作
+UINPlugin.setStorageBatch(JSON.stringify({k1:'v1', k2:'v2'}));
+const result = JSON.parse(UINPlugin.getStorageBatch('["k1","k2"]'));
+
+// 文件操作
+UINPlugin.writeFile('notes.txt', 'Hello World');
+const content = UINPlugin.readFile('notes.txt');
+UINPlugin.deleteFile('notes.txt');
+
+// 存储统计
+const stats = JSON.parse(UINPlugin.getStorageStats());
+console.log('KV:', stats.kvCount, '文件:', stats.fileCount);
+```
+
+原生插件存储 API（Kotlin）：
+
+```kotlin
+val pctx = PluginContext(context, pluginDir)
+pctx.putString("key", "value")
+val value = pctx.getString("key")
+pctx.writeFile("data.txt", "content")
+val content = pctx.readFile("data.txt")
+```
+
+权限系统全面完善：
+
+· 永久授权状态：插件权限状态持久化存储，一次授权永久生效
+· 权限状态值：0=未授权（显示弹窗），1=已授权（直接进入），2=已拒绝（直接进入）
+· 一键授权：支持一次性授予所有权限
+· 权限分组：普通权限和特殊权限分组请求
+· 特殊权限引导：悬浮窗、修改系统设置等特殊权限引导用户去系统设置开启
+· 权限弹窗优化：Material Design 3 风格弹窗，直观展示权限说明
+· 权限状态查询：可视化查看每个权限的状态
+
+代码编辑器增强：
+
+· TextMate 语法高亮：支持 30+ 种编程语言
+· 28+ 编辑器主题：深色/浅色主题自由切换
+· 文件树管理：侧边栏文件列表，支持添加/删除文件
+· 文件图标：根据文件类型显示不同图标
+· 撤销/重做：完整的编辑历史
+
+API 扩展：
+Web 插件新增 140+ 个 API 接口，覆盖以下类别：
+
+· 设备信息（16个）：型号、版本、屏幕、内存、CPU、构建信息等
+· 传感器（9个）：加速度计、陀螺仪、光线、距离、磁场、方向、气压、温度、湿度
+· 位置服务（2个）：获取位置、反向地理编码
+· 屏幕/显示（5个）：亮度、自动亮度、显示信息、字体缩放
+· 系统设置（7个）：飞行模式、蓝牙、WiFi、移动数据、位置、NFC、自动旋转、勿扰
+· 存储信息（3个）：总容量、可用容量、使用百分比
+· 网络数据（11个）：网络信息、WiFi信息、信号强度、运营商、IP、速度、Ping
+· 电池（5个）：电量、健康、电压、温度、技术
+· 音频（5个）：音量、最大音量、静音、耳机状态
+· 时间/日期（5个）：当前时间、时区、夏令时
+· 系统语言（4个）：系统语言、国家、区域
+· 应用管理（7个）：应用列表、打开应用、应用信息
+· 文件操作（15个）：读写删除、复制移动、目录操作、文件信息
+· 网络请求（5个）：GET、POST、PUT、DELETE、下载
+· 权限（3个）：检查、请求、批量请求
+· UI（4个）：加载、确认对话框、输入对话框
+· 剪贴板（3个）：复制、获取、清空
+· 振动（2个）：震动、取消
+· 通知（2个）：发送、取消
+· 系统操作（10个）：打开各种设置、全屏、常亮、截图
+· 事件（2个）：发送事件、添加监听
+
+数据迁移：
+
+· 旧版 web_plugin_ SharedPreferences 数据自动迁移到新存储系统
+· 插件更新时保留 data/ 目录，用户数据不丢失
+· 卸载插件时自动清理所有数据
+
+Bug 修复：
+
+· 修复权限弹窗点击取消进入插件的问题
+· 修复权限状态持久化失败的问题
+· 修复部分权限被拒绝后仍反复弹窗的问题
+· 优化权限请求流程，一次授权永久生效
+
+v4.2.0 (2026年7月24日) - 🎉 Termux 后端集成
+
+🎉 重大更新：插件后端支持
+
+Termux 后端集成：
+
+· Web 插件可直接启动 Termux 后端服务（Python/Node.js/PHP/二进制）
+· 后端服务自动启动，用户完全无感知
+· HTTP API 通信（无需 WebSocket）
+· 后端必须提供 /health 健康检查端点
+· 后端进程生命周期管理（插件关闭时自动停止）
+· 端口自动分配（默认 8000）
+
+后端模板：
+
+· 新增 python_template.tpk 模板
+· 使用 Python 内置 http.server，无需安装 Flask
+· 兼容 Python 3.14+（移除 cgi 模块依赖）
+· 支持计算、记录、查询、系统命令等 API
+
+插件说明功能：
+
+· 插件可在 plugin.json 中声明 notice 字段
+· 首次打开插件时自动显示说明弹窗
+· 用户可选择「不再提示」或「稍后提醒」
+· 插件管理页面可查看完整说明
+
+插件创建向导优化：
+
+· 统一「创建插件」入口，弹窗选择前端类型
+· 支持原生 UI、纯 WebView、WebView + 后端三种模式
+· 后端选择：Python、Node.js、PHP、二进制文件
+· Web 插件默认生成空白 HTML/CSS/JS 文件
+· 二进制后端支持直接选择可执行文件
+· 向导步骤根据类型动态调整（4-5 步）
+
+后端管理增强：
+
+· PluginBackendManager 统一管理后端进程
+· 支持多语言解释器路径自动查找
+· 输出监控（stdout/stderr）
+· 健康检查（等待服务就绪）
+· Python 路径优先使用 Termux 的 python 命令
+
+UI 统一：
+
+· 弹窗统一使用 Compose AlertDialog，白色背景 Material 3 风格
+· 开发页面按钮颜色统一
+· 移除所有 Emoji
+
+v4.1.0 (2026年7月17日) - 🎉 代码编辑器升级
+
+🎉 重大更新：Sora Editor 集成
+
+代码编辑器全面升级：
+
+· Sora Editor 集成：替换原有简陋编辑器，采用专业的 Sora Editor 引擎
+· TextMate 语法高亮：支持 30+ 种编程语言的语法高亮
+· 主题系统：内置 28+ 种代码编辑器主题（深色/浅色）
+· 语言支持：Java、Kotlin、Python、JavaScript、TypeScript、HTML、CSS、JSON、XML、Markdown、Shell、SQL、Go、Rust、PHP、Ruby、Swift、Dart、Lua、Scala、Perl、Haskell、Elixir、Erlang、Clojure、Groovy、Dockerfile、Makefile、INI、Properties、TOML、YAML 等
+· 行号显示：支持行号显示
+· 代码折叠：支持代码块折叠
+· 括号匹配：自动高亮匹配括号
+· 自动缩进：智能自动缩进
+· 撤销/重做：完整的撤销/重做历史
+· 主题切换：一键切换编辑器主题
+· 文件树管理：侧边栏文件列表，支持添加/删除文件
+· 文件图标：根据文件类型显示不同图标
+
+其他优化：
+
+· 修复插件权限管理 UI
+· 修复备份恢复功能
+· 优化应用启动速度
+· 统一 Toast 和弹窗样式
+
+技术细节：
+
+· Sora Editor 版本：0.24.4
+· 使用 editor-bom 统一管理版本
+· language-textmate 模块提供语法高亮
+
+v4.0.0 (2026年7月14日) - 🎉 重大重构
+
+🎉 技术栈全面升级：
+
+架构重构：
+
+· Kotlin 迁移：核心代码从 Java 迁移到 Kotlin
+· Jetpack Compose：UI 全面迁移到声明式 Compose 框架
+· MVVM 架构：引入 ViewModel + StateFlow 响应式状态管理
+· 依赖注入：ServiceLocator 统一管理服务实例
+· Repository 模式：数据层与业务层分离
+
+终端集成（基于 Termux）：
+
+· 内置 Termux 引擎：集成 Termux 终端模拟器核心
+· 完整 Linux 环境：支持 APT 包管理、bash/zsh 等 Shell
+· 多会话管理：支持同时运行多个终端会话
+· 终端设置：字体、配色、键盘、快捷键全面可配置
+
+UI 全面升级：
+
+· Material 3 设计：采用最新 Material Design 规范
+· 深色模式支持：完整的深色/浅色主题切换
+· 全新玻璃效果：毛玻璃质感的 UI 组件
+· 完整颜色选择器：RGB + Alpha 通道独立调节
+· 38+ 颜色配置项：全部颜色可自定义
+· 7 种圆角配置：全面控制 UI 形状
+
+功能增强：
+
+· 插件权限系统：基于 Android 权限模型的插件权限管理
+· 插件依赖检查：自动检查并提示缺失依赖
+· UI 配置导入导出：支持配置备份和分享
+· 完整的备份系统：备份插件、配置、UI 主题
+
+开发体验优化：
+
+· 插件创建向导：可视化步骤引导创建插件
+· 内置代码编辑器：支持缩放、语法高亮、文件管理
+· Web 项目导入：支持导入已有的 Web 项目 ZIP 包
+
+性能优化：
+
+· 启动速度优化
+· 内存占用优化
+· 小部件刷新机制优化
+
 ---
 
-## 技术栈详情
+功能清单
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Kotlin | 2.1.0 | 主要开发语言 |
-| Jetpack Compose | 2024.09.00 | 声明式 UI 框架 |
-| Compose Material 3 | 1.3.0 | Material 3 组件 |
-| Compose Navigation | 2.7.7 | 页面导航 |
-| Android SDK | API 35 | Android 框架 |
-| Kotlin Coroutines | 1.7.3 | 异步编程 |
-| OkHttp | 4.12.0 | HTTP 客户端 |
-| Retrofit | 2.11.0 | REST API |
-| Gson | 2.11.0 | JSON 解析 |
-| CommonMark | 0.22.0 | Markdown 渲染 |
-| Sora Editor | 0.24.4 | 代码编辑器 |
-| Sora Editor TextMate | 0.24.4 | 语法高亮 |
-| MultiDex | 2.0.1 | 多 DEX 支持 |
-| NDK | 29.0.14033849 | C/C++ 原生支持 |
+✅ 已实现功能
+
+模块 功能 状态 说明
+启动体验 SplashActivity ✅ 应用启动页，权限检查
+启动体验 引导页系统 ✅ 首次启动引导页
+启动体验 应用图标快捷方式 ✅ 长按图标快捷菜单
+启动体验 权限请求对话框 ✅ 存储权限说明
+应用更新 自动更新检测 ✅ 启动时自动检查
+应用更新 强制更新机制 ✅ 支持强制更新
+应用更新 版本忽略功能 ✅ 可忽略版本
+应用更新 应用内下载 ✅ 显示下载进度
+GitHub 加速 镜像站管理 ✅ 独立管理页面
+GitHub 加速 内置镜像站 ✅ 13+ 个默认镜像
+GitHub 加速 自定义镜像 ✅ 手动添加镜像
+GitHub 加速 导入/导出 ✅ TXT 格式
+GitHub 加速 CDN 加速 ✅ 可开关
+终端 (Termux) 终端模拟器 ✅ 基于 Termux 改编
+终端 (Termux) Linux 环境 ✅ APT 包管理
+终端 (Termux) 多会话支持 ✅ 同时运行多个会话
+终端 (Termux) 多窗口支持 ✅ Android 7.0+
+终端 (Termux) 终端设置 ✅ 字体/配色/快捷键
+后端集成 Python 后端 ✅ 自动启动 Termux Python
+后端集成 Node.js 后端 ✅ 自动启动 Termux Node.js
+后端集成 PHP 后端 ✅ 自动启动 Termux PHP
+后端集成 二进制后端 ✅ 选择可执行文件
+后端集成 健康检查 ✅ /health 端点
+后端集成 进程管理 ✅ 自动启动/停止
+插件引擎 动态加载 DEX ✅ DexClassLoader
+插件引擎 资源隔离 ✅ 独立 Context
+插件引擎 生命周期管理 ✅ 完整生命周期
+插件引擎 WebView 支持 ✅ HTML/CSS/JS
+插件引擎 JS 桥接 API ✅ 140+ 个 API
+插件引擎 网络请求 API ✅ HTTP GET/POST/PUT/DELETE
+插件引擎 文件系统 API ✅ 读写删除复制移动
+插件引擎 存储 API ✅ KV + JSON + 批量操作
+插件引擎 数据持久化 ✅ 独立 data/ 目录
+插件管理 导入插件 ✅ TPK 文件导入
+插件管理 导出插件 ✅ ZIP 包导出
+插件管理 批量导入 ✅ 多个 TPK 文件
+插件管理 插件集导入 ✅ ZIP 批量导入
+插件管理 分类管理 ✅ 添加/删除分类
+插件管理 签名验证 ✅ SHA-256 验证
+插件管理 插件说明 ✅ notice 字段显示
+插件仓库 GitHub 集成 ✅ 官方仓库
+插件权限 权限声明 ✅ plugin.json 声明
+插件权限 权限检查 ✅ 启动前检查
+插件权限 权限请求 ✅ 分组请求
+插件权限 权限状态 ✅ 可视化状态
+插件权限 永久授权 ✅ 状态持久化
+插件权限 Material 3 弹窗 ✅ 统一风格
+文档系统 文档中心 ✅ 集中管理文档
+开发工具 原生插件向导 ✅ Kotlin/Java 插件
+开发工具 Web 插件向导 ✅ Web 插件创建
+开发工具 代码编辑器 ✅ Sora Editor 引擎
+开发工具 语法高亮 ✅ 30+ 种语言
+开发工具 编辑器主题 ✅ 28+ 种主题
+开发工具 模板导出 ✅ 导出模板文档
+UI 个性化 颜色配置 ✅ 38+ 颜色可调
+UI 个性化 颜色选择器 ✅ RGB + Alpha
+UI 个性化 圆角配置 ✅ 7 种圆角
+UI 个性化 尺寸配置 ✅ 按钮/间距/图标
+UI 个性化 字体配置 ✅ 字体大小/加粗
+UI 个性化 导入/导出 ✅ 配置备份
+桌面小部件 3x3 小部件 ✅ 显示 9 个插件
+桌面小部件 1x1 快捷方式 ✅ 单个插件快捷方式
 
 ---
 
-## 快速开始
+技术栈详情
 
-### 安装应用
+技术 版本 用途
+Kotlin 2.1.0 主要开发语言
+Jetpack Compose 2024.09.00 声明式 UI 框架
+Compose Material 3 1.3.0 Material 3 组件
+Compose Navigation 2.7.7 页面导航
+Android SDK API 35 Android 框架
+Kotlin Coroutines 1.7.3 异步编程
+OkHttp 4.12.0 HTTP 客户端
+Retrofit 2.11.0 REST API
+Gson 2.11.0 JSON 解析
+CommonMark 0.22.0 Markdown 渲染
+Sora Editor 0.24.4 代码编辑器
+Sora Editor TextMate 0.24.4 语法高亮
+MultiDex 2.0.1 多 DEX 支持
+NDK 29.0.14033849 C/C++ 原生支持
 
-1. 从 [Releases](https://github.com/Undefined-Invalid-Null/UIN-Tool/releases) 下载最新 APK
+---
+
+快速开始
+
+安装应用
+
+1. 从 Releases 下载最新 APK
 2. 在设备上启用「允许安装未知来源应用」
 3. 安装 APK
 
-### 首次启动
+首次启动
 
 1. 应用启动后显示存储权限说明对话框
 2. 点击「去授权」授予存储权限
 3. 首次启动显示引导页
 4. 阅读引导内容后点击「开始体验」
 
-### 使用终端
+使用终端
 
 1. 点击底部「开发」标签
 2. 点击「打开终端」启动终端
 3. 首次启动会自动安装 Linux 环境（约 30-60 秒）
 
-**终端常用命令：**
+终端常用命令：
 
 ```bash
 # 更新软件源
@@ -392,19 +453,21 @@ pkg install git
 pkg install nodejs
 ```
 
-### 安装插件
+安装插件
 
-**方式一：从仓库安装**
+方式一：从仓库安装
+
 1. 点击底部「仓库」标签
 2. 浏览可用插件
 3. 点击「安装」按钮
 
-**方式二：本地导入**
+方式二：本地导入
+
 1. 将 .tpk 文件传输到手机
 2. 点击底部「管理」→「插件管理」
 3. 点击「导入」选择文件
 
-### 创建插件
+创建插件
 
 1. 点击底部「开发」标签
 2. 点击「创建插件」
@@ -413,7 +476,7 @@ pkg install nodejs
 5. 按照向导填写插件信息
 6. 点击「完成」生成项目文件
 
-### 使用代码编辑器
+使用代码编辑器
 
 1. 在插件创建向导中进入代码编辑器
 2. 左侧边栏显示项目文件列表
@@ -424,124 +487,101 @@ pkg install nodejs
 7. 支持添加/删除文件
 8. 点击「完成」保存所有更改
 
+插件数据存储
+
+Web 插件（JavaScript）：
+
+```javascript
+// 存储数据
+UINPlugin.setStorage('username', 'John');
+UINPlugin.setStorageInt('score', 100);
+UINPlugin.setStorageJSON('config', JSON.stringify({theme: 'dark'}));
+
+// 读取数据
+const name = UINPlugin.getStorage('username');
+const score = UINPlugin.getStorageInt('score', 0);
+const config = JSON.parse(UINPlugin.getStorageJSON('config'));
+
+// 文件操作
+UINPlugin.writeFile('notes.txt', 'Hello World');
+const content = UINPlugin.readFile('notes.txt');
+
+// 查看存储统计
+const stats = JSON.parse(UINPlugin.getStorageStats());
+console.log('KV数量:', stats.kvCount);
+console.log('文件数量:', stats.fileCount);
+```
+
+原生插件（Kotlin）：
+
+```kotlin
+val pctx = PluginContext(context, pluginDir)
+pctx.putString("key", "value")
+val value = pctx.getString("key")
+pctx.writeFile("data.txt", "content")
+```
+
 ---
 
-## 开源协议
+常见问题
+
+Q: 如何安装插件？
+A: 三种方式：从「仓库」页面直接安装、导入 .tpk 文件、批量导入或插件集导入。
+
+Q: Web 插件和原生插件有什么区别？
+A: Web 插件使用 HTML/CSS/JS 开发，无需编译，修改后即时生效；原生插件使用 Java 开发，性能更好，但需要编译。
+
+Q: 如何开发自己的插件？
+A: 点击底部「开发」→「创建插件」，选择类型后按照向导操作即可。
+
+Q: 如何自定义 UI 颜色和圆角？
+A: 在「管理」→「UI 个性化」中，可以自定义 38+ 种颜色和 7 种圆角大小。
+
+Q: 插件数据存储在哪里？
+A: 每个插件的数据存储在 /storage/emulated/0/UIN_Tool/plugins/{pluginId}/data/ 目录下，KV 数据存储在 SharedPreferences 中。
+
+Q: 更新插件会丢失数据吗？
+A: 不会。更新插件时会自动保留 data/ 目录，用户数据不会丢失。
+
+Q: 插件权限状态会持久化吗？
+A: 会。一次授权后，权限状态永久保存，下次打开不再重复弹窗。
+
+Q: Web 插件支持哪些 API？
+A: 支持 140+ 个 API，涵盖设备信息、传感器、位置、网络、文件系统、存储、权限、UI、剪贴板、振动、通知、系统操作等。
+
+Q: 代码编辑器支持哪些语言？
+A: 支持 Java、Kotlin、Python、JavaScript、TypeScript、HTML、CSS、JSON、XML、Markdown、Shell、SQL、Go、Rust、PHP、Ruby、Swift、Dart、Lua、Scala、Perl、Haskell、Elixir、Erlang、Clojure、Groovy、Dockerfile、Makefile、INI、Properties、TOML、YAML 等 30+ 种编程语言。
+
+Q: 如何导出插件数据？
+A: Web 插件可使用 UINPlugin.exportData() 导出所有数据为 JSON 格式。
+
+Q: 终端功能如何使用？
+A: 点击底部「开发」→「打开终端」，首次使用会自动安装 Linux 环境。
+
+---
+
+开源协议
 
 本项目采用 MIT License 开源协议。
 
 ---
 
-## 致谢
+贡献者名单
 
-### 开源项目依赖
-
-| 项目 | 许可证 | 用途 |
-|------|--------|------|
-| Android SDK | Apache 2.0 | 基础框架 |
-| Jetpack Compose | Apache 2.0 | UI 框架 |
-| Material Components | Apache 2.0 | UI 组件库 |
-| Kotlin | Apache 2.0 | 编程语言 |
-| Coroutines | Apache 2.0 | 异步编程 |
-| OkHttp | Apache 2.0 | HTTP 客户端 |
-| Retrofit | Apache 2.0 | REST API |
-| Gson | Apache 2.0 | JSON 解析 |
-| CommonMark | BSD-2-Clause | Markdown 渲染 |
-| Sora Editor | GPL-3.0 | 代码编辑器 |
-
-### 🔥 特别致谢：Termux
-
-UIN Tool 的终端功能基于 Termux 项目改编。Termux 是一个功能强大的 Android 终端模拟器和 Linux 环境，由 Termux 团队开发和维护。
-
-我们在 Termux 核心代码的基础上进行了以下适配和增强：
-- 集成到 UIN Tool 的插件化框架中
-- 优化 UI 交互体验
-- 增强与 Compose 界面的协同
-- 保持与 Termux 生态的兼容性
-
-**Termux 项目地址：** https://github.com/termux/termux-app
-
-此外感谢这个项目，我们的 Termux 源码及 BootStrap 均由此生成（进行了一些修改）：
-https://github.com/robertkirkman/termux-generator
+贡献者 角色 贡献内容
+UIN Team 核心开发 架构设计、核心功能
+一支电笔 功能开发 1x1 桌面小部件功能
+Termux 团队 上游项目 终端模拟器核心引擎
 
 ---
 
-## 贡献者名单
+联系方式
 
-| 贡献者 | 角色 | 贡献内容 |
-|--------|------|----------|
-| UIN Team | 核心开发 | 架构设计、核心功能 |
-| 一支电笔 | 功能开发 | 1x1 桌面小部件功能 |
-| Termux 团队 | 上游项目 | 终端模拟器核心引擎 |
-
----
-
-## 联系方式
-
-| 渠道 | 地址 |
-|------|------|
-| GitHub | https://github.com/Undefined-Invalid-Null/UIN-Tool |
-| 电子邮箱 | undefinedinvalidnull@outlook.com |
-| 插件仓库 | https://github.com/UIN-Tool-Plugins |
-| QQ 群 | 511875883 |
-
----
-
-## 常见问题
-
-**Q: 如何安装插件？**
-A: 三种方式：从「仓库」页面直接安装、导入 .tpk 文件、批量导入或插件集导入。
-
-**Q: Web 插件和原生插件有什么区别？**
-A: Web 插件使用 HTML/CSS/JS 开发，无需编译，修改后即时生效；原生插件使用 Java 开发，性能更好，但需要编译。
-
-**Q: 如何开发自己的插件？**
-A: 点击底部「开发」→「创建插件」，选择类型后按照向导操作即可。
-
-**Q: 如何自定义 UI 颜色和圆角？**
-A: 在「管理」→「UI 个性化」中，可以自定义 38+ 种颜色和 7 种圆角大小。
-
-**Q: 插件说明功能如何使用？**
-A: 在 `plugin.json` 中添加 `notice` 字段，首次打开插件时会自动显示说明弹窗，用户可选择不再提示。
-
-**Q: 如何创建带后端的 Web 插件？**
-A: 点击「创建插件」→ 选择「Web UI + 后端」→ 选择后端语言（Python/Node.js/PHP/二进制），向导会自动生成对应的后端文件。
-
-**Q: Python 后端需要安装什么依赖？**
-A: 使用 Python 内置的 `http.server`，无需安装 Flask 等第三方库，完全兼容 Python 3.14+。
-
-**Q: 代码编辑器支持哪些语言？**
-A: 支持 Java、Kotlin、Python、JavaScript、TypeScript、HTML、CSS、JSON、XML、Markdown、Shell、SQL、Go、Rust、PHP、Ruby、Swift、Dart、Lua、Scala、Perl、Haskell、Elixir、Erlang、Clojure、Groovy、Dockerfile、Makefile、INI、Properties、TOML、YAML 等 30+ 种编程语言。
-
-**Q: 代码编辑器如何切换主题？**
-A: 点击编辑器右上角的调色板图标，在弹出对话框中选择喜欢的主题即可（共 28+ 种主题）。
-
-**Q: 插件签名验证失败怎么办？**
-A: 可以在「管理」→「开发者选项」中开启「忽略签名验证」（仅用于测试）。
-
-**Q: 如何备份插件和数据？**
-A: 在「管理」→「备份恢复」中点击「创建备份」。
-
-**Q: 应用崩溃了怎么办？**
-A: 应用会自动捕获崩溃日志，下次启动时会自动打开日志查看器。
-
-**Q: GitHub 加速功能如何使用？**
-A: 在「管理」→「GitHub 加速」中配置镜像站和 CDN 加速。
-
-**Q: 强制更新是什么？**
-A: 当 Release Tag 格式为 {versionCode}-{versionName}-1 时，会强制用户更新，无法跳过。
-
-**Q: 终端功能如何使用？**
-A: 点击底部「开发」→「打开终端」，首次使用会自动安装 Linux 环境，安装完成后即可使用。
-
-**Q: 终端如何访问手机文件？**
-A: 终端中的 `~/storage/shared/` 目录对应手机共享存储（内部存储根目录）。
-
----
-
-## 最后更新
-
-本文档最后更新于：**2026年7月24日**
+渠道 地址
+GitHub https://github.com/Undefined-Invalid-Null/UIN-Tool
+电子邮箱 undefinedinvalidnull@outlook.com
+插件仓库 https://github.com/UIN-Tool-Plugins
+QQ 群 511875883
 
 ---
 

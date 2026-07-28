@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 4.2.0 |
-| 对应应用版本 | v4.2.0 (Build 12) |
-| 最后更新 | 2026年7月24日 |
+| 文档版本 | 4.4.0 |
+| 对应应用版本 | v4.4.0 (Build 13) |
+| 最后更新 | 2026年7月28日 |
 
 ---
 
@@ -28,6 +28,7 @@
 - [3.2 支持的 Android 控件](#32-支持的-android-控件)
 - [3.3 布局示例](#33-布局示例)
 - [3.4 访问插件资源](#34-访问插件资源)
+- [3.5 插件数据存储 API](#35-插件数据存储-api)
 
 ### 四、Web 插件开发（无后端）
 - [4.1 目录结构](#41-目录结构)
@@ -45,69 +46,77 @@
 - [5.7 前端与后端通信](#57-前端与后端通信)
 - [5.8 后端 API 规范](#58-后端-api-规范)
 
-### 六、插件说明功能
+### 六、插件数据持久化存储（v4.4.0 新增）
 - [6.1 概述](#61-概述)
-- [6.2 配置方法](#62-配置方法)
-- [6.3 用户交互](#63-用户交互)
+- [6.2 数据目录结构](#62-数据目录结构)
+- [6.3 Web 插件存储 API](#63-web-插件存储-api)
+- [6.4 原生插件存储 API](#64-原生插件存储-api)
+- [6.5 数据迁移](#65-数据迁移)
+- [6.6 数据统计](#66-数据统计)
 
-### 七、PluginInterface 接口详解
-- [7.1 方法说明](#71-方法说明)
-- [7.2 完整实现示例](#72-完整实现示例)
+### 七、权限系统（v4.4.0 完善）
+- [7.1 权限状态管理](#71-权限状态管理)
+- [7.2 权限状态值](#72-权限状态值)
+- [7.3 权限弹窗行为](#73-权限弹窗行为)
+- [7.4 权限声明](#74-权限声明)
+- [7.5 权限类型](#75-权限类型)
 
-### 八、JavaScript API 完整参考
-- [8.1 callHost - 调用宿主方法](#81-callhost---调用宿主方法)
-- [8.2 httpGet / httpPost - 网络请求](#82-httpget--httppost---网络请求)
-- [8.3 传感器 API](#83-传感器-api)
-- [8.4 文件系统 API](#84-文件系统-api)
-- [8.5 存储 API](#85-存储-api)
-- [8.6 信息获取 API](#86-信息获取-api)
-- [8.7 系统 API](#87-系统-api)
-- [8.8 后端通信 API](#88-后端通信-api)
+### 八、插件说明功能
+- [8.1 概述](#81-概述)
+- [8.2 配置方法](#82-配置方法)
+- [8.3 用户交互](#83-用户交互)
 
-### 九、打包与导入
-- [9.1 打包方式](#91-打包方式)
-- [9.2 文件结构](#92-文件结构)
-- [9.3 plugin.json 完整字段](#93-pluginjson-完整字段)
+### 九、PluginInterface 接口详解
+- [9.1 方法说明](#91-方法说明)
+- [9.2 完整实现示例](#92-完整实现示例)
 
-### 十、插件权限系统
-- [10.1 权限声明](#101-权限声明)
-- [10.2 权限类型](#102-权限类型)
-- [10.3 权限请求流程](#103-权限请求流程)
+### 十、JavaScript API 完整参考（v4.4.0 扩展）
+- [10.1 基础 API](#101-基础-api)
+- [10.2 存储 API](#102-存储-api)
+- [10.3 文件系统 API](#103-文件系统-api)
+- [10.4 网络请求 API](#104-网络请求-api)
+- [10.5 设备信息 API](#105-设备信息-api)
+- [10.6 传感器 API](#106-传感器-api)
+- [10.7 系统 API](#107-系统-api)
+- [10.8 后端通信 API](#108-后端通信-api)
+- [10.9 数据统计 API](#109-数据统计-api)
 
-### 十一、发布到插件仓库
-- [11.1 仓库要求](#111-仓库要求)
-- [11.2 发布步骤](#112-发布步骤)
+### 十一、打包与导入
+- [11.1 打包方式](#111-打包方式)
+- [11.2 文件结构](#112-文件结构)
+- [11.3 plugin.json 完整字段](#113-pluginjson-完整字段)
 
-### 十二、终端功能
-- [12.1 概述](#121-概述)
-- [12.2 终端特性](#122-终端特性)
-- [12.3 常用命令](#123-常用命令)
-- [12.4 在插件中调用终端命令](#124-在插件中调用终端命令)
+### 十二、发布到插件仓库
+- [12.1 仓库要求](#121-仓库要求)
+- [12.2 发布步骤](#122-发布步骤)
 
-### 十三、UI 个性化开发
-- [13.1 颜色系统](#131-颜色系统)
-- [13.2 颜色配置项](#132-颜色配置项)
-- [13.3 形状配置](#133-形状配置)
-- [13.4 主题系统](#134-主题系统)
+### 十三、终端功能
+- [13.1 概述](#131-概述)
+- [13.2 终端特性](#132-终端特性)
+- [13.3 常用命令](#133-常用命令)
 
-### 十四、调试技巧
-- [14.1 日志输出](#141-日志输出)
-- [14.2 查看运行日志](#142-查看运行日志)
-- [14.3 WebView 远程调试](#143-webview-远程调试)
-- [14.4 后端调试](#144-后端调试)
+### 十四、UI 个性化开发
+- [14.1 颜色系统](#141-颜色系统)
+- [14.2 颜色配置项](#142-颜色配置项)
+- [14.3 形状配置](#143-形状配置)
 
-### 十五、常见问题
-- [15.1 Q1-Q15](#151-常见问题)
+### 十五、调试技巧
+- [15.1 日志输出](#151-日志输出)
+- [15.2 查看运行日志](#152-查看运行日志)
+- [15.3 WebView 远程调试](#153-webview-远程调试)
 
-### 十六、最佳实践
-- [16.1 命名规范](#161-命名规范)
-- [16.2 性能优化](#162-性能优化)
-- [16.3 内存管理](#163-内存管理)
-- [16.4 安全性](#164-安全性)
-- [16.5 版本管理](#165-版本管理)
+### 十六、常见问题
+- [16.1 Q1-Q20](#161-常见问题)
 
-### 十七、技术支持
-- [17.1 联系方式](#171-联系方式)
+### 十七、最佳实践
+- [17.1 命名规范](#171-命名规范)
+- [17.2 性能优化](#172-性能优化)
+- [17.3 数据存储最佳实践](#173-数据存储最佳实践)
+- [17.4 安全性](#174-安全性)
+- [17.5 版本管理](#175-版本管理)
+
+### 十八、技术支持
+- [18.1 联系方式](#181-联系方式)
 
 ---
 
@@ -137,11 +146,11 @@
 | 插件名称 | 在列表中显示的名称 | 我的插件 | ✅ |
 | 作者 | 开发者名称 | 张三 | ❌ |
 | 描述 | 插件功能说明 | 这是一个示例插件 | ❌ |
+| 插件说明 | 首次打开显示的说明 | 欢迎使用！ | ❌ |
 | 版本号 | 数字版本，用于版本比较 | 1 | ✅ |
 | 版本名 | 显示版本号 | 1.0.0 | ✅ |
 | 主类名 | 入口类的完整路径（原生插件） | com.example.MainPlugin | ✅ |
 | 入口文件 | Web 插件入口（Web 插件） | web/index.html | ✅ |
-| 插件说明 | 首次打开时显示的说明 | 欢迎使用！ | ❌ |
 
 ### 1.3 编写代码
 
@@ -182,6 +191,7 @@
 | 运行性能 | 高 | 中等 | 中等 |
 | 热更新 | 需重新编译 | 无需编译 | 无需编译 |
 | 后端支持 | 无 | 无 | Python/Node.js/PHP/二进制 |
+| 数据持久化 | ✅ PluginContext | ✅ UINPlugin API | ✅ UINPlugin API |
 | 学习成本 | 需懂 Android | 懂前端即可 | 懂前端 + 后端 |
 | 编译方式 | 需要编译 | 无需编译 | 无需编译 |
 
@@ -193,8 +203,8 @@
 | 快速原型开发 | Web 插件 |
 | 已有 Web 项目 | Web 插件 |
 | 需要后端计算或数据处理 | Web + 后端插件 |
+| 需要持久化存储数据 | Web 插件（使用 setStorage） |
 | 需要调用 Linux 命令 | Web + Python/Node.js |
-| 需要运行已有二进制程序 | Web + 二进制后端 |
 
 ---
 
@@ -275,23 +285,22 @@ class MainPlugin : PluginInterface {
 }
 ```
 
-### 3.2 支持的 Android 控件
+3.2 支持的 Android 控件
 
-| 控件 | 说明 | 常用方法 |
-|------|------|----------|
-| TextView | 文本显示 | setText(), setTextSize(), setTextColor() |
-| EditText | 文本输入 | getText(), setHint() |
-| Button | 按钮 | setText(), setOnClickListener() |
-| ImageView | 图片显示 | setImageResource(), setImageBitmap() |
-| LinearLayout | 线性布局 | setOrientation(), setGravity() |
-| RelativeLayout | 相对布局 | addRule() |
-| FrameLayout | 帧布局 | 层叠视图 |
-| ScrollView | 滚动视图 | 包裹内容 |
-| ProgressBar | 进度条 | setProgress(), setVisibility() |
-| CheckBox | 复选框 | setChecked(), isChecked() |
-| Switch | 开关 | setChecked(), isChecked() |
+控件 说明 常用方法
+TextView 文本显示 setText(), setTextSize(), setTextColor()
+EditText 文本输入 getText(), setHint()
+Button 按钮 setText(), setOnClickListener()
+ImageView 图片显示 setImageResource(), setImageBitmap()
+LinearLayout 线性布局 setOrientation(), setGravity()
+RelativeLayout 相对布局 addRule()
+FrameLayout 帧布局 层叠视图
+ScrollView 滚动视图 包裹内容
+ProgressBar 进度条 setProgress(), setVisibility()
+CheckBox 复选框 setChecked(), isChecked()
+Switch 开关 setChecked(), isChecked()
 
-### 3.3 布局示例
+3.3 布局示例
 
 ```kotlin
 // 线性布局（垂直）
@@ -310,7 +319,7 @@ val rowLayout = LinearLayout(appContext).apply {
 }
 ```
 
-### 3.4 访问插件资源
+3.4 访问插件资源
 
 ```kotlin
 // 获取插件目录
@@ -331,11 +340,78 @@ if (iconFile.exists()) {
 }
 ```
 
+3.5 插件数据存储 API
+
+```kotlin
+// 获取 PluginContext
+val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
+val pctx = PluginContext(context, pluginDir.absolutePath)
+
+// ============ KV 存储 ============
+// 存储字符串
+pctx.putString("username", "JohnDoe")
+val username = pctx.getString("username", "Guest")
+
+// 存储整数
+pctx.putInt("score", 100)
+val score = pctx.getInt("score", 0)
+
+// 存储布尔值
+pctx.putBoolean("isLoggedIn", true)
+val isLoggedIn = pctx.getBoolean("isLoggedIn", false)
+
+// 存储 JSON
+val json = JSONObject().apply {
+    put("theme", "dark")
+    put("fontSize", 14)
+}
+pctx.putJSON("config", json)
+val config = pctx.getJSON("config")
+
+// 删除键
+pctx.remove("temp_data")
+
+// 检查键是否存在
+val exists = pctx.contains("username")
+
+// ============ 文件存储 ============
+// 写入文件
+pctx.writeFile("notes.txt", "Hello World")
+
+// 读取文件
+val content = pctx.readFile("notes.txt")
+
+// 删除文件
+pctx.deletePluginFile("notes.txt")
+
+// 列出文件
+val files = pctx.listPluginFiles()
+
+// 文件是否存在
+val fileExists = pctx.fileExists("notes.txt")
+
+// 获取文件大小
+val size = pctx.getPluginFileSize("notes.txt")
+
+// ============ 缓存管理 ============
+pctx.clearPluginCache()
+
+// ============ 数据统计 ============
+val stats = pctx.getStorageStats()
+println("KV数量: ${stats.kvCount}")
+println("文件数量: ${stats.fileCount}")
+println("总大小: ${stats.totalFileSize}")
+
+// ============ 权限状态管理 ============
+val state = pctx.getPermissionState()
+pctx.setPermissionState(1)  // 1=已授权
+```
+
 ---
 
-## 四、Web 插件开发（无后端）
+四、Web 插件开发（无后端）
 
-### 4.1 目录结构
+4.1 目录结构
 
 ```
 your-plugin/
@@ -347,7 +423,7 @@ your-plugin/
     └── script.js        # JavaScript 文件（可选）
 ```
 
-### 4.2 plugin.json 配置
+4.2 plugin.json 配置
 
 ```json
 {
@@ -368,7 +444,7 @@ your-plugin/
 }
 ```
 
-### 4.3 HTML 模板示例
+4.3 HTML 模板示例
 
 ```html
 <!DOCTYPE html>
@@ -384,17 +460,18 @@ your-plugin/
         <h1>我的插件</h1>
         <button onclick="showToast()">显示提示</button>
         <button onclick="closePlugin()">关闭插件</button>
-        <button onclick="testHttpGet()">GET 请求</button>
+        <button onclick="saveData()">保存数据</button>
+        <button onclick="loadData()">读取数据</button>
     </div>
     <script src="script.js"></script>
 </body>
 </html>
 ```
 
-### 4.4 JavaScript 示例
+4.4 JavaScript 示例
 
 ```javascript
-// 基础功能
+// ============ 基础功能 ============
 function showToast() {
     UINPlugin.callHost('toast', 'Hello from WebView!');
 }
@@ -403,36 +480,55 @@ function closePlugin() {
     UINPlugin.callHost('finish', '');
 }
 
-// 网络请求
-function testHttpGet() {
-    const callbackId = 'get_' + Date.now();
-    window.UINPluginCallbacks = window.UINPluginCallbacks || {};
-    window.UINPluginCallbacks[callbackId] = function(response) {
-        const data = JSON.parse(response);
-        if (data.success) {
-            console.log('GET 成功:', data.data);
-            alert('请求成功！');
-        } else {
-            console.error('GET 失败:', data.error);
-            alert('请求失败: ' + data.error);
-        }
-        delete window.UINPluginCallbacks[callbackId];
-    };
-    UINPlugin.httpGet('https://api.github.com/orgs/UIN-Tool-Plugins/repos', callbackId);
-}
-
-// 存储
+// ============ 存储 API ============
 function saveData() {
-    UINPlugin.setStorage('key', 'value');
-    UINPlugin.callHost('toast', '已保存');
+    UINPlugin.setStorage('username', 'JohnDoe');
+    UINPlugin.setStorageInt('score', 100);
+    UINPlugin.setStorageJSON('config', JSON.stringify({theme: 'dark'}));
+    UINPlugin.callHost('toast', '数据已保存');
 }
 
 function loadData() {
-    const value = UINPlugin.getStorage('key');
-    UINPlugin.callHost('toast', '读取: ' + value);
+    const name = UINPlugin.getStorage('username');
+    const score = UINPlugin.getStorageInt('score', 0);
+    const config = JSON.parse(UINPlugin.getStorageJSON('config'));
+    UINPlugin.callHost('toast', `用户: ${name}, 分数: ${score}`);
 }
 
-// 生命周期
+// ============ 文件操作 ============
+function saveFile() {
+    UINPlugin.writeFile('notes.txt', 'Hello World');
+    UINPlugin.callHost('toast', '文件已保存');
+}
+
+function readFile() {
+    const content = UINPlugin.readFile('notes.txt');
+    UINPlugin.callHost('toast', '内容: ' + content);
+}
+
+// ============ 批量操作 ============
+function batchSave() {
+    const data = {
+        key1: 'value1',
+        key2: 'value2',
+        key3: 'value3'
+    };
+    UINPlugin.setStorageBatch(JSON.stringify(data));
+}
+
+function batchLoad() {
+    const keys = JSON.stringify(['key1', 'key2', 'key3']);
+    const result = JSON.parse(UINPlugin.getStorageBatch(keys));
+    console.log('批量读取:', result);
+}
+
+// ============ 存储统计 ============
+function getStats() {
+    const stats = JSON.parse(UINPlugin.getStorageStats());
+    UINPlugin.callHost('toast', `KV: ${stats.kvCount}, 文件: ${stats.fileCount}`);
+}
+
+// ============ 生命周期 ============
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Web 插件已加载');
 });
@@ -444,30 +540,31 @@ window.addEventListener('destroy', () => { console.log('插件销毁'); });
 
 ---
 
-## 五、Web 插件开发（带后端）
+五、Web 插件开发（带后端）
 
-### 5.1 概述
+5.1 概述
 
 v4.2.0 新增功能：Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统命令执行等能力。
 
 后端服务特点：
-- **自动启动**：用户打开插件时自动启动后端，完全无感知
-- **进程管理**：插件关闭时自动停止后端（可配置保持运行）
-- **HTTP 通信**：使用 HTTP API，无需 WebSocket
-- **多语言支持**：Python、Node.js、PHP、二进制程序
 
-### 5.2 支持的后端语言
+· 自动启动：用户打开插件时自动启动后端，完全无感知
+· 进程管理：插件关闭时自动停止后端（可配置保持运行）
+· HTTP 通信：使用 HTTP API，无需 WebSocket
+· 多语言支持：Python、Node.js、PHP、二进制程序
 
-| 语言 | 命令 | 入口文件 | 适用场景 |
-|------|------|----------|----------|
-| Python | python | server.py | 数据处理、AI、Web 服务 |
-| Node.js | node | server.js | Web 服务、实时应用 |
-| PHP | php | index.php | Web 服务 |
-| 二进制 | 可执行文件 | myapp | 已有程序、系统工具 |
+5.2 支持的后端语言
 
-### 5.3 Python 后端开发
+语言 命令 入口文件 适用场景
+Python python server.py 数据处理、AI、Web 服务
+Node.js node server.js Web 服务、实时应用
+PHP php index.php Web 服务
+二进制 可执行文件 myapp 已有程序、系统工具
 
-**目录结构**
+5.3 Python 后端开发
+
+目录结构
+
 ```
 your-plugin/
 ├── plugin.json
@@ -481,7 +578,8 @@ your-plugin/
         └── server.py          # Python 后端入口
 ```
 
-**plugin.json 配置**
+plugin.json 配置
+
 ```json
 {
     "pluginId": "com.example.pythonbackend",
@@ -497,31 +595,22 @@ your-plugin/
 }
 ```
 
-**server.py 模板（使用 Python 内置 http.server）**
+server.py 模板
+
 ```python
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-UIN Tool Python 后端
-使用 Python 内置 http.server，无需安装 Flask
-"""
-
 import sys
 import os
 import json
 import time
-import subprocess
-from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 
 PORT = int(os.environ.get("PORT", 8000))
 PLUGIN_DIR = os.environ.get("PLUGIN_DIR", ".")
-WORK_DIR = os.environ.get("WORK_DIR", "/")
 
 class SimpleHandler(BaseHTTPRequestHandler):
-    """HTTP 请求处理器"""
-
     def do_GET(self):
         if self.path == '/' or self.path == '/health':
             self.send_json(200, {"status": "healthy", "timestamp": time.time()})
@@ -538,26 +627,12 @@ class SimpleHandler(BaseHTTPRequestHandler):
 
         if self.path == '/api/compute':
             self.handle_compute(data)
-        elif self.path == '/api/record':
-            self.handle_record(data)
-        elif self.path == '/api/query':
-            self.handle_query(data)
-        elif self.path == '/api/system':
-            self.handle_system(data)
         elif self.path == '/api/echo':
             self.handle_echo(data)
         else:
             self.send_json(404, {"error": "Not Found"})
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-
     def handle_compute(self, data):
-        """计算任务"""
         try:
             expression = data.get('expression', '')
             safe_dict = {
@@ -577,64 +652,6 @@ class SimpleHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self.send_json(400, {"status": "error", "error": str(e)})
 
-    def handle_record(self, data):
-        """记录数据"""
-        try:
-            record = {
-                "id": int(time.time() * 1000),
-                "timestamp": datetime.now().isoformat(),
-                "type": data.get('type', 'default'),
-                "data": data.get('data', {}),
-                "extra": data.get('extra', '')
-            }
-            log_file = os.path.join(PLUGIN_DIR, "records.log")
-            with open(log_file, "a") as f:
-                f.write(json.dumps(record) + "\n")
-            self.send_json(200, {"status": "ok", "record_id": record["id"]})
-        except Exception as e:
-            self.send_json(400, {"status": "error", "error": str(e)})
-
-    def handle_query(self, data):
-        """查询记录"""
-        try:
-            limit = data.get('limit', 20)
-            records = []
-            log_file = os.path.join(PLUGIN_DIR, "records.log")
-            if os.path.exists(log_file):
-                with open(log_file, "r") as f:
-                    lines = f.readlines()
-                    for line in lines[-limit:]:
-                        try:
-                            records.append(json.loads(line))
-                        except:
-                            pass
-            self.send_json(200, {"status": "ok", "records": records})
-        except Exception as e:
-            self.send_json(400, {"status": "error", "error": str(e)})
-
-    def handle_system(self, data):
-        """执行系统命令"""
-        try:
-            command = data.get('command', '')
-            if not command:
-                self.send_json(400, {"status": "error", "error": "No command"})
-                return
-            # 命令白名单
-            allowed = ['uptime', 'date', 'whoami', 'pwd', 'ls', 'echo', 'cat', 'head', 'tail']
-            if command.split()[0] not in allowed:
-                self.send_json(403, {"status": "error", "error": "Command not allowed"})
-                return
-            proc = subprocess.run(command, shell=True, capture_output=True, timeout=30, cwd=WORK_DIR)
-            self.send_json(200, {
-                "status": "ok",
-                "stdout": proc.stdout.decode('utf-8', errors='ignore'),
-                "stderr": proc.stderr.decode('utf-8', errors='ignore')
-            })
-        except subprocess.TimeoutExpired:
-            self.send_json(408, {"status": "error", "error": "Timeout"})
-        except Exception as e:
-            self.send_json(400, {"status": "error", "error": str(e)})
-
     def handle_echo(self, data):
         self.send_json(200, {"status": "ok", "echo": data, "timestamp": time.time()})
 
@@ -651,256 +668,309 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 if __name__ == "__main__":
     print(f"Python 后端启动 (端口: {PORT})")
-    print(f"插件目录: {PLUGIN_DIR}")
-    try:
-        server = ThreadedHTTPServer(('127.0.0.1', PORT), SimpleHandler)
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("服务停止")
-        server.shutdown()
+    server = ThreadedHTTPServer(('127.0.0.1', PORT), SimpleHandler)
+    server.serve_forever()
 ```
 
-**前端调用示例**
-```javascript
-// 调用后端计算
-function callCompute() {
-    fetch('http://127.0.0.1:8000/api/compute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expression: 'sum([1,2,3,4,5])' })
-    })
-    .then(res => res.json())
-    .then(data => {
-        console.log('计算结果:', data);
-    });
-}
+5.4 前端与后端通信
 
-// 调用后端系统命令
-function callSystem() {
-    fetch('http://127.0.0.1:8000/api/system', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: 'uptime' })
-    })
-    .then(res => res.json())
-    .then(data => {
-        console.log('命令输出:', data.stdout);
-    });
-}
-```
-
-### 5.4 Node.js 后端开发
-
-**plugin.json 配置**
-```json
-{
-    "backend": "node",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/server.js"
-}
-```
-
-**server.js 模板**
-```javascript
-// scripts/backend/server.js
-const http = require('http');
-const PORT = process.env.PORT || 8000;
-
-const server = http.createServer((req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', 'application/json');
-
-    if (req.url === '/health') {
-        res.end(JSON.stringify({ status: 'healthy' }));
-        return;
-    }
-
-    if (req.method === 'POST' && req.url === '/api/echo') {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', () => {
-            try {
-                const data = JSON.parse(body);
-                res.end(JSON.stringify({ status: 'ok', echo: data }));
-            } catch(e) {
-                res.end(JSON.stringify({ status: 'error', error: e.message }));
-            }
-        });
-        return;
-    }
-
-    res.end(JSON.stringify({ message: 'Node.js backend OK' }));
-});
-
-server.listen(PORT, '127.0.0.1', () => {
-    console.log(`Node.js 后端启动 (端口: ${PORT})`);
-});
-```
-
-### 5.5 PHP 后端开发
-
-**plugin.json 配置**
-```json
-{
-    "backend": "php",
-    "backendPort": 8000,
-    "backendEntry": "index.php",
-    "backendPhpDocRoot": "scripts/backend"
-}
-```
-
-**index.php 模板**
-```php
-<?php
-// scripts/backend/index.php
-$port = getenv('PORT') ?: 8000;
-
-if ($_SERVER['REQUEST_URI'] === '/health') {
-    header('Content-Type: application/json');
-    echo json_encode(['status' => 'healthy']);
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SERVER['REQUEST_URI'] === '/api/echo') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    header('Content-Type: application/json');
-    echo json_encode(['status' => 'ok', 'echo' => $input]);
-    exit;
-}
-
-header('Content-Type: application/json');
-echo json_encode(['message' => 'PHP backend OK']);
-```
-
-### 5.6 二进制后端开发
-
-**plugin.json 配置**
-```json
-{
-    "backend": "binary",
-    "backendPort": 8000,
-    "backendEntry": "backend/myapp",
-    "backendBinary": "myapp",
-    "backendArgs": ["--port", "8000"]
-}
-```
-
-**说明**：
-- `backendEntry`：可执行文件在插件目录中的路径
-- `backendBinary`：可执行文件名（用于 PATH 查找）
-- `backendArgs`：启动参数列表
-
-### 5.7 前端与后端通信
-
-**使用 UINPlugin.callBackendApi()**
 ```javascript
 // 通过 JS 接口调用后端
-const callbackId = 'api_' + Date.now();
-window.UINPluginCallbacks = window.UINPluginCallbacks || {};
-window.UINPluginCallbacks[callbackId] = function(response) {
-    const data = JSON.parse(response);
-    console.log('后端响应:', data);
-};
-UINPlugin.callBackendApi('/api/compute', 'POST', JSON.stringify({
-    expression: 'sum([1,2,3,4,5])'
-}), callbackId);
-```
-
-**直接使用 fetch**
-```javascript
-// 直接 HTTP 请求（需要知道端口）
-fetch('http://127.0.0.1:8000/api/compute', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ expression: 'sum([1,2,3,4,5])' })
-})
-.then(res => res.json())
-.then(data => console.log(data));
-```
-
-### 5.8 后端 API 规范
-
-| 端点 | 方法 | 说明 | 必需 |
-|------|------|------|------|
-| /health | GET | 健康检查 | ✅ |
-| /api/compute | POST | 计算任务 | ❌ |
-| /api/record | POST | 记录数据 | ❌ |
-| /api/query | POST | 查询记录 | ❌ |
-| /api/system | POST | 系统命令 | ❌ |
-| /api/echo | POST | 回显测试 | ❌ |
-
-**健康检查响应格式**
-```json
-{
-    "status": "healthy",
-    "timestamp": 1234567890.123
+function callBackend() {
+    const callbackId = 'api_' + Date.now();
+    window.UINPluginCallbacks = window.UINPluginCallbacks || {};
+    window.UINPluginCallbacks[callbackId] = function(response) {
+        const data = JSON.parse(response);
+        console.log('后端响应:', data);
+    };
+    UINPlugin.callBackendApi('/api/compute', 'POST', JSON.stringify({
+        expression: 'sum([1,2,3,4,5])'
+    }), callbackId);
 }
-```
 
-**API 错误响应格式**
-```json
-{
-    "status": "error",
-    "error": "错误描述"
+// 直接使用 fetch
+function fetchBackend() {
+    fetch('http://127.0.0.1:8000/api/echo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Hello' })
+    })
+    .then(res => res.json())
+    .then(data => console.log(data));
 }
 ```
 
 ---
 
-## 六、插件说明功能
+六、插件数据持久化存储
 
-### 6.1 概述
+6.1 概述
 
-v4.2.0 新增功能：插件可在 `plugin.json` 中声明 `notice` 字段，首次打开时自动显示说明弹窗。
+v4.4.0 新增完整的插件数据持久化存储系统，每个插件拥有独立的存储空间，数据在插件更新时自动保留。
 
-### 6.2 配置方法
+6.2 数据目录结构
+
+```
+/storage/emulated/0/UIN_Tool/plugins/
+└── {pluginId}/
+    ├── plugin.json          # 插件配置
+    ├── plugin.dex           # 原生插件 DEX
+    ├── web/                 # Web 插件文件
+    │   ├── index.html
+    │   ├── style.css
+    │   └── script.js
+    ├── data/                # ✅ 插件数据目录
+    │   ├── config.json
+    │   ├── settings.txt
+    │   └── images/
+    └── cache/               # ✅ 插件缓存目录
+        └── temp_*.dat
+```
+
+6.3 Web 插件存储 API
+
+```javascript
+// ============ KV 存储 ============
+// 字符串
+UINPlugin.setStorage('username', 'JohnDoe');
+const name = UINPlugin.getStorage('username');
+
+// 整数
+UINPlugin.setStorageInt('score', 100);
+const score = UINPlugin.getStorageInt('score', 0);
+
+// 布尔值
+UINPlugin.setStorageBool('isLoggedIn', true);
+const loggedIn = UINPlugin.getStorageBool('isLoggedIn', false);
+
+// 浮点数
+UINPlugin.setStorageFloat('rating', 4.5);
+const rating = UINPlugin.getStorageFloat('rating', 0);
+
+// JSON
+UINPlugin.setStorageJSON('config', JSON.stringify({theme: 'dark'}));
+const config = JSON.parse(UINPlugin.getStorageJSON('config'));
+
+// 删除
+UINPlugin.removeStorage('temp');
+
+// 清空
+UINPlugin.clearStorage();
+
+// 检查键存在
+const exists = UINPlugin.containsStorageKey('username');
+
+// 获取所有键
+const keys = JSON.parse(UINPlugin.getStorageKeys());
+
+// 获取所有数据
+const allData = JSON.parse(UINPlugin.getAllStorage());
+
+// ============ 批量操作 ============
+// 批量写入
+const batchData = {
+    key1: 'value1',
+    key2: 'value2',
+    key3: 'value3'
+};
+UINPlugin.setStorageBatch(JSON.stringify(batchData));
+
+// 批量读取
+const batchKeys = JSON.stringify(['key1', 'key2', 'key3']);
+const batchResult = JSON.parse(UINPlugin.getStorageBatch(batchKeys));
+
+// ============ 文件操作 ============
+// 写入文件
+UINPlugin.writeFile('notes.txt', 'Hello World');
+
+// 读取文件
+const content = UINPlugin.readFile('notes.txt');
+
+// 删除文件
+UINPlugin.deleteFile('notes.txt');
+
+// 检查文件存在
+const fileExists = UINPlugin.fileExists('notes.txt');
+
+// 列出文件
+const files = JSON.parse(UINPlugin.listFiles());
+
+// 获取文件大小
+const size = UINPlugin.getFileSize('notes.txt');
+
+// 清理缓存
+UINPlugin.clearCache();
+
+// ============ 数据统计 ============
+const stats = JSON.parse(UINPlugin.getStorageStats());
+console.log('KV数量:', stats.kvCount);
+console.log('文件数量:', stats.fileCount);
+console.log('总大小:', stats.totalFileSize);
+console.log('缓存大小:', stats.cacheSize);
+console.log('数据版本:', stats.dataVersion);
+
+// ============ 数据导入导出 ============
+// 导出数据
+const exported = UINPlugin.exportData();
+
+// 导入数据
+UINPlugin.importData(exported);
+```
+
+6.4 原生插件存储 API
+
+```kotlin
+// 获取 PluginContext
+val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
+val pctx = PluginContext(context, pluginDir.absolutePath)
+
+// ============ KV 存储 ============
+pctx.putString("key", "value")
+val value = pctx.getString("key", "default")
+
+pctx.putInt("count", 100)
+val count = pctx.getInt("count", 0)
+
+pctx.putBoolean("enabled", true)
+val enabled = pctx.getBoolean("enabled", false)
+
+pctx.putJSON("config", JSONObject().apply { put("theme", "dark") })
+val config = pctx.getJSON("config")
+
+pctx.remove("temp")
+pctx.clearAll()
+
+// ============ 文件存储 ============
+pctx.writeFile("data.txt", "content")
+val content = pctx.readFile("data.txt")
+pctx.deletePluginFile("data.txt")
+val files = pctx.listPluginFiles()
+
+// ============ 数据统计 ============
+val stats = pctx.getStorageStats()
+```
+
+6.5 数据迁移
+
+旧版 web_plugin_ SharedPreferences 数据会自动迁移到新存储系统，无需开发者额外操作。
+
+6.6 数据版本管理
+
+```kotlin
+// 获取数据版本
+val version = pctx.getDataVersion()
+
+// 设置数据版本
+pctx.setDataVersion(2)
+```
+
+---
+
+七、权限系统
+
+7.1 权限状态管理
+
+权限状态持久化存储，一次授权永久生效：
+
+```kotlin
+// 读取权限状态
+val state = pctx.getPermissionState()
+
+// 设置权限状态
+pctx.setPermissionState(1)  // 1=已授权
+pctx.setPermissionState(2)  // 2=已拒绝
+
+// 检查是否需要弹窗
+val shouldShow = pctx.shouldShowPermissionDialog()
+```
+
+7.2 权限状态值
+
+状态值 含义 行为
+0 未授权 显示权限弹窗
+1 已授权 直接进入插件
+2 已拒绝 直接进入插件（状态0或2都会检查实际权限）
+
+7.3 权限弹窗行为
+
+用户操作 状态变化 结果
+点击"授权"，全部授予 state = 1 Toast "✅ 所有权限已授予"，进入插件
+点击"授权"，部分拒绝 state = 1 Toast "⚠️ 权限被拒绝: XXX"，进入插件
+点击"取消" state = 2 Toast "已取消权限请求"，退出插件
+
+7.4 权限声明
+
+```json
+{
+    "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION"
+    ]
+}
+```
+
+7.5 权限类型
+
+权限 说明 类型
+READ_EXTERNAL_STORAGE 读取存储 普通
+WRITE_EXTERNAL_STORAGE 写入存储 普通
+MANAGE_EXTERNAL_STORAGE 管理所有文件 特殊
+INTERNET 访问网络 普通
+CAMERA 相机 普通
+RECORD_AUDIO 录音 普通
+ACCESS_FINE_LOCATION 精确位置 普通
+SYSTEM_ALERT_WINDOW 悬浮窗 特殊
+WRITE_SETTINGS 修改系统设置 特殊
+ACCESSIBILITY 无障碍权限 特殊
+
+---
+
+八、插件说明功能
+
+8.1 概述
+
+v4.2.0 新增功能：插件可在 plugin.json 中声明 notice 字段，首次打开时自动显示说明弹窗。
+
+8.2 配置方法
 
 ```json
 {
     "pluginId": "com.example.myplugin",
     "name": "我的插件",
-    "notice": "欢迎使用我的插件！\n\n功能说明：\n1. 点击按钮执行操作\n2. 数据自动保存\n3. 支持导出导入\n\n注意事项：\n- 需要存储权限\n- 首次使用请先配置"
+    "notice": "欢迎使用我的插件！\n\n功能说明：\n1. 点击按钮执行操作\n2. 数据自动保存\n3. 支持导出导入"
 }
 ```
 
-### 6.3 用户交互
+8.3 用户交互
 
-用户首次打开插件时，会显示弹窗：
-
-| 按钮 | 行为 |
-|------|------|
-| 知道了 | 关闭弹窗，当前会话不再显示 |
-| 不再提示 | 永久关闭该插件的说明 |
-| 稍后提醒 | 关闭弹窗，下次打开再次显示 |
-
-**在插件管理中查看说明**
-
-在「管理」→「插件管理」→ 点击插件 → 详情对话框会显示 `notice` 内容。
+按钮 行为
+知道了 关闭弹窗，当前会话不再显示
+不再提示 永久关闭该插件的说明
+稍后提醒 关闭弹窗，下次打开再次显示
 
 ---
 
-## 七、PluginInterface 接口详解
+九、PluginInterface 接口详解
 
-### 7.1 方法说明
+9.1 方法说明
 
-| 方法 | 说明 | 必须实现 | 调用时机 |
-|------|------|----------|----------|
-| onCreateView | 创建插件视图 | ✅ 是 | 插件首次打开时 |
-| onResume | 插件恢复 | ❌ 否 | 从其他页面返回时 |
-| onPause | 插件暂停 | ❌ 否 | 切换到其他页面时 |
-| onDestroy | 插件销毁 | ❌ 否 | 插件被关闭时 |
-| onBackPressed | 返回键按下 | ❌ 否 | 用户按下返回键时 |
-| onSaveInstanceState | 保存状态 | ❌ 否 | 系统需要保存状态时 |
-| onActivityResult | Activity 结果 | ❌ 否 | startActivityForResult 返回时 |
-| onRequestPermissionsResult | 权限请求结果 | ❌ 否 | 权限请求完成时 |
+方法 说明 必须实现 调用时机
+onCreateView 创建插件视图 ✅ 插件首次打开时
+onResume 插件恢复 ❌ 从其他页面返回时
+onPause 插件暂停 ❌ 切换到其他页面时
+onDestroy 插件销毁 ❌ 插件被关闭时
+onBackPressed 返回键按下 ❌ 用户按下返回键时
+onSaveInstanceState 保存状态 ❌ 系统需要保存状态时
+onActivityResult Activity 结果 ❌ startActivityForResult 返回时
+onRequestPermissionsResult 权限请求结果 ❌ 权限请求完成时
 
-### 7.2 完整实现示例
+9.2 完整实现示例
 
 ```kotlin
 package com.example
 
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -909,12 +979,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.UIN.Tool.plugin.PluginInterface
+import com.UIN.Tool.plugin.PluginContext
 
 class MainPlugin : PluginInterface {
 
-    private var context: Context? = null
+    private var pctx: PluginContext? = null
     private var rootView: View? = null
-    private var counterText: TextView? = null
     private var clickCount = 0
 
     override fun onCreateView(
@@ -922,23 +992,20 @@ class MainPlugin : PluginInterface {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        this.context = context
-        val appContext = context.applicationContext
+        // 获取 PluginContext 用于数据存储
+        pctx = context as? PluginContext
 
+        val appContext = context.applicationContext
         val layout = LinearLayout(appContext).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(50, 50, 50, 50)
         }
 
-        val title = TextView(appContext).apply {
-            text = "我的插件"
-            textSize = 24f
-            setTextColor(0xFF37474F.toInt())
-            setPadding(0, 0, 0, 20)
-        }
+        // 读取保存的数据
+        clickCount = pctx?.getInt("click_count", 0) ?: 0
 
-        counterText = TextView(appContext).apply {
-            text = "点击次数: 0"
+        val counterText = TextView(appContext).apply {
+            text = "点击次数: $clickCount"
             textSize = 16f
             setTextColor(0xFF666666.toInt())
             setPadding(0, 0, 0, 20)
@@ -950,12 +1017,13 @@ class MainPlugin : PluginInterface {
             setTextColor(0xFFFFFFFF.toInt())
             setOnClickListener {
                 clickCount++
-                counterText?.text = "点击次数: $clickCount"
+                counterText.text = "点击次数: $clickCount"
+                // 保存数据
+                pctx?.putInt("click_count", clickCount)
                 Toast.makeText(context, "点击了 $clickCount 次", Toast.LENGTH_SHORT).show()
             }
         }
 
-        layout.addView(title)
         layout.addView(counterText)
         layout.addView(button)
 
@@ -963,213 +1031,204 @@ class MainPlugin : PluginInterface {
         return rootView
     }
 
-    override fun onResume() {
-        Toast.makeText(context, "插件恢复", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onPause() {
-        Toast.makeText(context, "插件暂停", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onDestroy() {
-        rootView = null
-        Toast.makeText(context, "插件销毁", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onBackPressed(): Boolean {
-        return if (clickCount > 0) {
-            Toast.makeText(context, "再按一次退出", Toast.LENGTH_SHORT).show()
-            clickCount = 0
-            counterText?.text = "点击次数: 0"
-            true
-        } else {
-            false
-        }
-    }
-
-    override fun onSaveInstanceState(): Bundle? {
-        return Bundle().apply {
-            putInt("clickCount", clickCount)
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        Toast.makeText(context, "Activity 返回: $requestCode", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        // 处理权限请求结果
-    }
+    override fun onResume() { }
+    override fun onPause() { }
+    override fun onDestroy() { rootView = null }
+    override fun onBackPressed(): Boolean = false
+    override fun onSaveInstanceState(): Bundle? = null
 }
 ```
 
 ---
 
-## 八、JavaScript API 完整参考
+十、JavaScript API 完整参考（v4.4.0）
 
-### 8.1 callHost - 调用宿主方法
+10.1 基础 API
 
 ```javascript
-// 显示 Toast 提示
-UINPlugin.callHost('toast', '消息内容');
+// Toast 提示
+UINPlugin.callHost('toast', '消息');
+UINPlugin.callHost('toastLong', '长消息');
 
 // 关闭插件
 UINPlugin.callHost('finish', '');
 
-// 输出日志
-UINPlugin.callHost('log', '调试信息');
+// 日志
+UINPlugin.callHost('log', '信息');
+UINPlugin.callHost('logError', '错误');
+UINPlugin.callHost('logWarning', '警告');
 
-// 显示弹窗
-UINPlugin.callHost('alert', '弹窗内容');
-
-// 显示确认框
+// 弹窗
+UINPlugin.callHost('alert', '提示内容');
 UINPlugin.callHost('confirm', '确认内容');
 
-// 震动 (参数为毫秒数)
-UINPlugin.callHost('vibrate', '100');
+// 振动
+UINPlugin.callHost('vibrate', '200');
 
-// 复制到剪贴板
+// 剪贴板
 UINPlugin.callHost('copy', '要复制的文本');
 
 // 打开链接
-UINPlugin.callHost('openUrl', 'https://www.example.com');
+UINPlugin.callHost('openUrl', 'https://example.com');
 
-// 分享内容
-UINPlugin.callHost('share', '要分享的文本');
+// 分享
+UINPlugin.callHost('share', '分享内容');
 
-// 设置标题
+// 标题
 UINPlugin.setTitle('新标题');
 
-// 全屏模式
+// 全屏
 UINPlugin.setFullscreen(true);
-UINPlugin.setFullscreen(false);
 ```
 
-### 8.2 httpGet / httpPost - 网络请求
+10.2 存储 API
+
+API 说明 返回值
+setStorage(key, value) 存储字符串 void
+getStorage(key) 读取字符串 String
+setStorageInt(key, value) 存储整数 void
+getStorageInt(key, default) 读取整数 Int
+setStorageBool(key, value) 存储布尔 void
+getStorageBool(key, default) 读取布尔 Boolean
+setStorageFloat(key, value) 存储浮点数 void
+getStorageFloat(key, default) 读取浮点数 Float
+setStorageJSON(key, json) 存储 JSON void
+getStorageJSON(key) 读取 JSON String
+removeStorage(key) 删除键 void
+clearStorage() 清空所有 void
+containsStorageKey(key) 检查键存在 Boolean
+getAllStorage() 获取所有数据 String (JSON)
+getStorageKeys() 获取所有键 String (JSON)
+setStorageBatch(jsonData) 批量写入 Boolean
+getStorageBatch(keys) 批量读取 String (JSON)
+
+10.3 文件系统 API
+
+API 说明 返回值
+writeFile(fileName, content) 写入文件 Boolean
+readFile(fileName) 读取文件 String
+deleteFile(fileName) 删除文件 Boolean
+fileExists(fileName) 检查文件存在 Boolean
+listFiles() 列出文件 String (JSON)
+getFileSize(fileName) 获取文件大小 Long
+clearCache() 清理缓存 void
+createDir(dirName) 创建目录 Boolean
+deleteDir(dirName) 删除目录 Boolean
+getFileInfo(fileName) 获取文件信息 String (JSON)
+
+10.4 网络请求 API
 
 ```javascript
 // GET 请求
-const callbackId = 'get_' + Date.now();
-window.UINPluginCallbacks = window.UINPluginCallbacks || {};
-window.UINPluginCallbacks[callbackId] = function(response) {
-    const data = JSON.parse(response);
-    if (data.success) {
-        console.log('请求成功:', data.data);
-    } else {
-        console.error('请求失败:', data.error);
-    }
-};
-UINPlugin.httpGet('https://api.example.com/data', callbackId);
+UINPlugin.httpGet(url, callbackId);
 
 // POST 请求
-const postData = JSON.stringify({key: 'value'});
-UINPlugin.httpPost('https://api.example.com/submit', postData, callbackId);
+UINPlugin.httpPost(url, jsonBody, callbackId);
+
+// PUT 请求
+UINPlugin.httpPut(url, jsonBody, callbackId);
+
+// DELETE 请求
+UINPlugin.httpDelete(url, callbackId);
+
+// 下载文件
+UINPlugin.downloadFile(url, fileName, callbackId);
+
+// Ping
+UINPlugin.ping(host, callbackId);
 ```
 
-### 8.3 传感器 API
+10.5 设备信息 API
 
 ```javascript
-// 启动传感器
-const callbackId = 'sensor_' + Date.now();
-UINPlugin.startSensor('accelerometer', callbackId);
+// 设备基本信息
+const model = UINPlugin.getDeviceModel();
+const version = UINPlugin.getAndroidVersion();
+const api = UINPlugin.getApiLevel();
+const density = UINPlugin.getScreenDensity();
 
-// 停止传感器
-UINPlugin.stopSensor();
+// 屏幕信息
+const screen = JSON.parse(UINPlugin.getScreenSize());
 
-// 获取可用传感器
-const sensors = JSON.parse(UINPlugin.getAvailableSensors());
+// 内存信息
+const totalMem = UINPlugin.getTotalMemory();
+const freeMem = UINPlugin.getFreeMemory();
+
+// CPU 信息
+const cpuInfo = UINPlugin.getCpuInfo();
+
+// 构建信息
+const buildInfo = JSON.parse(UINPlugin.getBuildInfo());
+
+// Android ID
+const androidId = UINPlugin.getAndroidId();
+
+// 系统语言
+const lang = UINPlugin.getSystemLanguage();
+const country = UINPlugin.getSystemCountry();
+
+// 时区
+const timezone = UINPlugin.getTimezone();
 ```
 
-支持的传感器类型：
+10.6 传感器 API
 
-| 类型 | 说明 | 回调数据 |
-|------|------|----------|
-| accelerometer | 加速度计 | x, y, z |
-| gyroscope | 陀螺仪 | x, y, z |
-| magneticField | 磁场计 | x, y, z |
-| light | 光线传感器 | lux |
-| proximity | 接近传感器 | distance |
-| pressure | 压力传感器 | pressure |
+API 说明 返回值
+getAccelerometer() 加速度计 String (JSON)
+getGyroscope() 陀螺仪 String (JSON)
+getLightSensor() 光线传感器 String (JSON)
+getProximitySensor() 距离传感器 String (JSON)
+getMagneticField() 磁场传感器 String (JSON)
+getOrientation() 方向传感器 String (JSON)
+getPressureSensor() 气压传感器 String (JSON)
+getTemperatureSensor() 温度传感器 String (JSON)
+getHumiditySensor() 湿度传感器 String (JSON)
 
-### 8.4 文件系统 API
-
-```javascript
-// 写入文件
-const success = UINPlugin.writeFile('test.txt', '文件内容');
-
-// 读取文件
-const content = UINPlugin.readFile('test.txt');
-
-// 删除文件
-const deleted = UINPlugin.deleteFile('test.txt');
-
-// 列出文件
-const files = UINPlugin.listFiles('');
-
-// 获取插件目录
-const pluginDir = UINPlugin.getPluginDir();
-```
-
-### 8.5 存储 API
+10.7 系统 API
 
 ```javascript
-// 存储数据
-UINPlugin.setStorage('key', 'value');
-
-// 读取数据
-const value = UINPlugin.getStorage('key');
-
-// 删除数据
-UINPlugin.removeStorage('key');
-
-// 清空所有数据
-UINPlugin.clearStorage();
-```
-
-### 8.6 信息获取 API
-
-```javascript
-// 获取插件信息
-const info = JSON.parse(UINPlugin.getPluginInfo());
-
-// 获取设备信息
-const device = JSON.parse(UINPlugin.getDeviceInfo());
-
-// 获取网络信息
-const network = JSON.parse(UINPlugin.getNetworkInfo());
-
-// 获取当前时间
-const time = UINPlugin.getCurrentTime();
-
-// 获取宿主版本
-const version = UINPlugin.getAppVersion();
-
-// 获取后端状态
-const status = UINPlugin.getBackendStatus();
-// 返回: "running:8000" 或 "stopped" 或 "starting"
-```
-
-### 8.7 系统 API
-
-```javascript
-// 打开系统设置
+// 系统设置
 UINPlugin.openSettings();
-
-// 打开应用设置
 UINPlugin.openAppSettings();
+UINPlugin.openWifiSettings();
+UINPlugin.openBluetoothSettings();
+UINPlugin.openLocationSettings();
 
-// 权限检查
-const granted = UINPlugin.checkPermission('android.permission.CAMERA');
+// 状态查询
+const isAirplane = UINPlugin.isAirplaneModeOn();
+const isBluetooth = UINPlugin.isBluetoothOn();
+const isWifi = UINPlugin.isWifiOn();
+const isLocation = UINPlugin.isLocationOn();
+const isDnd = UINPlugin.isDndOn();
+const isDark = UINPlugin.isDarkMode();
 
-// 请求权限
-UINPlugin.requestPermission('android.permission.CAMERA', callbackId);
+// 屏幕
+const brightness = UINPlugin.getScreenBrightness();
+const fontScale = UINPlugin.getFontScale();
+const displayInfo = JSON.parse(UINPlugin.getDisplayInfo());
+
+// 电池
+const battery = JSON.parse(UINPlugin.getBatteryInfo());
+const health = JSON.parse(UINPlugin.getBatteryHealth());
+const voltage = UINPlugin.getBatteryVoltage();
+const temperature = UINPlugin.getBatteryTemperature();
+
+// 音频
+const volume = UINPlugin.getVolume();
+const maxVolume = UINPlugin.getMaxVolume();
+const hasHeadphones = UINPlugin.isHeadphonesConnected();
+
+// 剪贴板
+UINPlugin.setClipboard('text');
+const clipboard = UINPlugin.getClipboard();
+UINPlugin.clearClipboard();
+
+// 通知
+UINPlugin.sendNotification('标题', '消息');
+UINPlugin.cancelNotification(id);
 ```
 
-### 8.8 后端通信 API
+10.8 后端通信 API
 
 ```javascript
 // 获取后端状态
@@ -1180,35 +1239,58 @@ UINPlugin.callBackendApi('/api/compute', 'POST', JSON.stringify({
     expression: 'sum([1,2,3,4,5])'
 }), callbackId);
 
-// 检查后端是否就绪
+// 检查后端就绪
 function isBackendReady() {
     const status = UINPlugin.getBackendStatus();
     return status && status.startsWith('running:');
 }
 ```
 
+10.9 数据统计 API
+
+```javascript
+// 获取存储统计
+const stats = JSON.parse(UINPlugin.getStorageStats());
+// stats.kvCount, stats.fileCount, stats.totalFileSize, stats.cacheSize, stats.dataVersion
+
+// 获取插件数据大小
+const size = UINPlugin.getPluginDataSize();
+
+// 获取数据版本
+const version = UINPlugin.getDataVersion();
+
+// 导出数据
+const exported = UINPlugin.exportData();
+
+// 导入数据
+UINPlugin.importData(exported);
+```
+
 ---
 
-## 九、打包与导入
+十一、打包与导入
 
-### 9.1 打包方式
+11.1 打包方式
 
-**方式一：使用向导打包**
+方式一：使用向导打包
+
 1. 在「开发」页面点击「创建插件」
 2. 按照向导完成配置
 3. 在最后一步点击「完成」
 4. 系统自动生成 TPK 包
-5. 位置：`/storage/emulated/0/UIN_Tool/tpk/`
+5. 位置：/storage/emulated/0/UIN_Tool/tpk/
 
-**方式二：手动打包**
+方式二：手动打包
+
 1. 将插件文件整理到文件夹中
 2. 确保有 plugin.json 和必要文件
 3. 压缩为 ZIP 格式
-4. 重命名为 `.tpk` 扩展名
+4. 重命名为 .tpk 扩展名
 
-### 9.2 文件结构
+11.2 文件结构
 
-**原生插件**
+原生插件
+
 ```
 plugin.tpk
 ├── plugin.json      # 必需
@@ -1218,7 +1300,8 @@ plugin.tpk
 └── res/             # 可选
 ```
 
-**Web 插件（无后端）**
+Web 插件（无后端）
+
 ```
 plugin.tpk
 ├── plugin.json      # 必需
@@ -1229,7 +1312,8 @@ plugin.tpk
     └── script.js    # 可选
 ```
 
-**Web 插件（带后端）**
+Web 插件（带后端）
+
 ```
 plugin.tpk
 ├── plugin.json      # 必需
@@ -1243,85 +1327,44 @@ plugin.tpk
         └── server.py # 后端入口
 ```
 
-### 9.3 plugin.json 完整字段
+11.3 plugin.json 完整字段
 
-| 字段 | 类型 | 说明 | 必填 |
-|------|------|------|------|
-| pluginId | string | 唯一标识符 | ✅ |
-| version | int | 版本号 | ✅ |
-| versionName | string | 显示版本名 | ✅ |
-| minHostVersion | int | 最低宿主版本 | ✅ |
-| name | string | 插件名称 | ✅ |
-| author | string | 作者 | ❌ |
-| description | string | 描述 | ❌ |
-| notice | string | 首次打开显示的说明 | ❌ |
-| icon | string | 图标文件名 | ❌ |
-| mainClass | string | 主类名（原生插件） | 原生✅ |
-| uiType | string | native/web | ❌ |
-| entry | string | 入口文件（Web 插件） | Web✅ |
-| permissions | array | 所需权限列表 | ❌ |
-| dependencies | array | 依赖插件列表 | ❌ |
-| backend | string | 后端类型 | ❌ |
-| backendPort | int | 后端端口 | ❌ |
-| backendEntry | string | 后端入口路径 | ❌ |
-| backendAutoStart | boolean | 自动启动 | ❌ |
-| backendTimeout | int | 启动超时（秒） | ❌ |
-| backendHealthCheck | string | 健康检查路径 | ❌ |
-
----
-
-## 十、插件权限系统
-
-### 10.1 权限声明
-
-```json
-{
-    "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.ACCESS_FINE_LOCATION"
-    ]
-}
-```
-
-### 10.2 权限类型
-
-| 权限 | 说明 | 类型 |
-|------|------|------|
-| READ_EXTERNAL_STORAGE | 读取存储 | 普通 |
-| WRITE_EXTERNAL_STORAGE | 写入存储 | 普通 |
-| MANAGE_EXTERNAL_STORAGE | 管理所有文件 | 特殊 |
-| INTERNET | 访问网络 | 普通 |
-| CAMERA | 相机 | 普通 |
-| RECORD_AUDIO | 录音 | 普通 |
-| ACCESS_FINE_LOCATION | 精确位置 | 普通 |
-| SYSTEM_ALERT_WINDOW | 悬浮窗 | 特殊 |
-| WRITE_SETTINGS | 修改系统设置 | 特殊 |
-| ACCESSIBILITY | 无障碍权限 | 特殊 |
-
-### 10.3 权限请求流程
-
-1. 插件安装时：系统记录插件声明的权限
-2. 插件启动时：自动检查权限状态
-3. 权限缺失时：显示权限说明对话框
-4. 用户授权：分组请求权限
-5. 权限授予后：正常加载插件
+字段 类型 说明 必填
+pluginId string 唯一标识符 ✅
+version int 版本号 ✅
+versionName string 显示版本名 ✅
+minHostVersion int 最低宿主版本 ✅
+name string 插件名称 ✅
+author string 作者 ❌
+description string 描述 ❌
+notice string 首次打开显示的说明 ❌
+icon string 图标文件名 ❌
+mainClass string 主类名（原生插件） 原生✅
+uiType string native/web ❌
+entry string 入口文件（Web 插件） Web✅
+permissions array 所需权限列表 ❌
+dependencies array 依赖插件列表 ❌
+backend string 后端类型 ❌
+backendPort int 后端端口 ❌
+backendEntry string 后端入口路径 ❌
+backendAutoStart boolean 自动启动 ❌
+backendTimeout int 启动超时（秒） ❌
+backendHealthCheck string 健康检查路径 ❌
 
 ---
 
-## 十一、发布到插件仓库
+十二、发布到插件仓库
 
-### 11.1 仓库要求
+12.1 仓库要求
 
-| 要求 | 说明 |
-|------|------|
-| 仓库名称 | 必须为插件 ID |
-| 仓库描述 | 必须为插件名称 |
-| Release Tag | 格式：{版本代码}-{版本名称} |
-| Release 资产 | 必须包含 .tpk 文件 |
-| 仓库可见性 | 必须是公开仓库 |
+要求 说明
+仓库名称 必须为插件 ID
+仓库描述 必须为插件名称
+Release Tag 格式：{版本代码}-{版本名称}
+Release 资产 必须包含 .tpk 文件
+仓库可见性 必须是公开仓库
 
-### 11.2 发布步骤
+12.2 发布步骤
 
 1. 创建 GitHub 仓库（在 UIN-Tool-Plugins 组织中）
 2. 上传插件文件
@@ -1331,25 +1374,24 @@ plugin.tpk
 
 ---
 
-## 十二、终端功能
+十三、终端功能
 
-### 12.1 概述
+13.1 概述
 
 UIN Tool 内置完整的终端环境，核心引擎基于 Termux 改编。
 
-### 12.2 终端特性
+13.2 终端特性
 
-| 特性 | 说明 |
-|------|------|
-| Shell 支持 | bash、zsh、fish 等 |
-| 包管理器 | APT (Debian/Ubuntu 软件源) |
-| 开发工具 | gcc、clang、make、git |
-| 脚本语言 | Python、Node.js、Ruby |
-| 网络工具 | curl、wget、openssh |
-| 多会话 | 支持多个终端会话同时运行 |
-| 多窗口 | Android 7.0+ 多窗口支持 |
+特性 说明
+Shell 支持 bash、zsh、fish 等
+包管理器 APT (Debian/Ubuntu 软件源)
+开发工具 gcc、clang、make、git
+脚本语言 Python、Node.js、Ruby
+网络工具 curl、wget、openssh
+多会话 支持多个终端会话同时运行
+多窗口 Android 7.0+ 多窗口支持
 
-### 12.3 常用命令
+13.3 常用命令
 
 ```bash
 # 更新软件源
@@ -1368,19 +1410,11 @@ pkg install git
 ssh user@hostname
 ```
 
-### 12.4 在插件中调用终端命令
-
-原生插件可以通过 `Runtime.exec()` 执行终端命令：
-
-```kotlin
-Runtime.getRuntime().exec(arrayOf("/system/bin/sh", "-c", "echo hello"))
-```
-
 ---
 
-## 十三、UI 个性化开发
+十四、UI 个性化开发
 
-### 13.1 颜色系统
+14.1 颜色系统
 
 ```kotlin
 val uiConfig = UIConfig.getInstance()
@@ -1396,17 +1430,16 @@ uiConfig.updateColor("primary", "#FF1A3A4A")
 uiConfig.saveConfig()
 ```
 
-### 13.2 颜色配置项
+14.2 颜色配置项
 
-| 分类 | 颜色项 |
-|------|--------|
-| 主色调 | primary, primary_dark, primary_light, accent |
-| 辅助色 | success, warning, error, info |
-| 文本色 | text_primary, text_secondary, text_hint, text_primary_inverse |
-| 背景色 | background, surface, surface_variant |
-| 边框色 | divider, glass_background, disabled |
+分类 颜色项
+主色调 primary, primary_dark, primary_light, accent
+辅助色 success, warning, error, info
+文本色 text_primary, text_secondary, text_hint, text_primary_inverse
+背景色 background, surface, surface_variant
+边框色 divider, glass_background, disabled
 
-### 13.3 形状配置
+14.3 形状配置
 
 ```kotlin
 // 获取圆角
@@ -1418,25 +1451,14 @@ uiConfig.updateShape("cardCornerRadius", 16)
 uiConfig.updateShape("buttonCornerRadius", 12)
 ```
 
-### 13.4 主题系统
-
-```kotlin
-// 在 Compose 中使用
-UINToolTheme {
-    // UI 内容
-}
-
-// 获取主题颜色
-val colorScheme = MaterialTheme.colorScheme
-```
-
 ---
 
-## 十四、调试技巧
+十五、调试技巧
 
-### 14.1 日志输出
+15.1 日志输出
 
-**原生插件：**
+原生插件：
+
 ```kotlin
 import com.UIN.Tool.log.Logger
 
@@ -1444,166 +1466,141 @@ Logger.i("TAG", "信息")
 Logger.e("TAG", "错误", exception)
 ```
 
-**Web 插件：**
+Web 插件：
+
 ```javascript
 UINPlugin.callHost('log', '调试信息');
 console.log('控制台输出');
 ```
 
-**后端 Python：**
+后端 Python：
+
 ```python
 print("调试信息")
 ```
 
-### 14.2 查看运行日志
+15.2 查看运行日志
 
-- 在「管理」→「运行日志」中查看
-- 崩溃日志自动保存
-- 日志位置：`/storage/emulated/0/UIN_Tool/logs/`
+· 在「管理」→「运行日志」中查看
+· 崩溃日志自动保存
+· 日志位置：/storage/emulated/0/UIN_Tool/logs/
 
-### 14.3 WebView 远程调试
+15.3 WebView 远程调试
 
-1. 在 Chrome 浏览器打开 `chrome://inspect`
+1. 在 Chrome 浏览器打开 chrome://inspect
 2. 确保 WebView 调试已启用
 3. 支持断点、控制台、网络监控
 
-### 14.4 后端调试
-
-```python
-# 在 Python 后端中打印调试信息
-print(f"请求路径: {self.path}")
-print(f"请求数据: {data}")
-```
-
 ---
 
-## 十五、常见问题
+十六、常见问题
 
-**Q1: 插件导入失败？**
+Q1: 插件导入失败？
 
 可能原因：文件不是有效的 .tpk 格式、缺少 plugin.json、JSON 格式错误、签名验证失败。
 
-解决方案：确保使用正确的打包方式，检查 plugin.json 格式，在开发者选项中可忽略签名验证（仅测试用）。
+Q2: 原生插件编译失败？
 
-**Q2: 原生插件编译失败？**
+当前状态：原生插件编译功能暂时禁用。建议使用 Web 插件替代。
 
-当前状态：原生插件编译功能暂时禁用。临时方案：使用 PC 端编译 Java → DEX，或使用 Web 插件替代。
-
-**Q3: Web 插件修改后不生效？**
+Q3: Web 插件修改后不生效？
 
 Web 插件修改 HTML/CSS/JS 后，关闭并重新打开插件即可，无需重新编译。
 
-**Q4: 插件无法调用宿主权限？**
+Q4: 插件无法调用宿主权限？
 
 在「管理」→「权限管理」→「插件权限」中为插件授予所需权限。
 
-**Q5: 如何调试插件？**
+Q5: 如何调试插件？
 
 使用 Logger 输出日志，在「管理」→「运行日志」中查看。Web 插件可用 Chrome DevTools 调试。
 
-**Q6: Web 插件如何传递复杂数据？**
+Q6: 插件数据存储在哪里？
 
-使用 JSON 格式：
-```javascript
-UINPlugin.callPlugin('processData', JSON.stringify({
-    type: 'user',
-    data: { name: '张三', age: 18 }
-}));
-```
+数据存储在 /storage/emulated/0/UIN_Tool/plugins/{pluginId}/data/ 目录，KV 数据存储在 SharedPreferences 中。
 
-**Q7: 强制更新是什么？**
+Q7: 更新插件会丢失数据吗？
 
-当 Release Tag 格式为 `{版本代码}-{版本名称}-1` 时，会强制用户更新，无法跳过。
+不会。更新插件时自动保留 data/ 目录，用户数据不丢失。
 
-**Q8: GitHub 加速功能如何使用？**
+Q8: 权限状态会持久化吗？
 
-在「管理」→「GitHub 加速」中配置镜像站和 CDN 加速。
+会。一次授权后，权限状态永久保存，下次打开不再重复弹窗。
 
-**Q9: 终端功能如何使用？**
+Q9: Web 插件支持哪些 API？
 
-点击「开发」→「打开终端」，首次使用会自动安装 Linux 环境。
+支持 140+ 个 API，涵盖存储、文件、网络、设备信息、传感器、系统操作等。
 
-**Q10: 插件权限系统有什么作用？**
+Q10: 如何导出插件数据？
 
-插件在 plugin.json 中声明所需权限，启动前自动检查并请求，确保插件安全运行。
+Web 插件可使用 UINPlugin.exportData() 导出所有数据为 JSON 格式。
 
-**Q11: 如何恢复 UI 配置？**
+Q11: 如何清除插件数据？
 
-在「管理」→「UI 个性化」中点击「重置」按钮。
+Web 插件可使用 UINPlugin.clearStorage() 和 UINPlugin.clearCache()。
 
-**Q12: 如何导出开发模板？**
+Q12: 如何重置插件权限状态？
 
-在「开发」页面点击「导出模板」，系统自动生成到工作目录。
-
-**Q13: 如何创建带后端的 Web 插件？**
-
-点击「创建插件」→ 选择「WebView + 后端」→ 选择后端语言（Python/Node.js/PHP/二进制）。
-
-**Q14: Python 后端需要安装什么依赖？**
-
-使用 Python 内置的 `http.server`，无需安装 Flask 等第三方库。
-
-**Q15: 插件说明功能如何使用？**
-
-在 `plugin.json` 中添加 `notice` 字段，首次打开时自动显示。
+在 PluginContext 中调用 clearPermissionState() 方法，或在设备上清除应用数据。
 
 ---
 
-## 十六、最佳实践
+十七、最佳实践
 
-### 16.1 命名规范
+17.1 命名规范
 
-- 插件ID：域名倒序，如 `com.example.myplugin`
-- 类名：PascalCase，如 `MainPlugin`
-- 包名：与插件ID一致
+· 插件ID：域名倒序，如 com.example.myplugin
+· 类名：PascalCase，如 MainPlugin
+· 包名：与插件ID一致
 
-### 16.2 性能优化
+17.2 性能优化
 
-- 避免在 `onCreateView` 中执行耗时操作
-- 使用协程处理异步任务
-- Web 插件优化图片和 CSS 选择器
-- 传感器使用后及时停止
+· 避免在 onCreateView 中执行耗时操作
+· 使用协程处理异步任务
+· Web 插件优化图片和 CSS 选择器
+· 传感器使用后及时停止
 
-### 16.3 内存管理
+17.3 数据存储最佳实践
 
-- 在 `onDestroy` 中释放资源
-- 使用 Application Context 创建 View
-- Web 插件注意清理 WebView
+· 使用 setStorageJSON 存储复杂数据结构
+· 定期清理缓存数据
+· 敏感数据不要明文存储
+· 使用 exportData 和 importData 备份用户数据
+· 插件版本升级时注意数据兼容性
 
-### 16.4 安全性
+17.4 安全性
 
-- 不要存储敏感信息明文
-- 验证输入数据
-- 使用 HTTPS
-- 验证文件路径防止目录遍历
+· 不要存储敏感信息明文
+· 验证输入数据
+· 使用 HTTPS
+· 验证文件路径防止目录遍历
 
-### 16.5 版本管理
+17.5 版本管理
 
-- 使用语义化版本号
-- 发布时使用正确的 Release Tag 格式
-- 强制更新使用 `-1` 后缀
-
----
-
-## 十七、技术支持
-
-| 渠道 | 联系方式 |
-|------|----------|
-| 邮箱 | undefinedinvalidnull@outlook.com |
-| GitHub | https://github.com/Undefined-Invalid-Null/UIN-Tool |
-| 插件仓库 | https://github.com/UIN-Tool-Plugins |
-| QQ 群 | 511875883 |
+· 使用语义化版本号
+· 发布时使用正确的 Release Tag 格式
+· 强制更新使用 -1 后缀
 
 ---
 
-## 文档信息
+十八、技术支持
 
-| 项目 | 信息 |
-|------|------|
-| 文档版本 | 4.2.0 |
-| 对应应用版本 | v4.2.0 (Build 12) |
-| 最后更新 | 2026年7月24日 |
+渠道 联系方式
+邮箱 undefinedinvalidnull@outlook.com
+GitHub https://github.com/Undefined-Invalid-Null/UIN-Tool
+插件仓库 https://github.com/UIN-Tool-Plugins
+QQ 群 511875883
+
+---
+
+文档信息
+
+项目 信息
+文档版本 4.4.0
+对应应用版本 v4.4.0 (Build 13)
+最后更新 2026年7月28日
 
 ---
 
 © 2026 UIN Team. All Rights Reserved.
+
