@@ -64,14 +64,29 @@
       "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/proguard-rules.pro",
       "selection": {
         "end": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 21,
+          "index": 6698,
+          "line": 206
         },
         "start": {
-          "column": 0,
-          "index": 0,
-          "line": 0
+          "column": 21,
+          "index": 6698,
+          "line": 206
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
+      "selection": {
+        "end": {
+          "column": 4,
+          "index": 5973,
+          "line": 192
+        },
+        "start": {
+          "column": 4,
+          "index": 5973,
+          "line": 192
         }
       }
     }

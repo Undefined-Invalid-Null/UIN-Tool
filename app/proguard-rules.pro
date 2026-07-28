@@ -1,4 +1,27 @@
 # ============================================================
+# 解决 R8 构建错误 - 缺失类忽略规则（必须放在最前面）
+# ============================================================
+
+# 忽略缺失的类（这些类在运行时不需要）
+-dontwarn java.lang.invoke.MethodHandleProxies
+-dontwarn javax.lang.model.element.Modifier
+-dontwarn kotlin.Cloneable$DefaultImpls
+
+# 忽略其他可能缺失的类
+-dontwarn com.github.luben.zstd.**
+-dontwarn org.brotli.dec.**
+-dontwarn org.objectweb.asm.**
+-dontwarn org.apache.commons.compress.**
+
+# 忽略所有警告（作为最后手段）
+-ignorewarnings
+
+# 保留这些类即使它们不存在
+-keep class java.lang.invoke.** { *; }
+-keep class javax.lang.model.** { *; }
+-keep class kotlin.Cloneable** { *; }
+
+# ============================================================
 # 插件系统 - 必须保留所有插件相关类和接口
 # ============================================================
 
@@ -158,3 +181,27 @@
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
+
+# ============================================================
+# 保留 Compose 相关（如果使用了 Jetpack Compose）
+# ============================================================
+
+-keep class androidx.compose.** { *; }
+-keep class androidx.compose.runtime.** { *; }
+-keep class androidx.compose.ui.** { *; }
+-keep class androidx.compose.material.** { *; }
+-keep class androidx.compose.foundation.** { *; }
+
+# ============================================================
+# 保留 Material Design 相关
+# ============================================================
+
+-keep class com.google.android.material.** { *; }
+-dontwarn com.google.android.material.**
+
+# ============================================================
+# 保留 AndroidX 核心库
+# ============================================================
+
+-keep class androidx.** { *; }
+-dontwarn androidx.**
