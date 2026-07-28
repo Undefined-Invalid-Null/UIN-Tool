@@ -1,50 +1,80 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginJSInterface.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.kt",
       "selection": {
         "end": {
-          "column": 1,
-          "index": 80682,
-          "line": 2268
+          "column": 13,
+          "index": 38329,
+          "line": 1056
         },
         "start": {
-          "column": 1,
-          "index": 80682,
-          "line": 2268
+          "column": 13,
+          "index": 38329,
+          "line": 1056
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/constants/AppConstants.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingScreen.kt",
       "selection": {
         "end": {
-          "column": 35,
-          "index": 398,
-          "line": 17
+          "column": 60,
+          "index": 6053,
+          "line": 147
         },
         "start": {
-          "column": 35,
-          "index": 398,
-          "line": 17
+          "column": 60,
+          "index": 6053,
+          "line": 147
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingActivity.kt",
       "selection": {
         "end": {
-          "column": 24,
-          "index": 469,
-          "line": 21
+          "column": 73,
+          "index": 603,
+          "line": 16
         },
         "start": {
-          "column": 24,
-          "index": 469,
-          "line": 21
+          "column": 68,
+          "index": 598,
+          "line": 16
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/Constants.kt",
+      "selection": {
+        "end": {
+          "column": 35,
+          "index": 263,
+          "line": 10
+        },
+        "start": {
+          "column": 35,
+          "index": 263,
+          "line": 10
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/proguard-rules.pro",
+      "selection": {
+        "end": {
+          "column": 0,
+          "index": 0,
+          "line": 0
+        },
+        "start": {
+          "column": 0,
+          "index": 0,
+          "line": 0
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/build.gradle"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/proguard-rules.pro"
 }

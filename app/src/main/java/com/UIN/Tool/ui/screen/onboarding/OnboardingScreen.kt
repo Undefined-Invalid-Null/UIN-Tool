@@ -44,7 +44,7 @@ fun OnboardingScreen(
 
     val items = if (isVersionUpdate) {
         listOf(
-            OnboardingItem("版本更新", "UIN Tool 已更新到 v${versionName ?: "4.2.0"}\n\n新功能、优化和修复已就绪！", Icons.Outlined.SystemUpdate),
+            OnboardingItem("版本更新", "UIN Tool 已更新到 v${versionName ?: "4.4.0"}\n\n新功能、优化和修复已就绪！", Icons.Outlined.SystemUpdate),
             OnboardingItem("插件管理", "• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理", Icons.Outlined.Folder),
             OnboardingItem("插件开发", "• 可视化插件创建向导\n• 内置代码编辑器\n• 支持原生和Web插件", Icons.Outlined.DeveloperMode),
             OnboardingItem("开始使用", "现在开始探索 UIN Tool 的新功能吧！", Icons.Outlined.RocketLaunch)
@@ -134,7 +134,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "v${versionName ?: "4.2.0"}",
+                            text = "v${versionName ?: "4.4.0"}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant
                         )
