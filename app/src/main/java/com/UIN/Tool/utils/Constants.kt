@@ -1,3 +1,4 @@
+// app/src/main/java/com/UIN/Tool/utils/Constants.kt
 package com.UIN.Tool.utils
 
 import android.os.Environment
@@ -7,7 +8,7 @@ object Constants {
     
     const val APP_NAME = "UIN_Tool"
     const val APP_VERSION = "4.2.0"
-    const val APP_VERSION_CODE = 12  // Build 12
+    const val APP_VERSION_CODE = 12
     
     // 目录路径
     val WORK_DIR = File(Environment.getExternalStorageDirectory(), APP_NAME).absolutePath
@@ -46,6 +47,11 @@ object Constants {
     const val KEY_WIDGET_1X1_PLUGIN = "widget_1x1_plugin"
     const val KEY_PLUGIN_PERMISSIONS = "plugin_permissions_"
     const val KEY_PLUGIN_CONFIG = "plugin_config_"
+    
+    // ==================== 插件数据存储 ====================
+    const val KEY_PLUGIN_DATA_VERSION = "data_version"
+    const val KEY_PLUGIN_DATA_MIGRATED = "_migrated_"
+    const val PREF_PLUGIN_DATA_PREFIX = "plugin_data_"
     
     // 日志配置
     const val LOG_MAX_SIZE = 2 * 1024 * 1024L

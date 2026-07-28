@@ -1,0 +1,2920 @@
+{
+  "metadata": {
+    "generated_at": "2026-07-27T18:04:33.017625",
+    "project_root": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool",
+    "total_target_files": 10
+  },
+  "statistics": {
+    "total_files": 10,
+    "analyzed_files": 10,
+    "failed_files": 0,
+    "categories": {
+      "核心权限管理器": 1,
+      "插件管理器（权限代理）": 1,
+      "插件宿主（权限UI）": 1,
+      "Web插件JS接口（权限桥接）": 1,
+      "权限工具类": 1,
+      "插件管理界面（权限UI）": 1,
+      "权限管理界面": 1,
+      "插件权限界面": 1,
+      "权限详情界面": 1,
+      "权限说明界面": 1
+    }
+  },
+  "files": [
+    {
+      "path": "app/src/main/java/com/UIN/Tool/plugin/PluginPermissionManager.kt",
+      "filename": "PluginPermissionManager.kt",
+      "extension": ".kt",
+      "size": 24654,
+      "line_count": 609,
+      "hash": "38d2310cd801116a",
+      "package": "com.UIN.Tool.plugin",
+      "class_name": "PluginPermissionManager",
+      "imports": [
+        "android.Manifest",
+        "android.app.Activity",
+        "android.app.AlertDialog",
+        "android.content.Context",
+        "android.content.Intent",
+        "android.content.pm.PackageManager",
+        "android.net.Uri",
+        "android.os.Build",
+        "android.os.Handler",
+        "android.os.Looper",
+        "android.provider.Settings",
+        "androidx.core.app.ActivityCompat",
+        "androidx.core.content.ContextCompat",
+        "com.UIN.Tool.data.local.PreferenceManager",
+        "com.UIN.Tool.log.Logger",
+        "com.UIN.Tool.utils.PermissionUtils",
+        "java.util.concurrent.atomic.AtomicInteger"
+      ],
+      "import_count": 17,
+      "function_count": 34,
+      "functions": [
+        {
+          "name": "getPluginDeclaredPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "List<String>"
+        },
+        {
+          "name": "getPluginPermissionStatus",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Map<String, Boolean>"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "areAllPermissionsGranted",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "List<String>"
+        },
+        {
+          "name": "splitMissingPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Pair<List<String>, List<String>>"
+        },
+        {
+          "name": "savePluginPermissionConfig",
+          "parameters": "context: Context,\n        pluginId: String,\n        permission: String,\n        granted: Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "savePluginPermissionConfigs",
+          "parameters": "context: Context,\n        pluginId: String,\n        permissions: Map<String, Boolean>",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPluginPermissionConfigs",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Map<String, Boolean>"
+        },
+        {
+          "name": "clearPluginPermissionConfigs",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestPermissionsEx",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>? = null,\n        onResult: (PermissionRequestResult",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>?,\n        onResult: (Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestNormalPermissions",
+          "parameters": "activity: Activity,\n        permissions: List<String>,\n        onResult: (Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onResult",
+          "parameters": "allGranted: Boolean, granted: Map<String, Boolean>",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestPermissionsDirect",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onResult",
+          "parameters": "allGranted: Boolean, granted: Map<String, Boolean>",
+          "return_type": "Unit"
+        },
+        {
+          "name": "showSpecialPermissionGuide",
+          "parameters": "activity: Activity,\n        permissions: List<String>,\n        onComplete: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "routeSpecialPermissionPage",
+          "parameters": "activity: Activity, permission: String?",
+          "return_type": "Unit"
+        },
+        {
+          "name": "gotoAppDetailSetting",
+          "parameters": "activity: Activity",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestPermissionsByGroups",
+          "parameters": "context: Context,\n        pluginId: String,\n        onProgress: ((String, Int, Int",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPermissionDisplayName",
+          "parameters": "permission: String",
+          "return_type": "String"
+        },
+        {
+          "name": "getPermissionDescription",
+          "parameters": "permission: String",
+          "return_type": "String"
+        },
+        {
+          "name": "getPermissionIcon",
+          "parameters": "permission: String",
+          "return_type": "Int"
+        },
+        {
+          "name": "isSpecialPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit"
+        },
+        {
+          "name": "generateRequestCode",
+          "parameters": "",
+          "return_type": "Int"
+        },
+        {
+          "name": "showPermissionGuidance",
+          "parameters": "context: Context,\n        pluginId: String,\n        onReRequest: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPermissionStatusSummary",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "PermissionStatusSummary"
+        },
+        {
+          "name": "onResult",
+          "parameters": "allGranted: Boolean, granted: Map<String, Boolean>",
+          "return_type": "Unit"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "getPluginDeclaredPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPluginPermissionStatus",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Map<String, Boolean>",
+          "keyword": "permission"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "areAllPermissionsGranted",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "permission"
+        },
+        {
+          "name": "splitMissingPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Pair<List<String>, List<String>>",
+          "keyword": "permission"
+        },
+        {
+          "name": "savePluginPermissionConfig",
+          "parameters": "context: Context,\n        pluginId: String,\n        permission: String,\n        granted: Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "savePluginPermissionConfigs",
+          "parameters": "context: Context,\n        pluginId: String,\n        permissions: Map<String, Boolean>",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPluginPermissionConfigs",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Map<String, Boolean>",
+          "keyword": "permission"
+        },
+        {
+          "name": "clearPluginPermissionConfigs",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermissionsEx",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>? = null,\n        onResult: (PermissionRequestResult",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>?,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestNormalPermissions",
+          "parameters": "activity: Activity,\n        permissions: List<String>,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermissionsDirect",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "showSpecialPermissionGuide",
+          "parameters": "activity: Activity,\n        permissions: List<String>,\n        onComplete: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "routeSpecialPermissionPage",
+          "parameters": "activity: Activity, permission: String?",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermissionsByGroups",
+          "parameters": "context: Context,\n        pluginId: String,\n        onProgress: ((String, Int, Int",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPermissionDisplayName",
+          "parameters": "permission: String",
+          "return_type": "String",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPermissionDescription",
+          "parameters": "permission: String",
+          "return_type": "String",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPermissionIcon",
+          "parameters": "permission: String",
+          "return_type": "Int",
+          "keyword": "permission"
+        },
+        {
+          "name": "isSpecialPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "showPermissionGuidance",
+          "parameters": "context: Context,\n        pluginId: String,\n        onReRequest: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPermissionStatusSummary",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "PermissionStatusSummary",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPluginDeclaredPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPluginPermissionStatus",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Map<String, Boolean>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "areAllPermissionsGranted",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "splitMissingPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Pair<List<String>, List<String>>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "savePluginPermissionConfig",
+          "parameters": "context: Context,\n        pluginId: String,\n        permission: String,\n        granted: Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "savePluginPermissionConfigs",
+          "parameters": "context: Context,\n        pluginId: String,\n        permissions: Map<String, Boolean>",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPluginPermissionConfigs",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Map<String, Boolean>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "clearPluginPermissionConfigs",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissionsEx",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>? = null,\n        onResult: (PermissionRequestResult",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>?,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestNormalPermissions",
+          "parameters": "activity: Activity,\n        permissions: List<String>,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissionsDirect",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "showSpecialPermissionGuide",
+          "parameters": "activity: Activity,\n        permissions: List<String>,\n        onComplete: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "routeSpecialPermissionPage",
+          "parameters": "activity: Activity, permission: String?",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissionsByGroups",
+          "parameters": "context: Context,\n        pluginId: String,\n        onProgress: ((String, Int, Int",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPermissionDisplayName",
+          "parameters": "permission: String",
+          "return_type": "String",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPermissionDescription",
+          "parameters": "permission: String",
+          "return_type": "String",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPermissionIcon",
+          "parameters": "permission: String",
+          "return_type": "Int",
+          "keyword": "Permission"
+        },
+        {
+          "name": "isSpecialPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "showPermissionGuidance",
+          "parameters": "context: Context,\n        pluginId: String,\n        onReRequest: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPermissionStatusSummary",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "PermissionStatusSummary",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissionsEx",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>? = null,\n        onResult: (PermissionRequestResult",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>?,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "requestPermissionsDirect",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "requestPermissionsByGroups",
+          "parameters": "context: Context,\n        pluginId: String,\n        onProgress: ((String, Int, Int",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "checkPermission"
+        },
+        {
+          "name": "areAllPermissionsGranted",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "Boolean",
+          "keyword": "areAllPermissionsGranted"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "getMissingPermissions"
+        },
+        {
+          "name": "showPermissionGuidance",
+          "parameters": "context: Context,\n        pluginId: String,\n        onReRequest: (",
+          "return_type": "Unit",
+          "keyword": "showPermissionGuidance"
+        },
+        {
+          "name": "requestPermissionsEx",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>? = null,\n        onResult: (PermissionRequestResult",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "context: Context,\n        pluginId: String,\n        specificPermissions: List<String>?,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        },
+        {
+          "name": "requestPermissionsDirect",
+          "parameters": "context: Context,\n        pluginId: String,\n        onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        },
+        {
+          "name": "requestPermissionsByGroups",
+          "parameters": "context: Context,\n        pluginId: String,\n        onProgress: ((String, Int, Int",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        }
+      ],
+      "annotations": [],
+      "constants": [
+        {
+          "name": "TAG",
+          "value": "PluginPermissionManager"
+        },
+        {
+          "name": "PERMISSION_REQUEST_CODE_BASE",
+          "value": "2000"
+        },
+        {
+          "name": "PERMISSION_REQUEST_CODE_DIRECT",
+          "value": "1001"
+        },
+        {
+          "name": "CALLBACK_TIMEOUT_MS",
+          "value": "15000L"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginPermissionManager"
+        },
+        {
+          "name": "PERMISSION_REQUEST_CODE_BASE",
+          "value": "2000"
+        },
+        {
+          "name": "CALLBACK_TIMEOUT_MS",
+          "value": "15000L"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginPermissionManager"
+        },
+        {
+          "name": "PERMISSION_REQUEST_CODE_BASE",
+          "value": "2000"
+        },
+        {
+          "name": "PERMISSION_REQUEST_CODE_DIRECT",
+          "value": "1001"
+        },
+        {
+          "name": "requestCodeSeq",
+          "value": "AtomicInteger(PERMISSION_REQUEST_CODE_BASE)"
+        },
+        {
+          "name": "SPECIAL_PERMISSIONS",
+          "value": "setOf("
+        },
+        {
+          "name": "plugin",
+          "value": "PluginManager.getInstance(context).getPluginInfo(pluginId)"
+        },
+        {
+          "name": "declared",
+          "value": "getPluginDeclaredPermissions(context, pluginId)"
+        },
+        {
+          "name": "permissions",
+          "value": "getPluginDeclaredPermissions(context, pluginId)"
+        },
+        {
+          "name": "results",
+          "value": "permissions.associateWith { checkPermission(context, it) }"
+        },
+        {
+          "name": "allGranted",
+          "value": "results.values.all { it }"
+        },
+        {
+          "name": "permissions",
+          "value": "getPluginDeclaredPermissions(context, pluginId)"
+        },
+        {
+          "name": "missing",
+          "value": "getMissingPermissions(context, pluginId)"
+        },
+        {
+          "name": "normalMissing",
+          "value": "missing.filter { !isSpecialPermission(it) }"
+        }
+      ],
+      "comment_count": 6,
+      "has_permission_check": true,
+      "has_permission_request": true,
+      "has_permission_callback": true,
+      "category": "核心权限管理器",
+      "last_modified": "2026-07-27T17:59:00.673992"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt",
+      "filename": "PluginManager.kt",
+      "extension": ".kt",
+      "size": 34317,
+      "line_count": 914,
+      "hash": "47bdfe8db72e07c9",
+      "package": "com.UIN.Tool.plugin",
+      "class_name": "PluginManager",
+      "imports": [
+        "android.content.Context",
+        "android.content.Intent",
+        "android.content.pm.ShortcutInfo",
+        "android.content.pm.ShortcutManager",
+        "android.graphics.Bitmap",
+        "android.graphics.BitmapFactory",
+        "android.graphics.drawable.Icon",
+        "android.os.Build",
+        "android.view.View",
+        "android.view.ViewGroup",
+        "android.webkit.WebView",
+        "android.widget.Toast",
+        "com.UIN.Tool.R",
+        "com.UIN.Tool.data.local.FileManager",
+        "com.UIN.Tool.data.local.PreferenceManager",
+        "com.UIN.Tool.domain.model.PluginInfo",
+        "com.UIN.Tool.log.Logger",
+        "com.UIN.Tool.utils.Constants",
+        "com.UIN.Tool.utils.SecurityUtils",
+        "dalvik.system.DexClassLoader"
+      ],
+      "import_count": 25,
+      "function_count": 68,
+      "functions": [
+        {
+          "name": "getInstance",
+          "parameters": "context: Context",
+          "return_type": "PluginManager"
+        },
+        {
+          "name": "setIgnoreSignatureWarning",
+          "parameters": "ignore: Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "isIgnoreSignatureWarning",
+          "parameters": "",
+          "return_type": "Boolean = ignoreSignatureWarning\n\n        @JvmStatic\n        fun putPluginWebView(pluginId: String, webView: WebView?)"
+        },
+        {
+          "name": "getPluginWebView",
+          "parameters": "pluginId: String",
+          "return_type": "WebView?"
+        },
+        {
+          "name": "removePluginWebView",
+          "parameters": "pluginId: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "clearWebViewCache",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "refreshPlugins",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPluginInfo",
+          "parameters": "pluginId: String",
+          "return_type": "PluginInfo?"
+        },
+        {
+          "name": "getInstalledPluginIds",
+          "parameters": "",
+          "return_type": "List<String> = _plugins.value.map"
+        },
+        {
+          "name": "getPluginCount",
+          "parameters": "",
+          "return_type": "Int = _plugins.value.size\n    fun isPluginInstalled(pluginId: String): Boolean = _installedPluginIds.value.contains(pluginId)\n\n    // ==================== 插件安装 ====================\n\n    private suspend fun installPluginInternal(file: File, fileName: String): PluginInfo?"
+        },
+        {
+          "name": "migratePluginDataVersion",
+          "parameters": "info: PluginInfo",
+          "return_type": "Unit"
+        },
+        {
+          "name": "installPlugin",
+          "parameters": "file: File, fileName: String",
+          "return_type": "PluginInfo?"
+        },
+        {
+          "name": "requestPermissionsAfterInstall",
+          "parameters": "info: PluginInfo",
+          "return_type": "Unit"
+        },
+        {
+          "name": "checkPluginDependencies",
+          "parameters": "info: PluginInfo",
+          "return_type": "Unit"
+        },
+        {
+          "name": "installPluginsBatch",
+          "parameters": "files: List<File>",
+          "return_type": "List<PluginInfo>"
+        },
+        {
+          "name": "installPluginFromFile",
+          "parameters": "filePath: String",
+          "return_type": "PluginInfo?"
+        },
+        {
+          "name": "uninstallPlugin",
+          "parameters": "pluginId: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "uninstallPluginsBatch",
+          "parameters": "pluginIds: List<String>",
+          "return_type": "List<String>"
+        },
+        {
+          "name": "updatePlugin",
+          "parameters": "pluginId: String, newPluginFile: File",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "hasPluginUpdate",
+          "parameters": "pluginId: String, newVersion: Int",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "exportPlugin",
+          "parameters": "pluginId: String, destFile: File",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "exportPluginsBatch",
+          "parameters": "pluginIds: List<String>, destDir: File",
+          "return_type": "List<String>"
+        },
+        {
+          "name": "openPlugin",
+          "parameters": "pluginId: String, context: Context",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPluginViewSync",
+          "parameters": "pluginId: String, context: Context, container: ViewGroup?",
+          "return_type": "View?"
+        },
+        {
+          "name": "getPluginInstance",
+          "parameters": "pluginId: String",
+          "return_type": "PluginInterface?"
+        },
+        {
+          "name": "getPluginDirFile",
+          "parameters": "pluginId: String",
+          "return_type": "File?"
+        },
+        {
+          "name": "getPluginDataContext",
+          "parameters": "pluginId: String",
+          "return_type": "PluginContext?"
+        },
+        {
+          "name": "getPluginDataVersion",
+          "parameters": "pluginId: String",
+          "return_type": "Int"
+        },
+        {
+          "name": "getPluginStorageStats",
+          "parameters": "pluginId: String",
+          "return_type": "PluginContext.StorageStats?"
+        },
+        {
+          "name": "searchPlugins",
+          "parameters": "keyword: String",
+          "return_type": "List<PluginInfo>"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "requestPermissionsAfterInstall",
+          "parameters": "info: PluginInfo",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPluginDeclaredPermissions",
+          "parameters": "pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPluginPermissionStatus",
+          "parameters": "pluginId: String",
+          "return_type": "Map<String, Boolean>",
+          "keyword": "permission"
+        },
+        {
+          "name": "arePluginPermissionsGranted",
+          "parameters": "pluginId: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPluginMissingPermissions",
+          "parameters": "pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPluginPermissions",
+          "parameters": "pluginId: String, onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPluginPermissionsByGroups",
+          "parameters": "pluginId: String,\n        onProgress: ((String, Int, Int",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "showPermissionGuidance",
+          "parameters": "pluginId: String, onReRequest: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPluginPermissionSummary",
+          "parameters": "pluginId: String",
+          "return_type": "PluginPermissionManager.PermissionStatusSummary",
+          "keyword": "permission"
+        },
+        {
+          "name": "savePluginPermissionConfig",
+          "parameters": "pluginId: String, permission: String, granted: Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "clearPluginPermissionConfigs",
+          "parameters": "pluginId: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermissionsAfterInstall",
+          "parameters": "info: PluginInfo",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPluginDeclaredPermissions",
+          "parameters": "pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPluginPermissionStatus",
+          "parameters": "pluginId: String",
+          "return_type": "Map<String, Boolean>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "arePluginPermissionsGranted",
+          "parameters": "pluginId: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPluginMissingPermissions",
+          "parameters": "pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPluginPermissions",
+          "parameters": "pluginId: String, onResult: (Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPluginPermissionsByGroups",
+          "parameters": "pluginId: String,\n        onProgress: ((String, Int, Int",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "showPermissionGuidance",
+          "parameters": "pluginId: String, onReRequest: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPluginPermissionSummary",
+          "parameters": "pluginId: String",
+          "return_type": "PluginPermissionManager.PermissionStatusSummary",
+          "keyword": "Permission"
+        },
+        {
+          "name": "savePluginPermissionConfig",
+          "parameters": "pluginId: String, permission: String, granted: Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "clearPluginPermissionConfigs",
+          "parameters": "pluginId: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissionsAfterInstall",
+          "parameters": "info: PluginInfo",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "showPermissionGuidance",
+          "parameters": "pluginId: String, onReRequest: (",
+          "return_type": "Unit",
+          "keyword": "showPermissionGuidance"
+        },
+        {
+          "name": "requestPermissionsAfterInstall",
+          "parameters": "info: PluginInfo",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        }
+      ],
+      "annotations": [
+        "JvmStatic",
+        "Suppress"
+      ],
+      "constants": [
+        {
+          "name": "TAG",
+          "value": "PluginManager"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginManager"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginManager"
+        },
+        {
+          "name": "webViewCache",
+          "value": "mutableMapOf<String, WebView?>()"
+        },
+        {
+          "name": "classLoaders",
+          "value": "mutableMapOf<String, DexClassLoader>()"
+        },
+        {
+          "name": "pluginInstances",
+          "value": "mutableMapOf<String, WeakReference<PluginInterface>>()"
+        },
+        {
+          "name": "_plugins",
+          "value": "MutableStateFlow<List<PluginInfo>>(emptyList())"
+        },
+        {
+          "name": "_installedPluginIds",
+          "value": "MutableStateFlow<Set<String>>(emptySet())"
+        },
+        {
+          "name": "_isLoading",
+          "value": "MutableStateFlow(false)"
+        },
+        {
+          "name": "_error",
+          "value": "MutableStateFlow<String?>(null)"
+        },
+        {
+          "name": "pluginList",
+          "value": "mutableListOf<PluginInfo>()"
+        },
+        {
+          "name": "pluginDir",
+          "value": "File(Constants.PLUGIN_DIR)"
+        },
+        {
+          "name": "jsonFile",
+          "value": "File(dir, Constants.PLUGIN_CONFIG_FILE)"
+        },
+        {
+          "name": "json",
+          "value": "try { jsonFile.readText() } catch (e: Exception) { null }"
+        },
+        {
+          "name": "info",
+          "value": "PluginInfo.fromJson(it)"
+        },
+        {
+          "name": "tempDir",
+          "value": "File(Constants.TEMP_DIR, "
+        },
+        {
+          "name": "jsonFile",
+          "value": "File(tempDir, Constants.PLUGIN_CONFIG_FILE)"
+        },
+        {
+          "name": "jsonContent",
+          "value": "jsonFile.readText()"
+        },
+        {
+          "name": "info",
+          "value": "PluginInfo.fromJson(jsonContent)"
+        },
+        {
+          "name": "dexFile",
+          "value": "File(tempDir, Constants.PLUGIN_DEX_FILE)"
+        }
+      ],
+      "comment_count": 1,
+      "has_permission_check": false,
+      "has_permission_request": true,
+      "has_permission_callback": false,
+      "category": "插件管理器（权限代理）",
+      "last_modified": "2026-07-27T16:14:57.097991"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt",
+      "filename": "PluginHostActivity.kt",
+      "extension": ".kt",
+      "size": 31496,
+      "line_count": 794,
+      "hash": "1eff3d50463cf69b",
+      "package": "com.UIN.Tool.plugin",
+      "class_name": "PluginHostActivity",
+      "imports": [
+        "android.content.Intent",
+        "android.content.pm.PackageManager",
+        "android.os.Bundle",
+        "android.os.Handler",
+        "android.os.Looper",
+        "android.view.ViewGroup",
+        "android.webkit.WebView",
+        "android.webkit.WebViewClient",
+        "android.webkit.WebChromeClient",
+        "android.widget.Toast",
+        "androidx.activity.compose.setContent",
+        "androidx.appcompat.app.AppCompatActivity",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.layout.",
+        "androidx.compose.foundation.shape.CircleShape",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.material.icons.Icons",
+        "androidx.compose.material.icons.filled.",
+        "androidx.compose.material3.",
+        "androidx.compose.runtime."
+      ],
+      "import_count": 42,
+      "function_count": 25,
+      "functions": [
+        {
+          "name": "onCreate",
+          "parameters": "savedInstanceState: Bundle?",
+          "return_type": "Unit"
+        },
+        {
+          "name": "initializeUI",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPermissionKey",
+          "parameters": "",
+          "return_type": "String = \"$KEY_PERM_GRANTED_PREFIX$currentPluginId\"\n\n    private fun isPermissionsPersisted(): Boolean"
+        },
+        {
+          "name": "setPermissionsPersisted",
+          "parameters": "granted: Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "clearPermissionsPersisted",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "renderUI",
+          "parameters": "uiState: PluginUiState",
+          "return_type": "Unit"
+        },
+        {
+          "name": "showPluginView",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "openAppSettings",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onResume",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onSaveInstanceState",
+          "parameters": "outState: Bundle",
+          "return_type": "Unit"
+        },
+        {
+          "name": "evaluateJavascript",
+          "parameters": "script: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "setPluginTitle",
+          "parameters": "title: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getBackendPort",
+          "parameters": "",
+          "return_type": "Int = if (isBackendReady) backendPort else 0\n    fun isBackendReady(): Boolean = isBackendReady\n\n    fun callBackendApi(path: String, method: String = \"GET\", body: String? = null, callback: (Boolean, String?) -> Unit)"
+        },
+        {
+          "name": "onDestroy",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onBackPressed",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PluginHostScreen",
+          "parameters": "pluginId: String,\n    pluginInfo: PluginInfo,\n    initialUiState: PluginUiState,\n    onRequestPermissions: (Array<String>",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PluginContentView",
+          "parameters": "pluginId: String,\n    pluginInfo: PluginInfo,\n    hostActivity: PluginHostActivity?",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onPageFinished",
+          "parameters": "view: WebView?, url: String?",
+          "return_type": "Unit"
+        },
+        {
+          "name": "onJsAlert",
+          "parameters": "view: WebView?, url: String?, message: String?, result: android.webkit.JsResult?",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: android.content.Context, pluginId: String",
+          "return_type": "List<String>"
+        },
+        {
+          "name": "PermissionRequestDialog",
+          "parameters": "pluginName: String,\n    normalPermissions: List<String>,\n    specialPermissions: List<String>,\n    onAuthorize: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "SpecialPermissionGuideDialog",
+          "parameters": "permissions: List<String>,\n    onOpenSettings: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PermissionItemRow",
+          "parameters": "icon: androidx.compose.ui.graphics.vector.ImageVector,\n    text: String,\n    description: String,\n    isNormal: Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "createDefaultHtml",
+          "parameters": "info: PluginInfo",
+          "return_type": "String"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "getPermissionKey",
+          "parameters": "",
+          "return_type": "String = \"$KEY_PERM_GRANTED_PREFIX$currentPluginId\"\n\n    private fun isPermissionsPersisted(): Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "setPermissionsPersisted",
+          "parameters": "granted: Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "clearPermissionsPersisted",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: android.content.Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionRequestDialog",
+          "parameters": "pluginName: String,\n    normalPermissions: List<String>,\n    specialPermissions: List<String>,\n    onAuthorize: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "SpecialPermissionGuideDialog",
+          "parameters": "permissions: List<String>,\n    onOpenSettings: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionItemRow",
+          "parameters": "icon: androidx.compose.ui.graphics.vector.ImageVector,\n    text: String,\n    description: String,\n    isNormal: Boolean",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPermissionKey",
+          "parameters": "",
+          "return_type": "String = \"$KEY_PERM_GRANTED_PREFIX$currentPluginId\"\n\n    private fun isPermissionsPersisted(): Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "setPermissionsPersisted",
+          "parameters": "granted: Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "clearPermissionsPersisted",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: android.content.Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "Permission"
+        },
+        {
+          "name": "PermissionRequestDialog",
+          "parameters": "pluginName: String,\n    normalPermissions: List<String>,\n    specialPermissions: List<String>,\n    onAuthorize: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "SpecialPermissionGuideDialog",
+          "parameters": "permissions: List<String>,\n    onOpenSettings: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "PermissionItemRow",
+          "parameters": "icon: androidx.compose.ui.graphics.vector.ImageVector,\n    text: String,\n    description: String,\n    isNormal: Boolean",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "getMissingPermissions",
+          "parameters": "context: android.content.Context, pluginId: String",
+          "return_type": "List<String>",
+          "keyword": "getMissingPermissions"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        }
+      ],
+      "annotations": [
+        "Composable",
+        "PluginHostActivity"
+      ],
+      "constants": [
+        {
+          "name": "TAG",
+          "value": "PluginHostActivity"
+        },
+        {
+          "name": "EXTRA_PLUGIN_ID",
+          "value": "plugin_id"
+        },
+        {
+          "name": "REQUEST_CODE_PERMISSIONS",
+          "value": "1001"
+        },
+        {
+          "name": "BACKEND_START_TIMEOUT",
+          "value": "15000L"
+        },
+        {
+          "name": "PREF_NAME",
+          "value": "plugin_perm_prefs"
+        },
+        {
+          "name": "KEY_PERM_GRANTED_PREFIX",
+          "value": "perm_granted_"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginHostActivity"
+        },
+        {
+          "name": "REQUEST_CODE_PERMISSIONS",
+          "value": "1001"
+        },
+        {
+          "name": "BACKEND_START_TIMEOUT",
+          "value": "15000L"
+        },
+        {
+          "name": "PREF_NAME",
+          "value": "plugin_perm_prefs"
+        },
+        {
+          "name": "KEY_PERM_GRANTED_PREFIX",
+          "value": "perm_granted_"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginHostActivity"
+        },
+        {
+          "name": "EXTRA_PLUGIN_ID",
+          "value": "plugin_id"
+        },
+        {
+          "name": "REQUEST_CODE_PERMISSIONS",
+          "value": "1001"
+        },
+        {
+          "name": "BACKEND_START_TIMEOUT",
+          "value": "15000L"
+        },
+        {
+          "name": "PREF_NAME",
+          "value": "plugin_perm_prefs"
+        },
+        {
+          "name": "KEY_PERM_GRANTED_PREFIX",
+          "value": "perm_granted_"
+        },
+        {
+          "name": "okHttpClient",
+          "value": "OkHttpClient.Builder()"
+        },
+        {
+          "name": "pluginDir",
+          "value": "File(Constants.PLUGIN_DIR, currentPluginId)"
+        },
+        {
+          "name": "permissions",
+          "value": "pluginManager.getPluginDeclaredPermissions(currentPluginId)"
+        }
+      ],
+      "comment_count": 0,
+      "has_permission_check": false,
+      "has_permission_request": true,
+      "has_permission_callback": true,
+      "category": "插件宿主（权限UI）",
+      "last_modified": "2026-07-27T17:09:35.453992"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/plugin/PluginJSInterface.kt",
+      "filename": "PluginJSInterface.kt",
+      "extension": ".kt",
+      "size": 36716,
+      "line_count": 1052,
+      "hash": "c8b5fdf87a036839",
+      "package": "com.UIN.Tool.plugin",
+      "class_name": "PluginJSInterface",
+      "imports": [
+        "android.app.Activity",
+        "android.app.AlertDialog",
+        "android.content.ClipData",
+        "android.content.ClipboardManager",
+        "android.content.Context",
+        "android.content.Intent",
+        "android.content.pm.PackageManager",
+        "android.net.ConnectivityManager",
+        "android.net.Uri",
+        "android.os.Build",
+        "android.os.Vibrator",
+        "android.provider.Settings",
+        "android.webkit.JavascriptInterface",
+        "android.webkit.WebView",
+        "android.widget.Toast",
+        "com.UIN.Tool.domain.model.PluginInfo",
+        "com.UIN.Tool.log.Logger",
+        "com.UIN.Tool.utils.Constants",
+        "com.UIN.Tool.utils.PermissionUtils",
+        "okhttp3."
+      ],
+      "import_count": 28,
+      "function_count": 69,
+      "functions": [
+        {
+          "name": "getPluginContext",
+          "parameters": "",
+          "return_type": "PluginContext?"
+        },
+        {
+          "name": "ensureMigration",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "callHost",
+          "parameters": "action: String, data: String?",
+          "return_type": "Unit"
+        },
+        {
+          "name": "callPlugin",
+          "parameters": "method: String, params: String?",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPluginInfo",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getAppVersion",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getDeviceInfo",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getNetworkInfo",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getBackendStatus",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getPluginDir",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getCurrentTime",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getBatteryInfo",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "setStorage",
+          "parameters": "key: String, value: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getStorage",
+          "parameters": "key: String",
+          "return_type": "String"
+        },
+        {
+          "name": "removeStorage",
+          "parameters": "key: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "clearStorage",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "setStorageInt",
+          "parameters": "key: String, value: Int",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getStorageInt",
+          "parameters": "key: String, defaultValue: Int",
+          "return_type": "Int"
+        },
+        {
+          "name": "setStorageLong",
+          "parameters": "key: String, value: Long",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getStorageLong",
+          "parameters": "key: String, defaultValue: Long",
+          "return_type": "Long"
+        },
+        {
+          "name": "setStorageBool",
+          "parameters": "key: String, value: Boolean",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getStorageBool",
+          "parameters": "key: String, defaultValue: Boolean",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "setStorageFloat",
+          "parameters": "key: String, value: Float",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getStorageFloat",
+          "parameters": "key: String, defaultValue: Float",
+          "return_type": "Float"
+        },
+        {
+          "name": "setStorageJSON",
+          "parameters": "key: String, json: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getStorageJSON",
+          "parameters": "key: String",
+          "return_type": "String"
+        },
+        {
+          "name": "containsStorageKey",
+          "parameters": "key: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "getAllStorage",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "getStorageKeys",
+          "parameters": "",
+          "return_type": "String"
+        },
+        {
+          "name": "setStorageBatch",
+          "parameters": "jsonData: String",
+          "return_type": "Boolean"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "checkPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermission",
+          "parameters": "permission: String, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "permissions: String, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestNormalPermissions",
+          "parameters": "permissions: List<String>, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "showSpecialPermissionDialog",
+          "parameters": "permissions: List<String>, onComplete: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "hasPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermission",
+          "parameters": "permission: String, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "permissions: String, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestNormalPermissions",
+          "parameters": "permissions: List<String>, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "showSpecialPermissionDialog",
+          "parameters": "permissions: List<String>, onComplete: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "hasPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "permissions: String, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "requestPermissions"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "checkPermission"
+        },
+        {
+          "name": "hasPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "hasPermission"
+        },
+        {
+          "name": "requestPermission",
+          "parameters": "permission: String, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        },
+        {
+          "name": "requestPermissions",
+          "parameters": "permissions: String, callbackId: String",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        },
+        {
+          "name": "onRequestPermissionsResult",
+          "parameters": "requestCode: Int,\n        permissions: Array<String>,\n        grantResults: IntArray",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        }
+      ],
+      "annotations": [
+        "JavascriptInterface"
+      ],
+      "constants": [
+        {
+          "name": "TAG",
+          "value": "PluginJSInterface"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginJSInterface"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginJSInterface"
+        },
+        {
+          "name": "pendingPermissionCallbacks",
+          "value": "mutableMapOf<String, String>()"
+        },
+        {
+          "name": "httpClient",
+          "value": "OkHttpClient.Builder()"
+        },
+        {
+          "name": "pluginDir",
+          "value": "File(Constants.PLUGIN_DIR, pluginId)"
+        },
+        {
+          "name": "oldPrefs",
+          "value": "context.getSharedPreferences("
+        },
+        {
+          "name": "oldData",
+          "value": "oldPrefs.all"
+        },
+        {
+          "name": "pctx",
+          "value": "getPluginContext()"
+        },
+        {
+          "name": "params",
+          "value": "data ?: "
+        },
+        {
+          "name": "dm",
+          "value": "context.resources.displayMetrics"
+        },
+        {
+          "name": "cm",
+          "value": "context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager"
+        },
+        {
+          "name": "activeNetwork",
+          "value": "cm.activeNetworkInfo"
+        },
+        {
+          "name": "isConnected",
+          "value": "activeNetwork != null && activeNetwork.isConnected"
+        },
+        {
+          "name": "activity",
+          "value": "context as? PluginHostActivity"
+        },
+        {
+          "name": "port",
+          "value": "activity.getBackendPort()"
+        },
+        {
+          "name": "pluginDir",
+          "value": "File(Constants.PLUGIN_DIR, pluginId)"
+        },
+        {
+          "name": "batteryManager",
+          "value": "context.getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager"
+        },
+        {
+          "name": "level",
+          "value": "batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)"
+        },
+        {
+          "name": "status",
+          "value": "batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_STATUS)"
+        }
+      ],
+      "comment_count": 3,
+      "has_permission_check": true,
+      "has_permission_request": true,
+      "has_permission_callback": true,
+      "category": "Web插件JS接口（权限桥接）",
+      "last_modified": "2026-07-27T13:37:41.221991"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/utils/PermissionUtils.kt",
+      "filename": "PermissionUtils.kt",
+      "extension": ".kt",
+      "size": 7277,
+      "line_count": 172,
+      "hash": "b5863a10c218c810",
+      "package": "com.UIN.Tool.utils",
+      "class_name": "PermissionUtils",
+      "imports": [
+        "android.app.Activity",
+        "android.content.Context",
+        "android.content.Intent",
+        "android.net.Uri",
+        "android.os.Build",
+        "android.provider.Settings",
+        "androidx.activity.result.ActivityResultLauncher",
+        "androidx.core.content.ContextCompat"
+      ],
+      "import_count": 8,
+      "function_count": 5,
+      "functions": [
+        {
+          "name": "hasPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "hasSpecialPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "isSpecialPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "requestSpecialPermission",
+          "parameters": "activity: Activity,\n        permission: String,\n        launcher: ActivityResultLauncher<Intent>",
+          "return_type": "Unit"
+        },
+        {
+          "name": "getPermissionDisplayName",
+          "parameters": "permission: String",
+          "return_type": "String"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "hasPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "hasSpecialPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "isSpecialPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestSpecialPermission",
+          "parameters": "activity: Activity,\n        permission: String,\n        launcher: ActivityResultLauncher<Intent>",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "getPermissionDisplayName",
+          "parameters": "permission: String",
+          "return_type": "String",
+          "keyword": "permission"
+        },
+        {
+          "name": "hasPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "hasSpecialPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "isSpecialPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestSpecialPermission",
+          "parameters": "activity: Activity,\n        permission: String,\n        launcher: ActivityResultLauncher<Intent>",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "getPermissionDisplayName",
+          "parameters": "permission: String",
+          "return_type": "String",
+          "keyword": "Permission"
+        },
+        {
+          "name": "hasPermission",
+          "parameters": "context: Context, permission: String",
+          "return_type": "Boolean",
+          "keyword": "hasPermission"
+        }
+      ],
+      "annotations": [],
+      "constants": [
+        {
+          "name": "appOps",
+          "value": "context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager"
+        },
+        {
+          "name": "mode",
+          "value": "if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {"
+        },
+        {
+          "name": "enabledServices",
+          "value": "Settings.Secure.getString("
+        },
+        {
+          "name": "intent",
+          "value": "when (permission) {"
+        }
+      ],
+      "comment_count": 0,
+      "has_permission_check": false,
+      "has_permission_request": false,
+      "has_permission_callback": false,
+      "category": "权限工具类",
+      "last_modified": "2026-07-26T17:59:18.973560"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/ui/screen/manage/PluginManageScreen.kt",
+      "filename": "PluginManageScreen.kt",
+      "extension": ".kt",
+      "size": 58893,
+      "line_count": 1419,
+      "hash": "d506559f5c44eafe",
+      "package": "com.UIN.Tool.ui.screen.manage",
+      "class_name": null,
+      "imports": [
+        "android.net.Uri",
+        "android.provider.Settings",
+        "androidx.activity.compose.rememberLauncherForActivityResult",
+        "androidx.activity.result.contract.ActivityResultContracts",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.clickable",
+        "androidx.compose.foundation.layout.",
+        "androidx.compose.foundation.lazy.LazyColumn",
+        "androidx.compose.foundation.lazy.items",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.material.icons.Icons",
+        "androidx.compose.material.icons.filled.",
+        "androidx.compose.material.icons.outlined.",
+        "androidx.compose.material3.",
+        "androidx.compose.runtime.",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.platform.LocalContext",
+        "androidx.compose.ui.text.font.FontWeight"
+      ],
+      "import_count": 38,
+      "function_count": 17,
+      "functions": [
+        {
+          "name": "PluginManageScreen",
+          "parameters": "navController: NavController = rememberNavController(",
+          "return_type": "Unit"
+        },
+        {
+          "name": "loadPlugins",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "refreshWidgets",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "importSinglePlugin",
+          "parameters": "uri: Uri",
+          "return_type": "Unit"
+        },
+        {
+          "name": "batchImportPlugins",
+          "parameters": "uris: List<Uri>",
+          "return_type": "Unit"
+        },
+        {
+          "name": "importPluginSet",
+          "parameters": "uri: Uri",
+          "return_type": "Unit"
+        },
+        {
+          "name": "exportSelectedPlugins",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "uninstallPlugin",
+          "parameters": "plugin: PluginInfo",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestPluginPermissions",
+          "parameters": "plugin: PluginInfo",
+          "return_type": "Unit"
+        },
+        {
+          "name": "addPluginDirToZip",
+          "parameters": "zos: java.util.zip.ZipOutputStream,\n    dir: File,\n    basePath: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "buildDetailMessage",
+          "parameters": "plugin: PluginInfo",
+          "return_type": "String"
+        },
+        {
+          "name": "PermissionManagementDialog",
+          "parameters": "plugin: PluginInfo,\n    onDismiss: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PermissionDetailDialog",
+          "parameters": "plugin: PluginInfo,\n    onDismiss: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PermissionItemCompact",
+          "parameters": "permission: String,\n    granted: Boolean,\n    onRequest: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PluginManageItem",
+          "parameters": "plugin: PluginInfo,\n    isSelected: Boolean,\n    onToggle: (",
+          "return_type": "Unit"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "requestPluginPermissions",
+          "parameters": "plugin: PluginInfo",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionManagementDialog",
+          "parameters": "plugin: PluginInfo,\n    onDismiss: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionDetailDialog",
+          "parameters": "plugin: PluginInfo,\n    onDismiss: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionItemCompact",
+          "parameters": "permission: String,\n    granted: Boolean,\n    onRequest: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPluginPermissions",
+          "parameters": "plugin: PluginInfo",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "PermissionManagementDialog",
+          "parameters": "plugin: PluginInfo,\n    onDismiss: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "PermissionDetailDialog",
+          "parameters": "plugin: PluginInfo,\n    onDismiss: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "PermissionItemCompact",
+          "parameters": "permission: String,\n    granted: Boolean,\n    onRequest: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        }
+      ],
+      "annotations": [
+        "Composable",
+        "OptIn",
+        "launch",
+        "forEach"
+      ],
+      "constants": [
+        {
+          "name": "TAG",
+          "value": "PluginManageScreen"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginManageScreen"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginManageScreen"
+        },
+        {
+          "name": "context",
+          "value": "LocalContext.current"
+        },
+        {
+          "name": "scope",
+          "value": "rememberCoroutineScope()"
+        },
+        {
+          "name": "pluginManager",
+          "value": "ServiceLocator.getPluginManager()"
+        },
+        {
+          "name": "preferenceManager",
+          "value": "PreferenceManager(context)"
+        },
+        {
+          "name": "categories",
+          "value": "remember(plugins) {"
+        },
+        {
+          "name": "filteredPlugins",
+          "value": "remember(searchText, selectedCategory, plugins) {"
+        },
+        {
+          "name": "fileName",
+          "value": "uri.lastPathSegment?.substringAfterLast("
+        },
+        {
+          "name": "tempFile",
+          "value": "File(context.cacheDir, "
+        },
+        {
+          "name": "info",
+          "value": "pluginManager.installPlugin(tempFile, fileName)"
+        },
+        {
+          "name": "failNames",
+          "value": "mutableListOf<String>()"
+        },
+        {
+          "name": "fileName",
+          "value": "uri.lastPathSegment?.substringAfterLast("
+        },
+        {
+          "name": "tempFile",
+          "value": "File(context.cacheDir, "
+        },
+        {
+          "name": "info",
+          "value": "pluginManager.installPlugin(tempFile, fileName)"
+        },
+        {
+          "name": "message",
+          "value": "成功导入 $successCount 个插件"
+        },
+        {
+          "name": "zipFile",
+          "value": "File(context.cacheDir, "
+        },
+        {
+          "name": "extractDir",
+          "value": "File(Constants.TEMP_DIR, "
+        },
+        {
+          "name": "failNames",
+          "value": "mutableListOf<String>()"
+        }
+      ],
+      "comment_count": 0,
+      "has_permission_check": false,
+      "has_permission_request": false,
+      "has_permission_callback": false,
+      "category": "插件管理界面（权限UI）",
+      "last_modified": "2026-07-26T17:59:18.745560"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionManagerScreen.kt",
+      "filename": "PermissionManagerScreen.kt",
+      "extension": ".kt",
+      "size": 15027,
+      "line_count": 338,
+      "hash": "b1e1d65f9a7a129e",
+      "package": "com.UIN.Tool.ui.screen.permission",
+      "class_name": "PermissionItem",
+      "imports": [
+        "android.Manifest",
+        "android.content.Intent",
+        "android.widget.Toast",
+        "androidx.activity.compose.rememberLauncherForActivityResult",
+        "androidx.activity.result.contract.ActivityResultContracts",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.clickable",
+        "androidx.compose.foundation.layout.",
+        "androidx.compose.foundation.lazy.LazyColumn",
+        "androidx.compose.foundation.lazy.items",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.material.icons.Icons",
+        "androidx.compose.material.icons.filled.",
+        "androidx.compose.material3.",
+        "androidx.compose.runtime.",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.platform.LocalContext",
+        "androidx.compose.ui.text.font.FontWeight"
+      ],
+      "import_count": 27,
+      "function_count": 4,
+      "functions": [
+        {
+          "name": "PermissionManagerScreen",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean"
+        },
+        {
+          "name": "requestPermission",
+          "parameters": "permission: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "PermissionManagerScreen",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestPermission",
+          "parameters": "permission: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionManagerScreen",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestPermission",
+          "parameters": "permission: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "checkPermission",
+          "parameters": "permission: String",
+          "return_type": "Boolean",
+          "keyword": "checkPermission"
+        },
+        {
+          "name": "requestPermission",
+          "parameters": "permission: String",
+          "return_type": "Unit",
+          "keyword": "requestPermission"
+        }
+      ],
+      "annotations": [
+        "Composable",
+        "OptIn"
+      ],
+      "constants": [
+        {
+          "name": "TAG",
+          "value": "PermissionManagerScreen"
+        },
+        {
+          "name": "TAG",
+          "value": "PermissionManagerScreen"
+        },
+        {
+          "name": "TAG",
+          "value": "PermissionManagerScreen"
+        },
+        {
+          "name": "context",
+          "value": "LocalContext.current"
+        },
+        {
+          "name": "activity",
+          "value": "context as? android.app.Activity"
+        },
+        {
+          "name": "permissionItems",
+          "value": "remember {"
+        },
+        {
+          "name": "multiplePermissionLauncher",
+          "value": "rememberLauncherForActivityResult("
+        },
+        {
+          "name": "settingsLauncher",
+          "value": "rememberLauncherForActivityResult("
+        },
+        {
+          "name": "permissions",
+          "value": "permissionItems.map { it.permission }"
+        },
+        {
+          "name": "granted",
+          "value": "checkPermission(item.permission)"
+        }
+      ],
+      "comment_count": 0,
+      "has_permission_check": true,
+      "has_permission_request": false,
+      "has_permission_callback": false,
+      "category": "权限管理界面",
+      "last_modified": "2026-07-26T17:59:18.809560"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionScreen.kt",
+      "filename": "PluginPermissionScreen.kt",
+      "extension": ".kt",
+      "size": 15897,
+      "line_count": 365,
+      "hash": "20ae227db0a13016",
+      "package": "com.UIN.Tool.ui.screen.permission",
+      "class_name": null,
+      "imports": [
+        "android.widget.Toast",
+        "androidx.activity.compose.rememberLauncherForActivityResult",
+        "androidx.activity.result.contract.ActivityResultContracts",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.clickable",
+        "androidx.compose.foundation.layout.",
+        "androidx.compose.foundation.lazy.LazyColumn",
+        "androidx.compose.foundation.lazy.items",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.material.icons.Icons",
+        "androidx.compose.material.icons.filled.",
+        "androidx.compose.material3.",
+        "androidx.compose.runtime.",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.platform.LocalContext",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.unit.sp"
+      ],
+      "import_count": 27,
+      "function_count": 5,
+      "functions": [
+        {
+          "name": "PluginPermissionScreen",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "loadPluginPermissions",
+          "parameters": "pluginId: String",
+          "return_type": "Unit"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "togglePermission",
+          "parameters": "permission: String",
+          "return_type": "Unit"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "PluginPermissionScreen",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "loadPluginPermissions",
+          "parameters": "pluginId: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "togglePermission",
+          "parameters": "permission: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PluginPermissionScreen",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "loadPluginPermissions",
+          "parameters": "pluginId: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "refreshPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "togglePermission",
+          "parameters": "permission: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        }
+      ],
+      "annotations": [
+        "Scaffold",
+        "Composable",
+        "OptIn"
+      ],
+      "constants": [
+        {
+          "name": "TAG",
+          "value": "PluginPermissionScreen"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginPermissionScreen"
+        },
+        {
+          "name": "TAG",
+          "value": "PluginPermissionScreen"
+        },
+        {
+          "name": "context",
+          "value": "LocalContext.current"
+        },
+        {
+          "name": "activity",
+          "value": "context as? android.app.Activity"
+        },
+        {
+          "name": "pluginManager",
+          "value": "ServiceLocator.getPluginManager()"
+        },
+        {
+          "name": "perms",
+          "value": "PluginPermissionManager.getPluginDeclaredPermissions(context, pluginId)"
+        },
+        {
+          "name": "status",
+          "value": "perms.associateWith { permission ->"
+        },
+        {
+          "name": "settingsLauncher",
+          "value": "rememberLauncherForActivityResult("
+        },
+        {
+          "name": "permissionLauncher",
+          "value": "rememberLauncherForActivityResult("
+        },
+        {
+          "name": "selectedPlugin",
+          "value": "plugins.find { it.pluginId == selectedPluginId }"
+        },
+        {
+          "name": "plugin",
+          "value": "plugins.find { it.pluginId == pluginId }"
+        }
+      ],
+      "comment_count": 0,
+      "has_permission_check": false,
+      "has_permission_request": true,
+      "has_permission_callback": false,
+      "category": "插件权限界面",
+      "last_modified": "2026-07-26T17:59:18.821560"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt",
+      "filename": "PluginPermissionDetailScreen.kt",
+      "extension": ".kt",
+      "size": 16221,
+      "line_count": 415,
+      "hash": "60ae44eb763dfc12",
+      "package": "com.UIN.Tool.ui.screen.permission",
+      "class_name": "PluginPermissionDetailActivity",
+      "imports": [
+        "android.os.Bundle",
+        "androidx.activity.ComponentActivity",
+        "androidx.activity.compose.setContent",
+        "androidx.compose.foundation.background",
+        "androidx.compose.foundation.layout.",
+        "androidx.compose.foundation.lazy.LazyColumn",
+        "androidx.compose.foundation.lazy.items",
+        "androidx.compose.foundation.shape.RoundedCornerShape",
+        "androidx.compose.material.icons.Icons",
+        "androidx.compose.material.icons.automirrored.filled.ArrowBack",
+        "androidx.compose.material.icons.filled.",
+        "androidx.compose.material3.",
+        "androidx.compose.runtime.",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.graphics.Color",
+        "androidx.compose.ui.platform.LocalContext",
+        "androidx.compose.ui.text.font.FontWeight",
+        "androidx.compose.ui.unit.dp",
+        "androidx.compose.ui.unit.sp"
+      ],
+      "import_count": 27,
+      "function_count": 5,
+      "functions": [
+        {
+          "name": "onCreate",
+          "parameters": "savedInstanceState: Bundle?",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PluginPermissionDetailScreen",
+          "parameters": "plugin: PluginInfo?,\n    onBack: (",
+          "return_type": "Unit"
+        },
+        {
+          "name": "loadPermissions",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PermissionDetailItem",
+          "parameters": "permission: String,\n    granted: Boolean,\n    onRequest: (",
+          "return_type": "Unit"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "PluginPermissionDetailScreen",
+          "parameters": "plugin: PluginInfo?,\n    onBack: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "loadPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionDetailItem",
+          "parameters": "permission: String,\n    granted: Boolean,\n    onRequest: (",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PluginPermissionDetailScreen",
+          "parameters": "plugin: PluginInfo?,\n    onBack: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "loadPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "requestAllPermissions",
+          "parameters": "",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "PermissionDetailItem",
+          "parameters": "permission: String,\n    granted: Boolean,\n    onRequest: (",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        }
+      ],
+      "annotations": [
+        "Scaffold",
+        "Composable",
+        "OptIn"
+      ],
+      "constants": [
+        {
+          "name": "pluginId",
+          "value": "intent.getStringExtra("
+        },
+        {
+          "name": "pluginManager",
+          "value": "ServiceLocator.getPluginManager()"
+        },
+        {
+          "name": "plugin",
+          "value": "pluginManager.getPluginInfo(pluginId)"
+        },
+        {
+          "name": "context",
+          "value": "LocalContext.current"
+        },
+        {
+          "name": "scope",
+          "value": "rememberCoroutineScope()"
+        },
+        {
+          "name": "pluginManager",
+          "value": "ServiceLocator.getPluginManager()"
+        },
+        {
+          "name": "grantedCount",
+          "value": "permissions.values.count { it }"
+        },
+        {
+          "name": "totalCount",
+          "value": "permissions.size"
+        },
+        {
+          "name": "allGranted",
+          "value": "permissions.values.all { it }"
+        }
+      ],
+      "comment_count": 0,
+      "has_permission_check": false,
+      "has_permission_request": false,
+      "has_permission_callback": false,
+      "category": "权限详情界面",
+      "last_modified": "2026-07-26T17:59:18.817560"
+    },
+    {
+      "path": "app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionExplainScreen.kt",
+      "filename": "PermissionExplainScreen.kt",
+      "extension": ".kt",
+      "size": 4520,
+      "line_count": 126,
+      "hash": "77a8e4cbeb17160a",
+      "package": "com.UIN.Tool.ui.screen.permission",
+      "class_name": null,
+      "imports": [
+        "androidx.compose.foundation.layout.",
+        "androidx.compose.foundation.rememberScrollState",
+        "androidx.compose.foundation.verticalScroll",
+        "androidx.compose.material.icons.Icons",
+        "androidx.compose.material.icons.filled.",
+        "androidx.compose.material3.",
+        "androidx.compose.runtime.Composable",
+        "androidx.compose.ui.Alignment",
+        "androidx.compose.ui.Modifier",
+        "androidx.compose.ui.unit.dp",
+        "androidx.navigation.NavController",
+        "com.UIN.Tool.ui.components.UIComponents"
+      ],
+      "import_count": 12,
+      "function_count": 2,
+      "functions": [
+        {
+          "name": "PermissionExplainScreen",
+          "parameters": "navController: NavController",
+          "return_type": "Unit"
+        },
+        {
+          "name": "PermissionExplainCard",
+          "parameters": "icon: androidx.compose.ui.graphics.vector.ImageVector,\n    title: String,\n    description: String",
+          "return_type": "Unit"
+        }
+      ],
+      "permission_methods": [
+        {
+          "name": "PermissionExplainScreen",
+          "parameters": "navController: NavController",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionExplainCard",
+          "parameters": "icon: androidx.compose.ui.graphics.vector.ImageVector,\n    title: String,\n    description: String",
+          "return_type": "Unit",
+          "keyword": "permission"
+        },
+        {
+          "name": "PermissionExplainScreen",
+          "parameters": "navController: NavController",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        },
+        {
+          "name": "PermissionExplainCard",
+          "parameters": "icon: androidx.compose.ui.graphics.vector.ImageVector,\n    title: String,\n    description: String",
+          "return_type": "Unit",
+          "keyword": "Permission"
+        }
+      ],
+      "annotations": [
+        "Composable",
+        "OptIn"
+      ],
+      "constants": [],
+      "comment_count": 0,
+      "has_permission_check": false,
+      "has_permission_request": false,
+      "has_permission_callback": false,
+      "category": "权限说明界面",
+      "last_modified": "2026-07-26T17:59:18.805560"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionScreen.kt
 package com.UIN.Tool.ui.screen.permission
 
+import android.app.Activity
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,7 +36,7 @@ private const val TAG = "PluginPermissionScreen"
 @Composable
 fun PluginPermissionScreen() {
     val context = LocalContext.current
-    val activity = context as? android.app.Activity
+    val activity = context as? Activity
     val pluginManager = ServiceLocator.getPluginManager()
 
     var plugins by remember { mutableStateOf<List<PluginInfo>>(emptyList()) }
@@ -72,29 +73,67 @@ fun PluginPermissionScreen() {
         )
     }
 
+    /**
+     * 请求所有缺失权限
+     */
     fun requestAllPermissions() {
         selectedPluginId?.let { pluginId ->
+            val activity = context as? Activity
+            if (activity == null) {
+                AppToast.error(context, "无法获取Activity")
+                return
+            }
+            
             isLoading = true
-            PluginPermissionManager.requestPermissions(context, pluginId) { allGranted ->
+            
+            val missing = PluginPermissionManager.getMissingPermissions(context, pluginId)
+            if (missing.isEmpty()) {
                 isLoading = false
                 refreshPermissions()
-                AppToast.info(
-                    context,
-                    if (allGranted) "所有权限已授予" else "部分权限被拒绝"
+                AppToast.info(context, "所有权限已授予")
+                return
+            }
+            
+            // 分离普通权限和特殊权限
+            val normal = missing.filter { !PluginPermissionManager.isSpecialPermission(it) }
+            val special = missing.filter { PluginPermissionManager.isSpecialPermission(it) }
+            
+            // 请求普通权限
+            if (normal.isNotEmpty()) {
+                PluginPermissionManager.requestPermissions(
+                    activity,
+                    normal.toTypedArray(),
+                    1001
                 )
             }
+            
+            // 引导特殊权限
+            if (special.isNotEmpty()) {
+                PluginPermissionManager.openAppSettings(activity)
+                AppToast.info(context, "特殊权限请在系统设置中手动开启")
+            }
+            
+            isLoading = false
+            refreshPermissions()
         }
     }
 
+    /**
+     * 切换单个权限
+     */
     fun togglePermission(permission: String) {
+        val activity = context as? Activity
+        if (activity == null) {
+            AppToast.error(context, "无法获取Activity")
+            return
+        }
+        
         if (PermissionUtils.isSpecialPermission(permission)) {
-            if (activity != null) {
-                PermissionUtils.requestSpecialPermission(
-                    activity,
-                    permission,
-                    settingsLauncher
-                )
-            }
+            PermissionUtils.requestSpecialPermission(
+                activity,
+                permission,
+                settingsLauncher
+            )
             return
         }
         permissionLauncher.launch(permission)
@@ -252,7 +291,7 @@ fun PluginPermissionScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 插件信息 - 移除 📦
+            // 插件信息
             selectedPluginId?.let { pluginId ->
                 val plugin = plugins.find { it.pluginId == pluginId }
                 if (plugin != null) {

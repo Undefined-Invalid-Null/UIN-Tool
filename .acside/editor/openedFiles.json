@@ -1,50 +1,110 @@
 {
   "allFiles": [
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/SplashActivity.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/utils/Constants.kt",
       "selection": {
         "end": {
           "column": 1,
-          "index": 52549,
-          "line": 1370
+          "index": 4258,
+          "line": 114
         },
         "start": {
           "column": 1,
-          "index": 52549,
-          "line": 1370
+          "index": 4258,
+          "line": 114
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingActivity.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginContext.kt",
       "selection": {
         "end": {
           "column": 1,
-          "index": 1062,
-          "line": 32
+          "index": 15630,
+          "line": 491
         },
         "start": {
           "column": 1,
-          "index": 1062,
-          "line": 32
+          "index": 15630,
+          "line": 491
         }
       }
     },
     {
-      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingScreen.kt",
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginManager.kt",
       "selection": {
         "end": {
-          "column": 72,
-          "index": 10771,
-          "line": 235
+          "column": 1,
+          "index": 34758,
+          "line": 974
         },
         "start": {
-          "column": 72,
-          "index": 10771,
-          "line": 235
+          "column": 1,
+          "index": 34758,
+          "line": 974
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 29849,
+          "line": 735
+        },
+        "start": {
+          "column": 1,
+          "index": 29849,
+          "line": 735
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginJSInterface.kt",
+      "selection": {
+        "end": {
+          "column": 23,
+          "index": 52,
+          "line": 2
+        },
+        "start": {
+          "column": 23,
+          "index": 52,
+          "line": 2
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginPermissionManager.kt",
+      "selection": {
+        "end": {
+          "column": 41,
+          "index": 488,
+          "line": 14
+        },
+        "start": {
+          "column": 41,
+          "index": 488,
+          "line": 14
+        }
+      }
+    },
+    {
+      "file": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionScreen.kt",
+      "selection": {
+        "end": {
+          "column": 1,
+          "index": 16699,
+          "line": 403
+        },
+        "start": {
+          "column": 1,
+          "index": 16699,
+          "line": 403
         }
       }
     }
   ],
-  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/ui/screen/onboarding/OnboardingScreen.kt"
+  "selectedFile": "/storage/emulated/0/AndroidIDEProjects/UIN_Tool/app/src/main/java/com/UIN/Tool/plugin/PluginHostActivity.kt"
 }

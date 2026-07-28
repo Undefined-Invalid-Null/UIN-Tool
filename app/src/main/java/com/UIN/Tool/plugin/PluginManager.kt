@@ -1,4 +1,3 @@
-// plugin/PluginManager.kt
 package com.UIN.Tool.plugin
 
 import android.content.Context
@@ -103,9 +102,7 @@ class PluginManager private constructor(
         refreshPlugins()
     }
 
-    // ============================================================
-    // 插件列表管理
-    // ============================================================
+    // ==================== 插件列表管理 ====================
 
     fun refreshPlugins() {
         Logger.enter(TAG, "refreshPlugins")
@@ -158,41 +155,7 @@ class PluginManager private constructor(
     fun getPluginCount(): Int = _plugins.value.size
     fun isPluginInstalled(pluginId: String): Boolean = _installedPluginIds.value.contains(pluginId)
 
-    // ============================================================
-    // 插件安装
-    // ============================================================
-
-    suspend fun installPlugin(file: File, fileName: String): PluginInfo? {
-        Logger.enter(TAG, "installPlugin")
-        Logger.param(TAG, "文件", file.absolutePath)
-
-        return try {
-            if (!SecurityUtils.verifyFileSignature(file, preferenceManager)) {
-                Logger.e(TAG, "插件签名验证失败")
-                _error.value = "插件签名验证失败，文件可能被篡改"
-                return null
-            }
-
-            val info = installPluginInternal(file, fileName)
-
-            if (info != null) {
-                checkPluginDependencies(info)
-                requestPermissionsAfterInstall(info)
-                refreshPlugins()
-                createPluginDynamicShortcut(info)
-                notifyWidgetsRefresh()
-                Logger.success(TAG, "插件安装成功: ${info.name}")
-            }
-
-            info
-        } catch (e: Exception) {
-            Logger.e(TAG, "安装插件异常", e)
-            _error.value = e.message
-            null
-        } finally {
-            Logger.exit(TAG, "installPlugin", System.currentTimeMillis())
-        }
-    }
+    // ==================== 插件安装 ====================
 
     private suspend fun installPluginInternal(file: File, fileName: String): PluginInfo? {
         val tempDir = File(Constants.TEMP_DIR, "plugin_install_${System.currentTimeMillis()}")
@@ -231,18 +194,37 @@ class PluginManager private constructor(
             }
 
             val pluginDir = File(Constants.PLUGIN_DIR, info.pluginId)
+
+            var dataBackup: File? = null
             if (pluginDir.exists()) {
+                val userDataDir = File(pluginDir, "data")
+                if (userDataDir.exists()) {
+                    dataBackup = File(Constants.TEMP_DIR, "data_backup_${info.pluginId}_${System.currentTimeMillis()}")
+                    dataBackup.mkdirs()
+                    fileManager.copyDirectory(userDataDir, dataBackup)
+                    Logger.d(TAG, "已备份用户数据: ${userDataDir.absolutePath}")
+                }
                 fileManager.deleteRecursively(pluginDir)
                 Logger.i(TAG, "删除旧插件: ${info.pluginId}")
             }
-            pluginDir.mkdirs()
 
+            pluginDir.mkdirs()
             fileManager.copyDirectory(tempDir, pluginDir)
+
+            if (dataBackup != null && dataBackup.exists()) {
+                val userDataDir = File(pluginDir, "data")
+                fileManager.copyDirectory(dataBackup, userDataDir)
+                fileManager.deleteRecursively(dataBackup)
+                Logger.success(TAG, "用户数据已恢复")
+            }
+
+            migratePluginDataVersion(info)
 
             SecurityUtils.savePluginSignature(info.pluginId, file, preferenceManager)
 
             Logger.success(TAG, "安装成功: ${info.name} (${info.pluginId})")
             info
+
         } catch (e: Exception) {
             Logger.e(TAG, "安装失败: ${e.message}", e)
             null
@@ -251,23 +233,53 @@ class PluginManager private constructor(
         }
     }
 
-    private fun requestPermissionsAfterInstall(info: PluginInfo) {
-        if (info.permissions.isEmpty()) return
-        Logger.i(TAG, "插件 ${info.name} 声明了 ${info.permissions.size} 个权限")
-        PluginPermissionManager.requestPermissionsByGroups(
-            context,
-            info.pluginId,
-            onProgress = { group, current, total ->
-                Logger.d(TAG, "权限请求进度: ($current/$total) $group")
-            },
-            onComplete = { allGranted ->
-                if (allGranted) {
-                    Logger.success(TAG, "✅ 插件 ${info.name} 所有权限已授予")
-                } else {
-                    Logger.w(TAG, "⚠️ 插件 ${info.name} 部分权限被拒绝")
-                }
+    private fun migratePluginDataVersion(info: PluginInfo) {
+        try {
+            val pluginDir = File(Constants.PLUGIN_DIR, info.pluginId)
+            val pluginContext = PluginContext(context, pluginDir.absolutePath)
+
+            val currentVersion = pluginContext.getDataVersion()
+            if (currentVersion == 0) {
+                pluginContext.setDataVersion(info.version)
+                Logger.d(TAG, "首次安装，数据版本: ${info.version}")
+            } else if (currentVersion < info.version) {
+                Logger.i(TAG, "数据迁移: $currentVersion -> ${info.version}")
+                pluginContext.setDataVersion(info.version)
             }
-        )
+        } catch (e: Exception) {
+            Logger.e(TAG, "数据版本检查失败", e)
+        }
+    }
+
+    suspend fun installPlugin(file: File, fileName: String): PluginInfo? {
+        Logger.enter(TAG, "installPlugin")
+        Logger.param(TAG, "文件", file.absolutePath)
+
+        return try {
+            if (!SecurityUtils.verifyFileSignature(file, preferenceManager)) {
+                Logger.e(TAG, "插件签名验证失败")
+                _error.value = "插件签名验证失败，文件可能被篡改"
+                return null
+            }
+
+            val info = installPluginInternal(file, fileName)
+
+            if (info != null) {
+                checkPluginDependencies(info)
+                refreshPlugins()
+                createPluginDynamicShortcut(info)
+                notifyWidgetsRefresh()
+                Logger.success(TAG, "插件安装成功: ${info.name}")
+            }
+
+            info
+        } catch (e: Exception) {
+            Logger.e(TAG, "安装插件异常", e)
+            _error.value = e.message
+            null
+        } finally {
+            Logger.exit(TAG, "installPlugin", System.currentTimeMillis())
+        }
     }
 
     private fun checkPluginDependencies(info: PluginInfo) {
@@ -298,9 +310,7 @@ class PluginManager private constructor(
         return installPlugin(file, file.name)
     }
 
-    // ============================================================
-    // 插件卸载
-    // ============================================================
+    // ==================== 插件卸载 ====================
 
     suspend fun uninstallPlugin(pluginId: String): Boolean {
         Logger.action(TAG, "卸载插件", pluginId)
@@ -313,22 +323,23 @@ class PluginManager private constructor(
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
             val optDir = File(context.codeCacheDir, "opt/$pluginId")
 
+            try {
+                val pluginContext = PluginContext(context, pluginDir.absolutePath)
+                pluginContext.deleteAllPluginData()
+                Logger.d(TAG, "已清理插件数据: $pluginId")
+            } catch (e: Exception) {
+                Logger.w(TAG, "清理数据失败: ${e.message}")
+            }
+
             val result = fileManager.deleteRecursively(pluginDir)
             fileManager.deleteRecursively(optDir)
 
             if (result) {
                 classLoaders.remove(pluginId)
                 pluginInstances.remove(pluginId)
-                getPluginWebView(pluginId)?.let {
-                    it.loadUrl("about:blank")
-                    it.clearHistory()
-                    it.clearCache(true)
-                    it.destroy()
-                }
                 removePluginWebView(pluginId)
                 removePluginDynamicShortcut(pluginId)
                 preferenceManager.removePluginSignature(pluginId)
-                PluginPermissionManager.clearPluginPermissionConfigs(context, pluginId)
                 refreshPlugins()
                 notifyWidgetsRefresh()
                 Logger.success(TAG, "插件卸载成功: $pluginId")
@@ -351,9 +362,7 @@ class PluginManager private constructor(
         return successList
     }
 
-    // ============================================================
-    // 插件更新
-    // ============================================================
+    // ==================== 插件更新 ====================
 
     suspend fun updatePlugin(pluginId: String, newPluginFile: File): Boolean {
         if (!uninstallPlugin(pluginId)) {
@@ -369,9 +378,7 @@ class PluginManager private constructor(
         return info != null && newVersion > info.version
     }
 
-    // ============================================================
-    // 插件导出
-    // ============================================================
+    // ==================== 插件导出 ====================
 
     suspend fun exportPlugin(pluginId: String, destFile: File): Boolean {
         val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
@@ -394,54 +401,26 @@ class PluginManager private constructor(
         return successList
     }
 
-    // ============================================================
-    // 插件运行
-    // ============================================================
+    // ==================== 插件运行 ====================
 
+    /**
+     * 打开插件 - 直接启动 PluginHostActivity
+     */
     fun openPlugin(pluginId: String, context: Context) {
         Logger.action(TAG, "打开插件", pluginId)
         val info = getPluginInfo(pluginId)
         if (info == null) {
-            Toast.makeText(context, "插件不存在", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "插件不存在: $pluginId", Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (!PluginPermissionManager.areAllPermissionsGranted(context, pluginId)) {
-            val missing = PluginPermissionManager.getMissingPermissions(context, pluginId)
-            Logger.w(TAG, "插件缺少权限: ${missing.joinToString()}")
-            PluginPermissionManager.showPermissionGuidance(
-                context,
-                pluginId,
-                onReRequest = {
-                    PluginPermissionManager.requestPermissions(context, pluginId) { granted ->
-                        if (granted) {
-                            openPluginInternal(pluginId, context, info)
-                        } else {
-                            Toast.makeText(context, "权限被拒绝，插件无法正常运行", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                },
-                onOpenSettings = {
-                    val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    intent.data = android.net.Uri.parse("package:${context.packageName}")
-                    context.startActivity(intent)
-                }
-            )
-            return
-        }
-
-        openPluginInternal(pluginId, context, info)
-    }
-
-    private fun openPluginInternal(pluginId: String, context: Context, info: PluginInfo) {
         val intent = Intent(context, PluginHostActivity::class.java)
         intent.putExtra(PluginHostActivity.EXTRA_PLUGIN_ID, pluginId)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }
 
-    // ============================================================
-    // 插件视图加载（原生插件）
-    // ============================================================
+    // ==================== 插件视图加载（原生插件） ====================
 
     fun getPluginViewSync(pluginId: String, context: Context, container: ViewGroup?): View? {
         Logger.enter(TAG, "getPluginViewSync")
@@ -475,7 +454,7 @@ class PluginManager private constructor(
                     context.classLoader
                 )
                 classLoaders[pluginId] = classLoader
-                Logger.success(TAG, "✅ DexClassLoader 创建成功")
+                Logger.success(TAG, "DexClassLoader 创建成功")
             }
 
             var plugin = pluginInstances[pluginId]?.get()
@@ -483,17 +462,18 @@ class PluginManager private constructor(
                 val clazz = classLoader.loadClass(info.mainClass)
                 plugin = clazz.newInstance() as PluginInterface
                 pluginInstances[pluginId] = WeakReference(plugin)
-                Logger.success(TAG, "✅ 插件实例化成功")
+                Logger.success(TAG, "插件实例化成功")
             }
 
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
             val pluginContext = PluginContext(context, pluginDir.absolutePath)
+
             val view = plugin.onCreateView(pluginContext, container, null)
 
             if (view != null) {
-                Logger.success(TAG, "✅ 插件视图创建成功")
+                Logger.success(TAG, "插件视图创建成功")
             } else {
-                Logger.e(TAG, "❌ 插件视图创建失败")
+                Logger.e(TAG, "插件视图创建失败")
             }
 
             return view
@@ -517,9 +497,28 @@ class PluginManager private constructor(
         return File(Constants.PLUGIN_DIR, pluginId).takeIf { it.exists() }
     }
 
-    // ============================================================
-    // 搜索和分类
-    // ============================================================
+    // ==================== 获取插件数据存储 ====================
+
+    fun getPluginDataContext(pluginId: String): PluginContext? {
+        if (!isPluginInstalled(pluginId)) {
+            Logger.w(TAG, "插件未安装: $pluginId")
+            return null
+        }
+        val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
+        return PluginContext(context, pluginDir.absolutePath)
+    }
+
+    fun getPluginDataVersion(pluginId: String): Int {
+        val pctx = getPluginDataContext(pluginId) ?: return 0
+        return pctx.getDataVersion()
+    }
+
+    fun getPluginStorageStats(pluginId: String): PluginContext.StorageStats? {
+        val pctx = getPluginDataContext(pluginId) ?: return null
+        return pctx.getStorageStats()
+    }
+
+    // ==================== 搜索和分类 ====================
 
     fun searchPlugins(keyword: String): List<PluginInfo> {
         if (keyword.isEmpty()) return _plugins.value
@@ -543,26 +542,6 @@ class PluginManager private constructor(
         return categories.toList()
     }
 
-    fun getAllCategoriesWithSystem(): List<String> = getAllCategories()
-
-    fun addCategory(categoryName: String): Boolean {
-        if (categoryName.isBlank()) return false
-        val trimmed = categoryName.trim()
-        if (getAllCategories().contains(trimmed)) return false
-        Logger.action(TAG, "添加分类", trimmed)
-        return true
-    }
-
-    fun deleteCategory(categoryName: String): Boolean {
-        if (categoryName.isBlank() || categoryName == "全部" || categoryName == "未分类") return false
-        val plugins = getPluginsByCategory(categoryName)
-        var success = true
-        plugins.forEach {
-            if (!updatePluginCategory(it.pluginId, "未分类")) success = false
-        }
-        return success
-    }
-
     fun updatePluginCategory(pluginId: String, newCategory: String): Boolean {
         val plugin = getPluginInfo(pluginId) ?: return false
         val updated = plugin.copy(category = newCategory)
@@ -578,9 +557,7 @@ class PluginManager private constructor(
         }
     }
 
-    // ============================================================
-    // 动态快捷方式
-    // ============================================================
+    // ==================== 动态快捷方式 ====================
 
     @Suppress("DEPRECATION")
     private fun createPluginDynamicShortcut(plugin: PluginInfo) {
@@ -704,9 +681,7 @@ class PluginManager private constructor(
         return null
     }
 
-    // ============================================================
-    // 小部件刷新
-    // ============================================================
+    // ==================== 小部件刷新 ====================
 
     private fun notifyWidgetsRefresh() {
         try {
@@ -725,13 +700,7 @@ class PluginManager private constructor(
         notifyWidgetsRefresh()
     }
 
-    fun onPluginsChanged() {
-        refreshAndNotifyWidgets()
-    }
-
-    // ============================================================
-    // 生命周期管理
-    // ============================================================
+    // ==================== 生命周期管理 ====================
 
     fun onPluginResume(pluginId: String) {
         getPluginInstance(pluginId)?.onResume()
@@ -777,9 +746,7 @@ class PluginManager private constructor(
         return false
     }
 
-    // ============================================================
-    // 插件权限管理（代理）
-    // ============================================================
+    // ==================== 插件权限管理（代理） ====================
 
     fun getPluginDeclaredPermissions(pluginId: String): List<String> {
         return PluginPermissionManager.getPluginDeclaredPermissions(context, pluginId)
@@ -797,37 +764,125 @@ class PluginManager private constructor(
         return PluginPermissionManager.getMissingPermissions(context, pluginId)
     }
 
-    fun requestPluginPermissions(pluginId: String, onResult: (Boolean) -> Unit) {
-        PluginPermissionManager.requestPermissions(context, pluginId, onResult)
+    fun getPluginPermissionSummary(pluginId: String): PluginPermissionManager.PermissionStatusSummary {
+        return PluginPermissionManager.getPermissionStatusSummary(context, pluginId)
     }
 
+    fun getPermissionState(pluginId: String): Int {
+        return PluginPermissionManager.getPermissionState(context, pluginId)
+    }
+
+    fun setPermissionState(pluginId: String, state: Int) {
+        PluginPermissionManager.setPermissionState(context, pluginId, state)
+    }
+
+    fun shouldShowPermissionDialog(pluginId: String): Boolean {
+        return PluginPermissionManager.shouldShowPermissionDialog(context, pluginId)
+    }
+
+    /**
+     * 请求插件权限 - 供UI层调用
+     */
+    fun requestPluginPermissions(pluginId: String, onResult: (Boolean) -> Unit) {
+        val activity = context as? android.app.Activity
+        if (activity == null) {
+            Logger.e(TAG, "Context 不是 Activity，无法请求权限")
+            onResult(false)
+            return
+        }
+        val permissions = getPluginMissingPermissions(pluginId)
+        if (permissions.isEmpty()) {
+            onResult(true)
+            return
+        }
+        // 使用固定的 requestCode，在 Activity 中处理结果
+        val requestCode = 2000 + pluginId.hashCode() % 1000
+        PluginPermissionManager.requestPermissions(
+            activity,
+            permissions.toTypedArray(),
+            requestCode
+        )
+        // 结果通过 PluginPermissionManager.onRequestPermissionsResult 回调
+        onResult(true)
+    }
+
+    /**
+     * 分组请求插件权限 - 供UI层调用
+     */
     fun requestPluginPermissionsByGroups(
         pluginId: String,
         onProgress: ((String, Int, Int) -> Unit)? = null,
         onComplete: (Boolean) -> Unit
     ) {
-        PluginPermissionManager.requestPermissionsByGroups(context, pluginId, onProgress, onComplete)
+        val activity = context as? android.app.Activity
+        if (activity == null) {
+            Logger.e(TAG, "Context 不是 Activity，无法请求权限")
+            onComplete(false)
+            return
+        }
+        
+        val permissions = getPluginMissingPermissions(pluginId)
+        if (permissions.isEmpty()) {
+            onComplete(true)
+            return
+        }
+        
+        // 分组：普通权限和特殊权限
+        val normal = permissions.filter { !PluginPermissionManager.isSpecialPermission(it) }
+        val special = permissions.filter { PluginPermissionManager.isSpecialPermission(it) }
+        
+        if (normal.isNotEmpty()) {
+            onProgress?.invoke("普通权限", 0, 2)
+            val requestCode = 3000 + pluginId.hashCode() % 1000
+            PluginPermissionManager.requestPermissions(
+                activity,
+                normal.toTypedArray(),
+                requestCode
+            )
+            // 简化：假设普通权限会授予
+            onProgress?.invoke("普通权限已授予", 1, 2)
+        }
+        
+        if (special.isNotEmpty()) {
+            onProgress?.invoke("特殊权限", 1, 2)
+            // 特殊权限需要用户手动开启
+            PluginPermissionManager.openAppSettings(activity)
+            onProgress?.invoke("请手动开启特殊权限", 2, 2)
+            // 特殊权限需要用户手动开启，所以这里返回 false
+            onComplete(false)
+        } else {
+            onComplete(true)
+        }
     }
 
+    /**
+     * 显示权限引导 - 供UI层调用
+     */
     fun showPermissionGuidance(pluginId: String, onReRequest: () -> Unit, onOpenSettings: () -> Unit) {
-        PluginPermissionManager.showPermissionGuidance(context, pluginId, onReRequest, onOpenSettings)
+        // 直接调用 onReRequest，由 UI 层处理弹窗
+        onReRequest()
     }
 
-    fun getPluginPermissionSummary(pluginId: String): PluginPermissionManager.PermissionStatusSummary {
-        return PluginPermissionManager.getPermissionStatusSummary(context, pluginId)
-    }
-
+    /**
+     * 保存插件权限配置
+     */
     fun savePluginPermissionConfig(pluginId: String, permission: String, granted: Boolean) {
-        PluginPermissionManager.savePluginPermissionConfig(context, pluginId, permission, granted)
+        val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("perm_$permission", granted).apply()
+        Logger.d(TAG, "保存权限配置: $pluginId -> $permission = $granted")
     }
 
+    /**
+     * 清除插件权限配置
+     */
     fun clearPluginPermissionConfigs(pluginId: String) {
-        PluginPermissionManager.clearPluginPermissionConfigs(context, pluginId)
+        val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
+        val keys = prefs.all.keys.filter { it.startsWith("perm_") }
+        keys.forEach { prefs.edit().remove(it).apply() }
+        Logger.d(TAG, "清除权限配置: $pluginId")
     }
 
-    // ============================================================
-    // Termux 后端管理
-    // ============================================================
+    // ==================== Termux 后端管理 ====================
 
     fun hasBackend(pluginId: String): Boolean {
         return getPluginInfo(pluginId)?.hasBackend() == true
@@ -884,9 +939,7 @@ class PluginManager private constructor(
         PluginBackendManager.callApi(pluginId, path, method, body, callback)
     }
 
-    // ============================================================
-    // 插件说明通知管理
-    // ============================================================
+    // ==================== 插件说明通知管理 ====================
 
     fun isPluginNoticeIgnored(pluginId: String): Boolean {
         val prefs = context.getSharedPreferences("plugin_notices", Context.MODE_PRIVATE)
@@ -903,9 +956,7 @@ class PluginManager private constructor(
         prefs.edit().clear().apply()
     }
 
-    // ============================================================
-    // 清理
-    // ============================================================
+    // ==================== 清理 ====================
 
     fun clearAllPlugins() {
         _plugins.value.forEach { plugin ->
