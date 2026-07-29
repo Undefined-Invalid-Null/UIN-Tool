@@ -403,9 +403,6 @@ class PluginManager private constructor(
 
     // ==================== 插件运行 ====================
 
-    /**
-     * 打开插件 - 直接启动 PluginHostActivity
-     */
     fun openPlugin(pluginId: String, context: Context) {
         Logger.action(TAG, "打开插件", pluginId)
         val info = getPluginInfo(pluginId)
@@ -780,9 +777,6 @@ class PluginManager private constructor(
         return PluginPermissionManager.shouldShowPermissionDialog(context, pluginId)
     }
 
-    /**
-     * 请求插件权限 - 供UI层调用
-     */
     fun requestPluginPermissions(pluginId: String, onResult: (Boolean) -> Unit) {
         val activity = context as? android.app.Activity
         if (activity == null) {
@@ -795,20 +789,15 @@ class PluginManager private constructor(
             onResult(true)
             return
         }
-        // 使用固定的 requestCode，在 Activity 中处理结果
         val requestCode = 2000 + pluginId.hashCode() % 1000
         PluginPermissionManager.requestPermissions(
             activity,
             permissions.toTypedArray(),
             requestCode
         )
-        // 结果通过 PluginPermissionManager.onRequestPermissionsResult 回调
         onResult(true)
     }
 
-    /**
-     * 分组请求插件权限 - 供UI层调用
-     */
     fun requestPluginPermissionsByGroups(
         pluginId: String,
         onProgress: ((String, Int, Int) -> Unit)? = null,
@@ -827,7 +816,6 @@ class PluginManager private constructor(
             return
         }
         
-        // 分组：普通权限和特殊权限
         val normal = permissions.filter { !PluginPermissionManager.isSpecialPermission(it) }
         val special = permissions.filter { PluginPermissionManager.isSpecialPermission(it) }
         
@@ -839,42 +827,29 @@ class PluginManager private constructor(
                 normal.toTypedArray(),
                 requestCode
             )
-            // 简化：假设普通权限会授予
             onProgress?.invoke("普通权限已授予", 1, 2)
         }
         
         if (special.isNotEmpty()) {
             onProgress?.invoke("特殊权限", 1, 2)
-            // 特殊权限需要用户手动开启
             PluginPermissionManager.openAppSettings(activity)
             onProgress?.invoke("请手动开启特殊权限", 2, 2)
-            // 特殊权限需要用户手动开启，所以这里返回 false
             onComplete(false)
         } else {
             onComplete(true)
         }
     }
 
-    /**
-     * 显示权限引导 - 供UI层调用
-     */
     fun showPermissionGuidance(pluginId: String, onReRequest: () -> Unit, onOpenSettings: () -> Unit) {
-        // 直接调用 onReRequest，由 UI 层处理弹窗
         onReRequest()
     }
 
-    /**
-     * 保存插件权限配置
-     */
     fun savePluginPermissionConfig(pluginId: String, permission: String, granted: Boolean) {
         val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
         prefs.edit().putBoolean("perm_$permission", granted).apply()
         Logger.d(TAG, "保存权限配置: $pluginId -> $permission = $granted")
     }
 
-    /**
-     * 清除插件权限配置
-     */
     fun clearPluginPermissionConfigs(pluginId: String) {
         val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
         val keys = prefs.all.keys.filter { it.startsWith("perm_") }
@@ -885,7 +860,10 @@ class PluginManager private constructor(
     // ==================== Termux 后端管理 ====================
 
     fun hasBackend(pluginId: String): Boolean {
-        return getPluginInfo(pluginId)?.hasBackend() == true
+        val info = getPluginInfo(pluginId)
+        val result = info?.hasBackend() == true
+        Logger.d(TAG, "hasBackend($pluginId) = $result")
+        return result
     }
 
     fun getBackendType(pluginId: String): String {
@@ -900,23 +878,58 @@ class PluginManager private constructor(
         return PluginBackendManager.getPort(pluginId)
     }
 
+    // ==================== ✅ startBackend 带详细日志 ====================
+
     fun startBackend(pluginId: String, callback: (Boolean, Int, String?) -> Unit) {
+        Logger.d(TAG, "========================================")
+        Logger.d(TAG, "🔍 PluginManager.startBackend() 被调用")
+        Logger.d(TAG, "📦 pluginId: $pluginId")
+        Logger.d(TAG, "⏰ 时间: ${System.currentTimeMillis()}")
+        
         val info = getPluginInfo(pluginId)
+        Logger.d(TAG, "📌 info == null: ${info == null}")
+        
         if (info == null) {
+            Logger.e(TAG, "❌ 插件不存在: $pluginId")
             callback(false, 0, "插件不存在")
             return
         }
+        
+        Logger.d(TAG, "📌 info.name: ${info.name}")
+        Logger.d(TAG, "📌 info.hasBackend(): ${info.hasBackend()}")
+        Logger.d(TAG, "📌 info.backend: '${info.backend}'")
+        Logger.d(TAG, "📌 info.backendEntry: '${info.backendEntry}'")
+        Logger.d(TAG, "📌 info.backendPort: ${info.backendPort}")
+        Logger.d(TAG, "📌 info.backendAutoStart: ${info.backendAutoStart}")
+        Logger.d(TAG, "========================================")
+        
         if (!info.hasBackend()) {
+            Logger.w(TAG, "❌ 插件未配置后端")
             callback(false, 0, "插件未配置后端")
             return
         }
 
+        Logger.i(TAG, "✅ 条件满足，调用 PluginBackendManager.startBackend()")
+        
         Thread {
-            val success = PluginBackendManager.startBackend(context, info)
-            val port = if (success) PluginBackendManager.getPort(pluginId) else 0
-            val error = if (success) null else "启动失败"
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                callback(success, port, error)
+            try {
+                Logger.d(TAG, "🔄 调用 PluginBackendManager.startBackend()...")
+                val startTime = System.currentTimeMillis()
+                val success = PluginBackendManager.startBackend(context, info)
+                val elapsed = System.currentTimeMillis() - startTime
+                val port = if (success) PluginBackendManager.getPort(pluginId) else 0
+                val error = if (success) null else "启动失败"
+                
+                Logger.d(TAG, "📊 启动结果: success=$success, port=$port, error=$error, 耗时=${elapsed}ms")
+                
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    callback(success, port, error)
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "❌ 启动后端异常: ${e.message}", e)
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    callback(false, 0, e.message)
+                }
             }
         }.start()
     }
