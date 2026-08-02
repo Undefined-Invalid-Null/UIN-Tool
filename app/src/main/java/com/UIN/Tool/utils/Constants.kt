@@ -7,8 +7,8 @@ import java.io.File
 object Constants {
     
     const val APP_NAME = "UIN_Tool"
-    const val APP_VERSION = "4.4.0"
-    const val APP_VERSION_CODE = 13
+    const val APP_VERSION = "4.4.4"
+    const val APP_VERSION_CODE = 14
     
     // 目录路径
     val WORK_DIR = File(Environment.getExternalStorageDirectory(), APP_NAME).absolutePath
