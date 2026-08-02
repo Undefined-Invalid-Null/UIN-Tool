@@ -12,6 +12,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationManager
@@ -70,6 +72,9 @@ class PluginJSInterface(
     private val pendingPermissionCallbacks = mutableMapOf<String, String>()
     private var isMigrated = false
     private var notificationManager: NotificationManager? = null
+    private var activeSensorListener: SensorEventListener? = null
+    private var activeSensorType = ""
+    private var activeSensorCallbackId = ""
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -457,6 +462,95 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getHumiditySensor(): String = getSensorValue(Sensor.TYPE_RELATIVE_HUMIDITY, "湿度")
+
+    @JavascriptInterface
+    fun getAvailableSensors(): String {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        return JSONObject().apply {
+            put("accelerometer", sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null)
+            put("gyroscope", sm.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null)
+            put("magnetic", sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null)
+            put("light", sm.getDefaultSensor(Sensor.TYPE_LIGHT) != null)
+            put("proximity", sm.getDefaultSensor(Sensor.TYPE_PROXIMITY) != null)
+            put("pressure", sm.getDefaultSensor(Sensor.TYPE_PRESSURE) != null)
+        }.toString()
+    }
+
+    @JavascriptInterface
+    fun startSensor(type: String, callbackId: String) {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        stopSensor()
+        val sensorType = when (type) {
+            "accelerometer" -> Sensor.TYPE_ACCELEROMETER
+            "gyroscope" -> Sensor.TYPE_GYROSCOPE
+            "magnetic" -> Sensor.TYPE_MAGNETIC_FIELD
+            "light" -> Sensor.TYPE_LIGHT
+            "proximity" -> Sensor.TYPE_PROXIMITY
+            "pressure" -> Sensor.TYPE_PRESSURE
+            else -> -1
+        }
+        if (sensorType < 0) {
+            sendCallback(callbackId, errJson("未知传感器类型: $type"))
+            return
+        }
+        val sensor = sm.getDefaultSensor(sensorType) ?: run {
+            sendCallback(callbackId, errJson("传感器不可用: $type"))
+            return
+        }
+        activeSensorType = type
+        activeSensorCallbackId = callbackId
+        activeSensorListener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                val id = activeSensorCallbackId
+                if (id.isEmpty()) return
+                sendCallback(id, JSONObject().apply {
+                    put("success", true)
+                    put("timestamp", event.timestamp)
+                    put("accuracy", event.accuracy)
+                    when (activeSensorType) {
+                        "accelerometer", "gyroscope", "magnetic" -> {
+                            put("x", event.values[0])
+                            put("y", event.values[1])
+                            put("z", event.values[2])
+                        }
+                        "light" -> put("lux", event.values[0])
+                        "proximity" -> put("distance", event.values[0])
+                        "pressure" -> put("pressure", event.values[0])
+                        else -> {
+                            val arr = JSONArray()
+                            event.values.forEach { arr.put(it) }
+                            put("values", arr)
+                        }
+                    }
+                }.toString())
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+                val id = activeSensorCallbackId
+                if (id.isEmpty()) return
+                sendCallback(id, JSONObject().apply {
+                    put("type", "accuracy")
+                    put("accuracy", accuracy)
+                }.toString())
+            }
+        }
+        sm.registerListener(activeSensorListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        sendCallback(callbackId, JSONObject().apply {
+            put("success", true)
+            put("message", "传感器已启动")
+            put("sensor", sensor.name)
+        }.toString())
+        Logger.i(TAG, "启动传感器: $type")
+    }
+
+    @JavascriptInterface
+    fun stopSensor() {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        activeSensorListener?.let { sm.unregisterListener(it) }
+        activeSensorListener = null
+        activeSensorCallbackId = ""
+        Logger.i(TAG, "停止传感器")
+    }
 
     // ==================== 4. 位置 ====================
 
@@ -1488,14 +1582,19 @@ class PluginJSInterface(
             sendCallback(callbackId, "{\"success\":false,\"error\":\"URL不能为空\"}")
             return
         }
-        val request = Request.Builder()
-            .url(url)
-            .get()
-            .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
-            .build()
+        val request = try {
+            Request.Builder()
+                .url(url)
+                .get()
+                .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
+                .build()
+        } catch (e: Exception) {
+            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            return
+        }
         httpClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: java.io.IOException) {
-                sendCallback(callbackId, "{\"success\":false,\"error\":\"${e.message}\"}")
+                sendCallback(callbackId, errJson(e.message))
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
@@ -1521,14 +1620,19 @@ class PluginJSInterface(
         }
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val body = jsonBody.toRequestBody(mediaType)
-        val request = Request.Builder()
-            .url(url)
-            .post(body)
-            .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
-            .build()
+        val request = try {
+            Request.Builder()
+                .url(url)
+                .post(body)
+                .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
+                .build()
+        } catch (e: Exception) {
+            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            return
+        }
         httpClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: java.io.IOException) {
-                sendCallback(callbackId, "{\"success\":false,\"error\":\"${e.message}\"}")
+                sendCallback(callbackId, errJson(e.message))
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
@@ -1554,14 +1658,19 @@ class PluginJSInterface(
         }
         val mediaType = "application/json; charset=utf-8".toMediaType()
         val body = jsonBody.toRequestBody(mediaType)
-        val request = Request.Builder()
-            .url(url)
-            .put(body)
-            .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
-            .build()
+        val request = try {
+            Request.Builder()
+                .url(url)
+                .put(body)
+                .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
+                .build()
+        } catch (e: Exception) {
+            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            return
+        }
         httpClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: java.io.IOException) {
-                sendCallback(callbackId, "{\"success\":false,\"error\":\"${e.message}\"}")
+                sendCallback(callbackId, errJson(e.message))
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
@@ -1585,14 +1694,19 @@ class PluginJSInterface(
             sendCallback(callbackId, "{\"success\":false,\"error\":\"URL不能为空\"}")
             return
         }
-        val request = Request.Builder()
-            .url(url)
-            .delete()
-            .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
-            .build()
+        val request = try {
+            Request.Builder()
+                .url(url)
+                .delete()
+                .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
+                .build()
+        } catch (e: Exception) {
+            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            return
+        }
         httpClient.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: java.io.IOException) {
-                sendCallback(callbackId, "{\"success\":false,\"error\":\"${e.message}\"}")
+                sendCallback(callbackId, errJson(e.message))
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
@@ -1624,7 +1738,7 @@ class PluginJSInterface(
                     .build()
                 val response = httpClient.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    sendCallback(callbackId, "{\"success\":false,\"error\":\"HTTP ${response.code}\"}")
+                    sendCallback(callbackId, errJson("HTTP ${response.code}"))
                     return@Thread
                 }
                 val body = response.body ?: run {
@@ -1653,7 +1767,7 @@ class PluginJSInterface(
                     put("size", safeFile.length())
                 }.toString())
             } catch (e: Exception) {
-                sendCallback(callbackId, "{\"success\":false,\"error\":\"${e.message}\"}")
+                sendCallback(callbackId, errJson(e.message))
             }
         }.start()
     }
@@ -1684,7 +1798,7 @@ class PluginJSInterface(
                 context.startActivity(intent)
                 sendCallback(callbackId, "{\"success\":false,\"message\":\"特殊权限请在系统设置中手动开启\"}")
             } catch (e: Exception) {
-                sendCallback(callbackId, "{\"success\":false,\"error\":\"无法打开设置: ${e.message}\"}")
+                sendCallback(callbackId, errJson("无法打开设置: ${e.message}"))
             }
             return
         }
@@ -1730,7 +1844,7 @@ class PluginJSInterface(
                 requestNormalPermissions(normalPerms, callbackId)
             }
         } catch (e: Exception) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"${e.message}\"}")
+            sendCallback(callbackId, errJson(e.message))
         }
     }
 
@@ -1833,18 +1947,23 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun showConfirmDialog(title: String, message: String, callbackId: String) {
-        getActivity()?.runOnUiThread {
-            AlertDialog.Builder(context)
+        val activity = getActivity()
+        if (activity == null) {
+            sendCallback(callbackId, errJson("无法获取Activity"))
+            return
+        }
+        activity.runOnUiThread {
+            AlertDialog.Builder(activity)
                 .setTitle(title)
                 .setMessage(message)
                 .setPositiveButton("确定") { _, _ ->
-                    sendCallback(callbackId, "{\"confirmed\":true}")
+                    sendCallback(callbackId, "{\"success\":true,\"confirmed\":true}")
                 }
                 .setNegativeButton("取消") { _, _ ->
-                    sendCallback(callbackId, "{\"confirmed\":false}")
+                    sendCallback(callbackId, "{\"success\":false,\"confirmed\":false}")
                 }
                 .setNeutralButton("忽略") { _, _ ->
-                    sendCallback(callbackId, "{\"confirmed\":false,\"ignored\":true}")
+                    sendCallback(callbackId, "{\"success\":false,\"confirmed\":false,\"ignored\":true}")
                 }
                 .show()
         }
@@ -1852,17 +1971,26 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun showPromptDialog(title: String, hint: String, callbackId: String) {
-        getActivity()?.runOnUiThread {
-            val input = android.widget.EditText(context)
+        val activity = getActivity()
+        if (activity == null) {
+            sendCallback(callbackId, errJson("无法获取Activity"))
+            return
+        }
+        activity.runOnUiThread {
+            val input = android.widget.EditText(activity)
             input.hint = hint
-            AlertDialog.Builder(context)
+            AlertDialog.Builder(activity)
                 .setTitle(title)
                 .setView(input)
                 .setPositiveButton("确定") { _, _ ->
-                    sendCallback(callbackId, "{\"value\":\"${input.text}\",\"confirmed\":true}")
+                    sendCallback(callbackId, JSONObject().apply {
+                        put("success", true)
+                        put("confirmed", true)
+                        put("value", input.text?.toString() ?: "")
+                    }.toString())
                 }
                 .setNegativeButton("取消") { _, _ ->
-                    sendCallback(callbackId, "{\"value\":\"\",\"confirmed\":false}")
+                    sendCallback(callbackId, "{\"success\":false,\"confirmed\":false,\"value\":\"\"}")
                 }
                 .show()
         }
@@ -1904,6 +2032,9 @@ class PluginJSInterface(
             ""
         }
     }
+
+    @JavascriptInterface
+    fun paste(): String = getClipboard()
 
     @JavascriptInterface
     fun clearClipboard() {
@@ -2184,46 +2315,137 @@ class PluginJSInterface(
     @JavascriptInterface
 fun ping(host: String, callbackId: String) {
     if (host.isEmpty()) {
-        sendCallback(callbackId, "{\"success\":false,\"error\":\"主机不能为空\"}")
+        sendCallback(callbackId, errJson("主机不能为空"))
         return
     }
 
     Thread {
         try {
             val startTime = System.currentTimeMillis()
-            val address = InetAddress.getByName(host)
-            val reachable = address.isReachable(3000)
-            val elapsed = System.currentTimeMillis() - startTime
+            val ip = try {
+                InetAddress.getByName(host).hostAddress ?: host
+            } catch (e: Exception) {
+                host
+            }
+
+            var success: Boolean
+            var timeMs = -1L
+            try {
+                val process = Runtime.getRuntime().exec(arrayOf("ping", "-c", "1", "-W", "5", host))
+                val output = process.inputStream.bufferedReader().use { it.readText() }
+                success = process.waitFor() == 0
+                Regex("time[=<]\\s*([0-9.]+)").find(output)?.let {
+                    timeMs = it.groupValues[1].toFloat().roundToInt().toLong()
+                }
+            } catch (e: Exception) {
+                // ping 二进制不可用时回退到 isReachable
+                success = try {
+                    InetAddress.getByName(host).isReachable(3000)
+                } catch (e2: Exception) {
+                    false
+                }
+            }
 
             sendCallback(callbackId, JSONObject().apply {
-                put("success", reachable)
+                put("success", success)
+                put("reachable", success)
                 put("host", host)
-                put("ip", address.hostAddress ?: "")
-                put("time", elapsed)
-                put("reachable", reachable)
+                put("ip", ip)
+                put("time", if (success && timeMs >= 0) timeMs else System.currentTimeMillis() - startTime)
             }.toString())
         } catch (e: Exception) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"${e.message}\"}")
+            sendCallback(callbackId, errJson(e.message ?: "ping 失败"))
         }
     }.start()
+}
+
+    @JavascriptInterface
+fun resolveDns(host: String, callbackId: String) {
+    if (host.isEmpty()) {
+        sendCallback(callbackId, errJson("主机不能为空"))
+        return
+    }
+    Thread {
+        try {
+            val all = InetAddress.getAllByName(host)
+            val ips = JSONArray()
+            all.forEach { ips.put(it.hostAddress ?: "") }
+            sendCallback(callbackId, JSONObject().apply {
+                put("success", true)
+                put("host", host)
+                put("ips", ips)
+            }.toString())
+        } catch (e: Exception) {
+            sendCallback(callbackId, errJson(e.message ?: "DNS 解析失败"))
+        }
+    }.start()
+}
+
+    @JavascriptInterface
+fun dns(host: String, callbackId: String) = resolveDns(host, callbackId)
+
+    @JavascriptInterface
+fun dnsLookup(host: String): String {
+    if (host.isEmpty()) return errJson("主机不能为空")
+    return try {
+        val all = InetAddress.getAllByName(host)
+        val ips = JSONArray()
+        all.forEach { ips.put(it.hostAddress ?: "") }
+        JSONObject().apply {
+            put("success", true)
+            put("host", host)
+            put("ips", ips)
+        }.toString()
+    } catch (e: Exception) {
+        errJson(e.message ?: "DNS 解析失败")
+    }
 }
 
     // ==================== 27. 私有方法 ====================
 
     private fun sendCallback(callbackId: String, data: String) {
         if (callbackId.isEmpty()) return
-        getActivity()?.runOnUiThread {
-            val activity = context
-            if (activity is PluginHostActivity) {
-                activity.evaluateJavascript(
-                    """
-                    if(window.UINPluginCallbacks && window.UINPluginCallbacks['$callbackId']) {
-                        window.UINPluginCallbacks['$callbackId']($data);
-                    }
-                    """.trimIndent()
-                )
+        val activity = context as? PluginHostActivity ?: return
+        activity.runOnUiThread {
+            try {
+                // 回调约定：response 以 JSON 字符串形式传给 JS（JS 端通过 JSON.parse 解析）
+                // 因此这里必须把 callbackId 和 data 都转成合法的 JS 字符串字面量，
+                // 既保证 callbackId 安全，也保证 data 中的引号/特殊字符不会破坏 JS。
+                val jsId = jsString(callbackId)
+                val jsData = jsString(data)
+                val script = "if(window.UINPluginCallbacks && window.UINPluginCallbacks[$jsId]){window.UINPluginCallbacks[$jsId]($jsData);}"
+                activity.evaluateJavascript(script)
+            } catch (e: Exception) {
+                Logger.e(TAG, "回调执行失败: $callbackId", e)
             }
         }
+    }
+
+    private fun jsString(value: String): String {
+        val sb = StringBuilder(value.length + 8)
+        sb.append('"')
+        value.forEach { c ->
+            when (c) {
+                '"' -> sb.append("\\\"")
+                '\\' -> sb.append("\\\\")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                '\b' -> sb.append("\\b")
+                '\u000C' -> sb.append("\\f")
+                else -> if (c < ' ') sb.append("\\u%04x".format(c.code)) else sb.append(c)
+            }
+        }
+        sb.append('"')
+        return sb.toString()
+    }
+
+    private fun errJson(message: String?, code: String? = null): String {
+        return JSONObject().apply {
+            put("success", false)
+            if (code != null) put("code", code)
+            put("error", message ?: "未知错误")
+        }.toString()
     }
 
     private fun closePlugin() {
