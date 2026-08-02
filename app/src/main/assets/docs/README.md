@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 4.4.0 |
-| 对应应用版本 | v4.4.0 (Build 13) |
-| 最后更新 | 2026年7月28日 |
+| 文档版本 | 4.4.4 |
+| 对应应用版本 | v4.4.4 (Build 14) |
+| 最后更新 | 2026年8月2日 |
 
 ---
 
@@ -1062,6 +1062,12 @@ UINPlugin.callHost('logWarning', '警告');
 UINPlugin.callHost('alert', '提示内容');
 UINPlugin.callHost('confirm', '确认内容');
 
+// 确认对话框（带回调，v4.4.4 新增）
+UINPlugin.showConfirmDialog('标题', '内容', callbackId);
+
+// 输入对话框（带回调，v4.4.4 新增）
+UINPlugin.showPromptDialog('标题', '提示文字', callbackId);
+
 // 振动
 UINPlugin.callHost('vibrate', '200');
 
@@ -1596,9 +1602,9 @@ QQ 群 511875883
 文档信息
 
 项目 信息
-文档版本 4.4.0
-对应应用版本 v4.4.0 (Build 13)
-最后更新 2026年7月28日
+文档版本 4.4.4
+对应应用版本 v4.4.4 (Build 14)
+最后更新 2026年8月2日
 
 ---
 

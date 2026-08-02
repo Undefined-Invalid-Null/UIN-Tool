@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-4.4.0-blue)
-![Build](https://img.shields.io/badge/build-13-green)
+![Version](https://img.shields.io/badge/version-4.4.4-blue)
+![Build](https://img.shields.io/badge/build-14-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -58,19 +58,38 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v4.4.0 (Build 13)
+### 当前版本：v4.4.4 (Build 14)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 4.4.0 |
-| 版本代码 | 13 |
-| 更新日期 | 2026年7月28日 |
+| 版本号 | 4.4.4 |
+| 版本代码 | 14 |
+| 更新日期 | 2026年8月2日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
 | 架构 | arm64-v8a |
 
 ### 版本历史
+
+#### v4.4.4 (2026年8月2日) - 🎉 插件弹窗系统统一 + 交互修复
+
+**🎉 重大更新：插件弹窗系统统一**
+
+**插件弹窗系统统一：**
+- 插件弹窗全部改用应用内置的 Compose 统一对话框组件（UnifiedDialog / UnifiedConfirmDialog / UnifiedInfoDialog）
+- 移除旧的 UnifiedViewDialog 自定义弹窗
+- JS alert / confirm / 确认对话框 / 输入对话框 / 特殊权限弹窗统一走同一套弹窗组件
+
+**弹窗排队机制：**
+- 多个弹窗请求按顺序排队显示，不再互相覆盖
+- 上一个弹窗关闭后自动展示下一个
+- 新增回调式弹窗 API：showConfirmDialog(title, message, callbackId)、showPromptDialog(title, hint, callbackId)
+
+**交互修复：**
+- 修复插件页面无法滚动/点击的问题：对话框覆盖层默认隐藏，仅在弹窗显示时显示
+- 修复确认对话框不显示的问题
+- 修复截图功能无法保存的问题（改用视图绘制方式捕获画面）
 
 #### v4.4.0 (2026年7月28日) - 🎉 持久化存储 + 权限系统完善
 
