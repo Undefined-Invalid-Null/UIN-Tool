@@ -2,7 +2,6 @@ package com.UIN.Tool.plugin
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -114,6 +113,8 @@ class PluginJSInterface(
     }
 
     private fun getActivity(): Activity? = context as? Activity
+
+    private fun hostActivity(): PluginHostActivity? = getActivity() as? PluginHostActivity
 
     private fun ensureMigration() {
         if (isMigrated) return
@@ -1856,7 +1857,7 @@ class PluginJSInterface(
     }
 
     private fun showSpecialPermissionDialog(permissions: List<String>, onComplete: () -> Unit) {
-        val activity = getActivity() ?: return
+        val host = hostActivity() ?: return
         val message = buildString {
             append("以下权限需要在系统设置中手动开启：\n\n")
             permissions.forEach { perm ->
@@ -1864,23 +1865,24 @@ class PluginJSInterface(
             }
             append("\n点击「去设置」打开应用设置页面。")
         }
-        AlertDialog.Builder(activity)
-            .setTitle("需要特殊权限")
-            .setMessage(message)
-            .setPositiveButton("去设置") { _, _ ->
+        host.showPluginConfirmDialog(
+            title = "需要特殊权限",
+            message = message,
+            confirmText = "去设置",
+            onConfirm = {
                 try {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    intent.data = Uri.parse("package:${activity.packageName}")
-                    activity.startActivity(intent)
+                    intent.data = Uri.parse("package:${host.packageName}")
+                    host.startActivity(intent)
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                         onComplete()
                     }, 3000)
                 } catch (e: Exception) {
                     onComplete()
                 }
-            }
-            .setNegativeButton("取消") { _, _ -> onComplete() }
-            .show()
+            },
+            onDismiss = { onComplete() }
+        )
     }
 
     fun onRequestPermissionsResult(
@@ -1947,53 +1949,48 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun showConfirmDialog(title: String, message: String, callbackId: String) {
-        val activity = getActivity()
-        if (activity == null) {
-            sendCallback(callbackId, errJson("无法获取Activity"))
+        Logger.d(TAG, "JS调用 showConfirmDialog: $title (callbackId=$callbackId)")
+        val host = hostActivity()
+        if (host == null) {
+            sendCallback(callbackId, errJson("无法获取宿主Activity"))
             return
         }
-        activity.runOnUiThread {
-            AlertDialog.Builder(activity)
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton("确定") { _, _ ->
-                    sendCallback(callbackId, "{\"success\":true,\"confirmed\":true}")
-                }
-                .setNegativeButton("取消") { _, _ ->
-                    sendCallback(callbackId, "{\"success\":false,\"confirmed\":false}")
-                }
-                .setNeutralButton("忽略") { _, _ ->
-                    sendCallback(callbackId, "{\"success\":false,\"confirmed\":false,\"ignored\":true}")
-                }
-                .show()
-        }
+        host.showPluginChoiceDialog(
+            title = title,
+            message = message,
+            onConfirm = {
+                sendCallback(callbackId, "{\"success\":true,\"confirmed\":true}")
+            },
+            onDismiss = {
+                sendCallback(callbackId, "{\"success\":false,\"confirmed\":false}")
+            },
+            onNeutral = {
+                sendCallback(callbackId, "{\"success\":false,\"confirmed\":false,\"ignored\":true}")
+            }
+        )
     }
 
     @JavascriptInterface
     fun showPromptDialog(title: String, hint: String, callbackId: String) {
-        val activity = getActivity()
-        if (activity == null) {
-            sendCallback(callbackId, errJson("无法获取Activity"))
+        val host = hostActivity()
+        if (host == null) {
+            sendCallback(callbackId, errJson("无法获取宿主Activity"))
             return
         }
-        activity.runOnUiThread {
-            val input = android.widget.EditText(activity)
-            input.hint = hint
-            AlertDialog.Builder(activity)
-                .setTitle(title)
-                .setView(input)
-                .setPositiveButton("确定") { _, _ ->
-                    sendCallback(callbackId, JSONObject().apply {
-                        put("success", true)
-                        put("confirmed", true)
-                        put("value", input.text?.toString() ?: "")
-                    }.toString())
-                }
-                .setNegativeButton("取消") { _, _ ->
-                    sendCallback(callbackId, "{\"success\":false,\"confirmed\":false,\"value\":\"\"}")
-                }
-                .show()
-        }
+        host.showPluginPromptDialog(
+            title = title,
+            hint = hint,
+            onConfirm = { value ->
+                sendCallback(callbackId, JSONObject().apply {
+                    put("success", true)
+                    put("confirmed", true)
+                    put("value", value)
+                }.toString())
+            },
+            onDismiss = {
+                sendCallback(callbackId, "{\"success\":false,\"confirmed\":false,\"value\":\"\"}")
+            }
+        )
     }
 
     // ==================== 21. 剪贴板 ====================
@@ -2237,30 +2234,53 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun takeScreenshot() {
+        val activity = getActivity()
+        if (activity == null) {
+            showToast("截图失败: 无法获取Activity")
+            return
+        }
         if (!hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             showToast("需要存储权限才能截图")
             return
         }
-        getActivity()?.let { activity ->
+        activity.runOnUiThread {
             try {
-                val rootView = activity.window.decorView.rootView
-                rootView.isDrawingCacheEnabled = true
-                val bitmap = rootView.drawingCache
-                if (bitmap != null) {
-                    val dir = File(Constants.DOWNLOAD_DIR, "screenshots")
-                    if (!dir.exists()) dir.mkdirs()
-                    val file = File(dir, "screenshot_${System.currentTimeMillis()}.png")
-                    FileOutputStream(file).use { fos ->
-                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
-                    }
-                    showToast("截图已保存: ${file.absolutePath}")
-                    Logger.i(TAG, "截图保存成功: ${file.absolutePath}")
+                val decorView = activity.window.decorView
+                var width = decorView.width
+                var height = decorView.height
+                if (width <= 0 || height <= 0) {
+                    val dm = activity.resources.displayMetrics
+                    width = dm.widthPixels
+                    height = dm.heightPixels
                 }
-                rootView.isDrawingCacheEnabled = false
+                val bitmap = android.graphics.Bitmap.createBitmap(
+                    width.coerceAtLeast(1),
+                    height.coerceAtLeast(1),
+                    android.graphics.Bitmap.Config.ARGB_8888
+                )
+                val canvas = android.graphics.Canvas(bitmap)
+                decorView.draw(canvas)
+                saveScreenshot(bitmap)
             } catch (e: Exception) {
                 Logger.e(TAG, "截图失败", e)
                 showToast("截图失败: ${e.message}")
             }
+        }
+    }
+
+    private fun saveScreenshot(bitmap: android.graphics.Bitmap) {
+        try {
+            val dir = File(Constants.DOWNLOAD_DIR, "screenshots")
+            if (!dir.exists()) dir.mkdirs()
+            val file = File(dir, "screenshot_${System.currentTimeMillis()}.png")
+            FileOutputStream(file).use { fos ->
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+            }
+            showToast("截图已保存: ${file.absolutePath}")
+            Logger.i(TAG, "截图保存成功: ${file.absolutePath}")
+        } catch (e: Exception) {
+            Logger.e(TAG, "保存截图失败", e)
+            showToast("保存截图失败: ${e.message}")
         }
     }
 
@@ -2453,24 +2473,16 @@ fun dnsLookup(host: String): String {
     }
 
     private fun showAlert(message: String) {
-        getActivity()?.runOnUiThread {
-            AlertDialog.Builder(context)
-                .setTitle("提示")
-                .setMessage(message)
-                .setPositiveButton("确定", null)
-                .show()
-        }
+        hostActivity()?.showPluginInfoDialog(title = "提示", message = message)
     }
 
     private fun showConfirm(message: String) {
-        getActivity()?.runOnUiThread {
-            AlertDialog.Builder(context)
-                .setTitle("确认")
-                .setMessage(message)
-                .setPositiveButton("确定") { _, _ -> }
-                .setNegativeButton("取消") { _, _ -> }
-                .show()
-        }
+        hostActivity()?.showPluginConfirmDialog(
+            title = "确认",
+            message = message,
+            onConfirm = {},
+            onDismiss = {}
+        )
     }
 
     private fun formatFileSize(size: Long): String {

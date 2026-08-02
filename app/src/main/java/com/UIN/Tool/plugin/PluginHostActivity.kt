@@ -6,20 +6,27 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
+import com.UIN.Tool.ui.components.unified.UnifiedDialog
+import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
+import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.Constants
 import okhttp3.OkHttpClient
@@ -47,6 +54,10 @@ class PluginHostActivity : AppCompatActivity() {
     private lateinit var pluginManager: PluginManager
     private var pluginInfo: PluginInfo? = null
     private var isDestroyed = false
+
+    private var pluginDialogRequest by mutableStateOf<PluginDialogRequest?>(null)
+    private var dialogHost: ComposeView? = null
+    private val pluginDialogQueue = ArrayDeque<PluginDialogRequest>()
 
     private var backendPort = 0
     private var isBackendReady = false
@@ -207,55 +218,309 @@ class PluginHostActivity : AppCompatActivity() {
         val info = pluginInfo ?: return
         if (!info.hasNotice()) return
         if (pluginManager.isPluginNoticeIgnored(currentPluginId)) return
+        enqueuePluginDialog(
+            PluginDialogRequest.Notice(
+                name = info.name,
+                notice = info.notice,
+                onAck = { pluginManager.setPluginNoticeIgnored(currentPluginId, true) },
+                onNever = { pluginManager.setPluginNoticeIgnored(currentPluginId, true) },
+                onLater = {}
+            )
+        )
+    }
 
-        setContent {
-            UINToolTheme {
-                var showDialog by remember { mutableStateOf(true) }
+    // ============================================================
+    // 统一对话框宿主（使用 ui/components/unified/UnifiedDialogs.kt）
+    // ============================================================
 
-                if (showDialog) {
-                    AlertDialog(
-                        onDismissRequest = {
-                            showDialog = false
-                        },
-                        title = { Text(info.name) },
-                        text = { Text(info.notice) },
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    showDialog = false
-                                    pluginManager.setPluginNoticeIgnored(currentPluginId, true)
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            ) {
-                                Text("知道了")
-                            }
-                        },
-                        dismissButton = {
-                            Row {
-                                TextButton(
-                                    onClick = {
-                                        showDialog = false
-                                        pluginManager.setPluginNoticeIgnored(currentPluginId, true)
-                                    }
-                                ) {
-                                    Text("不再提示")
-                                }
-                                TextButton(
-                                    onClick = {
-                                        showDialog = false
-                                    }
-                                ) {
-                                    Text("稍后提醒")
-                                }
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                }
+    private sealed interface PluginDialogRequest {
+        data class Notice(
+            val name: String,
+            val notice: String,
+            val onAck: () -> Unit,
+            val onNever: () -> Unit,
+            val onLater: () -> Unit
+        ) : PluginDialogRequest
+
+        data class Info(
+            val title: String,
+            val message: String,
+            val onDismiss: (() -> Unit)?
+        ) : PluginDialogRequest
+
+        data class Confirm(
+            val title: String,
+            val message: String,
+            val confirmText: String,
+            val dismissText: String,
+            val isDestructive: Boolean,
+            val onConfirm: () -> Unit,
+            val onDismiss: () -> Unit
+        ) : PluginDialogRequest
+
+        data class Choice(
+            val title: String,
+            val message: String,
+            val onConfirm: () -> Unit,
+            val onDismiss: () -> Unit,
+            val onNeutral: () -> Unit
+        ) : PluginDialogRequest
+
+        data class Prompt(
+            val title: String,
+            val hint: String,
+            val onConfirm: (String) -> Unit,
+            val onDismiss: () -> Unit
+        ) : PluginDialogRequest
+    }
+
+    fun showPluginInfoDialog(title: String, message: String, onDismiss: (() -> Unit)? = null) {
+        android.util.Log.d(TAG, "📩 showPluginInfoDialog: $title")
+        enqueuePluginDialog(PluginDialogRequest.Info(title, message, onDismiss))
+    }
+
+    fun showPluginConfirmDialog(
+        title: String,
+        message: String,
+        confirmText: String = "确定",
+        dismissText: String = "取消",
+        isDestructive: Boolean = false,
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        android.util.Log.d(TAG, "📩 showPluginConfirmDialog: $title")
+        enqueuePluginDialog(
+            PluginDialogRequest.Confirm(
+                title, message, confirmText, dismissText, isDestructive, onConfirm, onDismiss
+            )
+        )
+    }
+
+    fun showPluginChoiceDialog(
+        title: String,
+        message: String,
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit,
+        onNeutral: () -> Unit
+    ) {
+        android.util.Log.d(TAG, "📩 showPluginChoiceDialog: $title")
+        enqueuePluginDialog(
+            PluginDialogRequest.Choice(title, message, onConfirm, onDismiss, onNeutral)
+        )
+    }
+
+    fun showPluginPromptDialog(
+        title: String,
+        hint: String,
+        onConfirm: (String) -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        android.util.Log.d(TAG, "📩 showPluginPromptDialog: $title")
+        enqueuePluginDialog(
+            PluginDialogRequest.Prompt(title, hint, onConfirm, onDismiss)
+        )
+    }
+
+    private fun enqueuePluginDialog(request: PluginDialogRequest) {
+        runOnUiThread {
+            val wasEmpty = pluginDialogQueue.isEmpty()
+            pluginDialogQueue.addLast(request)
+            if (wasEmpty) {
+                dialogHost?.visibility = View.VISIBLE
+                pluginDialogRequest = request
             }
+        }
+    }
+
+    @Composable
+    private fun PluginDialogHost() {
+        val request = pluginDialogRequest
+        LaunchedEffect(request) {
+            if (request != null) {
+                dialogHost?.visibility = View.VISIBLE
+                android.util.Log.d(TAG, "🖼 渲染插件弹窗: ${request.javaClass.simpleName}")
+            }
+        }
+        when (val r = request) {
+            null -> Unit
+
+            is PluginDialogRequest.Notice -> UnifiedDialog(
+                onDismissRequest = {
+                    dismissPluginDialog()
+                    r.onLater()
+                },
+                title = r.name,
+                content = {
+                    Text(
+                        text = r.notice,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            dismissPluginDialog()
+                            r.onAck()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(AppDimens.radiusLarge)
+                    ) { Text("知道了") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onNever()
+                            }
+                        ) { Text("不再提示") }
+                        Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
+                        TextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onLater()
+                            }
+                        ) { Text("稍后提醒") }
+                    }
+                }
+            )
+
+            is PluginDialogRequest.Info -> UnifiedInfoDialog(
+                title = r.title,
+                message = r.message,
+                buttonText = "确定",
+                onDismiss = {
+                    dismissPluginDialog()
+                    r.onDismiss?.invoke()
+                }
+            )
+
+            is PluginDialogRequest.Confirm -> UnifiedConfirmDialog(
+                title = r.title,
+                message = r.message,
+                confirmText = r.confirmText,
+                dismissText = r.dismissText,
+                isDestructive = r.isDestructive,
+                onConfirm = {
+                    dismissPluginDialog()
+                    r.onConfirm()
+                },
+                onDismiss = {
+                    dismissPluginDialog()
+                    r.onDismiss()
+                }
+            )
+
+            is PluginDialogRequest.Choice -> UnifiedDialog(
+                onDismissRequest = {
+                    dismissPluginDialog()
+                    r.onDismiss()
+                },
+                title = r.title,
+                content = {
+                    Text(
+                        text = r.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            dismissPluginDialog()
+                            r.onConfirm()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(AppDimens.radiusLarge)
+                    ) { Text("确定") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onNeutral()
+                            }
+                        ) { Text("忽略") }
+                        Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
+                        TextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onDismiss()
+                            }
+                        ) { Text("取消") }
+                    }
+                }
+            )
+
+            is PluginDialogRequest.Prompt -> {
+                var value by remember { mutableStateOf("") }
+                UnifiedDialog(
+                    onDismissRequest = {
+                        dismissPluginDialog()
+                        r.onDismiss()
+                    },
+                    title = r.title,
+                    content = {
+                        OutlinedTextField(
+                            value = value,
+                            onValueChange = { value = it },
+                            placeholder = { Text(r.hint) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onConfirm(value)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            shape = RoundedCornerShape(AppDimens.radiusLarge)
+                        ) { Text("确定") }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onDismiss()
+                            }
+                        ) { Text("取消") }
+                    }
+                )
+            }
+        }
+    }
+
+    private fun dismissPluginDialog() {
+        if (pluginDialogQueue.isNotEmpty()) {
+            pluginDialogQueue.removeFirst()
+        }
+        if (pluginDialogQueue.isNotEmpty()) {
+            pluginDialogRequest = pluginDialogQueue.first()
+            dialogHost?.visibility = View.VISIBLE
+            android.util.Log.d(TAG, "🖼 显示下一个插件弹窗: ${pluginDialogQueue.first().javaClass.simpleName}")
+        } else {
+            pluginDialogRequest = null
+            dialogHost?.visibility = View.GONE
+            android.util.Log.d(TAG, "🗑 插件弹窗已关闭，覆盖层隐藏")
         }
     }
 
@@ -299,6 +564,16 @@ class PluginHostActivity : AppCompatActivity() {
         }
 
         container.removeAllViews()
+
+        // 统一对话框宿主（Compose 覆盖层，置于 WebView 之上；自身透明且不拦截触摸，
+        // 弹窗通过独立窗口浮于最上）
+        dialogHost = ComposeView(this).apply {
+            setContent {
+                UINToolTheme {
+                    PluginDialogHost()
+                }
+            }
+        }
 
         webView = WebView(this).apply {
             settings.apply {
@@ -363,11 +638,11 @@ class PluginHostActivity : AppCompatActivity() {
                     message: String?,
                     result: android.webkit.JsResult?
                 ): Boolean {
-                    android.app.AlertDialog.Builder(this@PluginHostActivity)
-                        .setTitle("提示")
-                        .setMessage(message)
-                        .setPositiveButton("确定") { _, _ -> result?.confirm() }
-                        .show()
+                    showPluginInfoDialog(
+                        title = "提示",
+                        message = message ?: "",
+                        onDismiss = { result?.confirm() }
+                    )
                     return true
                 }
 
@@ -377,12 +652,12 @@ class PluginHostActivity : AppCompatActivity() {
                     message: String?,
                     result: android.webkit.JsResult?
                 ): Boolean {
-                    android.app.AlertDialog.Builder(this@PluginHostActivity)
-                        .setTitle("确认")
-                        .setMessage(message)
-                        .setPositiveButton("确定") { _, _ -> result?.confirm() }
-                        .setNegativeButton("取消") { _, _ -> result?.cancel() }
-                        .show()
+                    showPluginConfirmDialog(
+                        title = "确认",
+                        message = message ?: "",
+                        onConfirm = { result?.confirm() },
+                        onDismiss = { result?.cancel() }
+                    )
                     return true
                 }
             }
@@ -403,6 +678,18 @@ class PluginHostActivity : AppCompatActivity() {
         }
 
         container.addView(webView)
+        dialogHost?.let { host ->
+            container.addView(
+                host,
+                ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            )
+            host.visibility = if (pluginDialogRequest != null) View.VISIBLE else View.GONE
+            android.util.Log.e(
+                TAG,
+                "✅ Compose 对话框覆盖层已添加在 WebView 之上（初始" +
+                    (if (pluginDialogRequest != null) "显示" else "隐藏") + "）"
+            )
+        }
         PluginManager.putPluginWebView(currentPluginId, webView)
         android.util.Log.e(TAG, "========== loadWebPlugin 完成 ==========")
     }
