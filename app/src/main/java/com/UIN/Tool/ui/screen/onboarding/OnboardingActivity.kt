@@ -14,7 +14,7 @@ class OnboardingActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         val isVersionUpdate = intent.getBooleanExtra("is_version_update", false)
-        val versionName = intent.getStringExtra("version_name") ?: "4.4.4"
+        val versionName = intent.getStringExtra("version_name") ?: "4.5.0"
         
         setContent {
             UINToolTheme {

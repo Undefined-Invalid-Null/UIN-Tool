@@ -73,6 +73,7 @@ class SplashActivity : ComponentActivity() {
     private var showPermissionExplain by mutableStateOf(true)
     private var showPermissionDenied by mutableStateOf(false)
     private var isCheckingPermission by mutableStateOf(false)
+    private var hasNavigated = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -81,7 +82,8 @@ class SplashActivity : ComponentActivity() {
         if (allGranted) {
             AppLog.success(TAG, "所有存储权限已授予")
             createWorkDirectory()
-            navigateToOnboardingOrMain()
+            // 关闭权限弹窗后由 LaunchedEffect(hasStoragePermission) 统一触发导航，避免双重导航
+            showPermissionExplain = false
         } else {
             val deniedPermissions = results.filter { !it.value }.keys
             AppLog.w(TAG, "部分权限被拒绝: $deniedPermissions")
@@ -109,6 +111,8 @@ class SplashActivity : ComponentActivity() {
 
         preferenceManager = ServiceLocator.getPreferenceManager()
         isFirstLaunch = preferenceManager.isFirstLaunch()
+        // 在 setContent 前根据实际权限状态初始化，避免权限弹窗首帧闪现
+        showPermissionExplain = !hasStoragePermission()
 
         setContent {
             UINToolTheme {
@@ -140,13 +144,7 @@ class SplashActivity : ComponentActivity() {
         }
 
         if (hasStoragePermission()) {
-            showPermissionExplain = false
             createWorkDirectory()
-            Handler(Looper.getMainLooper()).postDelayed({
-                navigateToOnboardingOrMain()
-            }, SPLASH_DELAY)
-        } else {
-            showPermissionExplain = true
         }
     }
 
@@ -156,9 +154,7 @@ class SplashActivity : ComponentActivity() {
             showPermissionExplain = false
             showPermissionDenied = false
             createWorkDirectory()
-            Handler(Looper.getMainLooper()).postDelayed({
-                navigateToOnboardingOrMain()
-            }, SPLASH_DELAY)
+            // 状态变更后由 LaunchedEffect(hasStoragePermission) 统一触发导航
         } else {
             AppLog.w(TAG, "权限仍未授予")
             showPermissionExplain = false
@@ -167,11 +163,8 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun navigateToOnboardingOrMain() {
-        if (isFirstLaunch) {
-            checkForUpdate()
-        } else {
-            navigateToNext()
-        }
+        // 更新检查由 SplashScreenWithUpdate 的 LaunchedEffect 统一完成，这里只负责导航
+        navigateToNext()
     }
 
     private fun hasStoragePermission(): Boolean {
@@ -254,110 +247,6 @@ class SplashActivity : ComponentActivity() {
         }
     }
 
-    private fun isVersionIgnored(versionName: String): Boolean {
-        if (versionName.isEmpty()) return false
-        val prefs = preferenceManager.getPrefs()
-        val ignoredVersion = prefs.getString(Constants.KEY_IGNORE_VERSION, "")
-        return versionName == ignoredVersion
-    }
-
-    private fun setVersionIgnored(versionName: String) {
-        if (versionName.isEmpty()) return
-        val prefs = preferenceManager.getPrefs()
-        prefs.edit().putString(Constants.KEY_IGNORE_VERSION, versionName).apply()
-        AppLog.i(TAG, "忽略版本: $versionName")
-    }
-
-    private fun checkForUpdate() {
-        AppLog.enter(TAG, "checkForUpdate")
-
-        val updateChecker = UpdateChecker(this, preferenceManager)
-        var isCompleted = false
-
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (!isCompleted) {
-                AppLog.w(TAG, "检查更新超时 (${UPDATE_CHECK_TIMEOUT}ms)，继续启动")
-                navigateToNext()
-            }
-        }, UPDATE_CHECK_TIMEOUT)
-
-        updateChecker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
-            override fun onCheckStart() {
-                AppLog.d(TAG, "开始检查更新")
-            }
-
-            override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
-                if (isCompleted) return
-                isCompleted = true
-                
-                if (hasNewer && releases.isNotEmpty()) {
-                    val latest = releases.first()
-
-                    if (!forceUpdate && isVersionIgnored(latest.versionName)) {
-                        AppLog.i(TAG, "用户已忽略版本: ${latest.versionName}")
-                        navigateToNext()
-                        return
-                    }
-
-                    showUpdateDialogCompose(latest, forceUpdate)
-                } else {
-                    navigateToNext()
-                }
-            }
-
-            override fun onCheckFailed(error: String) {
-                if (isCompleted) return
-                isCompleted = true
-                AppLog.e(TAG, "检查更新失败: $error")
-                navigateToNext()
-            }
-
-            override fun onNoUpdate(currentVersion: String) {
-                if (isCompleted) return
-                isCompleted = true
-                AppLog.i(TAG, "当前已是最新版本: $currentVersion")
-                navigateToNext()
-            }
-        })
-
-        updateChecker.checkUpdate()
-    }
-
-    private fun showUpdateDialogCompose(releaseInfo: ReleaseInfo, forceUpdate: Boolean) {
-        setContent {
-            UINToolTheme {
-                UpdateDialog(
-                    releaseInfo = releaseInfo,
-                    forceUpdate = forceUpdate,
-                    onDismiss = {
-                        if (!forceUpdate) navigateToNext()
-                    },
-                    onDownload = {
-                        startDownload(releaseInfo)
-                    },
-                    onManualDownload = {
-                        try {
-                            val url = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/${releaseInfo.tagName}"
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            startActivity(intent)
-                        } catch (e: Exception) {
-                            AppLog.e(TAG, "打开浏览器失败", e)
-                            Toast.makeText(this, "无法打开链接", Toast.LENGTH_SHORT).show()
-                        }
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            navigateToNext()
-                        }, 500)
-                    },
-                    onIgnore = {
-                        setVersionIgnored(releaseInfo.versionName)
-                        navigateToNext()
-                    }
-                )
-            }
-        }
-    }
-
     private fun startDownload(releaseInfo: ReleaseInfo) {
         AppLog.enter(TAG, "startDownload")
 
@@ -390,6 +279,8 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun navigateToNext() {
+        if (hasNavigated) return
+        hasNavigated = true
         try {
             val lastVersion = preferenceManager.getLastVersion()
             val currentVersion = Constants.APP_VERSION

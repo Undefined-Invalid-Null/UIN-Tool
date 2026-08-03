@@ -1,6 +1,7 @@
 package com.UIN.Tool.plugin
 
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -20,9 +21,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import com.UIN.Tool.app.RunCommandService
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.shared.termux.TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
@@ -35,6 +38,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
+import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
 class PluginHostActivity : AppCompatActivity() {
@@ -45,7 +49,16 @@ class PluginHostActivity : AppCompatActivity() {
         private const val KEY_PLUGIN_ID = "plugin_id"
         private const val KEY_WEBVIEW_STATE = "webview_state"
         private const val BACKEND_START_TIMEOUT = 15000L
+        private const val BACKEND_START_TIMEOUT_PROOT = 90000L
         private const val REQUEST_CODE_PERMISSIONS = 1001
+
+        // ===== 启动前命令（pre-command）相关 =====
+        const val KEY_PRE_CMD_DONE = "pre_cmd_done"
+        const val EXTRA_PRE_COMMAND_FINISHED = "pre_command_finished"
+        const val EXTRA_PRE_COMMAND_SUCCESS = "pre_command_success"
+        const val EXTRA_PRE_COMMAND_EXIT_CODE = "pre_command_exit_code"
+        const val EXTRA_PRE_COMMAND_ERRMSG = "pre_command_errmsg"
+        private const val PRE_COMMAND_REQUEST_CODE = 0x5043
     }
 
     private lateinit var container: FrameLayout
@@ -63,6 +76,8 @@ class PluginHostActivity : AppCompatActivity() {
     private var isBackendReady = false
     private var isBackendStarting = false
 
+    private var envProgressDialog: android.app.ProgressDialog? = null
+
     private var backendTimeoutHandler: Handler? = null
     private var backendTimeoutRunnable: Runnable? = null
 
@@ -70,6 +85,7 @@ class PluginHostActivity : AppCompatActivity() {
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .proxy(Proxy.NO_PROXY)
         .build()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -154,6 +170,7 @@ class PluginHostActivity : AppCompatActivity() {
         if (pluginInfo != null) {
             android.util.Log.e(TAG, "📌 pluginInfo.pluginId: ${pluginInfo!!.pluginId}")
             android.util.Log.e(TAG, "📌 pluginInfo.backend: '${pluginInfo!!.backend}'")
+            android.util.Log.e(TAG, "📌 pluginInfo.backendRuntime: '${pluginInfo!!.backendRuntime}'")
             android.util.Log.e(TAG, "📌 pluginInfo.backendAutoStart: ${pluginInfo!!.backendAutoStart}")
             android.util.Log.e(TAG, "📌 pluginInfo.hasBackend(): ${pluginInfo!!.hasBackend()}")
             android.util.Log.e(TAG, "📌 isBackendReady: $isBackendReady")
@@ -162,32 +179,258 @@ class PluginHostActivity : AppCompatActivity() {
         }
         android.util.Log.e(TAG, "========================================")
         
-        if (pluginInfo != null && pluginInfo!!.hasBackend() && !isBackendReady) {
-            android.util.Log.e(TAG, "✅ 条件满足，调用 PluginManager.startBackend()")
-            isBackendStarting = true
-            pluginManager.startBackend(currentPluginId) { success, port, error ->
-                isBackendStarting = false
-                android.util.Log.e(TAG, "📊 后端启动回调: success=$success, port=$port, error=$error")
-                if (success) {
-                    backendPort = port
-                    isBackendReady = true
-                    android.util.Log.e(TAG, "✅ 后端就绪，端口: $port")
-                    sendBackendReadyToWebView(port)
-                } else {
-                    android.util.Log.e(TAG, "❌ 后端启动失败: $error")
-                }
-            }
-            setupBackendTimeout()
-        } else {
+        val info = pluginInfo
+        if (info == null || !info.hasBackend() || isBackendReady) {
             android.util.Log.e(TAG, "❌ 条件不满足，跳过启动后端")
-            if (pluginInfo == null) {
-                android.util.Log.e(TAG, "   -> pluginInfo 为 null")
+            if (info == null) android.util.Log.e(TAG, "   -> pluginInfo 为 null")
+            if (info != null && !info.hasBackend()) android.util.Log.e(TAG, "   -> hasBackend() 返回 false")
+            if (isBackendReady) android.util.Log.e(TAG, "   -> isBackendReady 为 true")
+            return
+        }
+
+        android.util.Log.e(TAG, "✅ 条件满足，准备启动后端")
+        isBackendStarting = true
+        setupBackendTimeout()
+
+        if (info.useProotRuntime() || info.isOtherBackend()) {
+            // proot 容器运行时 / other 模式：走环境流水线
+            android.util.Log.e(TAG, "🔄 走 proot/other 环境流水线")
+            runEnvironmentPipeline()
+        } else {
+            // 常规 termux 运行时：直接启动后端
+            android.util.Log.e(TAG, "🔄 走常规后端启动")
+            startBackendInternal()
+        }
+    }
+
+    private fun startBackendInternal() {
+        showEnvProgress("正在启动后端服务（常规运行时）...")
+        pluginManager.startBackend(currentPluginId) { success, port, error ->
+            isBackendStarting = false
+            dismissEnvProgress()
+            android.util.Log.e(TAG, "📊 后端启动回调: success=$success, port=$port, error=$error")
+            if (success) {
+                backendPort = port
+                isBackendReady = true
+                android.util.Log.e(TAG, "✅ 后端就绪，端口: $port")
+                sendBackendReadyToWebView(port)
+            } else {
+                android.util.Log.e(TAG, "❌ 后端启动失败: $error")
             }
-            if (pluginInfo != null && !pluginInfo!!.hasBackend()) {
-                android.util.Log.e(TAG, "   -> hasBackend() 返回 false")
+        }
+    }
+
+    // ============================================================
+    // proot/other 环境流水线
+    // ============================================================
+
+    /**
+     * ① Termux 基础环境 → ② Alpine 共享容器 → ③ pre-command → ④ 启动后端
+     */
+    private fun runEnvironmentPipeline() {
+        val info = pluginInfo ?: return
+        android.util.Log.e(TAG, "🔍 runEnvironmentPipeline()")
+
+        ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
+            android.util.Log.e(TAG, "✅ Termux 环境就绪，检查 Alpine...")
+            ProotContainerManager.ensureAlpine(applicationContext, status = { showEnvProgress(it) }) { ok ->
+                if (!ok) {
+                    android.util.Log.e(TAG, "❌ Alpine 容器准备失败")
+                    isBackendStarting = false
+                    dismissEnvProgress()
+                    showPluginInfoDialog(
+                        "环境准备失败",
+                        "Alpine 容器安装失败，请确认 APK 的 assets 目录已包含 Alpine 离线安装包（alpine*）后重试。"
+                    )
+                    return@ensureAlpine
+                }
+                android.util.Log.e(TAG, "✅ Alpine 容器就绪，处理 pre-command...")
+                handlePreCommand()
             }
-            if (isBackendReady) {
-                android.util.Log.e(TAG, "   -> isBackendReady 为 true")
+        }
+    }
+
+    private fun handlePreCommand() {
+        val info = pluginInfo ?: return
+        val preCmd = info.backendPreCommand.trim()
+        android.util.Log.e(TAG, "🔍 handlePreCommand(), preCmd='$preCmd', done=${isPreCommandDone()}")
+
+        if (preCmd.isEmpty() || isPreCommandDone()) {
+            android.util.Log.e(TAG, "✅ 无需执行 pre-command，直接启动后端")
+            startBackendAfterEnv()
+            return
+        }
+
+        // 进入交互式询问/终端，先收起环境进度弹窗
+        dismissEnvProgress()
+
+        enqueuePluginDialog(
+            PluginDialogRequest.PreCommand(
+                name = info.name,
+                command = preCmd,
+                onRunNow = { runPreCommand() },
+                onLater = { onPreCommandLater() },
+                onCancel = { onPreCommandCancelled() }
+            )
+        )
+    }
+
+    private fun onPreCommandLater() {
+        // 「稍后」：本次不执行 pre-command，也不标记 done；下次打开会再次询问
+        if (pluginInfo?.isOtherBackend() == true) {
+            // other 模式后端由 pre-command 启动，未执行则端口不会就绪
+            isBackendStarting = false
+            Toast.makeText(this, "已稍后处理，后端未启动（需执行启动前命令）", Toast.LENGTH_LONG).show()
+        } else {
+            startBackendAfterEnv()
+        }
+    }
+
+    private fun onPreCommandCancelled() {
+        // 「取消」：不执行 pre-command，也不自动启动后端
+        isBackendStarting = false
+        android.util.Log.e(TAG, "❌ 用户取消 pre-command，不启动后端")
+    }
+
+    private fun isPreCommandDone(): Boolean {
+        val prefs = getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$currentPluginId", MODE_PRIVATE)
+        return prefs.getBoolean(KEY_PRE_CMD_DONE, false)
+    }
+
+    private fun markPreCommandDone() {
+        getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$currentPluginId", MODE_PRIVATE)
+            .edit().putBoolean(KEY_PRE_CMD_DONE, true).apply()
+        android.util.Log.e(TAG, "✅ pre-command 已标记为完成")
+    }
+
+    private fun startBackendAfterEnv() {
+        android.util.Log.e(TAG, "🔍 startBackendAfterEnv()")
+        val info = pluginInfo
+        if (info?.isOtherBackend() == true) {
+            showEnvProgress(if (info.backendPort > 0) "正在等待后端服务端口就绪（最长 90 秒）..." else "正在等待启动前命令会话启动后端...")
+        } else {
+            val prootMsg = if (ProotContainerManager.isAlpineInstalled()) {
+                "正在启动容器后端（请稍候）..."
+            } else {
+                "正在启动容器后端（首次需初始化容器，约需 1-2 分钟，请耐心等待）..."
+            }
+            showEnvProgress(if (info?.useProotRuntime() == true) prootMsg else "正在启动后端服务...")
+        }
+        pluginManager.startBackend(currentPluginId) { success, port, error ->
+            isBackendStarting = false
+            dismissEnvProgress()
+            android.util.Log.e(TAG, "📊 环境流水线后端启动回调: success=$success, port=$port, error=$error")
+            if (success) {
+                backendPort = port
+                isBackendReady = true
+                sendBackendReadyToWebView(port)
+            } else {
+                Toast.makeText(this, "后端启动失败: ${error ?: "未知错误"}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * 在 Termux 终端会话中执行 pre-command（bash -lc "<command>"）。
+     *
+     * @param withResult 是否通过 PendingIntent 接收会话结束结果。
+     *                   other 模式 pre-command 为长驻服务启动命令，会话不会退出，故不传结果。
+     */
+    private fun runPreCommand() {
+        val info = pluginInfo ?: return
+        val preCmd = info.backendPreCommand.trim()
+        android.util.Log.e(TAG, "🔍 runPreCommand(), withResult=${!info.isOtherBackend()}")
+
+        if (preCmd.isEmpty()) {
+            startBackendAfterEnv()
+            return
+        }
+
+        // 启动终端会话，先收起环境进度弹窗
+        dismissEnvProgress()
+
+        try {
+            val intent = Intent(RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND).apply {
+                setClass(this@PluginHostActivity, RunCommandService::class.java)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, ProotContainerManager.BASH)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, arrayOf("-lc", preCmd))
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, File(Constants.PLUGIN_DIR, info.pluginId).absolutePath)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, "启动前命令")
+            }
+
+            if (!info.isOtherBackend()) {
+                val pi = PendingIntent.getBroadcast(
+                    this,
+                    PRE_COMMAND_REQUEST_CODE,
+                    Intent(this, PreCommandResultReceiver::class.java)
+                        .setAction(PreCommandResultReceiver.ACTION)
+                        .putExtra(EXTRA_PLUGIN_ID, info.pluginId),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                intent.putExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT, pi)
+                android.util.Log.e(TAG, "📬 已附加 PendingIntent 结果回调")
+            }
+
+            startService(intent)
+            Toast.makeText(this, "已在终端执行启动前命令", Toast.LENGTH_SHORT).show()
+
+            if (info.isOtherBackend()) {
+                // other 模式：pre-command 即后端服务，会话不退出，改为轮询端口就绪
+                android.util.Log.e(TAG, "🔄 other 模式：开始轮询端口就绪")
+                startBackendAfterEnv()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "❌ 启动终端失败: ${e.message}", e)
+            dismissEnvProgress()
+            Toast.makeText(this, "启动终端失败: ${e.message}", Toast.LENGTH_LONG).show()
+            isBackendStarting = false
+        }
+    }
+
+    /**
+     * pre-command 会话结束后刷新后端状态（由 PreCommandResultReceiver 唤起）。
+     */
+    private fun refreshBackendStateAfterPreCommand() {
+        android.util.Log.e(TAG, "🔍 refreshBackendStateAfterPreCommand()")
+        if (isBackendReady) return
+        val port = PluginBackendManager.getPort(currentPluginId)
+        if (PluginBackendManager.isRunning(currentPluginId)) {
+            backendPort = port
+            isBackendReady = true
+            isBackendStarting = false
+            android.util.Log.e(TAG, "✅ 后端已在运行，端口: $port")
+            sendBackendReadyToWebView(port)
+        } else {
+            android.util.Log.e(TAG, "🔄 后端未运行，重新启动")
+            startBackendAfterEnv()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        android.util.Log.e(TAG, "🔍 onNewIntent() 被调用")
+
+        val pluginId = intent.getStringExtra(EXTRA_PLUGIN_ID)
+        if (!pluginId.isNullOrEmpty() && pluginId != currentPluginId) {
+            currentPluginId = pluginId
+            pluginInfo = pluginManager.getPluginInfo(pluginId)
+        }
+
+        if (intent.getBooleanExtra(EXTRA_PRE_COMMAND_FINISHED, false)) {
+            val success = intent.getBooleanExtra(EXTRA_PRE_COMMAND_SUCCESS, false)
+            if (success) {
+                markPreCommandDone()
+                refreshBackendStateAfterPreCommand()
+            } else {
+                val exitCode = intent.getIntExtra(EXTRA_PRE_COMMAND_EXIT_CODE, -1)
+                val errmsg = intent.getStringExtra(EXTRA_PRE_COMMAND_ERRMSG) ?: ""
+                android.util.Log.e(TAG, "❌ pre-command 执行失败: exitCode=$exitCode, errmsg=$errmsg")
+                showPluginInfoDialog(
+                    "启动前命令执行失败",
+                    "退出码: $exitCode${if (errmsg.isNotEmpty()) "\n\n$errmsg" else ""}"
+                )
             }
         }
     }
@@ -207,7 +450,38 @@ class PluginHostActivity : AppCompatActivity() {
                 isBackendStarting = false
             }
         }
-        backendTimeoutHandler?.postDelayed(backendTimeoutRunnable!!, BACKEND_START_TIMEOUT)
+        backendTimeoutHandler?.postDelayed(
+            backendTimeoutRunnable!!,
+            if (pluginInfo?.useProotRuntime() == true || pluginInfo?.isOtherBackend() == true) {
+                BACKEND_START_TIMEOUT_PROOT
+            } else {
+                BACKEND_START_TIMEOUT
+            }
+        )
+    }
+
+    /**
+     * 展示环境准备/后端启动进度弹窗，让用户始终知道当前在做什么。
+     */
+    private fun showEnvProgress(message: String) {
+        if (isDestroyed || isFinishing) return
+        if (envProgressDialog == null) {
+            envProgressDialog = android.app.ProgressDialog(this).apply {
+                setCancelable(false)
+                setMessage(message)
+                show()
+            }
+        } else {
+            envProgressDialog?.setMessage(message)
+        }
+    }
+
+    private fun dismissEnvProgress() {
+        try {
+            envProgressDialog?.dismiss()
+        } catch (_: Exception) {
+        }
+        envProgressDialog = null
     }
 
     // ============================================================
@@ -271,6 +545,14 @@ class PluginHostActivity : AppCompatActivity() {
             val hint: String,
             val onConfirm: (String) -> Unit,
             val onDismiss: () -> Unit
+        ) : PluginDialogRequest
+
+        data class PreCommand(
+            val name: String,
+            val command: String,
+            val onRunNow: () -> Unit,
+            val onLater: () -> Unit,
+            val onCancel: () -> Unit
         ) : PluginDialogRequest
     }
 
@@ -454,6 +736,51 @@ class PluginHostActivity : AppCompatActivity() {
                             onClick = {
                                 dismissPluginDialog()
                                 r.onDismiss()
+                            }
+                        ) { Text("取消") }
+                    }
+                }
+            )
+
+            is PluginDialogRequest.PreCommand -> UnifiedDialog(
+                onDismissRequest = {
+                    dismissPluginDialog()
+                    r.onCancel()
+                },
+                title = "启动前命令",
+                content = {
+                    Text(
+                        text = "插件「${r.name}」需要在容器环境中先执行启动前命令：\n\n${r.command}\n\n是否现在在终端中运行？",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            dismissPluginDialog()
+                            r.onRunNow()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(AppDimens.radiusLarge)
+                    ) { Text("现在运行") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onLater()
+                            }
+                        ) { Text("稍后") }
+                        Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
+                        TextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onCancel()
                             }
                         ) { Text("取消") }
                     }
@@ -925,6 +1252,8 @@ class PluginHostActivity : AppCompatActivity() {
 
         backendTimeoutHandler?.removeCallbacks(backendTimeoutRunnable!!)
         backendTimeoutHandler = null
+
+        dismissEnvProgress()
 
         val keepAlive = pluginInfo?.backendKeepAlive ?: false
         if (!keepAlive && isBackendReady) {

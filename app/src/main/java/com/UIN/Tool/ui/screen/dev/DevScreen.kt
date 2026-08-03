@@ -291,7 +291,8 @@ fun DevScreen() {
                         "python" to "Python",
                         "node" to "Node.js",
                         "php" to "PHP",
-                        "binary" to "二进制文件"
+                        "binary" to "二进制文件",
+                        "other" to "自定义（手动启动）"
                     )
                     backends.forEach { (key, label) ->
                         Button(
@@ -306,6 +307,7 @@ fun DevScreen() {
                                     "python" -> Color(0xFF1A3A4A)
                                     "node" -> Color(0xFF2E7D32)
                                     "php" -> Color(0xFFE65100)
+                                    "other" -> Color(0xFF6A1B9A)
                                     else -> Color(0xFF455A64)
                                 },
                                 contentColor = Color.White

@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 4.4.4 |
-| 对应应用版本 | v4.4.4 (Build 14) |
-| 最后更新 | 2026年8月2日 |
+| 文档版本 | 4.5.0 |
+| 对应应用版本 | v4.5.0 (Build 15) |
+| 最后更新 | 2026年8月3日 |
 
 ---
 
@@ -700,6 +700,77 @@ function fetchBackend() {
 }
 ```
 
+5.9 Proot 容器运行时与自定义后端（v4.5.0 新增）
+
+v4.5.0 新增两种后端运行方式：
+
+· 运行环境（backendRuntime）：`"termux"`（默认，宿主环境）或 `"proot"`（共享 Alpine 容器）
+· 后端类型（backend）：在原有类型之外新增 `"other"`（自定义，宿主不自动启动后端）
+
+Proot 容器运行时（backendRuntime: "proot"）
+
+插件后端可在共享 Alpine 容器中运行，与宿主机环境隔离。首次使用时自动初始化 Termux 环境，并从内置的 `assets/alpine.tar.xz` 离线恢复 Alpine 容器。
+
+> alpine.tar.xz 为 `proot-distro backup alpine` 生成的备份，内置预装好的 Python 等依赖环境，恢复时通过 `proot-distro restore` 一键还原，无需联网安装依赖。
+
+plugin.json 示例：
+
+```json
+{
+    "pluginId": "com.example.prootbackend",
+    "version": 1,
+    "versionName": "1.0.0",
+    "uiType": "web",
+    "entry": "web/index.html",
+    "backend": "python",
+    "backendRuntime": "proot",
+    "backendPort": 8000,
+    "backendEntry": "scripts/backend/server.py",
+    "backendAutoStart": true,
+    "backendTimeout": 30,
+    "backendHealthCheck": "/health"
+}
+```
+
+容器说明：
+
+· 容器固定名称为 alpine，位于 `$PREFIX/var/lib/proot-distro/containers/alpine/rootfs`
+· 备份已预装 Python 环境，容器内可直接运行 Python 后端脚本
+· 插件目录自动绑定到容器内 `/plugins/{pluginId}`，`backendEntry` 使用相对路径即可
+· 容器内 `127.0.0.1:PORT` 与宿主机互通，前端可直接调用后端 API
+· 容器内额外的依赖可通过 `apk add` / `pip install` 在启动前命令中安装，不会污染宿主 Termux 环境
+· 后端运行环境初始化流水线：Termux 就绪 → Alpine 就绪 → 启动前命令 → 启动后端
+
+启动前命令（backendPreCommand）
+
+插件可配置一条启动前命令，首次打开插件时在 Termux 终端中执行（常用于安装额外依赖、初始化数据）。
+
+· 弹窗三选项：「现在运行」「稍后」「取消」
+· 命令执行成功（exit 0）一次后永久跳过（pre_cmd_done 标记，存于 plugin_data_{pluginId}）
+· 执行失败时自动回到插件页并提示退出码与错误信息
+· 「稍后」「取消」均不会标记 pre_cmd_done，下次打开会再次询问
+
+自定义后端模式（backend: "other"）
+
+宿主不自动启动后端进程，由 `backendPreCommand` 在 Termux 终端中自行启动服务，适合「容器内长驻服务」「手动启动」等场景。
+
+```json
+{
+    "pluginId": "com.example.otherbackend",
+    "uiType": "web",
+    "entry": "web/index.html",
+    "backend": "other",
+    "backendPort": 8000,
+    "backendAutoStart": true,
+    "backendTimeout": 60,
+    "backendPreCommand": "proot-distro login alpine --bind /storage/emulated/0/UIN_Tool/plugins/com.example.otherbackend:/plugins/com.example.otherbackend -- python3 /plugins/com.example.otherbackend/server.py"
+}
+```
+
+· backendPort > 0 时，宿主通过 TCP 端口轮询（200ms）判定后端就绪
+· backendPort 为 0 时视为无端口插件，pre-command 会话存活即运行中
+· 轮询超时自动放宽至 90s+，兼容容器冷启动场景
+
 ---
 
 六、插件数据持久化存储
@@ -1356,6 +1427,8 @@ backendEntry string 后端入口路径 ❌
 backendAutoStart boolean 自动启动 ❌
 backendTimeout int 启动超时（秒） ❌
 backendHealthCheck string 健康检查路径 ❌
+backendRuntime string 运行环境（termux/proot，v4.5.0） ❌
+backendPreCommand string 启动前命令（v4.5.0） ❌
 
 ---
 
@@ -1602,9 +1675,9 @@ QQ 群 511875883
 文档信息
 
 项目 信息
-文档版本 4.4.4
-对应应用版本 v4.4.4 (Build 14)
-最后更新 2026年8月2日
+文档版本 4.5.0
+对应应用版本 v4.5.0 (Build 15)
+最后更新 2026年8月3日
 
 ---
 

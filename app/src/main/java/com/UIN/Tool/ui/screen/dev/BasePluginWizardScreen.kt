@@ -458,7 +458,12 @@ fun BasePluginWizardScreen(
                         onEntryPathChange = { viewModel.entryPath.value = it },
                         pluginNotice = viewModel.pluginNotice.value,
                         onPluginNoticeChange = { viewModel.pluginNotice.value = it },
-                        uiType = uiType
+                        uiType = uiType,
+                        backendType = backendType,
+                        backendRuntime = viewModel.backendRuntime.value,
+                        onBackendRuntimeChange = { viewModel.backendRuntime.value = it },
+                        backendPreCommand = viewModel.backendPreCommand.value,
+                        onBackendPreCommandChange = { viewModel.backendPreCommand.value = it }
                     )
                     1 -> PluginIconStep(
                         iconPath = viewModel.iconPath.value,

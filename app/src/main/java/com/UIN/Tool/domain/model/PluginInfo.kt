@@ -31,10 +31,12 @@ data class PluginInfo(
 
     // ==================== 后端配置 ====================
     var backend: String = "",
+    var backendRuntime: String = "",
     var backendPort: Int = 0,
     var backendEntry: String = "scripts/backend/server.py",
     var backendAutoStart: Boolean = true,
     var backendKeepAlive: Boolean = false,
+    var backendPreCommand: String = "",
     var backendEnv: Map<String, String> = emptyMap(),
     var backendTimeout: Int = 30,
     var backendHealthCheck: String = "/health",
@@ -70,6 +72,10 @@ data class PluginInfo(
 ) {
 
     fun hasBackend(): Boolean = backend.isNotEmpty() && backendAutoStart
+
+    fun useProotRuntime(): Boolean = backendRuntime.equals("proot", ignoreCase = true)
+
+    fun isOtherBackend(): Boolean = backend.equals("other", ignoreCase = true)
 
     fun isWebPlugin(): Boolean = uiType == "web"
     fun isNativePlugin(): Boolean = uiType == "native"
@@ -211,10 +217,12 @@ data class PluginInfo(
             put("dependencies", dependencies.joinToString(","))
             put("notice", notice)
             put("backend", backend)
+            put("backendRuntime", backendRuntime)
             put("backendPort", backendPort)
             put("backendEntry", backendEntry)
             put("backendAutoStart", backendAutoStart)
             put("backendKeepAlive", backendKeepAlive)
+            put("backendPreCommand", backendPreCommand)
             put("backendTimeout", backendTimeout)
             put("backendHealthCheck", backendHealthCheck)
             put("backendMaxRetries", backendMaxRetries)
@@ -256,10 +264,12 @@ data class PluginInfo(
                     dependencies = obj.optString("dependencies", "").split(",").filter { it.isNotEmpty() },
                     notice = obj.optString("notice", ""),
                     backend = obj.optString("backend", ""),
+                    backendRuntime = obj.optString("backendRuntime", ""),
                     backendPort = obj.optInt("backendPort", 0),
                     backendEntry = obj.optString("backendEntry", "scripts/backend/server.py"),
                     backendAutoStart = obj.optBoolean("backendAutoStart", true),
                     backendKeepAlive = obj.optBoolean("backendKeepAlive", false),
+                    backendPreCommand = obj.optString("backendPreCommand", ""),
                     backendTimeout = obj.optInt("backendTimeout", 30),
                     backendHealthCheck = obj.optString("backendHealthCheck", "/health"),
                     backendMaxRetries = obj.optInt("backendMaxRetries", 3),

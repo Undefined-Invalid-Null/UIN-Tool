@@ -30,6 +30,10 @@ class PluginWizardViewModel(
     var entryPath = mutableStateOf("web/index.html")
     var webTemplateType = mutableStateOf(0)
 
+    // ==================== 后端运行配置 ====================
+    var backendRuntime = mutableStateOf("termux")
+    var backendPreCommand = mutableStateOf("")
+
     // ==================== 插件说明 ====================
     var pluginNotice = mutableStateOf("")
 
@@ -219,6 +223,9 @@ class PluginWizardViewModel(
                     val binaryName = File(binaryFilePath.value).name
                     put("backendEntry", "backend/$binaryName")
                     put("backendBinary", binaryName)
+                } else if (backendType == "other") {
+                    // other 模式：宿主不自动启动后端，由 pre-command 负责启动
+                    put("backendEntry", "")
                 } else {
                     val backendFile = when (backendType) {
                         "python" -> "scripts/backend/server.py"
@@ -237,6 +244,8 @@ class PluginWizardViewModel(
                 put("backendAutoStart", true)
                 put("backendTimeout", 30)
                 put("backendHealthCheck", "/health")
+                put("backendRuntime", backendRuntime.value.ifEmpty { "termux" })
+                put("backendPreCommand", backendPreCommand.value.trim())
             }
         }
         return json.toString()

@@ -80,6 +80,7 @@ class PluginJSInterface(
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .cache(Cache(File(Constants.CACHE_DIR, "okhttp_cache"), Constants.CACHE_SIZE))
+        .proxy(java.net.Proxy.NO_PROXY)
         .build()
 
     init {

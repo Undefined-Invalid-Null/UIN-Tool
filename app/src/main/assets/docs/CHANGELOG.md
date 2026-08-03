@@ -12,6 +12,51 @@
 
 ---
 
+## [4.5.0] - 2026-08-03
+
+### 🐧 Proot 容器运行时 + 自定义后端
+
+#### Proot 容器运行时（`backendRuntime: "proot"`）
+
+- 插件后端可在**共享 Alpine 容器**中运行，与宿主机环境隔离
+- 首次使用时自动初始化 Termux 环境，并通过 `proot-distro restore` 从 `assets/alpine.tar.xz` 离线恢复 Alpine 容器
+- `assets/alpine.tar.xz` 为 `proot-distro backup alpine` 生成的备份，内置预装 Python 等依赖环境
+- 容器内可直接使用 `apk add` 安装依赖，不污染宿主 Termux 环境
+- 插件目录自动绑定到容器内 `/plugins/<pluginId>`，入口文件在容器中直接可见
+- 容器内 `127.0.0.1:PORT` 与宿主机互通，后端 API 调用无需额外配置
+- 环境流水线：Termux 就绪 → Alpine 就绪 → 启动前命令 → 启动后端
+
+#### 启动前命令（`backendPreCommand`）
+
+- 插件可配置一条启动前命令，在 Termux 终端中执行（如安装依赖、初始化数据）
+- 首次打开时弹窗选择：「现在运行」「稍后」「取消」
+- 命令执行成功（exit 0）一次后永久跳过（`pre_cmd_done` 标记，存于 `plugin_data_<id>`）
+- 执行失败时自动回到插件页并提示退出码与错误信息
+
+#### 自定义后端模式（`backend: "other"`）
+
+- 宿主不自动启动后端进程，由启动前命令在终端中自行启动服务
+- 通过 TCP 端口轮询（200ms）判定后端就绪，超时放宽至 90s+ 以兼容容器冷启动
+- 支持无端口插件（`backendPort: 0`），以 pre-command 会话存活即运行中
+
+#### 后端连接提速
+
+- 三处 OkHttpClient（PluginBackendManager / PluginHostActivity / PluginJSInterface）增加 `.proxy(Proxy.NO_PROXY)`，避免系统代理劫持 loopback 流量
+- `waitForReady` 去掉 1s 硬编码延迟，改为 200ms TCP 端口探测 + HTTP 健康检查轮询
+- 停止后端时按进程组 `SIGKILL`（`Os.kill(-pid, SIGKILL)`），确保 proot 子进程一并退出
+
+#### 其他修复
+
+- 修复引导页（Onboarding）闪烁与跳过后再弹出的问题：去除 SplashActivity 双重导航路径，统一由 Compose 驱动，并修复权限弹窗首帧闪现
+
+#### 向导与文档
+
+- 插件向导支持「后端运行环境」（Termux 本机 / Proot 容器）与「启动前命令」配置
+- 后端选择新增「自定义（手动启动）」类型
+- 更新日志、帮助文档、README 同步更新
+
+---
+
 ## [4.4.4] - 2026-08-02
 
 ### 🎉 插件弹窗系统统一 + 交互修复
@@ -387,9 +432,9 @@ v4.0.0 是一次重大重构，升级前请注意：
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 4.4.4 |
-| 最后更新 | 2026年8月2日 |
-| 对应应用版本 | v4.4.4 (Build 14) |
+| 文档版本 | 4.5.0 |
+| 最后更新 | 2026年8月3日 |
+| 对应应用版本 | v4.5.0 (Build 15) |
 
 ---
 

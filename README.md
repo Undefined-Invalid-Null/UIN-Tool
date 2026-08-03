@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-4.4.4-blue)
-![Build](https://img.shields.io/badge/build-14-green)
+![Version](https://img.shields.io/badge/version-4.5.0-blue)
+![Build](https://img.shields.io/badge/build-15-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -21,6 +21,7 @@ UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框
 - **现代化**：基于 Jetpack Compose 构建，Material 3 设计语言
 - **强大**：内置 Termux 终端环境，支持 Python/Node.js/PHP 后端
 - **持久化**：插件数据独立存储，更新时自动保留用户数据
+- **容器化**：支持 Proot 共享 Alpine 容器运行时，后端与宿主机环境隔离
 
 ---
 
@@ -58,13 +59,13 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v4.4.4 (Build 14)
+### 当前版本：v4.5.0 (Build 15)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 4.4.4 |
-| 版本代码 | 14 |
-| 更新日期 | 2026年8月2日 |
+| 版本号 | 4.5.0 |
+| 版本代码 | 15 |
+| 更新日期 | 2026年8月3日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
@@ -72,26 +73,35 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ### 版本历史
 
-#### v4.4.4 (2026年8月2日) - 🎉 插件弹窗系统统一 + 交互修复
+#### v4.5.0 (Build 15) - 🐧 Proot 容器运行时 + 自定义后端
 
-**🎉 重大更新：插件弹窗系统统一**
+**🐧 Proot 容器运行时（`backendRuntime: "proot"`）：**
+- 插件后端可在**共享 Alpine 容器**中运行，与宿主机环境隔离
+- 首次使用时自动初始化 Termux 环境，并通过 `proot-distro restore` 从 `assets/alpine.tar.gz` 离线恢复 Alpine 容器（备份内置预装 Python 环境）
+- 容器内可直接使用 `apk add` 安装依赖，不污染宿主 Termux 环境
+- 后端端口映射：容器内 `127.0.0.1:PORT` 与宿主机互通，无需额外网络配置
+- 插件目录自动绑定到容器内 `/plugins/<pluginId>`，入口文件在容器中直接可见
 
-**插件弹窗系统统一：**
-- 插件弹窗全部改用应用内置的 Compose 统一对话框组件（UnifiedDialog / UnifiedConfirmDialog / UnifiedInfoDialog）
-- 移除旧的 UnifiedViewDialog 自定义弹窗
-- JS alert / confirm / 确认对话框 / 输入对话框 / 特殊权限弹窗统一走同一套弹窗组件
+**⚡ 启动前命令（`backendPreCommand`）：**
+- 插件可配置一条启动前命令，在 Termux 终端中执行（如安装依赖、初始化数据）
+- 弹窗三选项：「现在运行」「稍后」「取消」，支持选择
+- 命令执行成功（exit 0）一次后永久跳过（`pre_cmd_done` 标记）
+- 执行失败时提示并允许重试
 
-**弹窗排队机制：**
-- 多个弹窗请求按顺序排队显示，不再互相覆盖
-- 上一个弹窗关闭后自动展示下一个
-- 新增回调式弹窗 API：showConfirmDialog(title, message, callbackId)、showPromptDialog(title, hint, callbackId)
+**🔧 自定义后端模式（`backend: "other"`）：**
+- 宿主不自动启动后端进程，由启动前命令在终端中自行启动服务
+- 通过 TCP 端口轮询判定后端就绪，兼容无端口插件
+- 适合「容器内长驻服务」「手动启动」等特殊场景
 
-**交互修复：**
-- 修复插件页面无法滚动/点击的问题：对话框覆盖层默认隐藏，仅在弹窗显示时显示
-- 修复确认对话框不显示的问题
-- 修复截图功能无法保存的问题（改用视图绘制方式捕获画面）
+**🚀 后端连接提速：**
+- 全部 OkHttpClient 增加 `.proxy(Proxy.NO_PROXY)`，避免系统代理劫持 loopback 流量
+- `waitForReady` 健康检查改为 200ms TCP 端口探测 + HTTP 轮询，去掉 1s 硬编码延迟
+- 停止后端时按进程组 `SIGKILL`，确保子进程一并退出
 
-#### v4.4.0 (2026年7月28日) - 🎉 持久化存储 + 权限系统完善
+**🐛 其他修复：**
+- 修复引导页（Onboarding）闪烁与跳过后再弹出的问题：去除 SplashActivity 双重导航路径，统一由 Compose 驱动，并修复权限弹窗首帧闪现
+
+#### v4.4.0 (Build 13) - 🎉 持久化存储 + 权限系统完善
 
 **🎉 重大更新：插件数据持久化存储**
 

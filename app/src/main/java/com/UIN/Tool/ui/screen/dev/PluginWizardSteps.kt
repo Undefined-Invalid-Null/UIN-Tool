@@ -86,7 +86,12 @@ fun PluginConfigStep(
     onEntryPathChange: (String) -> Unit,
     pluginNotice: String,
     onPluginNoticeChange: (String) -> Unit,
-    uiType: String
+    uiType: String,
+    backendType: String = "",
+    backendRuntime: String = "termux",
+    onBackendRuntimeChange: (String) -> Unit = {},
+    backendPreCommand: String = "",
+    onBackendPreCommandChange: (String) -> Unit = {}
 ) {
     Column {
         UIComponents.TextInput(
@@ -188,6 +193,61 @@ fun PluginConfigStep(
             "提示：首次打开插件时会显示此说明，用户可选择不再提示",
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
+
+        if (uiType == "web" && backendType.isNotEmpty() && backendType != "binary") {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (backendType != "other") {
+                // ✅ 后端运行环境
+                UIComponents.BodyText("后端运行环境")
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val options = listOf(
+                        "termux" to "Termux 本机",
+                        "proot" to "Proot 容器"
+                    )
+                    options.forEach { (key, label) ->
+                        FilterChip(
+                            selected = backendRuntime == key,
+                            onClick = { onBackendRuntimeChange(key) },
+                            label = { Text(label) },
+                            modifier = Modifier.weight(1f),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                }
+                UIComponents.CaptionText(
+                    "Proot 容器：后端在共享 Alpine 容器中运行，环境隔离，不会影响宿主机",
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // ✅ 启动前命令（pre-command）
+            UIComponents.TextInput(
+                value = backendPreCommand,
+                onValueChange = onBackendPreCommandChange,
+                label = if (backendType == "other") "启动命令（必需）" else "启动前命令（可选）",
+                placeholder = if (backendType == "other")
+                    "proot-distro login alpine --bind ... -- python3 server.py"
+                else
+                    "如：apk add python3 && pip install -r requirements.txt",
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false
+            )
+            UIComponents.CaptionText(
+                if (backendType == "other")
+                    "「自定义」模式：宿主不自动启动后端，由该命令在 Termux 终端中启动服务，首次执行成功后永久跳过"
+                else
+                    "首次打开插件时在终端中执行，成功（exit 0）一次后永久跳过；在 Proot 容器环境初始化依赖",
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+        }
     }
 }
 
