@@ -545,17 +545,15 @@ fun CodeEditorScreen(
             val newContent = contents[currentFile] ?: ""
             Log.d(DEBUG_TAG, "更新编辑器: 文件=$currentFile, 内容长度=${newContent.length}")
             
-            // 设置内容
+            // ✅ 先设置语言和主题
+            setEditorLanguage(editor, currentFile)
+            applyTheme(editor, currentTheme)
+            
+            // ✅ 最后再 setText：触发一次完整的重新分析，且不会被后续操作中断
+            //    （setText 内部会调用 AnalyzeManager.reset() 重新全量高亮）
             editor.setText(newContent)
             editedContent = newContent
             hasChanges = false
-            
-            // ✅ 关键修复：设置语言后立即应用主题
-            setEditorLanguage(editor, currentFile)
-            
-            // ✅ 延迟一点再应用主题，确保语言已加载
-            delay(50)
-            applyTheme(editor, currentTheme)
             
             // ✅ 强制刷新
             editor.invalidate()
@@ -821,14 +819,16 @@ fun CodeEditorScreen(
                             isWordwrap = false
                             setTextSize(16f)
                             
+                            // ✅ 先应用主题
+                            applyTheme(this, currentTheme)
+                            
+                            // ✅ 再设置语言，最后 setText 触发全量高亮分析
+                            setEditorLanguage(this, currentFile)
+                            
                             // 设置初始内容
                             val initialContent = contents[currentFile] ?: ""
                             setText(initialContent)
                             Log.d(DEBUG_TAG, "编辑器初始文本长度: ${initialContent.length}")
-                            
-                            // ✅ 立即设置语言和主题
-                            setEditorLanguage(this, currentFile)
-                            applyTheme(this, currentTheme)
                             
                             // 内容变更监听
                             subscribeEvent(ContentChangeEvent::class.java) { event, _ ->
@@ -872,11 +872,10 @@ fun CodeEditorScreen(
                             hasChanges = false
                         }
                         editorInstance = editor
-                        
-                        // ✅ 每次 update 时重新应用语言和主题（确保高亮）
-                        setEditorLanguage(editor, currentFile)
-                        applyTheme(editor, currentTheme)
-                        editor.invalidate()
+                        // ✅ 不在 update 里重设语言/主题：update 会在每次 recomposition 时执行，
+                        //    每次都调用 setEditorLanguage 会创建新的 TextMateLanguage 并中断
+                        //    进行中的高亮分析（导致首次打开不高亮，切文件后才能恢复）。
+                        //    语言/主题统一由 factory 与 LaunchedEffect(currentFile) 负责。
                     },
                     modifier = Modifier
                         .fillMaxWidth()

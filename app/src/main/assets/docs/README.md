@@ -1430,6 +1430,20 @@ backendHealthCheck string 健康检查路径 ❌
 backendRuntime string 运行环境（termux/proot，v4.5.0） ❌
 backendPreCommand string 启动前命令（v4.5.0） ❌
 
+### 11.4 导出内置模板（v4.5.0）
+
+在「开发」页面点击「**导出模板**」，应用会将内置的打包插件从 `assets/test_plugins/` 复制到 `/storage/emulated/0/UIN_Tool/templates/`，并自动生成 `README.txt` 说明。这些模板可直接导入体验，覆盖 CUI 终端、自定义后端、Termux 后端、全接口测试、存储测试、原生插件、Web 纯前端等类型。
+
+| 模板文件 | 说明 |
+|----------|------|
+| `com.example.cuitest.tpk` | CUI 终端插件示例（全屏终端执行脚本） |
+| `com.example.othertest.tpk` | 自定义后端插件示例（other 模式，pre-command 手动启动） |
+| `com.example.termuxtest.tpk` | Termux 后端插件示例（Python 后端） |
+| `com.test.allapi.tpk` | 全接口测试插件 |
+| `com.test.storage.tpk` | 存储测试插件 |
+| `NativeTestPlugin.tpk` | 原生插件示例 |
+| `web_plugin_template.tpk` | Web 插件模板（纯前端） |
+
 ---
 
 十二、发布到插件仓库

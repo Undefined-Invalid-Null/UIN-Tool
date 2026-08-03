@@ -55,6 +55,27 @@
 - 后端选择新增「自定义（手动启动）」类型
 - 更新日志、帮助文档、README 同步更新
 
+### 🧰 模板导出重构 + 开发工具优化
+
+#### 插件模板导出重构
+
+- 导出模板改为直接从 `assets/test_plugins/` 导出 **7 个打包好的插件**（cuitest / othertest / termux / allapi / storage / NativeTestPlugin / web_plugin_template），作为可导入的现成模板
+- 导出时自动生成 `README.txt`，列出每个模板文件的用途与导入使用方法
+- 清理了 assets 中原有的零散插件模板（`templates/`、`test_plugins/` 旧文件、根目录 `template.tpk`），统一由内置打包插件接管
+
+#### 导出流程修复
+
+- 修复「导出中...」按钮一直卡住的问题：导出改为在后台线程执行，完成后回到主线程复位状态
+- Toast 显示线程安全化：后台线程调用 Toast 不再崩溃（自动切回主线程显示）
+
+#### UI 优化
+
+- 创建插件相关按钮改为纯主题色（`PrimaryButton`），移除渐变色样式
+
+#### 构建优化
+
+- 精简 `proguard-rules.pro`：仅保留可能被 R8 删除的重要代码——**空壳插件宿主占位实现**（`com.UIN.Tool.plugin.**` / `com.UIN.Tool.core.plugin.**`，即 DexClassLoader 加载外部 dex 所依赖的接口与宿主类）、`@JavascriptInterface` 方法、插件 JSON 模型等；移除「保留全部 androidx/compose/带空构造类」等过宽规则，缩小 release 包体积
+
 ---
 
 ## [4.4.4] - 2026-08-02

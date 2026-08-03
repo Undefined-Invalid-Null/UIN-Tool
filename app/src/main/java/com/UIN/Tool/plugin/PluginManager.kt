@@ -185,7 +185,7 @@ class PluginManager private constructor(
                 return null
             }
 
-            if (info.uiType != "web") {
+            if (info.uiType == "native") {
                 val dexFile = File(tempDir, Constants.PLUGIN_DEX_FILE)
                 if (!dexFile.exists()) {
                     Logger.e(TAG, "原生插件缺少 plugin.dex")

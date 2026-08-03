@@ -25,12 +25,16 @@ import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Constants
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TAG = "DevScreen"
 
 @Composable
 fun DevScreen() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var isExporting by remember { mutableStateOf(false) }
 
@@ -109,7 +113,7 @@ fun DevScreen() {
         ) {
             UIComponents.SectionTitle("插件开发工具")
             Text(
-                text = "创建 UIN Tool 插件，支持原生和 Web 两种前端，多种后端语言",
+                text = "创建 UIN Tool 插件，支持原生、Web 和 CUI 终端三种前端，多种后端语言",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -127,8 +131,13 @@ fun DevScreen() {
                 icon = Icons.Default.FileDownload,
                 onClick = {
                     if (!isExporting) {
-                        exportTemplates(context) { isExporting = false }
                         isExporting = true
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                exportTemplates(context)
+                            }
+                            isExporting = false
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
@@ -195,24 +204,19 @@ fun DevScreen() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 原生 UI
-                    Button(
+                    UIComponents.PrimaryButton(
+                        text = "原生 UI (Android View)",
                         onClick = {
                             selectedUiType = "native"
                             showCreatePluginDialog = false
                             navigateToWizard(context, "native", "")
                         },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1A3A4A),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("原生 UI (Android View)")
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     
                     // ✅ 纯 WebView（无后端）
-                    Button(
+                    UIComponents.PrimaryButton(
+                        text = "Web UI (纯前端, 无后端)",
                         onClick = {
                             selectedUiType = "web"
                             isWebViewOnly = true
@@ -220,33 +224,32 @@ fun DevScreen() {
                             // 无后端，直接跳转
                             navigateToWizard(context, "web", "")
                         },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF455A64),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Web UI (纯前端, 无后端)")
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     
                     // WebView + 后端
-                    Button(
+                    UIComponents.PrimaryButton(
+                        text = "Web UI + 后端",
                         onClick = {
                             selectedUiType = "web"
                             isWebViewOnly = false
                             showCreatePluginDialog = false
                             showBackendDialog = true
                         },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF37474F),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Web UI + 后端")
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    // ✅ CUI 终端
+                    UIComponents.PrimaryButton(
+                        text = "CUI 终端 (命令行界面)",
+                        onClick = {
+                            selectedUiType = "cui"
+                            isWebViewOnly = false
+                            showCreatePluginDialog = false
+                            navigateToWizard(context, "cui", "")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     
                     TextButton(
                         onClick = { showCreatePluginDialog = false },
@@ -295,27 +298,15 @@ fun DevScreen() {
                         "other" to "自定义（手动启动）"
                     )
                     backends.forEach { (key, label) ->
-                        Button(
+                        UIComponents.PrimaryButton(
+                            text = label,
                             onClick = {
                                 selectedBackend = key
                                 showBackendDialog = false
                                 navigateToWizard(context, "web", key)
                             },
-                            modifier = Modifier.fillMaxWidth().height(44.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = when (key) {
-                                    "python" -> Color(0xFF1A3A4A)
-                                    "node" -> Color(0xFF2E7D32)
-                                    "php" -> Color(0xFFE65100)
-                                    "other" -> Color(0xFF6A1B9A)
-                                    else -> Color(0xFF455A64)
-                                },
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(label)
-                        }
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                     TextButton(
                         onClick = { showBackendDialog = false },
@@ -351,91 +342,54 @@ private fun navigateToWizard(context: android.content.Context, uiType: String, b
 }
 
 // ============================================================
-// 导出模板
+// 导出模板（从 assets/test_plugins 复制打包好的插件作为模板）
 // ============================================================
 private fun exportTemplates(
-    context: android.content.Context,
-    onComplete: () -> Unit
+    context: android.content.Context
 ) {
     try {
+        val assetDir = "test_plugins"
+        val tpkNames = context.assets.list(assetDir)
+            ?.filter { it.endsWith(Constants.PLUGIN_EXTENSION) }
+            ?.sorted()
+            ?: emptyList()
+
+        if (tpkNames.isEmpty()) {
+            AppToast.warning(context, "assets/test_plugins 中没有 TPK 模板")
+            return
+        }
+
         val templateDir = File(Constants.WORK_DIR, "templates")
         if (!templateDir.exists()) {
             templateDir.mkdirs()
         }
 
-        val assetFiles = listOf(
-            "templates/native_template.tpk" to "native_plugin_template.tpk",
-            "templates/web_template.tpk" to "web_plugin_template.tpk",
-            "templates/python_template.tpk" to "python_plugin_template.tpk",
-            "templates/NativeTestPlugin.tpk" to "NativeTestPlugin.tpk",
-            "template.tpk" to "plugin_template.tpk",
-            "docs/README.md" to "docs/README.md",
-            "docs/Help.md" to "docs/Help.md",
-            "docs/About.md" to "docs/About.md",
-            "docs/CONTRIBUTORS.md" to "docs/CONTRIBUTORS.md",
-            "docs/CHANGELOG.md" to "docs/CHANGELOG.md"
-        )
-
         var successCount = 0
         var failCount = 0
+        val exportedNames = mutableListOf<String>()
 
-        for ((assetPath, fileName) in assetFiles) {
+        for (name in tpkNames) {
             try {
-                val destFile = File(templateDir, fileName)
-                destFile.parentFile?.mkdirs()
-                context.assets.open(assetPath).use { input ->
+                val destFile = File(templateDir, name)
+                context.assets.open("$assetDir/$name").use { input ->
                     java.io.FileOutputStream(destFile).use { output ->
                         input.copyTo(output)
                     }
                 }
                 successCount++
-                AppLog.d(TAG, "导出模板文件: $fileName")
+                exportedNames.add(name)
+                AppLog.d(TAG, "导出模板文件: $name")
             } catch (e: Exception) {
-                AppLog.w(TAG, "复制文件失败: $assetPath - ${e.message}")
+                AppLog.w(TAG, "复制文件失败: $name - ${e.message}")
                 failCount++
             }
         }
 
         val readmeFile = File(templateDir, "README.txt")
-        readmeFile.writeText(
-            """
-            ============================================================
-            UIN Tool 插件模板
-            ============================================================
-            
-            导出时间: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}
-            
-            文件说明:
-            ------------------------------------------------------------
-            ├── native_plugin_template.tpk  原生插件模板
-            ├── web_plugin_template.tpk     Web 插件模板  
-            ├── python_plugin_template.tpk  Python 后端插件模板
-            ├── NativeTestPlugin.tpk        测试插件示例
-            ├── plugin_template.tpk         通用插件模板
-            └── docs/                       文档目录
-                ├── README.md              项目介绍
-                ├── Help.md                使用帮助
-                ├── About.md               关于应用
-                ├── CONTRIBUTORS.md        贡献者名单
-                └── CHANGELOG.md           更新日志
-            
-            使用方法:
-            ------------------------------------------------------------
-            1. 在「管理」「插件管理」中选择「导入插件」
-            2. 选择 .tpk 文件
-            3. 插件将自动安装到 UIN Tool 中
-            4. 在「工具」页面可以运行已安装的插件
-            
-            开发指南:
-            ------------------------------------------------------------
-            详见 docs/ 目录下的文档
-            
-            ============================================================
-            """.trimIndent()
-        )
+        readmeFile.writeText(buildTemplateReadme(exportedNames))
 
         val message = if (failCount == 0) {
-            "所有模板已导出到:\n${templateDir.absolutePath}"
+            "已导出 $successCount 个插件模板到:\n${templateDir.absolutePath}"
         } else {
             "导出完成 (成功 $successCount 个, 失败 $failCount 个)\n${templateDir.absolutePath}"
         }
@@ -446,7 +400,43 @@ private fun exportTemplates(
     } catch (e: Exception) {
         AppLog.e(TAG, "导出模板失败", e)
         AppToast.error(context, "导出失败: ${e.message}")
-    } finally {
-        onComplete()
     }
+}
+
+// ============================================================
+// 生成模板 README
+// ============================================================
+private fun buildTemplateReadme(files: List<String>): String {
+    val descMap = mapOf(
+        "com.example.cuitest.tpk" to "CUI 终端插件示例（全屏终端执行脚本）",
+        "com.example.othertest.tpk" to "自定义后端插件示例（other 模式，pre-command 手动启动）",
+        "com.example.termuxtest.tpk" to "Termux 后端插件示例（Python 后端）",
+        "com.test.allapi.tpk" to "全接口测试插件",
+        "com.test.storage.tpk" to "存储测试插件",
+        "NativeTestPlugin.tpk" to "原生插件示例",
+        "web_plugin_template.tpk" to "Web 插件模板（纯前端）"
+    )
+    val sb = StringBuilder()
+    sb.appendLine("============================================================")
+    sb.appendLine("UIN Tool 插件模板")
+    sb.appendLine("============================================================")
+    sb.appendLine()
+    sb.appendLine("导出时间: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+    sb.appendLine()
+    sb.appendLine("文件说明:")
+    sb.appendLine("------------------------------------------------------------")
+    files.forEachIndexed { index, name ->
+        val prefix = if (index == files.lastIndex) "└── " else "├── "
+        sb.appendLine("$prefix$name  ${descMap[name] ?: "插件模板"}")
+    }
+    sb.appendLine()
+    sb.appendLine("使用方法:")
+    sb.appendLine("------------------------------------------------------------")
+    sb.appendLine("1. 在「管理」「插件管理」中选择「导入插件」")
+    sb.appendLine("2. 选择 .tpk 文件")
+    sb.appendLine("3. 插件将自动安装到 UIN Tool 中")
+    sb.appendLine("4. 在「工具」页面可以运行已安装的插件")
+    sb.appendLine()
+    sb.appendLine("============================================================")
+    return sb.toString().trimEnd()
 }

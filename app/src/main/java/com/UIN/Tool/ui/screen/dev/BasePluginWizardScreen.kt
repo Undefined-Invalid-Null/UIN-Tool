@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.UIN.Tool.core.compiler.JavaToDexCompiler
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
@@ -44,6 +46,10 @@ fun BasePluginWizardScreen(
     }
 
     var currentStep by remember { mutableStateOf(0) }
+
+    // 编辑 JSON 对话框状态
+    var showJsonEditor by remember { mutableStateOf(false) }
+    var jsonDraft by remember { mutableStateOf("") }
     
     val hasBackend = backendType.isNotEmpty()
     
@@ -52,6 +58,8 @@ fun BasePluginWizardScreen(
     } else if (uiType == "web" && backendType == "binary") {
         4
     } else if (uiType == "web" && backendType.isEmpty()) {
+        4
+    } else if (uiType == "cui") {
         4
     } else {
         5
@@ -101,6 +109,56 @@ fun BasePluginWizardScreen(
         intent.putExtra("plugin_name", viewModel.pluginName.value)
         intent.putExtra("plugin_id", viewModel.pluginId.value)
         codeEditorLauncher.launch(intent)
+    }
+
+    fun buildPluginJson(): String {
+        return try {
+            val json = org.json.JSONObject().apply {
+                put("pluginId", viewModel.pluginId.value)
+                put("version", viewModel.pluginVersion.value.toIntOrNull() ?: 1)
+                put("versionName", viewModel.pluginVersionName.value)
+                put("minHostVersion", 1)
+                put("name", viewModel.pluginName.value)
+                put("author", viewModel.pluginAuthor.value)
+                put("description", viewModel.pluginDescription.value)
+                put("icon", "icon.png")
+                put("mainClass", if (uiType == "native") viewModel.mainClass.value else "")
+                put("apiLevel", 21)
+                put("uiType", uiType)
+                put("entry", if (uiType == "web") viewModel.entryPath.value else "")
+                put("permissions", "")
+                put("dependencies", "")
+                put("notice", viewModel.pluginNotice.value)
+                if (uiType == "cui") {
+                    put("backendRuntime", viewModel.backendRuntime.value.ifEmpty { "termux" })
+                    put("backendPreCommand", viewModel.backendPreCommand.value.ifBlank { "python3 scripts/script.py" })
+                }
+            }
+            json.toString(2)
+        } catch (e: Exception) {
+            "{}"
+        }
+    }
+
+    fun applyPluginJson(text: String): Boolean {
+        return try {
+            val json = org.json.JSONObject(text)
+            viewModel.pluginId.value = json.optString("pluginId", viewModel.pluginId.value)
+            viewModel.pluginName.value = json.optString("name", viewModel.pluginName.value)
+            viewModel.pluginAuthor.value = json.optString("author", viewModel.pluginAuthor.value)
+            viewModel.pluginDescription.value = json.optString("description", viewModel.pluginDescription.value)
+            viewModel.pluginVersion.value = json.optInt("version", viewModel.pluginVersion.value.toIntOrNull() ?: 1).toString()
+            viewModel.pluginVersionName.value = json.optString("versionName", viewModel.pluginVersionName.value)
+            viewModel.mainClass.value = json.optString("mainClass", viewModel.mainClass.value)
+            viewModel.entryPath.value = json.optString("entry", viewModel.entryPath.value)
+            viewModel.pluginNotice.value = json.optString("notice", viewModel.pluginNotice.value)
+            viewModel.backendRuntime.value = json.optString("backendRuntime", viewModel.backendRuntime.value)
+            viewModel.backendPreCommand.value = json.optString("backendPreCommand", viewModel.backendPreCommand.value)
+            true
+        } catch (e: Exception) {
+            AppToast.error(context, "JSON 解析失败: ${e.message}")
+            false
+        }
     }
 
     fun startCompileAndPackage() {
@@ -243,10 +301,12 @@ fun BasePluginWizardScreen(
             2 -> when {
                 uiType == "web" && backendType == "binary" -> "选择二进制文件"
                 uiType == "web" -> "Web 代码编辑"
+                uiType == "cui" -> "编辑终端脚本"
                 else -> "编写插件代码"
             }
             3 -> when {
                 uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> "生成项目文件"
+                uiType == "cui" -> "生成项目文件"
                 else -> "添加资源文件"
             }
             4 -> "生成项目文件"
@@ -261,10 +321,12 @@ fun BasePluginWizardScreen(
             2 -> when {
                 uiType == "web" && backendType == "binary" -> "选择编译好的可执行二进制文件"
                 uiType == "web" -> "编辑 HTML/CSS/JS 或导入已有项目"
+                uiType == "cui" -> "编辑终端启动脚本，插件打开后会在终端中运行"
                 else -> "实现 PluginInterface 接口"
             }
             3 -> when {
                 uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> "生成项目文件并打包为 TPK"
+                uiType == "cui" -> "生成项目文件并打包为 TPK"
                 else -> "可选的图片、音频等资源文件"
             }
             4 -> "生成项目结构并打包为 TPK"
@@ -319,6 +381,7 @@ fun BasePluginWizardScreen(
                             uiType == "native" -> "创建原生插件"
                             backendType == "binary" -> "创建二进制后端插件"
                             uiType == "web" && backendType.isEmpty() -> "创建 Web 插件"
+                            uiType == "cui" -> "创建 CUI 插件"
                             else -> "创建 Web + 后端插件"
                         }
                     )
@@ -330,6 +393,15 @@ fun BasePluginWizardScreen(
                     )
                 },
                 actions = {
+                    if (currentStep == 0) {
+                        UIComponents.IconButton(
+                            icon = Icons.Default.Code,
+                            onClick = {
+                                jsonDraft = buildPluginJson()
+                                showJsonEditor = true
+                            }
+                        )
+                    }
                     if (currentStep == 2 && backendType != "binary") {
                         UIComponents.IconButton(
                             icon = Icons.Default.Edit,
@@ -481,6 +553,11 @@ fun BasePluginWizardScreen(
                                 onOpenEditor = { openCodeEditor() },
                                 fileCount = viewModel.fileList.value.size
                             )
+                        } else if (uiType == "cui") {
+                            CuiCodeStep(
+                                fileCount = viewModel.fileList.value.size,
+                                onOpenEditor = { openCodeEditor() }
+                            )
                         } else {
                             WebCodeStep(
                                 fileCount = viewModel.fileList.value.size,
@@ -491,6 +568,13 @@ fun BasePluginWizardScreen(
                     }
                     3 -> {
                         if (uiType == "web" && (backendType == "binary" || backendType.isEmpty())) {
+                            PackageStep(
+                                isCompiling = viewModel.isCompiling.value,
+                                compileMessage = viewModel.compileMessage.value,
+                                compileProgress = viewModel.compileProgress.value,
+                                tpkFile = viewModel.tpkFile.value
+                            )
+                        } else if (uiType == "cui") {
                             PackageStep(
                                 isCompiling = viewModel.isCompiling.value,
                                 compileMessage = viewModel.compileMessage.value,
@@ -519,5 +603,50 @@ fun BasePluginWizardScreen(
                 }
             }
         }
+    }
+
+    // ============================================================
+    // 编辑 plugin.json 对话框
+    // ============================================================
+    if (showJsonEditor) {
+        AlertDialog(
+            onDismissRequest = { showJsonEditor = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("编辑 plugin.json") },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = jsonDraft,
+                        onValueChange = { jsonDraft = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(420.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontSize = 13.sp
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "保存后将同步到表单各字段，字段包括 pluginId/name/version/entry/backendPreCommand 等。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (applyPluginJson(jsonDraft)) {
+                            showJsonEditor = false
+                            AppToast.success(context, "JSON 已应用")
+                        }
+                    }
+                ) { Text("保存") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showJsonEditor = false }) { Text("取消") }
+            }
+        )
     }
 }

@@ -150,12 +150,19 @@ class PluginHostActivity : AppCompatActivity() {
         // 显示插件说明
         showPluginNoticeIfNeeded()
 
-        // ✅ 调用 startBackendIfNeeded
-        android.util.Log.e(TAG, "📞 调用 startBackendIfNeeded()")
-        startBackendIfNeeded()
+        if (pluginInfo?.isCui() == true) {
+            // CUI 插件：在真实全屏终端（TermuxActivity）中运行 pre-command
+            android.util.Log.e(TAG, "📞 CUI 插件：加载占位视图")
+            loadPlugin()
+            runCuiPipeline()
+        } else {
+            // ✅ 调用 startBackendIfNeeded
+            android.util.Log.e(TAG, "📞 调用 startBackendIfNeeded()")
+            startBackendIfNeeded()
 
-        // 加载插件视图
-        loadPlugin()
+            // 加载插件视图
+            loadPlugin()
+        }
     }
 
     // ============================================================
@@ -357,6 +364,8 @@ class PluginHostActivity : AppCompatActivity() {
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, File(Constants.PLUGIN_DIR, info.pluginId).absolutePath)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, "启动前命令")
+                // 后台执行（APP_SHELL），不弹终端、不用悬浮窗；CUI 插件不走此路径
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_BACKGROUND, true)
             }
 
             if (!info.isOtherBackend()) {
@@ -867,9 +876,12 @@ class PluginHostActivity : AppCompatActivity() {
         android.util.Log.e(TAG, "📌 entry: '${info.entry}'")
         android.util.Log.e(TAG, "=================================")
 
-        if (info.uiType == "web") {
+        if (info.uiType.equals("web", ignoreCase = true)) {
             android.util.Log.e(TAG, "✅ 走 Web 插件分支")
             loadWebPlugin()
+        } else if (info.isCui()) {
+            android.util.Log.e(TAG, "✅ 走 CUI 插件分支（内嵌终端，非悬浮窗）")
+            loadCuiPlugin()
         } else {
             android.util.Log.e(TAG, "❌ 走原生插件分支 (uiType = '${info.uiType}')")
             loadNativePlugin()
@@ -1040,6 +1052,94 @@ class PluginHostActivity : AppCompatActivity() {
             android.util.Log.e(TAG, "❌ 原生插件加载异常", e)
             Toast.makeText(this, "插件加载异常: ${e.message}", Toast.LENGTH_LONG).show()
             finish()
+        }
+    }
+
+    /**
+     * CUI 插件：加载占位视图。实际终端会话通过 [startCuiTerminalSession] 在独立
+     * TermuxActivity 中打开（页面内嵌终端易出渲染问题，故使用真实全屏终端）。
+     */
+    private fun loadCuiPlugin() {
+        android.util.Log.e(TAG, "========== loadCuiPlugin ==========")
+        try {
+            container.removeAllViews()
+            val textView = android.widget.TextView(this).apply {
+                text = "正在打开终端并执行命令...\n\n若未自动弹出，请在通知栏查看 UIN Tool 终端。"
+                gravity = android.view.Gravity.CENTER
+                setTextColor(android.graphics.Color.BLACK)
+                textSize = 16f
+            }
+            container.addView(
+                textView,
+                ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            )
+            android.util.Log.e(TAG, "✅ CUI 占位视图已创建")
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "❌ CUI 占位视图创建异常", e)
+            Toast.makeText(this, "CUI 插件加载失败: ${e.message}", Toast.LENGTH_LONG).show()
+            finish()
+        }
+    }
+
+    /**
+     * CUI 环境流水线：确保 Termux 环境（proot/other 需要时再确保 Alpine），
+     * 然后启动内嵌终端会话；若插件还声明了后端且非 other 模式，再后台启动后端。
+     */
+    private fun runCuiPipeline() {
+        val info = pluginInfo ?: return
+        android.util.Log.e(TAG, "🔍 runCuiPipeline()")
+        ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
+            val start = {
+                startCuiTerminalSession()
+                if (info.hasBackend() && !info.isOtherBackend()) {
+                    startBackendAfterEnv()
+                }
+            }
+            if (info.useProotRuntime() || info.isOtherBackend()) {
+                ProotContainerManager.ensureAlpine(applicationContext, status = { showEnvProgress(it) }) { ok ->
+                    if (!ok) {
+                        isBackendStarting = false
+                        dismissEnvProgress()
+                        showPluginInfoDialog(
+                            "环境准备失败",
+                            "Alpine 容器安装失败，请确认 APK 的 assets 目录已包含 Alpine 离线安装包（alpine*）后重试。"
+                        )
+                        return@ensureAlpine
+                    }
+                    start()
+                }
+            } else {
+                start()
+            }
+        }
+    }
+
+    /**
+     * 通过 RunCommandService 以 TERMINAL_SESSION 方式启动 CUI 会话：
+     * 在真实全屏终端（TermuxActivity）中运行 pre-command，无 pre-command 时进入插件目录的交互式 bash。
+     */
+    private fun startCuiTerminalSession() {
+        try {
+            val info = pluginInfo ?: return
+            val pluginDir = File(Constants.PLUGIN_DIR, currentPluginId)
+            val preCmd = info.backendPreCommand.trim()
+            val args = if (preCmd.isNotEmpty()) arrayOf("-lc", preCmd) else arrayOf("-l")
+            android.util.Log.e(TAG, "🔍 startCuiTerminalSession(), preCmd='$preCmd'")
+
+            val intent = Intent(RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND).apply {
+                setClass(this@PluginHostActivity, RunCommandService::class.java)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, ProotContainerManager.BASH)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, args)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, pluginDir.absolutePath)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, "CUI 插件终端")
+                // 不设置 EXTRA_BACKGROUND → Runner.TERMINAL_SESSION → 打开真实终端并执行命令
+            }
+            startService(intent)
+            android.util.Log.e(TAG, "✅ 已启动 CUI 终端会话")
+        } catch (e: Exception) {
+            Logger.e(TAG, "❌ CUI 终端启动异常: ${e.message}", e)
+            Toast.makeText(this, "CUI 终端启动失败: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 

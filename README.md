@@ -77,7 +77,7 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 **🐧 Proot 容器运行时（`backendRuntime: "proot"`）：**
 - 插件后端可在**共享 Alpine 容器**中运行，与宿主机环境隔离
-- 首次使用时自动初始化 Termux 环境，并通过 `proot-distro restore` 从 `assets/alpine.tar.gz` 离线恢复 Alpine 容器（备份内置预装 Python 环境）
+- 首次使用时自动初始化 Termux 环境，并通过 `proot-distro restore` 从 `assets/alpine.tar.xz` 离线恢复 Alpine 容器（备份内置预装 Python 环境）
 - 容器内可直接使用 `apk add` 安装依赖，不污染宿主 Termux 环境
 - 后端端口映射：容器内 `127.0.0.1:PORT` 与宿主机互通，无需额外网络配置
 - 插件目录自动绑定到容器内 `/plugins/<pluginId>`，入口文件在容器中直接可见
@@ -100,6 +100,15 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 **🐛 其他修复：**
 - 修复引导页（Onboarding）闪烁与跳过后再弹出的问题：去除 SplashActivity 双重导航路径，统一由 Compose 驱动，并修复权限弹窗首帧闪现
+
+**🧰 模板导出重构 + 开发工具优化：**
+- 插件模板导出改为从 `assets/test_plugins/` 导出 7 个打包好的插件（cuitest / othertest / termux / allapi / storage / NativeTestPlugin / web_plugin_template），自动生成 `README.txt`
+- 清理 assets 中原有零散插件模板，统一由内置打包插件接管
+- 修复「导出中...」一直卡住的问题（导出后台线程化），Toast 显示线程安全化
+- 创建插件按钮改为纯主题色，移除渐变色
+
+**⚙️ 构建优化：**
+- 精简 `proguard-rules.pro`，仅保留可能被 R8 删除的重要代码（空壳插件宿主占位实现、`@JavascriptInterface` 方法、插件 JSON 模型），缩小 release 包体积
 
 #### v4.4.0 (Build 13) - 🎉 持久化存储 + 权限系统完善
 

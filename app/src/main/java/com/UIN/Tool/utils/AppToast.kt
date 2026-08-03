@@ -2,6 +2,8 @@
 package com.UIN.Tool.utils
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -22,14 +24,22 @@ object AppToast {
     
     /**
      * 显示 Toast
+     * 线程安全：后台线程调用时自动切回主线程显示
      * @param context 上下文
      * @param message 消息内容
      * @param duration 显示时长，默认 Toast.LENGTH_SHORT
      */
     fun show(context: Context, message: String, duration: Int = Toast.LENGTH_SHORT) {
-        currentToast?.cancel()
-        currentToast = Toast.makeText(context, message, duration)
-        currentToast?.show()
+        val appContext = context.applicationContext
+        Handler(Looper.getMainLooper()).post {
+            try {
+                currentToast?.cancel()
+                currentToast = Toast.makeText(appContext, message, duration)
+                currentToast?.show()
+            } catch (e: Exception) {
+                Logger.e(TAG, "Toast 显示失败", e)
+            }
+        }
     }
     
     /**

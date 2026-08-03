@@ -168,7 +168,7 @@ fun PluginConfigStep(
                     "⚠️ 必须包含包名，如 com.example.MainPlugin"
                 } else null
             )
-        } else {
+        } else if (uiType == "web") {
             UIComponents.TextInput(
                 value = entryPath,
                 onValueChange = onEntryPathChange,
@@ -245,6 +245,24 @@ fun PluginConfigStep(
                     "「自定义」模式：宿主不自动启动后端，由该命令在 Termux 终端中启动服务，首次执行成功后永久跳过"
                 else
                     "首次打开插件时在终端中执行，成功（exit 0）一次后永久跳过；在 Proot 容器环境初始化依赖",
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            )
+        }
+
+        if (uiType == "cui") {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ✅ CUI 启动命令
+            UIComponents.TextInput(
+                value = backendPreCommand,
+                onValueChange = onBackendPreCommandChange,
+                label = "启动命令（插件打开时在终端中执行）",
+                placeholder = "python3 scripts/script.py",
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false
+            )
+            UIComponents.CaptionText(
+                "插件打开后会进入全屏终端并执行此命令；留空则默认执行 python3 scripts/script.py",
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }
@@ -405,6 +423,42 @@ fun WebCodeStep(
             text = "导入已有 Web 项目 (ZIP)",
             icon = Icons.Default.FileUpload,
             onClick = onImportWebProject,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+fun CuiCodeStep(
+    fileCount: Int,
+    onOpenEditor: () -> Unit
+) {
+    Column {
+        UIComponents.Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            UIComponents.BodyText(
+                """
+                    CUI 终端插件开发
+
+                    • 插件打开后会在全屏终端中运行启动命令
+                    • 默认启动命令：python3 scripts/script.py
+                    • 脚本需为 Python/Shell 等可执行脚本
+                    • 可在「配置插件信息」步骤修改启动命令
+                    • 点击「打开代码编辑器」编辑脚本文件
+
+                    当前已生成 ${if (fileCount > 0) fileCount else 0} 个文件
+                """.trimIndent(),
+                modifier = Modifier.padding(8.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        UIComponents.PrimaryButton(
+            text = "打开代码编辑器 (${fileCount} 个文件)",
+            icon = Icons.Default.Edit,
+            onClick = onOpenEditor,
             modifier = Modifier.fillMaxWidth()
         )
     }

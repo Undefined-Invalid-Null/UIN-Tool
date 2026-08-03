@@ -146,16 +146,25 @@ class JavaToDexCompiler(
                 }
 
                 // 3. 根据 UI 类型处理
-                if (uiType == "web") {
-                    val webDir = File(projectDir, "web")
-                    if (webDir.exists() && webDir.isDirectory) {
-                        addDirToZip(zos, webDir, "web/")
-                        Logger.d(TAG, "  ✅ web/ 目录")
-                    } else {
-                        zos.putNextEntry(java.util.zip.ZipEntry("web/index.html"))
-                        zos.write(getDefaultWebHtml().toByteArray())
-                        zos.closeEntry()
-                        Logger.d(TAG, "  ✅ web/index.html (默认)")
+                if (uiType == "web" || uiType == "cui") {
+                    if (uiType == "web") {
+                        val webDir = File(projectDir, "web")
+                        if (webDir.exists() && webDir.isDirectory) {
+                            addDirToZip(zos, webDir, "web/")
+                            Logger.d(TAG, "  ✅ web/ 目录")
+                        } else {
+                            zos.putNextEntry(java.util.zip.ZipEntry("web/index.html"))
+                            zos.write(getDefaultWebHtml().toByteArray())
+                            zos.closeEntry()
+                            Logger.d(TAG, "  ✅ web/index.html (默认)")
+                        }
+                    }
+                    if (uiType == "cui") {
+                        val scriptsDir = File(projectDir, "scripts")
+                        if (scriptsDir.exists() && scriptsDir.isDirectory) {
+                            addDirToZip(zos, scriptsDir, "scripts/")
+                            Logger.d(TAG, "  ✅ scripts/ 目录")
+                        }
                     }
                 } else {
                     // 原生插件：添加占位 DEX

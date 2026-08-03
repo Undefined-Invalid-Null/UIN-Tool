@@ -99,6 +99,15 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 **🐛 其他修复：**
 - 修复引导页（Onboarding）闪烁与跳过后再弹出的问题：去除 SplashActivity 双重导航路径，统一由 Compose 驱动，并修复权限弹窗首帧闪现
 
+**🧰 模板导出重构 + 开发工具优化：**
+- 插件模板导出改为从 `assets/test_plugins/` 导出 7 个打包好的插件（cuitest / othertest / termux / allapi / storage / NativeTestPlugin / web_plugin_template），自动生成 `README.txt` 说明
+- 清理 assets 中原有零散插件模板，统一由内置打包插件接管
+- 修复「导出中...」一直卡住的问题（导出后台线程化），Toast 显示线程安全化
+- 创建插件按钮改为纯主题色，移除渐变色
+
+**⚙️ 构建优化：**
+- 精简 `proguard-rules.pro`，仅保留可能被 R8 删除的重要代码（空壳插件宿主占位实现、`@JavascriptInterface` 方法、插件 JSON 模型），缩小 release 包体积
+
 #### v4.4.4 (Build 14) - 🎉 插件弹窗系统统一 + 交互修复
 
 **🎉 重大更新：插件弹窗系统统一**

@@ -77,6 +77,8 @@ data class PluginInfo(
 
     fun isOtherBackend(): Boolean = backend.equals("other", ignoreCase = true)
 
+    fun isCui(): Boolean = uiType.equals("cui", ignoreCase = true)
+
     fun isWebPlugin(): Boolean = uiType == "web"
     fun isNativePlugin(): Boolean = uiType == "native"
     fun hasNotice(): Boolean = notice.isNotEmpty()

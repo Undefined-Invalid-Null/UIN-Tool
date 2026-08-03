@@ -1,13 +1,12 @@
 # ============================================================
-# 解决 R8 构建错误 - 缺失类忽略规则（必须放在最前面）
+# R8 构建错误修复 - 缺失类忽略规则（必须放在最前面）
 # ============================================================
 
-# 忽略缺失的类（这些类在运行时不需要）
 -dontwarn java.lang.invoke.MethodHandleProxies
 -dontwarn javax.lang.model.element.Modifier
 -dontwarn kotlin.Cloneable$DefaultImpls
 
-# 忽略其他可能缺失的类
+# 其他可能缺失的类
 -dontwarn com.github.luben.zstd.**
 -dontwarn org.brotli.dec.**
 -dontwarn org.objectweb.asm.**
@@ -16,53 +15,32 @@
 # 忽略所有警告（作为最后手段）
 -ignorewarnings
 
-# 保留这些类即使它们不存在
--keep class java.lang.invoke.** { *; }
--keep class javax.lang.model.** { *; }
--keep class kotlin.Cloneable** { *; }
-
 # ============================================================
-# 插件系统 - 必须保留所有插件相关类和接口
+# 空壳插件宿主占位实现（DexClassLoader 运行时加载外部 dex）
 # ============================================================
+# 插件通过 PluginManager 用 DexClassLoader 加载外部 plugin.dex，
+# 以 loadClass(mainClass).newInstance() as PluginInterface 实例化，
+# 并通过 WebView JS 桥 / JSON 配置名驱动调用。因此插件接口、宿主
+# 占位类、JS 桥方法都必须原样保留，否则 R8 混淆后运行时会崩溃。
 
-# 保留所有插件接口和实现类（使用注解标记）
--keep public interface com.UIN.Tool.plugin.PluginInterface
--keep public class * implements com.UIN.Tool.plugin.PluginInterface {
-    public <init>();
-    public *;
-}
+# 插件接口契约（外部 dex 编译依赖 & 运行时转型目标，含全部方法签名）
+-keep public interface com.UIN.Tool.plugin.PluginInterface { public *; }
+-keep public interface com.UIN.Tool.core.plugin.PluginInterface { public *; }
 
-# 保留所有插件相关的类
--keep class com.UIN.Tool.core.plugin.** { *; }
+# 宿主占位实现：插件管理器、宿主 Activity、插件上下文、JS 桥、
+# Web 代理、后端/权限/proot 容器、广播接收器等全部按原名保留
 -keep class com.UIN.Tool.plugin.** { *; }
+-keep class com.UIN.Tool.core.plugin.** { *; }
 
-# 保留所有插件可能继承/实现的类
--keep class * extends android.app.Activity { *; }
--keep class * extends android.app.Service { *; }
--keep class * extends android.content.BroadcastReceiver { *; }
--keep class * extends android.content.ContentProvider { *; }
-
-# ============================================================
-# WebView 与 JavaScript 接口 - JS 调用的方法必须保留
-# ============================================================
-
-# 保留所有 @JavascriptInterface 方法
+# WebView JS 桥 @JavascriptInterface 方法（JS 按方法名调用，必须保留）
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
 
-# 保留 PluginWebInterface 和 PluginJSInterface
--keep class com.UIN.Tool.core.plugin.PluginWebInterface { *; }
--keep class com.UIN.Tool.plugin.PluginJSInterface { *; }
--keepclassmembers class com.UIN.Tool.plugin.PluginJSInterface {
-    @android.webkit.JavascriptInterface *;
-}
-
 # ============================================================
-# 反射调用的类 - 必须保留完整类名和方法名
+# 插件 JSON 配置 / 仓库数据解析模型（按字段名解析）
 # ============================================================
 
-# 保留所有插件信息类
 -keep class com.UIN.Tool.domain.model.PluginInfo { *; }
 -keep class com.UIN.Tool.domain.model.RepoPluginInfo { *; }
 -keep class com.UIN.Tool.domain.model.ReleaseInfo { *; }
@@ -70,138 +48,41 @@
 -keep class com.UIN.Tool.domain.model.MirrorItem { *; }
 
 # ============================================================
-# DexClassLoader 相关
-# ============================================================
-
-# 保留所有可能被 DexClassLoader 加载的类
--keep class * {
-    public <init>();
-}
-
-# 保留所有 Kotlin 伴生对象（反射可能需要）
--keepclassmembers class * {
-    public static final ** Companion;
-}
-
-# ============================================================
-# 序列化 / JSON 解析
-# ============================================================
-
-# 保留 Gson/JSONObject 解析的字段
--keepclassmembers class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
--keep class com.google.gson.** { *; }
--keep class org.json.** { *; }
-
-# ============================================================
-# 保留所有 Activity/Service/Receiver/Provider（清单中声明的）
+# Android 清单组件（AGP 会自动保留，此处保底）
 # ============================================================
 
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Service
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class * extends android.content.ContentProvider
--keep public class * extends android.appwidget.AppWidgetProvider
--keep public class * extends android.accessibilityservice.AccessibilityService
-
-# ============================================================
-# 保留所有 Android 组件子类
-# ============================================================
-
 -keep public class * extends android.app.Application
--keep public class * extends android.app.Fragment
--keep public class * extends androidx.fragment.app.Fragment
 
-# ============================================================
-# 保留所有自定义 View
-# ============================================================
-
+# 自定义 View（布局按类名 inflate）
 -keep public class * extends android.view.View {
     public <init>(android.content.Context);
     public <init>(android.content.Context, android.util.AttributeSet);
     public <init>(android.content.Context, android.util.AttributeSet, int);
-    public void set*(...);
 }
 
 # ============================================================
-# Kotlin 反射相关
+# R8 基础保留
 # ============================================================
 
--keep class kotlin.reflect.** { *; }
--keep class kotlin.Metadata { *; }
--keepclassmembers class kotlin.Metadata {
-    public *;
+-keepattributes *Annotation*,Signature,Exceptions,InnerClasses,EnclosingMethod
+
+-keepclasseswithmembernames class * {
+    native <methods>;
 }
 
-# ============================================================
-# 保留所有枚举（插件可能使用）
-# ============================================================
+-keep class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
 
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
 
-# ============================================================
-# 保留所有注解（运行时保留）
-# ============================================================
-
--keepattributes *Annotation*
--keepattributes Signature
--keepattributes Exceptions
-
-# ============================================================
-# 保留 Kotlin 默认构造函数
-# ============================================================
-
--keepclassmembers class * {
-    public <init>();
-}
-
-# ============================================================
-# 保留行号信息（便于调试）
-# ============================================================
-
+# 行号信息（便于崩溃堆栈定位）
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
-
-# ============================================================
-# 保留所有 Native 方法
-# ============================================================
-
--keepclasseswithmembernames class * {
-    native <methods>;
-}
-
-# ============================================================
-# 保留所有 Parcelable 实现
-# ============================================================
-
--keep class * implements android.os.Parcelable {
-    public static final android.os.Parcelable$Creator *;
-}
-
-# ============================================================
-# 保留 Compose 相关（如果使用了 Jetpack Compose）
-# ============================================================
-
--keep class androidx.compose.** { *; }
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.compose.ui.** { *; }
--keep class androidx.compose.material.** { *; }
--keep class androidx.compose.foundation.** { *; }
-
-# ============================================================
-# 保留 Material Design 相关
-# ============================================================
-
--keep class com.google.android.material.** { *; }
--dontwarn com.google.android.material.**
-
-# ============================================================
-# 保留 AndroidX 核心库
-# ============================================================
-
--keep class androidx.** { *; }
--dontwarn androidx.**

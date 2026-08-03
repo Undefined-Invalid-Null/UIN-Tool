@@ -66,6 +66,8 @@ class PluginWizardViewModel(
         if (fileList.value.isEmpty() || fileContents.value.isEmpty()) {
             if (uiType == "native") {
                 generateNativeCode()
+            } else if (uiType == "cui") {
+                generateCuiFiles()
             } else {
                 generateWebTemplates()
                 if (backendType.isNotEmpty() && backendType != "binary") {
@@ -115,6 +117,37 @@ class PluginWizardViewModel(
 
         } catch (e: Exception) {
             AppLog.e(TAG, "生成Web模板失败", e)
+        }
+    }
+
+    private fun generateCuiFiles() {
+        try {
+            val script = """
+                #!/usr/bin/env python3
+                # -*- coding: utf-8 -*-
+                # CUI 插件终端示例脚本，插件打开后在此终端中运行。
+                import os
+
+                print("=" * 48)
+                print(" CUI 插件终端已启动")
+                print("=" * 48)
+                print("插件 ID : " + os.environ.get("PLUGIN_ID", "?"))
+                print("插件目录: " + os.getcwd())
+                print("-" * 48)
+                print("输入 exit 或 Ctrl-D 结束会话。")
+
+                import code
+                code.interact(banner="", local=locals())
+            """.trimIndent()
+
+            fileList.value = listOf("scripts/script.py")
+            fileContents.value = mapOf("scripts/script.py" to script)
+
+            if (backendPreCommand.value.isBlank()) {
+                backendPreCommand.value = "python3 scripts/script.py"
+            }
+        } catch (e: Exception) {
+            AppLog.e(TAG, "生成 CUI 脚本失败", e)
         }
     }
 
@@ -247,6 +280,12 @@ class PluginWizardViewModel(
                 put("backendRuntime", backendRuntime.value.ifEmpty { "termux" })
                 put("backendPreCommand", backendPreCommand.value.trim())
             }
+
+            // CUI 插件：无后端，打开终端时执行 pre-command 进入脚本
+            if (uiType == "cui") {
+                put("backendRuntime", backendRuntime.value.ifEmpty { "termux" })
+                put("backendPreCommand", backendPreCommand.value.ifBlank { "python3 scripts/script.py" })
+            }
         }
         return json.toString()
     }
@@ -259,7 +298,11 @@ class PluginWizardViewModel(
                 "PLUGIN_VERSION" to pluginVersion.value,
                 "PLUGIN_VERSION_NAME" to pluginVersionName.value,
                 "PLUGIN_AUTHOR" to pluginAuthor.value,
-                "UI_TYPE" to if (uiType == "web") "WebView" else "原生代码"
+                "UI_TYPE" to when (uiType) {
+                    "web" -> "WebView"
+                    "cui" -> "CUI 终端"
+                    else -> "原生代码"
+                }
             )
             val readme = TemplateUtils.generateReadme(context, vars)
             File(workDir, "README.md").writeText(readme)
