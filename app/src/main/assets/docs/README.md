@@ -2085,10 +2085,10 @@ plugin.tpk
 | `backendAutoStart` | boolean | `true` | ❌ | 打开插件时是否自动启动后端。`false` 时仅当 `backendPreCommand` 手动启动。 |
 | `backendKeepAlive` | boolean | `false` | ❌ | 插件关闭后是否保持后端运行。`true` 时宿主不在 onDestroy 时停止后端。 |
 | `backendPreCommand` | string | `""` | ❌ | 启动前命令。**两种语义**：① Web 后端：首次打开弹窗询问执行，成功（exit 0）一次后跳过（`pre_cmd_done`）；② CUI 插件：作为每次打开的终端启动命令。 |
-| `backendTimeout` | int | `30` | ❌ | 后端就绪等待超时（秒）。容器冷启动场景宿主会自动放宽至 90s+。 |
+| `backendTimeout` | int | `30` | ❌ | 后端就绪等待超时（秒）。实际生效值按运行时放宽：termux 为 `min(backendTimeout, 30)` 秒，proot 为 `max(backendTimeout, 120)` 秒，other 为 `max(backendTimeout, 90)` 秒（详见 5.8）。 |
 | `backendHealthCheck` | string | `/health` | ❌ | 健康检查端点路径。宿主轮询该路径返回 200 即视为就绪。 |
-| `backendMaxRetries` | int | `3` | ❌ | 后端启动失败后的最大重试次数。 |
-| `backendLogLevel` | string | `info` | ❌ | 后端日志级别（`debug`/`info`/`warn`/`error`），影响宿主日志记录。 |
+| `backendMaxRetries` | int | `3` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未实现重试逻辑（失败即提示，不自动重试）。 |
+| `backendLogLevel` | string | `info` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未按其切换日志级别（日志固定输出，不读取该值）。 |
 | `backendArgs` | string | `""` | ❌ | 附加命令行参数，**逗号分隔字符串**（如 `--port,8000`）。⚠️ 宿主按 `,` 拆分解析，JSON 数组形式会被忽略。 |
 | `backendEnv` | object | `{}` | ❌ | **注意：当前不读取该 JSON 字段。** 模型已声明并在运行时使用（termux 环境注入 env；proot 下经 `--env k=v` 透传给容器），但 `fromJson()`/`toJson()` 尚未读写它，因此写在 plugin.json 中不会生效，仅能由宿主程序内部设置。 |
 
