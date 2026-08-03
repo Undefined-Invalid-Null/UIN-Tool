@@ -99,6 +99,11 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 **🐛 其他修复：**
 - 修复引导页（Onboarding）闪烁与跳过后再弹出的问题：去除 SplashActivity 双重导航路径，统一由 Compose 驱动，并修复权限弹窗首帧闪现
 
+**🖥️ CUI 终端插件：**
+- 新增「CUI 终端（命令行界面）」插件类型：前端为全屏终端，打开后在插件目录执行启动命令
+- 4 步创建向导，自动生成 `scripts/script.py` 示例脚本，支持配置启动命令与运行环境（termux/proot）
+- 支持 CUI + 后端 / CUI + Proot 组合模式
+
 **🧰 模板导出重构 + 开发工具优化：**
 - 插件模板导出改为从 `assets/test_plugins/` 导出 7 个打包好的插件（cuitest / othertest / termux / allapi / storage / NativeTestPlugin / web_plugin_template），自动生成 `README.txt` 说明
 - 清理 assets 中原有零散插件模板，统一由内置打包插件接管
