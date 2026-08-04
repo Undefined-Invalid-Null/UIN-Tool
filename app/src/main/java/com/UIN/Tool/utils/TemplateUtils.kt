@@ -1,5 +1,6 @@
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import android.content.Context
 import com.UIN.Tool.log.Logger
 
@@ -14,7 +15,7 @@ object TemplateUtils {
                 it.readText()
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "加载模板失败: $templatePath", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_load_template_templatepath, templatePath), e)
             ""
         }
     }

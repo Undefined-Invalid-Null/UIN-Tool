@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/components/FullColorPickerDialog.kt
 package com.UIN.Tool.ui.components
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,7 +41,7 @@ fun FullColorPickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                "完整颜色选择器",
+                Str.get(R.string.full_color_picker),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -105,7 +107,7 @@ fun FullColorPickerDialog(
                 
                 // 预设颜色
                 Text(
-                    text = "预设颜色",
+                    text = Str.get(R.string.preset_colors),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -160,7 +162,7 @@ fun FullColorPickerDialog(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("确定")
+                Text(Str.get(R.string.ok_2))
             }
         },
         dismissButton = {
@@ -168,7 +170,7 @@ fun FullColorPickerDialog(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("取消")
+                Text(Str.get(R.string.cancel))
             }
         }
     )

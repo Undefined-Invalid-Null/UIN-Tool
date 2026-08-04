@@ -2,6 +2,8 @@
 
 package com.UIN.Tool.core.di
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.log.Logger
@@ -14,16 +16,16 @@ object ServiceLocator {
 
     fun init(context: Context) {
         if (isInitialized) {
-            Logger.w(TAG, "ServiceLocator 已初始化，跳过重复初始化")
+            Logger.w(TAG, Str.get(R.string.servicelocator_already_initialized_s))
             return
         }
         
         try {
             container = AppContainer(context.applicationContext)
             isInitialized = true
-            Logger.success(TAG, "ServiceLocator 初始化完成")
+            Logger.success(TAG, Str.get(R.string.servicelocator_initialization_comple))
         } catch (e: Exception) {
-            Logger.e(TAG, "ServiceLocator 初始化失败", e)
+            Logger.e(TAG, Str.get(R.string.servicelocator_initialization_failed), e)
             isInitialized = false
         }
     }
@@ -61,7 +63,7 @@ object ServiceLocator {
     
     private fun checkInitialized() {
         if (!isInitialized) {
-            throw IllegalStateException("ServiceLocator 尚未初始化，请先调用 init()")
+            throw IllegalStateException(Str.get(R.string.servicelocator_not_initialized_call_))
         }
     }
 }

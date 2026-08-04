@@ -1,5 +1,7 @@
 package com.UIN.Tool.core.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.os.Bundle
 import android.view.View
@@ -8,7 +10,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import java.io.File
 
 /**
@@ -53,7 +55,7 @@ class WebPluginProxy(
                 override fun onPageFinished(view: WebView, url: String) {
                     super.onPageFinished(view, url)
                     isWebViewReady = true
-                    Logger.success(TAG, "WebView 加载完成: ${pluginInfo.name}")
+                    Logger.success(TAG, Str.get(R.string.webview_load_complete_plugininfo_nam, pluginInfo.name))
                 }
                 
                 override fun onReceivedError(
@@ -62,10 +64,10 @@ class WebPluginProxy(
                     description: String,
                     failingUrl: String
                 ) {
-                    Logger.e(TAG, "WebView 加载错误: $description")
+                    Logger.e(TAG, Str.get(R.string.webview_load_error_description, description))
                     val errorHtml = """
                         <html><body style='padding:20px;text-align:center;font-family:sans-serif'>
-                        <h3>插件加载失败</h3>
+                        <h3>${Str.get(R.string.plugin_load_failed_h3)}</h3>
                         <p>$description</p>
                         <p style='font-size:12px;color:#999'>$failingUrl</p>
                         </body></html>
@@ -85,11 +87,11 @@ class WebPluginProxy(
             
             if (indexFile.exists()) {
                 loadUrl("file://$indexPath")
-                Logger.i(TAG, "加载 Web 插件: $indexPath")
+                Logger.i(TAG, Str.get(R.string.loading_web_plugin_indexpath, indexPath))
             } else {
                 val defaultHtml = getDefaultHtml()
                 loadDataWithBaseURL("file://$pluginDir/web/", defaultHtml, "text/html", "UTF-8", null)
-                Logger.w(TAG, "入口文件不存在，使用默认页面: $indexPath")
+                Logger.w(TAG, Str.get(R.string.entry_file_not_found_using_default_p, indexPath))
             }
         }
         
@@ -117,7 +119,7 @@ class WebPluginProxy(
                 }
                 sendEvent("deviceInfo", info.toString())
             }
-            else -> Logger.d(TAG, "未处理的方法: $method")
+            else -> Logger.d(TAG, Str.get(R.string.unhandled_method_method, method))
         }
     }
     
@@ -198,17 +200,17 @@ class WebPluginProxy(
             <body>
                 <h1>${pluginInfo.name}</h1>
                 <p>${pluginInfo.description ?: ""}</p>
-                <button onclick="UINPlugin.callHost('toast', 'Hello from Web Plugin!')">点我</button>
-                <button onclick="UINPlugin.callHost('finish', '')">关闭</button>
+                <button onclick="UINPlugin.callHost('toast', 'Hello from Web Plugin!')">${Str.get(R.string.click_me)}</button>
+                <button onclick="UINPlugin.callHost('finish', '')">${Str.get(R.string.close)}</button>
                 <div class="info">
-                    <strong>插件信息</strong><br>
-                    版本: ${pluginInfo.versionName}<br>
-                    作者: ${pluginInfo.author ?: "未知"}<br>
+                    <strong>${Str.get(R.string.plugin_info)}</strong><br>
+                    ${Str.get(R.string.web_plugin_version, pluginInfo.versionName)}
+                    ${Str.get(R.string.web_plugin_author, pluginInfo.author ?: Str.get(R.string.unknown))}
                     ID: $pluginId
                 </div>
                 <script>
-                    window.addEventListener('resume', function(e) { console.log('插件恢复', e.detail); });
-                    window.addEventListener('pause', function(e) { console.log('插件暂停', e.detail); });
+                    window.addEventListener('resume', function(e) { console.log('${Str.get(R.string.web_plugin_resumed)}', e.detail); });
+                    window.addEventListener('pause', function(e) { console.log('${Str.get(R.string.web_plugin_paused)}', e.detail); });
                 </script>
             </body>
             </html>

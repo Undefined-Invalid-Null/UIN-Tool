@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/TrampolineActivity.kt
 package com.UIN.Tool
 
+import com.UIN.Tool.utils.Str
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -37,7 +38,7 @@ class TrampolineActivity : ComponentActivity() {
         val selectedTab = intent.getStringExtra("selected_tab")
         val checkUpdate = intent.getBooleanExtra("check_update", false)
         
-        Logger.i(TAG, "目标: $target, 插件ID: $pluginId, selectedTab: $selectedTab")
+        Logger.i(TAG, Str.get(R.string.target_target_plugin_id_pluginid_sel, target, pluginId, selectedTab))
         
         Handler(Looper.getMainLooper()).postDelayed({
             when (target) {
@@ -51,7 +52,7 @@ class TrampolineActivity : ComponentActivity() {
      * 打开主界面
      */
     private fun openMainActivity(selectedTab: String?, checkUpdate: Boolean) {
-        Logger.i(TAG, "打开主界面 (模拟系统启动器行为)")
+        Logger.i(TAG, Str.get(R.string.opening_main_screen_simulating_syste))
         try {
             val intent = Intent(this, MainActivity::class.java).apply {
                 action = Intent.ACTION_MAIN
@@ -61,9 +62,9 @@ class TrampolineActivity : ComponentActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)
-            Logger.success(TAG, "主界面打开/恢复成功")
+            Logger.success(TAG, Str.get(R.string.main_screen_opened_resumed))
         } catch (e: Exception) {
-            Logger.e(TAG, "打开主界面失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_open_main_screen_e_message, e.message), e)
         } finally {
             finish()
         }
@@ -73,10 +74,10 @@ class TrampolineActivity : ComponentActivity() {
      * 打开插件
      */
     private fun openPlugin(pluginId: String?) {
-        Logger.i(TAG, "打开插件: $pluginId")
+        Logger.i(TAG, Str.get(R.string.opening_plugin_pluginid, pluginId))
         
         if (pluginId.isNullOrEmpty()) {
-            Logger.w(TAG, "插件ID为空，打开主界面")
+            Logger.w(TAG, Str.get(R.string.plugin_id_is_empty_opening_main_scre))
             openMainActivity(null, false)
             return
         }
@@ -87,21 +88,21 @@ class TrampolineActivity : ComponentActivity() {
             val info = pluginManager.getPluginInfo(pluginId)
             
             if (info == null) {
-                Logger.w(TAG, "插件不存在: $pluginId")
+                Logger.w(TAG, Str.get(R.string.plugin_not_found_pluginid, pluginId))
                 openMainActivity(null, false)
                 return
             }
             
-            Logger.i(TAG, "插件存在: ${info.name}")
+            Logger.i(TAG, Str.get(R.string.plugin_exists_info_name, info.name))
             
             val intent = Intent(this, PluginHostActivity::class.java).apply {
                 putExtra(PluginHostActivity.EXTRA_PLUGIN_ID, pluginId)
             }
             startActivity(intent)
-            Logger.success(TAG, "插件启动成功: ${info.name}")
+            Logger.success(TAG, Str.get(R.string.plugin_started_successfully_info_nam, info.name))
             
         } catch (e: Exception) {
-            Logger.e(TAG, "启动插件失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_start_plugin_e_message, e.message), e)
             openMainActivity(null, false)
         } finally {
             finish()

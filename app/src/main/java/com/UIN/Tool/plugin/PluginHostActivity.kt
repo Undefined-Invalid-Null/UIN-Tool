@@ -1,5 +1,7 @@
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.Intent
@@ -31,7 +33,7 @@ import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
@@ -91,9 +93,9 @@ class PluginHostActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        android.util.Log.e(TAG, "========================================")
-        android.util.Log.e(TAG, "🚀 PluginHostActivity.onCreate() 被调用")
-        android.util.Log.e(TAG, "========================================")
+        Logger.separator(TAG)
+        Logger.i(TAG, Str.get(R.string.pluginhostactivity_oncreate_called))
+        Logger.separator(TAG)
 
         container = FrameLayout(this)
         container.layoutParams = ViewGroup.LayoutParams(
@@ -109,11 +111,11 @@ class PluginHostActivity : AppCompatActivity() {
             currentPluginId = intent.getStringExtra(EXTRA_PLUGIN_ID) ?: ""
         }
 
-        android.util.Log.e(TAG, "📦 currentPluginId: $currentPluginId")
+        Logger.i(TAG, "📦 currentPluginId: $currentPluginId")
 
         if (currentPluginId.isEmpty()) {
-            android.util.Log.e(TAG, "❌ 插件ID为空")
-            Toast.makeText(this, "插件ID不能为空", Toast.LENGTH_SHORT).show()
+            Logger.e(TAG, Str.get(R.string.plugin_id_is_empty))
+            Toast.makeText(this, Str.get(R.string.plugin_id_must_not_be_empty), Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -122,27 +124,27 @@ class PluginHostActivity : AppCompatActivity() {
         pluginInfo = pluginManager.getPluginInfo(currentPluginId)
 
         // ========== ✅ 详细日志 ==========
-        android.util.Log.e(TAG, "========================================")
-        android.util.Log.e(TAG, "📌 pluginInfo == null: ${pluginInfo == null}")
+        Logger.separator(TAG)
+        Logger.i(TAG, "📌 pluginInfo == null: ${pluginInfo == null}")
         
         if (pluginInfo != null) {
-            android.util.Log.e(TAG, "✅ pluginInfo 存在")
-            android.util.Log.e(TAG, "   📌 pluginId: ${pluginInfo!!.pluginId}")
-            android.util.Log.e(TAG, "   📌 name: ${pluginInfo!!.name}")
-            android.util.Log.e(TAG, "   📌 uiType: '${pluginInfo!!.uiType}'")
-            android.util.Log.e(TAG, "   📌 backend: '${pluginInfo!!.backend}'")
-            android.util.Log.e(TAG, "   📌 backendAutoStart: ${pluginInfo!!.backendAutoStart}")
-            android.util.Log.e(TAG, "   📌 backendEntry: '${pluginInfo!!.backendEntry}'")
-            android.util.Log.e(TAG, "   📌 backendPort: ${pluginInfo!!.backendPort}")
-            android.util.Log.e(TAG, "   📌 hasBackend(): ${pluginInfo!!.hasBackend()}")
+            Logger.success(TAG, Str.get(R.string.plugininfo_exists))
+            Logger.i(TAG, "   📌 pluginId: ${pluginInfo!!.pluginId}")
+            Logger.i(TAG, "   📌 name: ${pluginInfo!!.name}")
+            Logger.i(TAG, "   📌 uiType: '${pluginInfo!!.uiType}'")
+            Logger.i(TAG, "   📌 backend: '${pluginInfo!!.backend}'")
+            Logger.i(TAG, "   📌 backendAutoStart: ${pluginInfo!!.backendAutoStart}")
+            Logger.i(TAG, "   📌 backendEntry: '${pluginInfo!!.backendEntry}'")
+            Logger.i(TAG, "   📌 backendPort: ${pluginInfo!!.backendPort}")
+            Logger.i(TAG, "   📌 hasBackend(): ${pluginInfo!!.hasBackend()}")
         } else {
-            android.util.Log.e(TAG, "❌ pluginInfo 为 null!")
+            Logger.e(TAG, Str.get(R.string.plugininfo_is_null))
         }
-        android.util.Log.e(TAG, "========================================")
+        Logger.separator(TAG)
 
         if (pluginInfo == null) {
-            android.util.Log.e(TAG, "❌ 插件不存在: $currentPluginId")
-            Toast.makeText(this, "插件不存在: $currentPluginId", Toast.LENGTH_SHORT).show()
+            Logger.e(TAG, Str.get(R.string.plugin_not_found_currentpluginid, currentPluginId))
+            Toast.makeText(this, Str.get(R.string.plugin_not_found_currentpluginid_2, currentPluginId), Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -152,12 +154,12 @@ class PluginHostActivity : AppCompatActivity() {
 
         if (pluginInfo?.isCui() == true) {
             // CUI 插件：在真实全屏终端（TermuxActivity）中运行 pre-command
-            android.util.Log.e(TAG, "📞 CUI 插件：加载占位视图")
+            Logger.i(TAG, Str.get(R.string.cui_plugin_loading_placeholder_view))
             loadPlugin()
             runCuiPipeline()
         } else {
             // ✅ 调用 startBackendIfNeeded
-            android.util.Log.e(TAG, "📞 调用 startBackendIfNeeded()")
+            Logger.i(TAG, Str.get(R.string.calling_startbackendifneeded))
             startBackendIfNeeded()
 
             // 加载插件视图
@@ -170,59 +172,59 @@ class PluginHostActivity : AppCompatActivity() {
     // ============================================================
 
     private fun startBackendIfNeeded() {
-        android.util.Log.e(TAG, "========================================")
-        android.util.Log.e(TAG, "🔍 startBackendIfNeeded() 被调用")
-        android.util.Log.e(TAG, "📌 pluginInfo == null: ${pluginInfo == null}")
+        Logger.separator(TAG)
+        Logger.i(TAG, Str.get(R.string.startbackendifneeded_called))
+        Logger.i(TAG, "📌 pluginInfo == null: ${pluginInfo == null}")
         
         if (pluginInfo != null) {
-            android.util.Log.e(TAG, "📌 pluginInfo.pluginId: ${pluginInfo!!.pluginId}")
-            android.util.Log.e(TAG, "📌 pluginInfo.backend: '${pluginInfo!!.backend}'")
-            android.util.Log.e(TAG, "📌 pluginInfo.backendRuntime: '${pluginInfo!!.backendRuntime}'")
-            android.util.Log.e(TAG, "📌 pluginInfo.backendAutoStart: ${pluginInfo!!.backendAutoStart}")
-            android.util.Log.e(TAG, "📌 pluginInfo.hasBackend(): ${pluginInfo!!.hasBackend()}")
-            android.util.Log.e(TAG, "📌 isBackendReady: $isBackendReady")
+            Logger.i(TAG, "📌 pluginInfo.pluginId: ${pluginInfo!!.pluginId}")
+            Logger.i(TAG, "📌 pluginInfo.backend: '${pluginInfo!!.backend}'")
+            Logger.i(TAG, "📌 pluginInfo.backendRuntime: '${pluginInfo!!.backendRuntime}'")
+            Logger.i(TAG, "📌 pluginInfo.backendAutoStart: ${pluginInfo!!.backendAutoStart}")
+            Logger.i(TAG, "📌 pluginInfo.hasBackend(): ${pluginInfo!!.hasBackend()}")
+            Logger.i(TAG, "📌 isBackendReady: $isBackendReady")
         } else {
-            android.util.Log.e(TAG, "❌ pluginInfo 为 null，无法检查后端")
+            Logger.e(TAG, Str.get(R.string.plugininfo_is_null_cannot_check_back))
         }
-        android.util.Log.e(TAG, "========================================")
+        Logger.separator(TAG)
         
         val info = pluginInfo
         if (info == null || !info.hasBackend() || isBackendReady) {
-            android.util.Log.e(TAG, "❌ 条件不满足，跳过启动后端")
-            if (info == null) android.util.Log.e(TAG, "   -> pluginInfo 为 null")
-            if (info != null && !info.hasBackend()) android.util.Log.e(TAG, "   -> hasBackend() 返回 false")
-            if (isBackendReady) android.util.Log.e(TAG, "   -> isBackendReady 为 true")
+            Logger.e(TAG, Str.get(R.string.conditions_not_met_skipping_backend_))
+            if (info == null) Logger.i(TAG, Str.get(R.string.plugininfo_is_null_2))
+            if (info != null && !info.hasBackend()) Logger.i(TAG, Str.get(R.string.hasbackend_returns_false))
+            if (isBackendReady) Logger.i(TAG, Str.get(R.string.isbackendready_is_true))
             return
         }
 
-        android.util.Log.e(TAG, "✅ 条件满足，准备启动后端")
+        Logger.success(TAG, Str.get(R.string.conditions_met_starting_backend))
         isBackendStarting = true
         setupBackendTimeout()
 
         if (info.useProotRuntime() || info.isOtherBackend()) {
             // proot 容器运行时 / other 模式：走环境流水线
-            android.util.Log.e(TAG, "🔄 走 proot/other 环境流水线")
+            Logger.i(TAG, Str.get(R.string.going_through_proot_other_environmen))
             runEnvironmentPipeline()
         } else {
             // 常规 termux 运行时：直接启动后端
-            android.util.Log.e(TAG, "🔄 走常规后端启动")
+            Logger.i(TAG, Str.get(R.string.going_through_normal_backend_start))
             startBackendInternal()
         }
     }
 
     private fun startBackendInternal() {
-        showEnvProgress("正在启动后端服务（常规运行时）...")
+        showEnvProgress(Str.get(R.string.starting_backend_service_normal_runt))
         pluginManager.startBackend(currentPluginId) { success, port, error ->
             isBackendStarting = false
             dismissEnvProgress()
-            android.util.Log.e(TAG, "📊 后端启动回调: success=$success, port=$port, error=$error")
+            Logger.i(TAG, Str.get(R.string.backend_start_callback_success_succe, success, port, error))
             if (success) {
                 backendPort = port
                 isBackendReady = true
-                android.util.Log.e(TAG, "✅ 后端就绪，端口: $port")
+                Logger.success(TAG, Str.get(R.string.backend_ready_port_port, port))
                 sendBackendReadyToWebView(port)
             } else {
-                android.util.Log.e(TAG, "❌ 后端启动失败: $error")
+                Logger.e(TAG, Str.get(R.string.backend_start_failed_error, error))
             }
         }
     }
@@ -236,22 +238,22 @@ class PluginHostActivity : AppCompatActivity() {
      */
     private fun runEnvironmentPipeline() {
         val info = pluginInfo ?: return
-        android.util.Log.e(TAG, "🔍 runEnvironmentPipeline()")
+        Logger.i(TAG, "🔍 runEnvironmentPipeline()")
 
         ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
-            android.util.Log.e(TAG, "✅ Termux 环境就绪，检查 Alpine...")
+            Logger.success(TAG, Str.get(R.string.termux_ready_checking_alpine))
             ProotContainerManager.ensureAlpine(applicationContext, status = { showEnvProgress(it) }) { ok ->
                 if (!ok) {
-                    android.util.Log.e(TAG, "❌ Alpine 容器准备失败")
+                    Logger.e(TAG, Str.get(R.string.alpine_container_setup_failed))
                     isBackendStarting = false
                     dismissEnvProgress()
                     showPluginInfoDialog(
-                        "环境准备失败",
-                        "Alpine 容器安装失败，请确认 APK 的 assets 目录已包含 Alpine 离线安装包（alpine*）后重试。"
+                        Str.get(R.string.environment_setup_failed),
+                        Str.get(R.string.alpine_container_install_failed_make)
                     )
                     return@ensureAlpine
                 }
-                android.util.Log.e(TAG, "✅ Alpine 容器就绪，处理 pre-command...")
+                Logger.success(TAG, Str.get(R.string.alpine_ready_processing_pre_command))
                 handlePreCommand()
             }
         }
@@ -260,10 +262,10 @@ class PluginHostActivity : AppCompatActivity() {
     private fun handlePreCommand() {
         val info = pluginInfo ?: return
         val preCmd = info.backendPreCommand.trim()
-        android.util.Log.e(TAG, "🔍 handlePreCommand(), preCmd='$preCmd', done=${isPreCommandDone()}")
+        Logger.i(TAG, "🔍 handlePreCommand(), preCmd='$preCmd', done=${isPreCommandDone()}")
 
         if (preCmd.isEmpty() || isPreCommandDone()) {
-            android.util.Log.e(TAG, "✅ 无需执行 pre-command，直接启动后端")
+            Logger.success(TAG, Str.get(R.string.no_pre_command_needed_starting_backe))
             startBackendAfterEnv()
             return
         }
@@ -287,7 +289,7 @@ class PluginHostActivity : AppCompatActivity() {
         if (pluginInfo?.isOtherBackend() == true) {
             // other 模式后端由 pre-command 启动，未执行则端口不会就绪
             isBackendStarting = false
-            Toast.makeText(this, "已稍后处理，后端未启动（需执行启动前命令）", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, Str.get(R.string.deferred_backend_not_started_needs_p), Toast.LENGTH_LONG).show()
         } else {
             startBackendAfterEnv()
         }
@@ -296,7 +298,7 @@ class PluginHostActivity : AppCompatActivity() {
     private fun onPreCommandCancelled() {
         // 「取消」：不执行 pre-command，也不自动启动后端
         isBackendStarting = false
-        android.util.Log.e(TAG, "❌ 用户取消 pre-command，不启动后端")
+        Logger.e(TAG, Str.get(R.string.user_cancelled_pre_command_backend_n))
     }
 
     private fun isPreCommandDone(): Boolean {
@@ -307,32 +309,32 @@ class PluginHostActivity : AppCompatActivity() {
     private fun markPreCommandDone() {
         getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$currentPluginId", MODE_PRIVATE)
             .edit().putBoolean(KEY_PRE_CMD_DONE, true).apply()
-        android.util.Log.e(TAG, "✅ pre-command 已标记为完成")
+        Logger.success(TAG, Str.get(R.string.pre_command_marked_done))
     }
 
     private fun startBackendAfterEnv() {
-        android.util.Log.e(TAG, "🔍 startBackendAfterEnv()")
+        Logger.i(TAG, "🔍 startBackendAfterEnv()")
         val info = pluginInfo
         if (info?.isOtherBackend() == true) {
-            showEnvProgress(if (info.backendPort > 0) "正在等待后端服务端口就绪（最长 90 秒）..." else "正在等待启动前命令会话启动后端...")
+            showEnvProgress(if (info.backendPort > 0) Str.get(R.string.waiting_for_backend_port_up_to_90s) else Str.get(R.string.waiting_for_the_pre_command_session_))
         } else {
             val prootMsg = if (ProotContainerManager.isAlpineInstalled()) {
-                "正在启动容器后端（请稍候）..."
+                Str.get(R.string.starting_container_backend_please_wa)
             } else {
-                "正在启动容器后端（首次需初始化容器，约需 1-2 分钟，请耐心等待）..."
+                Str.get(R.string.starting_container_backend_first_run)
             }
-            showEnvProgress(if (info?.useProotRuntime() == true) prootMsg else "正在启动后端服务...")
+            showEnvProgress(if (info?.useProotRuntime() == true) prootMsg else Str.get(R.string.starting_backend_service))
         }
         pluginManager.startBackend(currentPluginId) { success, port, error ->
             isBackendStarting = false
             dismissEnvProgress()
-            android.util.Log.e(TAG, "📊 环境流水线后端启动回调: success=$success, port=$port, error=$error")
+            Logger.i(TAG, Str.get(R.string.env_pipeline_backend_callback_succes, success, port, error))
             if (success) {
                 backendPort = port
                 isBackendReady = true
                 sendBackendReadyToWebView(port)
             } else {
-                Toast.makeText(this, "后端启动失败: ${error ?: "未知错误"}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, Str.get(R.string.backend_start_failed_error_unknown_e, error ?: Str.get(R.string.unknown_error)), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -346,7 +348,7 @@ class PluginHostActivity : AppCompatActivity() {
     private fun runPreCommand() {
         val info = pluginInfo ?: return
         val preCmd = info.backendPreCommand.trim()
-        android.util.Log.e(TAG, "🔍 runPreCommand(), withResult=${!info.isOtherBackend()}")
+        Logger.i(TAG, "🔍 runPreCommand(), withResult=${!info.isOtherBackend()}")
 
         if (preCmd.isEmpty()) {
             startBackendAfterEnv()
@@ -363,7 +365,7 @@ class PluginHostActivity : AppCompatActivity() {
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, arrayOf("-lc", preCmd))
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, File(Constants.PLUGIN_DIR, info.pluginId).absolutePath)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, "启动前命令")
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, Str.get(R.string.pre_command))
                 // 后台执行（APP_SHELL），不弹终端、不用悬浮窗；CUI 插件不走此路径
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_BACKGROUND, true)
             }
@@ -378,21 +380,21 @@ class PluginHostActivity : AppCompatActivity() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 intent.putExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT, pi)
-                android.util.Log.e(TAG, "📬 已附加 PendingIntent 结果回调")
+                Logger.i(TAG, Str.get(R.string.pendingintent_result_callback_attach))
             }
 
             startService(intent)
-            Toast.makeText(this, "已在终端执行启动前命令", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, Str.get(R.string.pre_command_executed_in_terminal), Toast.LENGTH_SHORT).show()
 
             if (info.isOtherBackend()) {
                 // other 模式：pre-command 即后端服务，会话不退出，改为轮询端口就绪
-                android.util.Log.e(TAG, "🔄 other 模式：开始轮询端口就绪")
+                Logger.i(TAG, Str.get(R.string.other_mode_polling_port_readiness))
                 startBackendAfterEnv()
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "❌ 启动终端失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_start_terminal_e_message_2, e.message), e)
             dismissEnvProgress()
-            Toast.makeText(this, "启动终端失败: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, Str.get(R.string.failed_to_start_terminal_e_message, e.message), Toast.LENGTH_LONG).show()
             isBackendStarting = false
         }
     }
@@ -401,17 +403,17 @@ class PluginHostActivity : AppCompatActivity() {
      * pre-command 会话结束后刷新后端状态（由 PreCommandResultReceiver 唤起）。
      */
     private fun refreshBackendStateAfterPreCommand() {
-        android.util.Log.e(TAG, "🔍 refreshBackendStateAfterPreCommand()")
+        Logger.i(TAG, "🔍 refreshBackendStateAfterPreCommand()")
         if (isBackendReady) return
         val port = PluginBackendManager.getPort(currentPluginId)
         if (PluginBackendManager.isRunning(currentPluginId)) {
             backendPort = port
             isBackendReady = true
             isBackendStarting = false
-            android.util.Log.e(TAG, "✅ 后端已在运行，端口: $port")
+            Logger.success(TAG, Str.get(R.string.backend_already_running_port_port, port))
             sendBackendReadyToWebView(port)
         } else {
-            android.util.Log.e(TAG, "🔄 后端未运行，重新启动")
+            Logger.i(TAG, Str.get(R.string.backend_not_running_restarting))
             startBackendAfterEnv()
         }
     }
@@ -419,7 +421,7 @@ class PluginHostActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        android.util.Log.e(TAG, "🔍 onNewIntent() 被调用")
+        Logger.i(TAG, Str.get(R.string.onnewintent_called))
 
         val pluginId = intent.getStringExtra(EXTRA_PLUGIN_ID)
         if (!pluginId.isNullOrEmpty() && pluginId != currentPluginId) {
@@ -435,10 +437,10 @@ class PluginHostActivity : AppCompatActivity() {
             } else {
                 val exitCode = intent.getIntExtra(EXTRA_PRE_COMMAND_EXIT_CODE, -1)
                 val errmsg = intent.getStringExtra(EXTRA_PRE_COMMAND_ERRMSG) ?: ""
-                android.util.Log.e(TAG, "❌ pre-command 执行失败: exitCode=$exitCode, errmsg=$errmsg")
+                Logger.e(TAG, Str.get(R.string.pre_command_failed_exitcode_exitcode, exitCode, errmsg))
                 showPluginInfoDialog(
-                    "启动前命令执行失败",
-                    "退出码: $exitCode${if (errmsg.isNotEmpty()) "\n\n$errmsg" else ""}"
+                    Str.get(R.string.pre_command_execution_failed),
+                    Str.get(R.string.exit_code_exitcode_if_errmsg_isnotem, exitCode, if (errmsg.isNotEmpty()) "\n\n$errmsg" else "")
                 )
             }
         }
@@ -455,7 +457,7 @@ class PluginHostActivity : AppCompatActivity() {
         backendTimeoutHandler = Handler(Looper.getMainLooper())
         backendTimeoutRunnable = Runnable {
             if (isBackendStarting) {
-                android.util.Log.e(TAG, "⏰ 后端启动超时")
+                Logger.i(TAG, Str.get(R.string.backend_start_timed_out))
                 isBackendStarting = false
             }
         }
@@ -566,20 +568,20 @@ class PluginHostActivity : AppCompatActivity() {
     }
 
     fun showPluginInfoDialog(title: String, message: String, onDismiss: (() -> Unit)? = null) {
-        android.util.Log.d(TAG, "📩 showPluginInfoDialog: $title")
+        Logger.d(TAG, "📩 showPluginInfoDialog: $title")
         enqueuePluginDialog(PluginDialogRequest.Info(title, message, onDismiss))
     }
 
     fun showPluginConfirmDialog(
         title: String,
         message: String,
-        confirmText: String = "确定",
-        dismissText: String = "取消",
+        confirmText: String = Str.get(R.string.ok_2),
+        dismissText: String = Str.get(R.string.cancel),
         isDestructive: Boolean = false,
         onConfirm: () -> Unit,
         onDismiss: () -> Unit
     ) {
-        android.util.Log.d(TAG, "📩 showPluginConfirmDialog: $title")
+        Logger.d(TAG, "📩 showPluginConfirmDialog: $title")
         enqueuePluginDialog(
             PluginDialogRequest.Confirm(
                 title, message, confirmText, dismissText, isDestructive, onConfirm, onDismiss
@@ -594,7 +596,7 @@ class PluginHostActivity : AppCompatActivity() {
         onDismiss: () -> Unit,
         onNeutral: () -> Unit
     ) {
-        android.util.Log.d(TAG, "📩 showPluginChoiceDialog: $title")
+        Logger.d(TAG, "📩 showPluginChoiceDialog: $title")
         enqueuePluginDialog(
             PluginDialogRequest.Choice(title, message, onConfirm, onDismiss, onNeutral)
         )
@@ -606,7 +608,7 @@ class PluginHostActivity : AppCompatActivity() {
         onConfirm: (String) -> Unit,
         onDismiss: () -> Unit
     ) {
-        android.util.Log.d(TAG, "📩 showPluginPromptDialog: $title")
+        Logger.d(TAG, "📩 showPluginPromptDialog: $title")
         enqueuePluginDialog(
             PluginDialogRequest.Prompt(title, hint, onConfirm, onDismiss)
         )
@@ -629,7 +631,7 @@ class PluginHostActivity : AppCompatActivity() {
         LaunchedEffect(request) {
             if (request != null) {
                 dialogHost?.visibility = View.VISIBLE
-                android.util.Log.d(TAG, "🖼 渲染插件弹窗: ${request.javaClass.simpleName}")
+                Logger.d(TAG, Str.get(R.string.rendering_plugin_dialog_request_java, request.javaClass.simpleName))
             }
         }
         when (val r = request) {
@@ -659,7 +661,7 @@ class PluginHostActivity : AppCompatActivity() {
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(AppDimens.radiusLarge)
-                    ) { Text("知道了") }
+                    ) { Text(Str.get(R.string.got_it)) }
                 },
                 dismissButton = {
                     Row {
@@ -668,14 +670,14 @@ class PluginHostActivity : AppCompatActivity() {
                                 dismissPluginDialog()
                                 r.onNever()
                             }
-                        ) { Text("不再提示") }
+                        ) { Text(Str.get(R.string.don_t_ask_again)) }
                         Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
                         TextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onLater()
                             }
-                        ) { Text("稍后提醒") }
+                        ) { Text(Str.get(R.string.remind_me_later)) }
                     }
                 }
             )
@@ -683,7 +685,7 @@ class PluginHostActivity : AppCompatActivity() {
             is PluginDialogRequest.Info -> UnifiedInfoDialog(
                 title = r.title,
                 message = r.message,
-                buttonText = "确定",
+                buttonText = Str.get(R.string.ok_2),
                 onDismiss = {
                     dismissPluginDialog()
                     r.onDismiss?.invoke()
@@ -730,7 +732,7 @@ class PluginHostActivity : AppCompatActivity() {
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(AppDimens.radiusLarge)
-                    ) { Text("确定") }
+                    ) { Text(Str.get(R.string.ok_2)) }
                 },
                 dismissButton = {
                     Row {
@@ -739,14 +741,14 @@ class PluginHostActivity : AppCompatActivity() {
                                 dismissPluginDialog()
                                 r.onNeutral()
                             }
-                        ) { Text("忽略") }
+                        ) { Text(Str.get(R.string.ignore)) }
                         Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
                         TextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onDismiss()
                             }
-                        ) { Text("取消") }
+                        ) { Text(Str.get(R.string.cancel)) }
                     }
                 }
             )
@@ -756,10 +758,10 @@ class PluginHostActivity : AppCompatActivity() {
                     dismissPluginDialog()
                     r.onCancel()
                 },
-                title = "启动前命令",
+                title = Str.get(R.string.pre_command),
                 content = {
                     Text(
-                        text = "插件「${r.name}」需要在容器环境中先执行启动前命令：\n\n${r.command}\n\n是否现在在终端中运行？",
+                        text = Str.get(R.string.plugin_r_name_needs_a_pre_command_in, r.name, r.command),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -775,7 +777,7 @@ class PluginHostActivity : AppCompatActivity() {
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(AppDimens.radiusLarge)
-                    ) { Text("现在运行") }
+                    ) { Text(Str.get(R.string.run_now)) }
                 },
                 dismissButton = {
                     Row {
@@ -784,14 +786,14 @@ class PluginHostActivity : AppCompatActivity() {
                                 dismissPluginDialog()
                                 r.onLater()
                             }
-                        ) { Text("稍后") }
+                        ) { Text(Str.get(R.string.later)) }
                         Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
                         TextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onCancel()
                             }
-                        ) { Text("取消") }
+                        ) { Text(Str.get(R.string.cancel)) }
                     }
                 }
             )
@@ -830,7 +832,7 @@ class PluginHostActivity : AppCompatActivity() {
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             shape = RoundedCornerShape(AppDimens.radiusLarge)
-                        ) { Text("确定") }
+                        ) { Text(Str.get(R.string.ok_2)) }
                     },
                     dismissButton = {
                         TextButton(
@@ -838,7 +840,7 @@ class PluginHostActivity : AppCompatActivity() {
                                 dismissPluginDialog()
                                 r.onDismiss()
                             }
-                        ) { Text("取消") }
+                        ) { Text(Str.get(R.string.cancel)) }
                     }
                 )
             }
@@ -852,11 +854,11 @@ class PluginHostActivity : AppCompatActivity() {
         if (pluginDialogQueue.isNotEmpty()) {
             pluginDialogRequest = pluginDialogQueue.first()
             dialogHost?.visibility = View.VISIBLE
-            android.util.Log.d(TAG, "🖼 显示下一个插件弹窗: ${pluginDialogQueue.first().javaClass.simpleName}")
+            Logger.d(TAG, Str.get(R.string.showing_next_plugin_dialog_plugindia, pluginDialogQueue.first().javaClass.simpleName))
         } else {
             pluginDialogRequest = null
             dialogHost?.visibility = View.GONE
-            android.util.Log.d(TAG, "🗑 插件弹窗已关闭，覆盖层隐藏")
+            Logger.d(TAG, Str.get(R.string.plugin_dialog_closed_overlay_hidden))
         }
     }
 
@@ -866,38 +868,38 @@ class PluginHostActivity : AppCompatActivity() {
 
     private fun loadPlugin() {
         val info = pluginInfo ?: run {
-            android.util.Log.e(TAG, "loadPlugin: pluginInfo is null!")
+            Logger.i(TAG, "loadPlugin: pluginInfo is null!")
             finish()
             return
         }
 
-        android.util.Log.e(TAG, "========== loadPlugin ==========")
-        android.util.Log.e(TAG, "📌 uiType: '${info.uiType}'")
-        android.util.Log.e(TAG, "📌 entry: '${info.entry}'")
-        android.util.Log.e(TAG, "=================================")
+        Logger.separator(TAG, "loadPlugin")
+        Logger.i(TAG, "📌 uiType: '${info.uiType}'")
+        Logger.i(TAG, "📌 entry: '${info.entry}'")
+        Logger.separator(TAG)
 
         if (info.uiType.equals("web", ignoreCase = true)) {
-            android.util.Log.e(TAG, "✅ 走 Web 插件分支")
+            Logger.success(TAG, Str.get(R.string.going_web_plugin_branch))
             loadWebPlugin()
         } else if (info.isCui()) {
-            android.util.Log.e(TAG, "✅ 走 CUI 插件分支（内嵌终端，非悬浮窗）")
+            Logger.success(TAG, Str.get(R.string.going_cui_plugin_branch_embedded_ter))
             loadCuiPlugin()
         } else {
-            android.util.Log.e(TAG, "❌ 走原生插件分支 (uiType = '${info.uiType}')")
+            Logger.i(TAG, Str.get(R.string.going_native_plugin_branch_uitype_in, info.uiType))
             loadNativePlugin()
         }
     }
 
     private fun loadWebPlugin() {
-        android.util.Log.e(TAG, "========== loadWebPlugin ==========")
+        Logger.separator(TAG, "loadWebPlugin")
 
         val pluginDir = File(Constants.PLUGIN_DIR, currentPluginId)
-        android.util.Log.e(TAG, "📂 插件目录: ${pluginDir.absolutePath}")
-        android.util.Log.e(TAG, "📂 目录是否存在: ${pluginDir.exists()}")
+        Logger.i(TAG, Str.get(R.string.plugin_dir_plugindir_absolutepath, pluginDir.absolutePath))
+        Logger.i(TAG, Str.get(R.string.dir_exists_plugindir_exists, pluginDir.exists()))
 
         if (!pluginDir.exists()) {
-            android.util.Log.e(TAG, "❌ 插件目录不存在: ${pluginDir.absolutePath}")
-            Toast.makeText(this, "插件目录不存在", Toast.LENGTH_SHORT).show()
+            Logger.e(TAG, Str.get(R.string.plugin_dir_not_found_plugindir_absol, pluginDir.absolutePath))
+            Toast.makeText(this, Str.get(R.string.plugin_dir_not_found), Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -936,12 +938,12 @@ class PluginHostActivity : AppCompatActivity() {
 
             val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
             addJavascriptInterface(jsInterface, "UINPlugin")
-            android.util.Log.e(TAG, "✅ UINPlugin JS 接口已注入")
+            Logger.success(TAG, Str.get(R.string.uinplugin_js_interface_injected))
 
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    android.util.Log.e(TAG, "✅ WebView 加载完成: $url")
+                    Logger.success(TAG, Str.get(R.string.webview_load_complete_url, url))
                     injectJSInterface()
                     Handler(Looper.getMainLooper()).postDelayed({
                         if (isBackendReady) {
@@ -961,13 +963,13 @@ class PluginHostActivity : AppCompatActivity() {
                     failingUrl: String?
                 ) {
                     super.onReceivedError(view, errorCode, description, failingUrl)
-                    android.util.Log.e(TAG, "❌ WebView 加载错误: $description (code: $errorCode), url: $failingUrl")
+                    Logger.e(TAG, Str.get(R.string.webview_load_error_description_code_, description, errorCode, failingUrl))
                 }
             }
 
             webChromeClient = object : WebChromeClient() {
                 override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {
-                    android.util.Log.d("WebView", "Console: ${consoleMessage.message()}")
+                    Logger.d("WebView", "Console: ${consoleMessage.message()}")
                     return true
                 }
 
@@ -978,7 +980,7 @@ class PluginHostActivity : AppCompatActivity() {
                     result: android.webkit.JsResult?
                 ): Boolean {
                     showPluginInfoDialog(
-                        title = "提示",
+                        title = Str.get(R.string.notice),
                         message = message ?: "",
                         onDismiss = { result?.confirm() }
                     )
@@ -992,7 +994,7 @@ class PluginHostActivity : AppCompatActivity() {
                     result: android.webkit.JsResult?
                 ): Boolean {
                     showPluginConfirmDialog(
-                        title = "确认",
+                        title = Str.get(R.string.confirm_2),
                         message = message ?: "",
                         onConfirm = { result?.confirm() },
                         onDismiss = { result?.cancel() }
@@ -1003,16 +1005,16 @@ class PluginHostActivity : AppCompatActivity() {
 
             val entryPath = if (pluginInfo!!.entry.isNotEmpty()) pluginInfo!!.entry else "web/index.html"
             val indexPath = "$pluginDir/$entryPath"
-            android.util.Log.e(TAG, "📄 入口路径: $indexPath")
-            android.util.Log.e(TAG, "📄 文件是否存在: ${File(indexPath).exists()}")
+            Logger.i(TAG, Str.get(R.string.entry_path_indexpath, indexPath))
+            Logger.i(TAG, Str.get(R.string.file_exists_file_indexpath_exists, File(indexPath).exists()))
 
             if (File(indexPath).exists()) {
                 loadUrl("file://$indexPath")
-                android.util.Log.e(TAG, "✅ 加载 Web 插件: $indexPath")
+                Logger.success(TAG, Str.get(R.string.loading_web_plugin_indexpath_2, indexPath))
             } else {
                 val defaultHtml = createDefaultHtml(pluginInfo!!)
                 loadDataWithBaseURL("file://$pluginDir/", defaultHtml, "text/html", "UTF-8", null)
-                android.util.Log.e(TAG, "⚠️ 入口文件不存在，使用默认页面")
+                Logger.w(TAG, Str.get(R.string.entry_file_not_found_using_default_p_2))
             }
         }
 
@@ -1023,34 +1025,30 @@ class PluginHostActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
             host.visibility = if (pluginDialogRequest != null) View.VISIBLE else View.GONE
-            android.util.Log.e(
-                TAG,
-                "✅ Compose 对话框覆盖层已添加在 WebView 之上（初始" +
-                    (if (pluginDialogRequest != null) "显示" else "隐藏") + "）"
-            )
+            Logger.success(TAG, Str.get(R.string.compose_dialog_overlay_added_above_w) + (if (pluginDialogRequest != null) Str.get(R.string.show) else Str.get(R.string.hide)) + ")")
         }
         PluginManager.putPluginWebView(currentPluginId, webView)
-        android.util.Log.e(TAG, "========== loadWebPlugin 完成 ==========")
+        Logger.separator(TAG, Str.get(R.string.loadwebplugin_complete))
     }
 
     private fun loadNativePlugin() {
-        android.util.Log.e(TAG, "========== loadNativePlugin ==========")
-        android.util.Log.e(TAG, "⚠️ 正在加载原生插件: $currentPluginId")
+        Logger.separator(TAG, "loadNativePlugin")
+        Logger.w(TAG, Str.get(R.string.loading_native_plugin_currentplugini, currentPluginId))
 
         try {
             val view = pluginManager.getPluginViewSync(currentPluginId, this, container)
             if (view != null) {
                 container.removeAllViews()
                 container.addView(view)
-                android.util.Log.e(TAG, "✅ 原生插件加载成功: ${pluginInfo?.name}")
+                Logger.success(TAG, Str.get(R.string.native_plugin_loaded_plugininfo_name, pluginInfo?.name))
             } else {
-                android.util.Log.e(TAG, "❌ 原生插件加载失败")
-                Toast.makeText(this, "原生插件加载失败", Toast.LENGTH_SHORT).show()
+                Logger.e(TAG, Str.get(R.string.native_plugin_load_failed))
+                Toast.makeText(this, Str.get(R.string.native_plugin_load_failed_2), Toast.LENGTH_SHORT).show()
                 finish()
             }
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "❌ 原生插件加载异常", e)
-            Toast.makeText(this, "插件加载异常: ${e.message}", Toast.LENGTH_LONG).show()
+            Logger.e(TAG, Str.get(R.string.native_plugin_load_error), e)
+            Toast.makeText(this, Str.get(R.string.plugin_load_error_e_message, e.message), Toast.LENGTH_LONG).show()
             finish()
         }
     }
@@ -1060,11 +1058,11 @@ class PluginHostActivity : AppCompatActivity() {
      * TermuxActivity 中打开（页面内嵌终端易出渲染问题，故使用真实全屏终端）。
      */
     private fun loadCuiPlugin() {
-        android.util.Log.e(TAG, "========== loadCuiPlugin ==========")
+        Logger.separator(TAG, "loadCuiPlugin")
         try {
             container.removeAllViews()
             val textView = android.widget.TextView(this).apply {
-                text = "正在打开终端并执行命令...\n\n若未自动弹出，请在通知栏查看 UIN Tool 终端。"
+                text = Str.get(R.string.opening_terminal_and_running_command)
                 gravity = android.view.Gravity.CENTER
                 setTextColor(android.graphics.Color.BLACK)
                 textSize = 16f
@@ -1073,10 +1071,10 @@ class PluginHostActivity : AppCompatActivity() {
                 textView,
                 ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
-            android.util.Log.e(TAG, "✅ CUI 占位视图已创建")
+            Logger.success(TAG, Str.get(R.string.cui_placeholder_view_created))
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "❌ CUI 占位视图创建异常", e)
-            Toast.makeText(this, "CUI 插件加载失败: ${e.message}", Toast.LENGTH_LONG).show()
+            Logger.e(TAG, Str.get(R.string.cui_placeholder_view_creation_error), e)
+            Toast.makeText(this, Str.get(R.string.cui_plugin_load_failed_e_message, e.message), Toast.LENGTH_LONG).show()
             finish()
         }
     }
@@ -1087,7 +1085,7 @@ class PluginHostActivity : AppCompatActivity() {
      */
     private fun runCuiPipeline() {
         val info = pluginInfo ?: return
-        android.util.Log.e(TAG, "🔍 runCuiPipeline()")
+        Logger.i(TAG, "🔍 runCuiPipeline()")
         ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
             val start = {
                 startCuiTerminalSession()
@@ -1101,8 +1099,8 @@ class PluginHostActivity : AppCompatActivity() {
                         isBackendStarting = false
                         dismissEnvProgress()
                         showPluginInfoDialog(
-                            "环境准备失败",
-                            "Alpine 容器安装失败，请确认 APK 的 assets 目录已包含 Alpine 离线安装包（alpine*）后重试。"
+                            Str.get(R.string.environment_setup_failed),
+                            Str.get(R.string.alpine_container_install_failed_make)
                         )
                         return@ensureAlpine
                     }
@@ -1124,7 +1122,7 @@ class PluginHostActivity : AppCompatActivity() {
             val pluginDir = File(Constants.PLUGIN_DIR, currentPluginId)
             val preCmd = info.backendPreCommand.trim()
             val args = if (preCmd.isNotEmpty()) arrayOf("-lc", preCmd) else arrayOf("-l")
-            android.util.Log.e(TAG, "🔍 startCuiTerminalSession(), preCmd='$preCmd'")
+            Logger.i(TAG, "🔍 startCuiTerminalSession(), preCmd='$preCmd'")
 
             val intent = Intent(RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND).apply {
                 setClass(this@PluginHostActivity, RunCommandService::class.java)
@@ -1132,14 +1130,14 @@ class PluginHostActivity : AppCompatActivity() {
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, args)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, pluginDir.absolutePath)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, "CUI 插件终端")
+                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, Str.get(R.string.cui_plugin_terminal))
                 // 不设置 EXTRA_BACKGROUND → Runner.TERMINAL_SESSION → 打开真实终端并执行命令
             }
             startService(intent)
-            android.util.Log.e(TAG, "✅ 已启动 CUI 终端会话")
+            Logger.success(TAG, Str.get(R.string.cui_terminal_session_started))
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ CUI 终端启动异常: ${e.message}", e)
-            Toast.makeText(this, "CUI 终端启动失败: ${e.message}", Toast.LENGTH_LONG).show()
+            Logger.e(TAG, Str.get(R.string.cui_terminal_start_error_e_message, e.message), e)
+            Toast.makeText(this, Str.get(R.string.cui_terminal_start_failed_e_message, e.message), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1152,7 +1150,7 @@ class PluginHostActivity : AppCompatActivity() {
             it.removeJavascriptInterface("UINPlugin")
             val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
             it.addJavascriptInterface(jsInterface, "UINPlugin")
-            android.util.Log.e(TAG, "✅ UINPlugin JS 接口已重新注入")
+            Logger.success(TAG, Str.get(R.string.uinplugin_js_interface_re_injected))
         }
     }
 
@@ -1177,7 +1175,7 @@ class PluginHostActivity : AppCompatActivity() {
         callback: (Boolean, String?) -> Unit
     ) {
         if (!isBackendReady) {
-            callback(false, "后端未就绪")
+            callback(false, Str.get(R.string.backend_not_ready))
             return
         }
 
@@ -1212,7 +1210,7 @@ class PluginHostActivity : AppCompatActivity() {
                     callback(false, "HTTP ${response.code}: $responseBody")
                 }
             } catch (e: Exception) {
-                android.util.Log.e(TAG, "调用API失败: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.api_call_failed_e_message, e.message), e)
                 callback(false, e.message)
             }
         }.start()
@@ -1232,12 +1230,12 @@ class PluginHostActivity : AppCompatActivity() {
 
     private fun createDefaultHtml(info: PluginInfo): String {
         val backendInfo = if (info.hasBackend()) {
-            "<br>后端: ${info.getBackendDisplayName()}"
+            Str.get(R.string.br_backend_info_getbackenddisplaynam, info.getBackendDisplayName())
         } else {
             ""
         }
         val noticeInfo = if (info.hasNotice()) {
-            "<br>包含说明文档"
+            Str.get(R.string.br_includes_documentation)
         } else {
             ""
         }
@@ -1265,17 +1263,17 @@ class PluginHostActivity : AppCompatActivity() {
             <body>
             <div class="card">
                 <h1>${info.name}</h1>
-                <p>${info.description ?: "Web插件"}</p>
+                <p>${info.description ?: Str.get(R.string.web_plugin)}</p>
                 <div id="backendStatus" style="margin: 12px 0;">
-                    后端: <span class="status-dot offline" id="statusDot"></span>
-                    <span id="statusText">检测中...</span>
+                    ${Str.get(R.string.backend_colon)} <span class="status-dot offline" id="statusDot"></span>
+                    ${Str.get(R.string.checking_status_dots)}
                 </div>
-                <button onclick="testBackend()">测试后端</button>
-                <button onclick="UINPlugin.callHost('finish','')">关闭</button>
+                <button onclick="testBackend()">${Str.get(R.string.test_backend)}</button>
+                <button onclick="UINPlugin.callHost('finish','')">${Str.get(R.string.close)}</button>
                 <div class="info">
-                    <strong>插件信息</strong><br>
-                    版本: ${info.versionName}<br>
-                    作者: ${info.author ?: "未知"}<br>
+                    <strong>${Str.get(R.string.plugin_info)}</strong><br>
+                    ${Str.get(R.string.web_plugin_version, info.versionName)}
+                    ${Str.get(R.string.web_plugin_author, info.author ?: Str.get(R.string.unknown))}
                     ID: ${info.pluginId}${backendInfo}${noticeInfo}
                 </div>
             </div>
@@ -1290,10 +1288,10 @@ class PluginHostActivity : AppCompatActivity() {
                         backendReady = true;
                         backendPort = port;
                         dot.className = 'status-dot online';
-                        text.textContent = '已连接 (端口 ' + port + ')';
+                        text.textContent = '${Str.get(R.string.connected_port_js)}' + port + ')';
                     } else {
                         dot.className = 'status-dot offline';
-                        text.textContent = '未连接';
+                        text.textContent = '${Str.get(R.string.not_connected_js)}';
                     }
                 };
 
@@ -1301,15 +1299,15 @@ class PluginHostActivity : AppCompatActivity() {
                     var dot = document.getElementById('statusDot');
                     var text = document.getElementById('statusText');
                     dot.className = 'status-dot starting';
-                    text.textContent = message || ('启动中 ' + progress + '%');
+                    text.textContent = message || ('${Str.get(R.string.starting_progress_js)}' + progress + '%');
                 };
 
                 function testBackend() {
                     var status = UINPlugin.getBackendStatus();
                     if (status.startsWith('running:')) {
-                        alert('后端运行中，端口: ' + status.split(':')[1]);
+                        alert('${Str.get(R.string.backend_running_port_js)}' + status.split(':')[1]);
                     } else {
-                        alert('后端未运行');
+                        alert('${Str.get(R.string.backend_not_running_js)}');
                     }
                 }
 

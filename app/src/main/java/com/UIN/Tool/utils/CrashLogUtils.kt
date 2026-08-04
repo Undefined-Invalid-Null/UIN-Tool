@@ -1,6 +1,8 @@
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import android.content.Context
+import com.UIN.Tool.constants.AppConstants as Constants
 import android.os.Build
 import com.UIN.Tool.log.Logger
 import java.io.File
@@ -27,26 +29,26 @@ object CrashLogUtils {
 
             val sb = StringBuilder()
             sb.append("\n")
-            sb.append("================== 异常报告 ==================\n")
-            sb.append("时间: ${getCurrentTime()}\n")
-            sb.append("标签: $tag\n")
-            sb.append("设备: ${Build.MANUFACTURER} ${Build.MODEL}\n")
+            sb.append(Str.get(R.string.crash_report_n))
+            sb.append(Str.get(R.string.time_getcurrenttime_n, getCurrentTime()))
+            sb.append(Str.get(R.string.tag_tag_n, tag))
+            sb.append(Str.get(R.string.device_build_manufacturer_build_mode, Build.MANUFACTURER, Build.MODEL))
             sb.append("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n")
-            sb.append("异常类型: ${throwable.javaClass.name}\n")
-            sb.append("异常信息: ${throwable.message}\n")
-            sb.append("堆栈信息:\n")
+            sb.append(Str.get(R.string.exception_type_throwable_javaclass_n, throwable.javaClass.name))
+            sb.append(Str.get(R.string.exception_message_throwable_message_, throwable.message))
+            sb.append(Str.get(R.string.stack_trace_n))
             sb.append(throwable.stackTraceToString())
-            sb.append("================== 异常报告结束 ==================\n")
+            sb.append(Str.get(R.string.end_of_crash_report_n))
 
             FileWriter(logFile, true).use { writer ->
                 writer.write(sb.toString())
             }
 
             // 同时记录到 Logcat
-            Logger.e(tag, "异常已记录: ${throwable.message}", throwable)
+            Logger.e(tag, Str.get(R.string.exception_recorded_throwable_message, throwable.message), throwable)
 
         } catch (e: Exception) {
-            Logger.e(TAG, "记录异常失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_record_exception), e)
         }
     }
 

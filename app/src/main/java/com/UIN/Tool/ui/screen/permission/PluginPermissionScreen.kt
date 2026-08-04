@@ -1,5 +1,7 @@
 package com.UIN.Tool.ui.screen.permission
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.app.Activity
 import android.provider.Settings
 import android.widget.Toast
@@ -69,7 +71,7 @@ fun PluginPermissionScreen() {
         refreshPermissions()
         AppToast.info(
             context,
-            if (granted) "权限已授予" else "权限被拒绝"
+            if (granted) Str.get(R.string.permission_granted) else Str.get(R.string.permission_denied)
         )
     }
 
@@ -80,7 +82,7 @@ fun PluginPermissionScreen() {
         selectedPluginId?.let { pluginId ->
             val activity = context as? Activity
             if (activity == null) {
-                AppToast.error(context, "无法获取Activity")
+                AppToast.error(context, Str.get(R.string.failed_to_get_activity))
                 return
             }
             
@@ -90,7 +92,7 @@ fun PluginPermissionScreen() {
             if (missing.isEmpty()) {
                 isLoading = false
                 refreshPermissions()
-                AppToast.info(context, "所有权限已授予")
+                AppToast.info(context, Str.get(R.string.all_permissions_granted))
                 return
             }
             
@@ -110,7 +112,7 @@ fun PluginPermissionScreen() {
             // 引导特殊权限
             if (special.isNotEmpty()) {
                 PluginPermissionManager.openAppSettings(activity)
-                AppToast.info(context, "特殊权限请在系统设置中手动开启")
+                AppToast.info(context, Str.get(R.string.enable_special_permissions_manually_))
             }
             
             isLoading = false
@@ -124,7 +126,7 @@ fun PluginPermissionScreen() {
     fun togglePermission(permission: String) {
         val activity = context as? Activity
         if (activity == null) {
-            AppToast.error(context, "无法获取Activity")
+            AppToast.error(context, Str.get(R.string.failed_to_get_activity))
             return
         }
         
@@ -151,7 +153,7 @@ fun PluginPermissionScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("插件权限") },
+                title = { Text(Str.get(R.string.plugin_permissions)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.Default.ArrowBack,
@@ -196,8 +198,8 @@ fun PluginPermissionScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.BodyText("暂无已安装插件")
-                        UIComponents.CaptionText("请先在管理页面导入插件")
+                        UIComponents.BodyText(Str.get(R.string.no_installed_plugins))
+                        UIComponents.CaptionText(Str.get(R.string.import_plugins_on_the_manage_page_fi))
                     }
                 }
                 return@Scaffold
@@ -209,7 +211,7 @@ fun PluginPermissionScreen() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                UIComponents.BodyText("选择插件:", modifier = Modifier.weight(0.3f))
+                UIComponents.BodyText(Str.get(R.string.select_plugin), modifier = Modifier.weight(0.3f))
 
                 var expanded by remember { mutableStateOf(false) }
                 val selectedPlugin = plugins.find { it.pluginId == selectedPluginId }
@@ -219,7 +221,7 @@ fun PluginPermissionScreen() {
                     onExpandedChange = { expanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedPlugin?.name ?: "选择插件",
+                        value = selectedPlugin?.name ?: Str.get(R.string.select_plugin_2),
                         onValueChange = {},
                         readOnly = true,
                         modifier = Modifier
@@ -274,7 +276,7 @@ fun PluginPermissionScreen() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 UIComponents.PrimaryButton(
-                    text = "一键授权所有权限",
+                    text = Str.get(R.string.grant_all_permissions),
                     icon = Icons.Default.Check,
                     onClick = { requestAllPermissions() },
                     modifier = Modifier.weight(1f),
@@ -282,7 +284,7 @@ fun PluginPermissionScreen() {
                     loading = isLoading
                 )
                 UIComponents.SecondaryButton(
-                    text = "刷新",
+                    text = Str.get(R.string.refresh),
                     icon = Icons.Default.Refresh,
                     onClick = { refreshPermissions() },
                     modifier = Modifier.weight(0.5f)
@@ -303,9 +305,9 @@ fun PluginPermissionScreen() {
                                 .fillMaxWidth()
                                 .padding(12.dp)
                         ) {
-                            UIComponents.BodyText("插件: ${plugin.name}")
-                            UIComponents.CaptionText("ID: ${plugin.pluginId} | 版本: ${plugin.versionName}")
-                            UIComponents.CaptionText("声明权限: ${plugin.permissions.size} 个")
+                            UIComponents.BodyText(Str.get(R.string.plugin_plugin_name, plugin.name))
+                            UIComponents.CaptionText(Str.get(R.string.id_plugin_pluginid_version_plugin_ve, plugin.pluginId, plugin.versionName))
+                            UIComponents.CaptionText(Str.get(R.string.declared_permissions_plugin_permissi, plugin.permissions.size))
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -319,7 +321,7 @@ fun PluginPermissionScreen() {
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        UIComponents.BodyText("请选择插件")
+                        UIComponents.BodyText(Str.get(R.string.please_select_a_plugin))
                     }
                 }
                 pluginPermissions.isEmpty() -> {
@@ -335,8 +337,8 @@ fun PluginPermissionScreen() {
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            UIComponents.TitleText("该插件没有声明权限")
-                            UIComponents.CaptionText("插件在 plugin.json 中声明所需权限")
+                            UIComponents.TitleText(Str.get(R.string.this_plugin_declares_no_permissions_2))
+                            UIComponents.CaptionText(Str.get(R.string.plugins_declare_their_required_permi))
                         }
                     }
                 }
@@ -374,7 +376,7 @@ fun PluginPermissionScreen() {
                                         UIComponents.CaptionText(permission)
                                         if (PermissionUtils.isSpecialPermission(permission)) {
                                             UIComponents.CaptionText(
-                                                "特殊权限，需在系统设置中手动开启",
+                                                Str.get(R.string.special_permission_requires_enabling_2),
                                                 color = MaterialTheme.colorScheme.error
                                             )
                                         }

@@ -1,6 +1,10 @@
 package com.UIN.Tool.log
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.util.Log
+import com.UIN.Tool.BuildConfig
+import com.UIN.Tool.constants.AppConstants as Constants
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
@@ -28,7 +32,7 @@ object Logger {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
     private val logDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    fun init(logDir: String, level: Level = Level.INFO) {
+    fun init(logDir: String, level: Level = if (BuildConfig.DEBUG) Level.DEBUG else Level.INFO) {
         if (isInitialized) return
         try {
             currentLevel = level
@@ -42,8 +46,8 @@ object Logger {
                 logFile!!.createNewFile()
             }
             isInitialized = true
-            i(TAG, "日志系统初始化完成，级别: ${level.name}")
-            i(TAG, "日志文件: ${logFile!!.absolutePath}")
+            i(TAG, Str.get(R.string.log_system_initialized_level_level_n, level.name))
+            i(TAG, Str.get(R.string.log_file_logfile_absolutepath, logFile!!.absolutePath))
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -51,7 +55,7 @@ object Logger {
 
     fun setLevel(level: Level) {
         currentLevel = level
-        i(TAG, "日志级别已切换为: ${level.name}")
+        i(TAG, Str.get(R.string.log_level_switched_to_level_name, level.name))
     }
 
     private fun shouldLog(level: Level): Boolean {
@@ -61,7 +65,7 @@ object Logger {
     private fun writeToFile(message: String) {
         logFile?.let { file ->
             try {
-                if (file.length() > 2 * 1024 * 1024) {
+                if (file.length() > Constants.LOG_MAX_SIZE) {
                     rotateLogFile()
                 }
                 FileWriter(file, true).use { writer ->
@@ -95,14 +99,14 @@ object Logger {
     private fun cleanOldLogs(dir: File) {
         try {
             val currentTime = System.currentTimeMillis()
-            val retentionMillis = 7L * 24 * 60 * 60 * 1000
+            val retentionMillis = Constants.LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000L
 
             dir.listFiles()?.forEach { file ->
                 if (file.isFile && file.name.endsWith(".log")) {
                     val lastModified = file.lastModified()
                     if (currentTime - lastModified > retentionMillis) {
                         file.delete()
-                        d(TAG, "删除过期日志: ${file.name}")
+                        d(TAG, Str.get(R.string.deleting_expired_log_file_name, file.name))
                     }
                 }
             }
@@ -154,11 +158,11 @@ object Logger {
 
     fun param(tag: String, key: String, value: Any?) = write(Level.PARAM, tag, "📌 $key = $value")
 
-    fun enter(tag: String, method: String) = write(Level.ENTER, tag, "→ $method() 进入")
+    fun enter(tag: String, method: String) = write(Level.ENTER, tag, Str.get(R.string.method_entered, method))
 
     fun exit(tag: String, method: String, startTime: Long) {
         val cost = System.currentTimeMillis() - startTime
-        write(Level.EXIT, tag, "← $method() 退出, 耗时: ${cost}ms")
+        write(Level.EXIT, tag, Str.get(R.string.method_exited_took_cost_ms, method, cost))
     }
 
     /**
@@ -176,7 +180,7 @@ object Logger {
 
     fun file(tag: String, operation: String, file: File) {
         val size = if (file.exists() && file.isFile) {
-            ", 大小: ${file.length().formatFileSize()}"
+            Str.get(R.string.size_file_length_formatfilesize, file.length().formatFileSize())
         } else ""
         i(tag, "📁 $operation: ${file.absolutePath}$size")
     }
@@ -230,7 +234,7 @@ object Logger {
         return try {
             logFile?.readText() ?: ""
         } catch (e: Exception) {
-            "读取日志失败: ${e.message}"
+            Str.get(R.string.failed_to_read_log_e_message, e.message)
         }
     }
 
@@ -240,9 +244,9 @@ object Logger {
                 logFile!!.delete()
             }
             isInitialized = false
-            val logDir = logFile?.parent ?: "/storage/emulated/0/UIN_Tool/logs"
+            val logDir = logFile?.parent ?: Constants.LOG_DIR
             init(logDir)
-            i(TAG, "日志已清空")
+            i(TAG, Str.get(R.string.log_cleared))
         } catch (e: Exception) {
             e.printStackTrace()
         }

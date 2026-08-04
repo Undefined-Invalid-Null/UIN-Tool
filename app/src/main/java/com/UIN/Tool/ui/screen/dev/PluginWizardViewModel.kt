@@ -1,12 +1,14 @@
 // ui/screen/dev/PluginWizardViewModel.kt
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.utils.AppLog
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.TemplateUtils
 import org.json.JSONObject
 import java.io.File
@@ -21,9 +23,9 @@ class PluginWizardViewModel(
 
     // ==================== 插件信息 ====================
     var pluginId = mutableStateOf("com.example.myplugin")
-    var pluginName = mutableStateOf("我的插件")
-    var pluginAuthor = mutableStateOf("开发者")
-    var pluginDescription = mutableStateOf("这是一个示例插件")
+    var pluginName = mutableStateOf(Str.get(R.string.my_plugins))
+    var pluginAuthor = mutableStateOf(Str.get(R.string.developer_2))
+    var pluginDescription = mutableStateOf(Str.get(R.string.this_is_an_example_plugin))
     var pluginVersion = mutableStateOf("1")
     var pluginVersionName = mutableStateOf("1.0.0")
     var mainClass = mutableStateOf("com.example.MainPlugin")
@@ -101,7 +103,7 @@ class PluginWizardViewModel(
                 fileContents.value = mapOf(javaFilePath to javaCode)
             }
         } catch (e: Exception) {
-            AppLog.e(TAG, "生成Java代码失败", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_generate_java_code), e)
         }
     }
 
@@ -116,7 +118,7 @@ class PluginWizardViewModel(
             fileContents.value = files
 
         } catch (e: Exception) {
-            AppLog.e(TAG, "生成Web模板失败", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_generate_web_template), e)
         }
     }
 
@@ -125,16 +127,16 @@ class PluginWizardViewModel(
             val script = """
                 #!/usr/bin/env python3
                 # -*- coding: utf-8 -*-
-                # CUI 插件终端示例脚本，插件打开后在此终端中运行。
+                # ${Str.get(R.string.cui_plugin_script_comment)}
                 import os
 
                 print("=" * 48)
-                print(" CUI 插件终端已启动")
+                print(Str.get(R.string.cui_plugin_terminal_started))
                 print("=" * 48)
-                print("插件 ID : " + os.environ.get("PLUGIN_ID", "?"))
-                print("插件目录: " + os.getcwd())
+                print(Str.get(R.string.plugin_id_2) + os.environ.get("PLUGIN_ID", "?"))
+                print(Str.get(R.string.plugin_dir) + os.getcwd())
                 print("-" * 48)
-                print("输入 exit 或 Ctrl-D 结束会话。")
+                print(Str.get(R.string.type_exit_or_ctrl_d_to_end_the_sessi))
 
                 import code
                 code.interact(banner="", local=locals())
@@ -147,7 +149,7 @@ class PluginWizardViewModel(
                 backendPreCommand.value = "python3 scripts/script.py"
             }
         } catch (e: Exception) {
-            AppLog.e(TAG, "生成 CUI 脚本失败", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_generate_cui_script), e)
         }
     }
 
@@ -222,11 +224,11 @@ class PluginWizardViewModel(
 
             generateReadme(workDir)
 
-            AppLog.success(TAG, "项目文件生成成功: ${workDir.absolutePath}")
+            AppLog.success(TAG, Str.get(R.string.project_files_generated_workdir_abso, workDir.absolutePath))
             true
 
         } catch (e: Exception) {
-            AppLog.e(TAG, "生成项目文件失败", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_generate_project_files_2), e)
             false
         }
     }
@@ -300,14 +302,14 @@ class PluginWizardViewModel(
                 "PLUGIN_AUTHOR" to pluginAuthor.value,
                 "UI_TYPE" to when (uiType) {
                     "web" -> "WebView"
-                    "cui" -> "CUI 终端"
-                    else -> "原生代码"
+                    "cui" -> Str.get(R.string.cui_terminal)
+                    else -> Str.get(R.string.native_code)
                 }
             )
             val readme = TemplateUtils.generateReadme(context, vars)
             File(workDir, "README.md").writeText(readme)
         } catch (e: Exception) {
-            AppLog.e(TAG, "生成README失败", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_generate_readme), e)
         }
     }
 }

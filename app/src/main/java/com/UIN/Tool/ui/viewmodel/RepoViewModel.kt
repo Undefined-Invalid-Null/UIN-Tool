@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/viewmodel/RepoViewModel.kt
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,7 +12,7 @@ import com.UIN.Tool.domain.model.RepoPluginInfo
 import com.UIN.Tool.domain.repository.IPluginRepository
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginManager
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,7 +68,7 @@ class RepoViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true)
-                Logger.i(TAG, "开始加载插件列表")
+                Logger.i(TAG, Str.get(R.string.start_loading_plugin_list))
 
                 val repos = withContext(Dispatchers.IO) {
                     gitHubApiService.fetchOrgRepos()
@@ -80,9 +82,9 @@ class RepoViewModel : ViewModel() {
                     isLoading = false,
                     pluginCount = repos.size
                 )
-                Logger.i(TAG, "已加载 ${repos.size} 个仓库插件")
+                Logger.i(TAG, Str.get(R.string.loaded_repos_size_repo_plugin_s, repos.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "加载插件失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_load_plugins), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -104,7 +106,7 @@ class RepoViewModel : ViewModel() {
             }
         }
         _filteredPlugins.value = filtered
-        Logger.d(TAG, "搜索结果: ${filtered.size} 个插件")
+        Logger.d(TAG, Str.get(R.string.search_results_filtered_size_plugin_, filtered.size))
     }
 
     fun downloadAndInstall(plugin: RepoPluginInfo) {
@@ -131,11 +133,11 @@ class RepoViewModel : ViewModel() {
                         pluginRepository.installPlugin(file.absolutePath)
                     }
                     if (info != null) {
-                        Logger.success(TAG, "安装成功: ${info.name}")
+                        Logger.success(TAG, Str.get(R.string.installed_info_name, info.name))
                         pluginRepository.refreshPlugins()
                     } else {
                         _downloadProgress.value = _downloadProgress.value.copy(
-                            error = "安装失败"
+                            error = Str.get(R.string.install_failed)
                         )
                     }
                 }
@@ -143,7 +145,7 @@ class RepoViewModel : ViewModel() {
                 _downloadProgress.value = DownloadProgress(isDownloading = false)
 
             } catch (e: Exception) {
-                Logger.e(TAG, "下载安装失败", e)
+                Logger.e(TAG, Str.get(R.string.download_and_install_failed), e)
                 _downloadProgress.value = DownloadProgress(
                     isDownloading = false,
                     error = e.message
@@ -166,10 +168,10 @@ class RepoViewModel : ViewModel() {
 
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    throw Exception("下载失败: ${response.code}")
+                    throw Exception(Str.get(R.string.download_failed_response_code, response.code))
                 }
 
-                val body = response.body ?: throw Exception("响应体为空")
+                val body = response.body ?: throw Exception(Str.get(R.string.response_body_is_empty))
                 val contentLength = body.contentLength()
 
                 val tempFile = File(Constants.TEMP_DIR, "repo_${name}_${System.currentTimeMillis()}.tpk")
@@ -200,7 +202,7 @@ class RepoViewModel : ViewModel() {
 
                 tempFile
             } catch (e: Exception) {
-                Logger.e(TAG, "下载文件失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_download_file), e)
                 null
             }
         }

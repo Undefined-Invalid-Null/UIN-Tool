@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/components/unified/UnifiedDialogs.kt
 package com.UIN.Tool.ui.components.unified
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -149,8 +151,8 @@ fun UnifiedConfirmDialog(
     message: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
-    confirmText: String = "确定",
-    dismissText: String = "取消",
+    confirmText: String = Str.get(R.string.ok_2),
+    dismissText: String = Str.get(R.string.cancel),
     isDestructive: Boolean = false,
     confirmButtonColor: Color? = null
 ) {
@@ -199,7 +201,7 @@ fun UnifiedInfoDialog(
     title: String,
     message: String,
     onDismiss: () -> Unit,
-    buttonText: String = "确定"
+    buttonText: String = Str.get(R.string.ok_2)
 ) {
     UnifiedDialog(
         onDismissRequest = onDismiss,
@@ -230,7 +232,7 @@ fun UnifiedInfoDialog(
 
 @Composable
 fun UnifiedLoadingDialog(
-    message: String = "加载中...",
+    message: String = Str.get(R.string.loading),
     onCancel: (() -> Unit)? = null
 ) {
     Popup(
@@ -286,7 +288,7 @@ fun UnifiedLoadingDialog(
                             onCancel?.let {
                                 Spacer(modifier = Modifier.height(AppDimens.spacingMedium))
                                 TextButton(onClick = it) {
-                                    Text("取消")
+                                    Text(Str.get(R.string.cancel))
                                 }
                             }
                         }
@@ -338,7 +340,7 @@ fun UnifiedListDialog(
                     .fillMaxWidth()
                     .padding(top = AppDimens.spacingMedium)
             ) {
-                Text("取消")
+                Text(Str.get(R.string.cancel))
             }
         }
     )

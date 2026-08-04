@@ -1,6 +1,8 @@
 // plugin/PreCommandResultReceiver.kt
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,7 +12,7 @@ import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_SERVICE
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 
 /**
  * 接收 pre-command 终端会话结束结果（通过 RUN_COMMAND intent 的 PendingIntent 回调）。
@@ -26,10 +28,10 @@ class PreCommandResultReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        Logger.d(TAG, "📬 收到 pre-command 结果回调")
+        Logger.d(TAG, Str.get(R.string.received_pre_command_result_callback))
         val pluginId = intent.getStringExtra(PluginHostActivity.EXTRA_PLUGIN_ID)
         if (pluginId.isNullOrEmpty()) {
-            Logger.e(TAG, "❌ 插件ID为空，忽略结果")
+            Logger.e(TAG, Str.get(R.string.plugin_id_empty_ignoring_result))
             return
         }
 
@@ -43,7 +45,7 @@ class PreCommandResultReceiver : BroadcastReceiver() {
         if (success) {
             val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
             prefs.edit().putBoolean(PluginHostActivity.KEY_PRE_CMD_DONE, true).apply()
-            Logger.success(TAG, "✅ pre-command 执行成功，标记 pre_cmd_done")
+            Logger.success(TAG, Str.get(R.string.pre_command_succeeded_marking_pre_cm))
 
             // 后台启动后端（阻塞，避免占用主线程）
             Thread {
@@ -51,10 +53,10 @@ class PreCommandResultReceiver : BroadcastReceiver() {
                     val info = getPluginInfo(pluginId)
                     if (info != null) {
                         val started = PluginBackendManager.startBackend(context.applicationContext, info)
-                        Logger.d(TAG, "后端启动结果: $started")
+                        Logger.d(TAG, Str.get(R.string.backend_start_result_started, started))
                     }
                 } catch (e: Exception) {
-                    Logger.e(TAG, "启动后端异常: ${e.message}", e)
+                    Logger.e(TAG, Str.get(R.string.backend_start_error_e_message_2, e.message), e)
                 }
                 Handler(Looper.getMainLooper()).post {
                     openHost(context, pluginId, success, exitCode, errmsg)
@@ -71,7 +73,7 @@ class PreCommandResultReceiver : BroadcastReceiver() {
         return try {
             ServiceLocator.getPluginManager().getPluginInfo(pluginId)
         } catch (e: Exception) {
-            Logger.e(TAG, "获取插件信息失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_get_plugin_info_e_message, e.message), e)
             null
         }
     }
@@ -96,7 +98,7 @@ class PreCommandResultReceiver : BroadcastReceiver() {
         try {
             context.startActivity(hostIntent)
         } catch (e: Exception) {
-            Logger.e(TAG, "打开宿主失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_open_host_e_message, e.message), e)
         }
     }
 }

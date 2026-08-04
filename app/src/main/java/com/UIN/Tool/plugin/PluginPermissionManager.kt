@@ -1,5 +1,7 @@
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -11,7 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants  // ✅ 添加
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.PermissionUtils
 
 /**
@@ -74,31 +76,31 @@ object PluginPermissionManager {
     fun getPermissionDescription(permission: String): String {
         return when (permission) {
             Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE -> "用于读取和写入插件文件"
-            "MANAGE_EXTERNAL_STORAGE" -> "用于管理插件目录的所有文件"
-            Manifest.permission.CAMERA -> "用于插件调用相机拍照"
-            Manifest.permission.RECORD_AUDIO -> "用于插件录音功能"
+            Manifest.permission.WRITE_EXTERNAL_STORAGE -> Str.get(R.string.for_reading_and_writing_plugin_files)
+            "MANAGE_EXTERNAL_STORAGE" -> Str.get(R.string.for_managing_all_files_in_the_plugin)
+            Manifest.permission.CAMERA -> Str.get(R.string.for_the_plugin_to_take_photos_with_t)
+            Manifest.permission.RECORD_AUDIO -> Str.get(R.string.for_plugin_recording)
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION -> "用于插件获取位置信息"
+            Manifest.permission.ACCESS_COARSE_LOCATION -> Str.get(R.string.for_the_plugin_to_get_location)
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.WRITE_CONTACTS -> "用于插件读取/修改联系人"
-            Manifest.permission.CALL_PHONE -> "用于插件拨打电话"
-            Manifest.permission.READ_PHONE_STATE -> "用于插件获取设备信息"
-            Manifest.permission.SEND_SMS -> "用于插件发送短信"
-            Manifest.permission.READ_SMS -> "用于插件读取短信"
-            Manifest.permission.RECEIVE_SMS -> "用于插件接收短信"
+            Manifest.permission.WRITE_CONTACTS -> Str.get(R.string.for_the_plugin_to_read_modify_contac)
+            Manifest.permission.CALL_PHONE -> Str.get(R.string.for_the_plugin_to_make_phone_calls)
+            Manifest.permission.READ_PHONE_STATE -> Str.get(R.string.for_the_plugin_to_get_device_info)
+            Manifest.permission.SEND_SMS -> Str.get(R.string.for_the_plugin_to_send_sms)
+            Manifest.permission.READ_SMS -> Str.get(R.string.for_the_plugin_to_read_sms)
+            Manifest.permission.RECEIVE_SMS -> Str.get(R.string.for_the_plugin_to_receive_sms)
             Manifest.permission.READ_CALENDAR,
-            Manifest.permission.WRITE_CALENDAR -> "用于插件读取/修改日历"
-            "SYSTEM_ALERT_WINDOW" -> "用于插件显示悬浮窗"
-            "WRITE_SETTINGS" -> "用于插件修改系统设置"
-            "REQUEST_INSTALL_PACKAGES" -> "用于插件安装应用"
-            "PACKAGE_USAGE_STATS" -> "用于插件获取应用使用统计"
-            "ACCESSIBILITY" -> "用于插件的无障碍自动化操作"
-            "POST_NOTIFICATIONS" -> "用于插件发送通知"
-            Manifest.permission.VIBRATE -> "用于插件震动反馈"
-            Manifest.permission.INTERNET -> "用于插件网络请求"
-            Manifest.permission.ACCESS_NETWORK_STATE -> "用于检查网络状态"
-            else -> "插件所需权限"
+            Manifest.permission.WRITE_CALENDAR -> Str.get(R.string.for_the_plugin_to_read_modify_calend)
+            "SYSTEM_ALERT_WINDOW" -> Str.get(R.string.for_the_plugin_to_show_overlays)
+            "WRITE_SETTINGS" -> Str.get(R.string.for_the_plugin_to_modify_system_sett)
+            "REQUEST_INSTALL_PACKAGES" -> Str.get(R.string.for_the_plugin_to_install_apps)
+            "PACKAGE_USAGE_STATS" -> Str.get(R.string.for_the_plugin_to_get_app_usage_stat)
+            "ACCESSIBILITY" -> Str.get(R.string.for_the_plugin_s_accessibility_autom)
+            "POST_NOTIFICATIONS" -> Str.get(R.string.for_the_plugin_to_send_notifications)
+            Manifest.permission.VIBRATE -> Str.get(R.string.for_the_plugin_s_vibration_feedback)
+            Manifest.permission.INTERNET -> Str.get(R.string.for_the_plugin_s_network_requests)
+            Manifest.permission.ACCESS_NETWORK_STATE -> Str.get(R.string.for_checking_network_status)
+            else -> Str.get(R.string.permissions_required_by_the_plugin)
         }
     }
 
@@ -127,7 +129,7 @@ object PluginPermissionManager {
     fun setPermissionState(context: Context, pluginId: String, state: Int) {
         val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
         prefs.edit().putInt("permission_state", state).apply()
-        Logger.d(TAG, "权限状态已更新: $pluginId -> $state")
+        Logger.d(TAG, Str.get(R.string.permission_state_updated_pluginid_st, pluginId, state))
     }
 
     fun shouldShowPermissionDialog(context: Context, pluginId: String): Boolean {
@@ -136,10 +138,10 @@ object PluginPermissionManager {
 
     fun getPermissionStateDescription(state: Int): String {
         return when (state) {
-            0 -> "未授权"
-            1 -> "已授权"
-            2 -> "已拒绝"
-            else -> "未知"
+            0 -> Str.get(R.string.not_granted)
+            1 -> Str.get(R.string.granted)
+            2 -> Str.get(R.string.denied)
+            else -> Str.get(R.string.unknown)
         }
     }
 
@@ -161,7 +163,7 @@ object PluginPermissionManager {
             intent.data = Uri.parse("package:${activity.packageName}")
             activity.startActivity(intent)
         } catch (e: Exception) {
-            Logger.e(TAG, "打开设置失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_open_settings), e)
         }
     }
 

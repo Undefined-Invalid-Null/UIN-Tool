@@ -1,5 +1,6 @@
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.log.Logger
@@ -13,7 +14,7 @@ object SecurityUtils {
 
     fun verifyFileSignature(file: File, preferenceManager: PreferenceManager): Boolean {
         if (PluginManager.isIgnoreSignatureWarning()) {
-            Logger.w(TAG, "签名验证已忽略")
+            Logger.w(TAG, Str.get(R.string.signature_verification_ignored_2))
             return true
         }
 
@@ -22,14 +23,14 @@ object SecurityUtils {
 
         return if (expectedHash.isNullOrEmpty()) {
             preferenceManager.savePluginSignature(file.name, fileHash)
-            Logger.i(TAG, "首次导入，记录签名: ${file.name}")
+            Logger.i(TAG, Str.get(R.string.first_import_recording_signature_fil, file.name))
             true
         } else {
             val verified = expectedHash == fileHash
             if (!verified) {
-                Logger.e(TAG, "签名验证失败！文件可能被篡改: ${file.name}")
+                Logger.e(TAG, Str.get(R.string.signature_verification_failed_file_m, file.name))
             } else {
-                Logger.success(TAG, "签名验证通过: ${file.name}")
+                Logger.success(TAG, Str.get(R.string.signature_verification_passed_file_n, file.name))
             }
             verified
         }
@@ -47,7 +48,7 @@ object SecurityUtils {
             }
             md.digest().joinToString("") { "%02x".format(it) }
         } catch (e: Exception) {
-            Logger.e(TAG, "计算哈希失败: ${file.absolutePath}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_compute_hash_file_absolute, file.absolutePath), e)
             null
         }
     }
@@ -56,7 +57,7 @@ object SecurityUtils {
         val hash = calculateFileHash(file)
         if (hash != null) {
             preferenceManager.savePluginSignature(pluginId, hash)
-            Logger.i(TAG, "保存插件签名: $pluginId")
+            Logger.i(TAG, Str.get(R.string.saving_plugin_signature_pluginid, pluginId))
         }
     }
 

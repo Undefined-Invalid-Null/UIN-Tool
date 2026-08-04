@@ -1,5 +1,6 @@
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -63,7 +64,7 @@ fun Context.openFile(file: File) {
             setDataAndType(uri, "resource/folder")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(Intent.createChooser(intent, "选择文件管理器"))
+        startActivity(Intent.createChooser(intent, Str.get(R.string.choose_file_manager)))
     } catch (e: Exception) {
         // 忽略
     }
@@ -72,7 +73,7 @@ fun Context.openFile(file: File) {
 /**
  * 分享文本
  */
-fun Context.shareText(text: String, title: String = "分享") {
+fun Context.shareText(text: String, title: String = Str.get(R.string.share)) {
     try {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

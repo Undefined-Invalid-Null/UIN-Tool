@@ -1,225 +1,2071 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE resources [
+    <!ENTITY TERMUX_PACKAGE_NAME "com.UIN.Tool">
+    <!ENTITY TERMUX_APP_NAME "UIN Tool">
+    <!ENTITY TERMUX_API_APP_NAME "UIN Tool:API">
+    <!ENTITY TERMUX_BOOT_APP_NAME "UIN Tool:Boot">
+    <!ENTITY TERMUX_FLOAT_APP_NAME "UIN Tool:Float">
+    <!ENTITY TERMUX_STYLING_APP_NAME "UIN Tool:Styling">
+    <!ENTITY TERMUX_TASKER_APP_NAME "UIN Tool:Tasker">
+    <!ENTITY TERMUX_WIDGET_APP_NAME "UIN Tool:Widget">
+]>
 <resources>
-    <!-- 应用名称 -->
-    <string name="app_name">UIN Tool</string>
-    
-    <!-- 导航 -->
-    <string name="nav_dev">开发</string>
-    <string name="nav_tools">工具</string>
-    <string name="nav_manage">管理</string>
-    <string name="nav_repo">仓库</string>
-    
-    <!-- 通用 -->
-    <string name="confirm">确定</string>
-    <string name="cancel">取消</string>
-    <string name="delete">删除</string>
-    <string name="close">关闭</string>
-    <string name="ok">好的</string>
-    <string name="back">返回</string>
-    <string name="next">下一步</string>
-    <string name="prev">上一步</string>
-    <string name="finish">完成</string>
-    <string name="skip">跳过</string>
-    <string name="refresh">刷新</string>
-    <string name="search">搜索</string>
-    <string name="save">保存</string>
-    <string name="reset">重置</string>
-    <string name="apply">应用</string>
-    <string name="loading">加载中...</string>
-    <string name="version">版本</string>
-    <string name="update">更新</string>
-    <string name="download">下载</string>
-    <string name="install">安装</string>
-    <string name="uninstall">卸载</string>
-    <string name="open">打开</string>
-    <string name="run">运行</string>
-    <string name="error">错误</string>
-    <string name="success">成功</string>
-    <string name="warning">警告</string>
-    <string name="info">提示</string>
-    <string name="export_action">导出</string>
-    <string name="import_action">导入</string>
-    <string name="select_all">全选</string>
-    <string name="deselect_all">全不选</string>
-    <string name="clear">清空</string>
-    <string name="edit">编辑</string>
-    <string name="share">分享</string>
-    <string name="copy">复制</string>
-    <string name="more">更多</string>
-    <string name="settings">设置</string>
-    <string name="help">帮助</string>
-    <string name="about">关于</string>
-    <string name="all_category">全部</string>
-    <string name="none">无</string>
-    <string name="yes">是</string>
-    <string name="no">否</string>
-    <string name="all_plugins">全部插件</string>
-    <string name="search_plugins">搜索插件...</string>
-    <string name="clear_search">清除搜索</string>
-    <string name="switch_view">切换视图</string>
-    <string name="grid_view">网格视图</string>
-    <string name="list_view">列表视图</string>
-    <string name="retry">重试</string>
-    
-    <!-- 快捷方式 -->
-    <string name="shortcut_tools">工具</string>
-    <string name="shortcut_tools_long">打开工具页面</string>
-    <string name="shortcut_plugin_manage">插件管理</string>
-    <string name="shortcut_plugin_manage_long">管理已安装插件</string>
-    <string name="shortcut_permission">权限管理</string>
-    <string name="shortcut_permission_long">管理应用和插件权限</string>
-    <string name="shortcut_check_update">检查更新</string>
-    <string name="shortcut_check_update_long">检查应用更新</string>
-    
-    <!-- 小部件 -->
-    <string name="widget_name">UIN Tool 小部件</string>
-    <string name="widget_1x1_name">插件快捷方式</string>
-    <string name="widget_title">UIN Tool</string>
-    <string name="widget_no_plugin">-- 无 --</string>
-    <string name="widget_plugin_1">插件 1</string>
-    <string name="widget_plugin_2">插件 2</string>
-    <string name="widget_plugin_3">插件 3</string>
-    <string name="widget_config_title">配置小部件</string>
-    <string name="widget_config_select_plugins">选择要在小部件中显示的插件</string>
-    <string name="widget_config_saved">小部件配置已保存</string>
-    <string name="widget_refresh">刷新</string>
-    <string name="widget_empty">暂无插件\n请先在应用中导入插件</string>
-    <string name="widget_load_plugins_failed">加载插件失败</string>
-    <string name="widget_guide_title">添加桌面小部件</string>
-    <string name="widget_guide_message">长按桌面空白处，选择「小部件」，找到「UIN Tool」拖拽到桌面</string>
-    <string name="widget_refresh_sent">小部件刷新请求已发送</string>
-    <string name="widget_refresh_failed">刷新失败：%s</string>
-    <string name="widget_1x1_config_title">选择快捷方式插件</string>
-    <string name="widget_1x1_select_plugin">选择一个插件作为桌面快捷方式</string>
-    <string name="widget_1x1_launch_main">打开主界面（默认）</string>
-    <string name="widget_1x1_open_main">设为默认</string>
-    <string name="widget_1x1_config_saved">快捷方式配置已保存</string>
-    
-    <!-- 无障碍 -->
-    <string name="accessibility_service_description">UIN Tool 无障碍服务，用于插件执行自动化操作</string>
-    
-    <!-- 插件相关 -->
-    <string name="plugin_ui_type_native">原生代码 UI</string>
-    <string name="plugin_ui_type_web">WebView UI</string>
-    <string name="plugin_field_id">插件ID</string>
-    <string name="plugin_field_name">插件名称</string>
-    <string name="plugin_field_author">作者</string>
-    <string name="plugin_field_description">描述</string>
-    <string name="plugin_field_version">版本号</string>
-    <string name="plugin_field_version_name">版本名</string>
-    <string name="plugin_field_main_class">主类名</string>
-    <string name="plugin_field_category">分类</string>
-    <string name="plugin_unknown_author">未知</string>
-    <string name="plugin_no_description">无描述</string>
-    <string name="plugin_default_category">未分类</string>
-    
-    <!-- 提示消息 -->
-    <string name="toast_import_success">导入成功：%s</string>
-    <string name="toast_import_failed">导入失败：%s</string>
-    <string name="toast_export_success">导出成功</string>
-    <string name="toast_export_failed">导出失败：%s</string>
-    <string name="toast_uninstall_success">已卸载：%s</string>
-    <string name="toast_uninstall_failed">卸载失败：%s</string>
-    <string name="toast_permission_denied">权限被拒绝</string>
-    <string name="toast_permission_granted">权限已授予</string>
-    <string name="toast_copy_success">已复制到剪贴板</string>
-    <string name="toast_work_folder_created">工作目录：%s</string>
-    <string name="toast_no_plugins">暂无已安装的插件</string>
-    <string name="toast_please_select_plugin">请先选择要导出的插件</string>
-    <string name="toast_please_select_uninstall">请先选择要卸载的插件</string>
-    <string name="toast_plugin_not_found">插件不存在：%s</string>
-    <string name="toast_save_success">保存成功</string>
-    <string name="toast_save_failed">保存失败：%s</string>
-    <string name="toast_delete_success">删除成功</string>
-    <string name="toast_delete_failed">删除失败</string>
-    <string name="toast_network_error">网络错误，请稍后重试</string>
-    <string name="toast_no_data">暂无数据</string>
-    
-    <!-- 权限 -->
-    <string name="title_permission_manager">权限管理</string>
-    <string name="title_plugin_permission">插件权限管理</string>
-    <string name="permission_explain_title">权限说明</string>
-    <string name="permission_refreshed">权限状态已刷新</string>
-    <string name="permission_grant_one_by_one">请依次完成各个权限的授权</string>
-    <string name="permission_permanently_denied">「%s」权限已被永久拒绝，请前往设置中手动开启。</string>
-    
-    <!-- 日志 -->
-    <string name="title_log_viewer">运行日志</string>
-    <string name="log_no_records">暂无日志记录</string>
-    <string name="log_cleared">日志已清空</string>
-    <string name="log_all_cleared">已删除 %d 个日志文件</string>
-    <string name="log_exported">日志已导出</string>
-    <string name="log_export_failed">导出失败：%s</string>
-    <string name="clear_log_confirm">确定要清空今天的日志记录吗？</string>
-    <string name="clear_all_logs_confirm">确定要清空所有历史日志文件吗？</string>
-    
-    <!-- 备份 -->
-    <string name="title_backup_manager">备份恢复</string>
+    <string name="a_1x1_shortcut_that_opens_a_plugin_w" formatted="false">1x1 快捷方式，点击直接打开插件，快速访问常用功能</string>
+    <string name="a_3x3_widget_showing_multiple_plugin" formatted="false">3x3 小部件，在桌面展示多个插件，一目了然</string>
+    <string name="a_full_linux_terminal_environment_nb" formatted="false">启动完整的 Linux 终端环境\n基于 Termux 核心引擎</string>
+    <string name="a_word_from_the_author" formatted="false">作者的话</string>
+    <string name="about" formatted="false">关于</string>
+    <string name="about_preference_title" formatted="false">关于</string>
+    <string name="about_the_app_and_version_info" formatted="false">关于应用、版本信息</string>
+    <string name="accelerometer" formatted="false">加速度计</string>
+    <string name="accent_color" formatted="false">强调色</string>
+    <string name="access_network" formatted="false">访问网络</string>
+    <string name="accessibility" formatted="false">无障碍</string>
+    <string name="accessibility_event_it_eventtype">无障碍事件: %1$s</string>
+    <string name="accessibility_permission" formatted="false">无障碍权限</string>
+    <string name="accessibility_service_connected" formatted="false">无障碍服务已连接</string>
+    <string name="accessibility_service_created" formatted="false">无障碍服务创建</string>
+    <string name="accessibility_service_description" formatted="false">UIN Tool 无障碍服务，用于插件执行自动化操作</string>
+    <string name="accessibility_service_destroyed" formatted="false">无障碍服务销毁</string>
+    <string name="accessibility_service_interrupted" formatted="false">无障碍服务中断</string>
+    <string name="action_autofill_password" formatted="false">自动填充密码</string>
+    <string name="action_autofill_username" formatted="false">自动填充用户名</string>
+    <string name="action_create_named_session_confirm" formatted="false">创建</string>
+    <string name="action_file_received_edit" formatted="false">编辑</string>
+    <string name="action_file_received_open_directory" formatted="false">打开目录</string>
+    <string name="action_kill_process" formatted="false">终止进程 (%d)</string>
+    <string name="action_new_session" formatted="false">新建会话</string>
+    <string name="action_new_session_failsafe" formatted="false">安全模式</string>
+    <string name="action_new_window" formatted="false">新建窗口</string>
+    <string name="action_open_help" formatted="false">帮助</string>
+    <string name="action_open_settings" formatted="false">设置</string>
+    <string name="action_rename_session_confirm" formatted="false">设置</string>
+    <string name="action_report_issue" formatted="false">报告问题</string>
+    <string name="action_reset_terminal" formatted="false">重置</string>
+    <string name="action_select_url" formatted="false">选择 URL</string>
+    <string name="action_share_selected_text" formatted="false">分享选中文本</string>
+    <string name="action_share_transcript" formatted="false">分享终端记录</string>
+    <string name="action_style_terminal" formatted="false">样式</string>
+    <string name="action_styling_install" formatted="false">安装</string>
+    <string name="action_toggle_keep_screen_on" formatted="false">保持屏幕常亮</string>
+    <string name="action_toggle_soft_keyboard" formatted="false">键盘</string>
+    <string name="add" formatted="false">添加</string>
+    <string name="add_failed_e_message">添加失败: %1$s</string>
+    <string name="add_images_audio_resources" formatted="false">添加图片、音频等资源文件</string>
+    <string name="add_mirror" formatted="false">添加镜像站</string>
+    <string name="add_mirror_2" formatted="false">添加镜像</string>
+    <string name="add_new_file" formatted="false">添加新文件</string>
+    <string name="add_resource_files" formatted="false">添加资源文件</string>
+    <string name="add_resource_files_optional" formatted="false">添加资源文件（可选）</string>
+    <string name="add_shortcut" formatted="false">🔗 添加快捷方式</string>
+    <string name="add_to_home_screen" formatted="false">添加到桌面</string>
+    <string name="adding_1x1_shortcut" formatted="false">开始添加1x1快捷方式</string>
+    <string name="adding_3x3_widget" formatted="false">开始添加3x3小部件</string>
+    <string name="adding_event_listener_eventname_call">添加事件监听: %1$s (callback: %2$s)</string>
+    <string name="adding_file_filename">添加文件: %1$s</string>
+    <string name="adding_shortcut" formatted="false">开始添加快捷方式</string>
+    <string name="advanced" formatted="false">高级</string>
+    <string name="advanced_permissions" formatted="false">高级权限</string>
+    <string name="after_tapping_grant_allow_storage_pe" formatted="false">点击「去授权」后，请在系统设置中允许存储权限</string>
+    <string name="all" formatted="false">全部</string>
+    <string name="all_category" formatted="false">全部</string>
+    <string name="all_configs_reset" formatted="false">已重置所有配置</string>
+    <string name="all_data_deleted" formatted="false">所有数据已删除</string>
+    <string name="all_files_access_permission_granted" formatted="false">管理所有文件权限已授予</string>
+    <string name="all_files_access_permission_required" formatted="false">需要管理所有文件权限</string>
+    <string name="all_mirrors_are_unavailable" formatted="false">所有镜像均不可用</string>
+    <string name="all_permissions" formatted="false">所有权限</string>
+    <string name="all_permissions_granted" formatted="false">所有权限已授予</string>
+    <string name="all_plugin_data_cleared" formatted="false">所有插件数据已清除</string>
+    <string name="all_plugins" formatted="false">全部插件</string>
+    <string name="all_plugins_cleaned" formatted="false">已清理所有插件</string>
+    <string name="all_set" formatted="false">一切就绪</string>
+    <string name="all_storage_permissions_granted" formatted="false">所有存储权限已授予</string>
+    <string name="all_widgets_refreshed_appwidgetids_s">所有小部件已刷新，共 %1$s 个</string>
+    <string name="allocating_port_port">🔌 分配端口: %1$s</string>
+    <string name="alpine_backup_resource_unavailable" formatted="false">Alpine 备份资源不可用</string>
+    <string name="alpine_container_install_failed_make" formatted="false">Alpine 容器安装失败，请确认 APK 的 assets 目录已包含 Alpine 离线安装包（alpine*）后重试。</string>
+    <string name="alpine_container_ready" formatted="false">Alpine 容器已就绪</string>
+    <string name="alpine_container_restore_error_e_mes">Alpine 容器恢复异常: %1$s</string>
+    <string name="alpine_container_restore_failed_resu">Alpine 容器恢复失败: %1$s</string>
+    <string name="alpine_container_restored" formatted="false">Alpine 容器恢复成功</string>
+    <string name="alpine_container_setup_failed" formatted="false">❌ Alpine 容器准备失败</string>
+    <string name="alpine_not_installed_starting_offlin" formatted="false">Alpine 容器未安装，开始离线恢复...</string>
+    <string name="alpine_ready_processing_pre_command" formatted="false">✅ Alpine 容器就绪，处理 pre-command...</string>
+    <string name="an_exception_occurred" formatted="false">应用发生异常</string>
+    <string name="and_share_your_plugins_with_more_peo" formatted="false">也欢迎分享你的插件给更多人。\n\n</string>
+    <string name="android_version" formatted="false">Android版本</string>
+    <string name="android_version_too_old_info_minhost">Android 版本过低: %1$s > %2$s</string>
+    <string name="api_call_failed_e_message">调用API失败: %1$s</string>
+    <string name="apk_file_not_found_file_absolutepath">APK文件不存在: %1$s</string>
+    <string name="app_exit" formatted="false">应用退出</string>
+    <string name="app_launch" formatted="false">应用启动</string>
+    <string name="app_launch_uin_tool_v_constants_app_">应用启动 - UIN Tool v%1$s</string>
+    <string name="app_name" formatted="false">UIN Tool</string>
+    <string name="app_permissions" formatted="false">应用权限</string>
+    <string name="app_update_download_progress" formatted="false">应用更新下载进度</string>
+    <string name="application_name" formatted="false">&TERMUX_APP_NAME;</string>
+    <string name="apply" formatted="false">应用</string>
+    <string name="applytheme_applying_theme_themename">applyTheme: 开始应用主题 %1$s</string>
+    <string name="applytheme_failed" formatted="false">applyTheme: 失败</string>
+    <string name="applytheme_loading_theme_themename_f">applyTheme: 从 assets 加载主题 %1$s</string>
+    <string name="applytheme_theme_applied_themename">applyTheme: 成功应用主题 %1$s</string>
+    <string name="applytheme_theme_file_not_found_them">applyTheme: 主题文件不存在 %1$s</string>
+    <string name="approximate_location" formatted="false">粗略位置</string>
+    <string name="assets_textmate_directory_not_found" formatted="false">assets/textmate 目录不存在</string>
+    <string name="author" formatted="false">作者</string>
+    <string name="author_plugin_author">作者: %1$s</string>
+    <string name="author_plugin_author_n">作者: %1$s\n</string>
+    <string name="auto_rotates_to_show_plugin_status_n" formatted="false">• 自动轮播展示插件状态\n</string>
+    <string name="back" formatted="false">返回</string>
+    <string name="back_up_and_restore_plugin_config" formatted="false">备份恢复插件配置</string>
+    <string name="back_up_and_restore_plugin_data" formatted="false">备份和恢复插件数据</string>
+    <string name="backend_already_running_pluginid">✅ 后端已在运行: %1$s</string>
+    <string name="backend_already_running_port_port">✅ 后端已在运行，端口: %1$s</string>
+    <string name="backend_colon">后端:</string>
+    <string name="backend_command_call_targetpluginid_">📞 后台命令: 调用 %1$s.%2$s</string>
+    <string name="backend_command_open_plugin_pluginid">🔓 后台命令: 打开插件 %1$s</string>
+    <string name="backend_entry_file_not_found_entrypa">❌ 后端入口文件不存在: %1$s</string>
+    <string name="backend_environment" formatted="false">后端运行环境</string>
+    <string name="backend_health_check_url">📡 健康检查地址: %1$s</string>
+    <string name="backend_message_service_ready" formatted="false">✅ 后台消息服务已就绪</string>
+    <string name="backend_message_service_started" formatted="false">📡 后台消息服务已启动</string>
+    <string name="backend_message_service_stopped" formatted="false">⏹️ 后台消息服务已停止</string>
+    <string name="backend_not_ready" formatted="false">后端未就绪</string>
+    <string name="backend_not_running" formatted="false">后端未运行</string>
+    <string name="backend_not_running_js">后端未运行</string>
+    <string name="backend_not_running_restarting" formatted="false">🔄 后端未运行，重新启动</string>
+    <string name="backend_process_exited" formatted="false">❌ 后端进程已退出</string>
+    <string name="backend_ready_port_port">✅ 后端就绪，端口: %1$s</string>
+    <string name="backend_running_but_health_check_tim" formatted="false">⚠️ 后端进程运行中但健康检查超时，继续使用</string>
+    <string name="backend_running_port_js">后端运行中，端口: </string>
+    <string name="backend_start_callback_success_succe">📊 后端启动回调: success=%1$s, port=%2$s, error=%3$s</string>
+    <string name="backend_start_error_e_message">❌ 启动后端异常: %1$s</string>
+    <string name="backend_start_error_e_message_2">启动后端异常: %1$s</string>
+    <string name="backend_start_failed_error">❌ 后端启动失败: %1$s</string>
+    <string name="backend_start_failed_error_unknown_e">后端启动失败: %1$s</string>
+    <string name="backend_start_result_started">后端启动结果: %1$s</string>
+    <string name="backend_start_timed_out" formatted="false">⏰ 后端启动超时</string>
+    <string name="backend_started_pluginid_port_port">✅ 后端启动成功: %1$s (端口 %2$s)</string>
+    <string name="backend_waiting_for_ready">⏳ 等待服务就绪: %1$s (超时: %2$ds)</string>
+    <string name="background_color" formatted="false">背景色</string>
+    <string name="background_location" formatted="false">后台位置</string>
+    <string name="backing_up_app_settings" formatted="false">正在备份应用设置...</string>
+    <string name="backing_up_mirror_config" formatted="false">正在备份镜像配置...</string>
+    <string name="backing_up_plugins_plugins_size">正在备份插件 (%1$s 个)...</string>
+    <string name="backing_up_ui_config" formatted="false">正在备份 UI 配置...</string>
+    <string name="backing_up_work_directory_config" formatted="false">正在备份工作目录配置...</string>
+    <string name="backup_add_zip_failed_entry">添加文件到ZIP失败: %1$s</string>
+    <string name="backup_complete" formatted="false">备份完成！</string>
+    <string name="backup_created_backup_name">备份创建成功: %1$s</string>
+    <string name="backup_created_backupfile_name">备份创建成功: %1$s</string>
+    <string name="backup_created_successfully" formatted="false">备份创建成功</string>
+    <string name="backup_creation_exception" formatted="false">创建备份异常</string>
+    <string name="backup_creation_failed" formatted="false">备份创建失败</string>
+    <string name="backup_failed" formatted="false">❌ 备份失败：%s</string>
+    <string name="backup_failed_e_message">备份失败: %1$s</string>
+    <string name="backup_file_size_formatfilesize_back">备份文件大小: %1$s</string>
+    <string name="backup_list_title" formatted="false">备份文件列表</string>
+    <string name="backup_no_files" formatted="false">没有找到备份文件</string>
+    <string name="backup_options" formatted="false">备份选项</string>
+    <string name="backup_plugincount">%1$s个</string>
+    <string name="backup_restore" formatted="false">备份恢复</string>
+    <string name="backup_restore_confirm" formatted="false">⚠️ 恢复操作将覆盖现有插件、配置和 UI 主题！</string>
+    <string name="backup_restore_desc" formatted="false">备份/恢复插件、配置和 UI 主题</string>
+    <string name="backup_restore_exception" formatted="false">恢复备份异常</string>
+    <string name="backup_restore_failed" formatted="false">❌ 恢复失败：%s</string>
+    <string name="backup_restore_feature_under_develop" formatted="false">备份恢复功能开发中</string>
+    <string name="backup_restore_success" formatted="false">✅ 恢复完成！</string>
+    <string name="backup_restore_successful" formatted="false">备份恢复成功</string>
     <string name="backup_success" formatted="false">✅ 备份成功！\n文件：%s\n大小：%s</string>
-    <string name="backup_failed">❌ 备份失败：%s</string>
-    <string name="backup_restore_success">✅ 恢复完成！</string>
-    <string name="backup_restore_failed">❌ 恢复失败：%s</string>
-    <string name="backup_restore_confirm">⚠️ 恢复操作将覆盖现有插件、配置和 UI 主题！</string>
-    <string name="backup_no_files">没有找到备份文件</string>
-    <string name="select_backup">选择要恢复的备份</string>
-    
-    <!-- UI配置 -->
-    <string name="title_ui_config">UI 个性化</string>
-    <string name="ui_config_preview">实时预览</string>
-    <string name="ui_config_color">颜色配置</string>
-    <string name="ui_config_shape">形状配置</string>
-    <string name="ui_config_reset_confirm">确定要重置所有 UI 配置吗？</string>
-    <string name="ui_config_reset_success">已重置为默认配置</string>
-    <string name="ui_config_apply_success">配置已应用</string>
-    <string name="ui_config_export_success">配置已导出</string>
-    <string name="ui_config_import_success">配置已导入</string>
-    <string name="ui_config_import_failed">配置文件无效</string>
-    <string name="ui_config_export_failed">导出失败: %s</string>
-    
-    <!-- 预览 -->
-    <string name="preview_title">预览标题</string>
-    <string name="preview_text">这是预览文本，显示当前主题效果。</string>
-    <string name="preview_button_text">预览按钮</string>
-    
-    <!-- 引导 -->
-    <string name="onboarding_skip">跳过</string>
-    <string name="onboarding_next">下一步</string>
-    <string name="onboarding_start">开始体验</string>
-    <string name="onboarding_close">关闭</string>
-    
-    <!-- 仓库 -->
-    <string name="repo_title">插件仓库</string>
-    <string name="repo_install">安装</string>
-    <string name="repo_open">打开</string>
-    <string name="repo_installed">已安装</string>
-    <string name="repo_downloading">下载中...</string>
-    <string name="repo_no_plugins">暂无可用插件</string>
-    <string name="repo_load_failed">加载失败，请检查网络</string>
-    
-    <!-- 文档 -->
-    <string name="doc_center_title">文档中心</string>
-    <string name="doc_help_desc">使用帮助、常见问题解答</string>
-    <string name="doc_dev_desc">插件开发文档、API 参考</string>
-    <string name="doc_changelog_desc">版本更新历史记录</string>
-    <string name="doc_about_desc">关于应用、版本信息</string>
-    <string name="doc_contributors_desc">贡献者名单</string>
-    
-    <!-- 按钮 -->
-    <string name="btn_run">运行</string>
-    <string name="btn_create_shortcut">创建快捷方式</string>
-    <string name="btn_change_category">修改分类</string>
-    <string name="btn_uninstall">卸载</string>
-    <string name="btn_backup">备份</string>
-    <string name="btn_restore">恢复</string>
-    <string name="btn_grant_all">一键授权</string>
-    <string name="btn_plugin_permission">插件权限</string>
-    <string name="btn_create_plugin">创建新插件</string>
-    <string name="btn_export_template">导出模板</string>
-    <string name="btn_import_plugin">导入插件</string>
-    <string name="btn_batch_import">批量导入</string>
-    <string name="btn_select_icon">选择图标</string>
-    <string name="btn_add_resource">添加资源文件</string>
-    <string name="btn_compile">生成项目文件</string>
-    <string name="btn_open_folder">打开文件夹</string>
-    <string name="btn_permission_explain">权限说明</string>
+    <string name="backup_successful_formatfilesize_bac">备份成功 (%1$s)</string>
+    <string name="batch" formatted="false">批量</string>
+    <string name="batch_import_failed" formatted="false">批量导入失败</string>
+    <string name="batch_import_failed_e_message">批量导入失败: %1$s</string>
+    <string name="batch_storage_failed" formatted="false">批量存储失败</string>
+    <string name="before_first_use_open_the_dev_page_a" formatted="false">⚠️ 首次使用前，请先打开「开发」页面点击「打开终端」，\n</string>
+    <string name="binary_backend_instructions">选择编译好的二进制可执行文件作为后端
+
+• 该文件将作为插件后端启动
+• 必须监听 127.0.0.1:8000 端口
+• 必须提供 /health 健康检查端点
+• 文件需要具有可执行权限</string>
+    <string name="binary_file" formatted="false">二进制文件</string>
+    <string name="binary_file_copied_destfile_absolute">二进制文件已复制: %1$s</string>
+    <string name="binary_file_saved_destfile_absolutep">二进制文件已保存: %1$s</string>
+    <string name="binary_file_selected" formatted="false">二进制文件已选择</string>
+    <string name="binary_program" formatted="false">二进制程序</string>
+    <string name="bluetooth" formatted="false">蓝牙</string>
+    <string name="bluetooth_management" formatted="false">蓝牙管理</string>
+    <string name="body_font_size" formatted="false">正文字体大小</string>
+    <string name="bold_text" formatted="false">文字加粗</string>
+    <string name="bootstrap_error_abort" formatted="false">中止</string>
+    <string name="bootstrap_error_body" formatted="false">&TERMUX_APP_NAME; 无法安装启动包。</string>
+    <string name="bootstrap_error_installed_on_portable_sd">&TERMUX_APP_NAME; 无法安装在设备的外部/便携/可移除 SD 卡上。\n为 &TERMUX_APP_NAME; 编译的启动二进制文件具有硬编码的 $PREFIX 路径，无法安装在以下路径以外的任何路径：\n%1$s。</string>
+    <string name="bootstrap_error_not_primary_user_message">&TERMUX_APP_NAME; 只能以主用户身份运行。\n为 &TERMUX_APP_NAME; 编译的启动二进制文件具有硬编码的 $PREFIX 路径，无法安装在以下路径以外的任何路径：\n%1$s。</string>
+    <string name="bootstrap_error_title" formatted="false">无法安装启动包</string>
+    <string name="bootstrap_error_try_again" formatted="false">重试</string>
+    <string name="bootstrap_installer_body" formatted="false">正在安装启动包…</string>
+    <string name="br_backend_info_getbackenddisplaynam">&lt;br>后端: %1$s</string>
+    <string name="br_includes_documentation" formatted="false">&lt;br>包含说明文档</string>
+    <string name="broadcast_receiver_registered" formatted="false">广播接收器已注册</string>
+    <string name="broadcast_receiver_unregistered" formatted="false">广播接收器已注销</string>
+    <string name="broadcasting_message_action">📢 广播消息: %1$s</string>
+    <string name="btn_add_resource" formatted="false">添加资源文件</string>
+    <string name="btn_backup" formatted="false">备份</string>
+    <string name="btn_batch_import" formatted="false">批量导入</string>
+    <string name="btn_change_category" formatted="false">修改分类</string>
+    <string name="btn_clear_all" formatted="false">清空全部</string>
+    <string name="btn_clear_today" formatted="false">清空今日</string>
+    <string name="btn_compile" formatted="false">生成项目文件</string>
+    <string name="btn_create_plugin" formatted="false">创建新插件</string>
+    <string name="btn_create_shortcut" formatted="false">创建快捷方式</string>
+    <string name="btn_export_template" formatted="false">导出模板</string>
+    <string name="btn_grant_all" formatted="false">一键授权</string>
+    <string name="btn_import_plugin" formatted="false">导入插件</string>
+    <string name="btn_import_zip" formatted="false">插件集</string>
+    <string name="btn_open_folder" formatted="false">打开文件夹</string>
+    <string name="btn_permission_explain" formatted="false">权限说明</string>
+    <string name="btn_plugin_permission" formatted="false">插件权限</string>
+    <string name="btn_restore" formatted="false">恢复</string>
+    <string name="btn_run" formatted="false">运行</string>
+    <string name="btn_select_icon" formatted="false">选择图标</string>
+    <string name="btn_uninstall" formatted="false">卸载</string>
+    <string name="button_height" formatted="false">按钮高度</string>
+    <string name="button_min_width" formatted="false">按钮最小宽度</string>
+    <string name="button_radius" formatted="false">按钮圆角</string>
+    <string name="button_shadow" formatted="false">按钮阴影</string>
+    <string name="cache_cleared" formatted="false">缓存已清理</string>
+    <string name="calendar" formatted="false">日历</string>
+    <string name="calendar_permission" formatted="false">日历权限</string>
+    <string name="call_pluginid_method_sent">📞 调用 %1$s.%2$s 已发送</string>
+    <string name="callback_execution_failed_callbackid">回调执行失败: %1$s</string>
+    <string name="calling_plugin_method_method_params">调用插件方法: %1$s -> %2$s</string>
+    <string name="calling_pluginbackendmanager_startba" formatted="false">🔄 调用 PluginBackendManager.startBackend()...</string>
+    <string name="calling_startbackendifneeded" formatted="false">📞 调用 startBackendIfNeeded()</string>
+    <string name="camera" formatted="false">相机</string>
+    <string name="camera_microphone_permission" formatted="false">相机/麦克风权限</string>
+    <string name="camera_microphone_permission_desc" formatted="false">• 插件可能需要调用相机拍照
+• 插件可能需要录音功能
+
+提示：这些权限仅在您安装的插件需要时才会使用。</string>
+    <string name="camera_permission" formatted="false">相机权限</string>
+    <string name="cancel" formatted="false">取消</string>
+    <string name="cancel_download" formatted="false">取消下载</string>
+    <string name="caption_font_size" formatted="false">辅助字体大小</string>
+    <string name="card_padding" formatted="false">卡片内边距</string>
+    <string name="card_radius" formatted="false">卡片圆角</string>
+    <string name="card_shadow" formatted="false">卡片阴影</string>
+    <string name="category_plugin_category_n">分类: %1$s\n</string>
+    <string name="category_updated" formatted="false">已修改分类为: %s</string>
+    <string name="cdn_acceleration" formatted="false">CDN 加速</string>
+    <string name="change_binary_file" formatted="false">更换二进制文件</string>
+    <string name="change_icon" formatted="false">更换图标</string>
+    <string name="changelog" formatted="false">更新日志</string>
+    <string name="check_for_updates" formatted="false">检查更新</string>
+    <string name="check_latest_github_version" formatted="false">检查GitHub最新版本</string>
+    <string name="check_update" formatted="false">检查更新</string>
+    <string name="check_update_desc" formatted="false">检查 GitHub 上的最新版本</string>
+    <string name="check_your_network_connection_and_re" formatted="false">请检查网络连接后刷新</string>
+    <string name="checking_for_updates" formatted="false">正在检查更新...</string>
+    <string name="checking_status_dots">&lt;span id="statusText">检测中...&lt;/span></string>
+    <string name="choose_a_plugin_as_a_home_screen_sho" formatted="false">选择一个插件作为桌面快捷方式</string>
+    <string name="choose_a_png_image_as_the_icon_optio" formatted="false">选择一个 PNG 图片作为图标（可选）</string>
+    <string name="choose_backend_language" formatted="false">选择后端语言</string>
+    <string name="choose_file_manager" formatted="false">选择文件管理器</string>
+    <string name="choose_frontend_type" formatted="false">选择前端类型</string>
+    <string name="choose_plugins_to_display_applied_to" formatted="false">选择要显示的插件，将应用到所有小部件</string>
+    <string name="choose_plugins_to_show_up_to_3_shown" formatted="false">选择要显示的插件（最多3个，显示在前3个位置）</string>
+    <string name="choose_shortcut_plugin" formatted="false">选择快捷方式插件</string>
+    <string name="choose_the_plugin_frontend_ui_type" formatted="false">请选择插件的前端 UI 类型：</string>
+    <string name="choose_the_web_plugin_backend_langua" formatted="false">请选择 Web 插件的后端语言：</string>
+    <string name="cleaning_queuekey_queue_removed_remo">🧹 清理 %1$s 队列: 移除 %2$s 条过期消息</string>
+    <string name="cleaning_up_temporary_files" formatted="false">清理临时文件...</string>
+    <string name="clear" formatted="false">清空</string>
+    <string name="clear_2" formatted="false">清除</string>
+    <string name="clear_all_historical_log_files" formatted="false">确定要清空所有历史日志文件吗？</string>
+    <string name="clear_all_logs_confirm" formatted="false">确定要清空所有历史日志文件吗？</string>
+    <string name="clear_log_confirm" formatted="false">确定要清空今天的日志记录吗？</string>
+    <string name="clear_search" formatted="false">清除搜索</string>
+    <string name="clearing_all_kv_data" formatted="false">清除所有KV数据</string>
+    <string name="clearing_permission_config_pluginid">清除权限配置: %1$s</string>
+    <string name="click_me">点我</string>
+    <string name="clipboard_api_failed_js">Clipboard API 失败: </string>
+    <string name="close" formatted="false">关闭</string>
+    <string name="code_pre_button_class_copy_btn_oncli" formatted="false">&lt;/code>&lt;/pre>&lt;button class=\'copy-btn\' onclick=\'copyCode(this)\'>📋 复制&lt;/button>&lt;/div>\n</string>
+    <string name="code_updated_updatedfiles_size_file_">代码已更新，共 %1$s 个文件</string>
+    <string name="collapse_sidebar" formatted="false">收起侧边栏</string>
+    <string name="color_parse_failed_key_using_default">颜色解析失败: %1$s, 使用默认颜色</string>
+    <string name="colors" formatted="false">颜色</string>
+    <string name="compilation_failed_error">❌ 编译失败: %1$s</string>
+    <string name="compilation_failed_error_2">编译失败: %1$s</string>
+    <string name="compilation_failed_error_4">编译失败: %1$s</string>
+    <string name="compile" formatted="false">编译</string>
+    <string name="compile_and_package_complete" formatted="false">✅ 编译打包完成!</string>
+    <string name="compile_and_package_successful_n_out">✅ 编译打包成功!\n%1$s</string>
+    <string name="compile_package_exception" formatted="false">编译打包异常</string>
+    <string name="compile_package_exception_e_message">编译打包异常: %1$s</string>
+    <string name="compiling_java_code" formatted="false">开始编译 Java 代码...</string>
+    <string name="compose_dialog_overlay_added_above_w" formatted="false">✅ Compose 对话框覆盖层已添加在 WebView 之上（初始</string>
+    <string name="conditions_met_calling_pluginbackend" formatted="false">✅ 条件满足，调用 PluginBackendManager.startBackend()</string>
+    <string name="conditions_met_starting_backend" formatted="false">✅ 条件满足，准备启动后端</string>
+    <string name="conditions_not_met_skipping_backend_" formatted="false">❌ 条件不满足，跳过启动后端</string>
+    <string name="config_exported" formatted="false">配置已导出</string>
+    <string name="config_imported" formatted="false">配置已导入</string>
+    <string name="config_loaded" formatted="false">配置加载完成</string>
+    <string name="config_reset" formatted="false">配置已重置</string>
+    <string name="config_saved" formatted="false">配置已保存</string>
+    <string name="config_saved_2" formatted="false">配置保存成功</string>
+    <string name="config_saved_and_refreshed" formatted="false">配置已保存并刷新</string>
+    <string name="configure_home_screen_widget" formatted="false">配置桌面小部件</string>
+    <string name="configure_mirror_acceleration" formatted="false">配置镜像站加速</string>
+    <string name="configure_plugin_info" formatted="false">配置插件信息</string>
+    <string name="configure_shortcuts_and_widgets" formatted="false">配置快捷方式和小部件</string>
+    <string name="configure_widget" formatted="false">配置小部件</string>
+    <string name="configured_mirror_unavailable_trying" formatted="false">配置镜像不可用，尝试默认镜像</string>
+    <string name="confirm" formatted="false">确定</string>
+    <string name="confirm_2" formatted="false">确认</string>
+    <string name="confirm_clear" formatted="false">确认清空</string>
+    <string name="confirm_delete" formatted="false">确认删除</string>
+    <string name="confirm_reset" formatted="false">确认重置</string>
+    <string name="confirm_restore" formatted="false">确认恢复</string>
+    <string name="connected_port_js">已连接 (端口 </string>
+    <string name="contacts" formatted="false">联系人</string>
+    <string name="contacts_permission" formatted="false">联系人权限</string>
+    <string name="content_is_empty" formatted="false">内容为空</string>
+    <string name="context_is_not_an_activity_cannot_re" formatted="false">Context 不是 Activity，无法请求权限</string>
+    <string name="contributors" formatted="false">贡献者</string>
+    <string name="copied_js">✓ 已复制</string>
+    <string name="copied_to_clipboard" formatted="false">已复制到剪贴板</string>
+    <string name="copied_to_clipboard_text_take_50">复制到剪贴板: %1$s...</string>
+    <string name="copy" formatted="false">复制</string>
+    <string name="copy_failed" formatted="false">复制失败</string>
+    <string name="copy_failed_e_message">复制失败: %1$s</string>
+    <string name="copy_failed_js">复制失败: </string>
+    <string name="copy_js">📋 复制</string>
+    <string name="copying_asset_to_cache_cachefile_abs">复制资产到缓存: %1$s</string>
+    <string name="copying_offline_package" formatted="false">正在复制离线安装包...</string>
+    <string name="could_not_get_cpu_info" formatted="false">无法获取CPU信息</string>
+    <string name="could_not_get_host_activity" formatted="false">无法获取宿主Activity</string>
+    <string name="could_not_get_plugin_icon" formatted="false">无法获取插件图标</string>
+    <string name="could_not_infer_scope_langdir_gramma">⚠️ 无法推断 scope: %1$s/%2$s</string>
+    <string name="crash_report_n" formatted="false">================== 异常报告 ==================\n</string>
+    <string name="create_a_shortcut_for_plugin_name_on">是否在桌面创建 "%1$s" 的快捷方式？</string>
+    <string name="create_a_shortcut_for_plugin_name_on_2">是否在桌面创建 "%1$s" 的快捷方式？</string>
+    <string name="create_backup" formatted="false">创建备份</string>
+    <string name="create_binary_backend_plugin" formatted="false">创建二进制后端插件</string>
+    <string name="create_cui_plugin" formatted="false">创建 CUI 插件</string>
+    <string name="create_native_plugin" formatted="false">创建原生插件</string>
+    <string name="create_plugin" formatted="false">创建插件</string>
+    <string name="create_shortcut" formatted="false">创建快捷方式</string>
+    <string name="create_uin_tool_plugins_with_native_" formatted="false">创建 UIN Tool 插件，支持原生、Web 和 CUI 终端三种前端，多种后端语言</string>
+    <string name="create_web_backend_plugin" formatted="false">创建 Web + 后端插件</string>
+    <string name="create_web_plugin" formatted="false">创建 Web 插件</string>
+    <string name="creating_backup" formatted="false">正在创建备份...</string>
+    <string name="creating_codeeditor_instance_factory" formatted="false">创建 CodeEditor 实例 (factory)</string>
+    <string name="creating_directory_path">创建目录: %1$s</string>
+    <string name="creating_dynamic_shortcut_plugin_nam">创建动态快捷方式: %1$s</string>
+    <string name="creating_legacy_shortcut_plugin_name">创建旧版快捷方式: %1$s</string>
+    <string name="creating_shortcut" formatted="false">正在创建快捷方式...</string>
+    <string name="creating_work_directory_defaultfolde">创建工作目录: %1$s</string>
+    <string name="creating_work_directory_folder_absol">创建工作目录: %1$s</string>
+    <string name="cui_placeholder_view_created" formatted="false">✅ CUI 占位视图已创建</string>
+    <string name="cui_placeholder_view_creation_error" formatted="false">❌ CUI 占位视图创建异常</string>
+    <string name="cui_plugin_dev_tips">CUI 终端插件开发\n\n• 插件打开后会在全屏终端中运行启动命令\n• 默认启动命令：python3 scripts/script.py\n• 脚本需为 Python/Shell 等可执行脚本\n• 可在「配置插件信息」步骤修改启动命令\n• 点击「打开代码编辑器」编辑脚本文件\n\n当前已生成 %1$s 个文件</string>
+    <string name="cui_plugin_load_failed_e_message">CUI 插件加载失败: %1$s</string>
+    <string name="cui_plugin_loading_placeholder_view" formatted="false">📞 CUI 插件：加载占位视图</string>
+    <string name="cui_plugin_script_comment"># CUI 插件终端示例脚本，插件打开后在此终端中运行。</string>
+    <string name="cui_plugin_terminal" formatted="false">CUI 插件终端</string>
+    <string name="cui_plugin_terminal_started" formatted="false"> CUI 插件终端已启动</string>
+    <string name="cui_terminal" formatted="false">CUI 终端</string>
+    <string name="cui_terminal_command_line" formatted="false">CUI 终端 (命令行界面)</string>
+    <string name="cui_terminal_plugin_example_fullscre" formatted="false">CUI 终端插件示例（全屏终端执行脚本）</string>
+    <string name="cui_terminal_session_started" formatted="false">✅ 已启动 CUI 终端会话</string>
+    <string name="cui_terminal_start_error_e_message">❌ CUI 终端启动异常: %1$s</string>
+    <string name="cui_terminal_start_failed_e_message">CUI 终端启动失败: %1$s</string>
+    <string name="current_theme" formatted="false">当前主题</string>
+    <string name="current_version" formatted="false">当前版本</string>
+    <string name="currently_selected_selected">当前选中: %1$s</string>
+    <string name="currentversionname_code_currentversi">%1$s (代码: %2$s)</string>
+    <string name="custom_backend_plugin_example_other_" formatted="false">自定义后端插件示例（other 模式，pre-command 手动启动）</string>
+    <string name="custom_manual_start" formatted="false">自定义（手动启动）</string>
+    <string name="dark_primary" formatted="false">深色主题色</string>
+    <string name="dark_theme" formatted="false">深色主题</string>
+    <string name="data_migration_currentversion_info_v">数据迁移: %1$s -> %2$s</string>
+    <string name="data_version_check_failed" formatted="false">数据版本检查失败</string>
+    <string name="declared_permissions_plugin_permissi">声明权限: %1$s 个</string>
+    <string name="declared_permissions_plugin_permissi_2">声明权限: %1$s 项</string>
+    <string name="default_label" formatted="false">默认</string>
+    <string name="default_theme_one_dark_pro" formatted="false">🎨 默认主题: one-dark-pro</string>
+    <string name="deferred_backend_not_started_needs_p" formatted="false">已稍后处理，后端未启动（需执行启动前命令）</string>
+    <string name="delete" formatted="false">删除</string>
+    <string name="delete_1_s">确定要删除 "%1$s" 吗？</string>
+    <string name="delete_1_s_2">确定要删除 "%1$s" 吗？</string>
+    <string name="delete_backup_backup_name">确定要删除备份 "%1$s" 吗？</string>
+    <string name="delete_backup_backup_name_2">确定要删除备份 "%1$s" 吗？</string>
+    <string name="delete_failed" formatted="false">删除失败</string>
+    <string name="delete_failed_e_message">删除失败: %1$s</string>
+    <string name="delete_mirror" formatted="false">删除镜像</string>
+    <string name="delete_plugin_showdeletedialog_name_">确定要删除插件 "%1$s" 吗？\n\n删除后插件数据将被清除，不可恢复。</string>
+    <string name="delete_plugin_showdeletedialog_name__2">确定要删除插件 "%1$s" 吗？\n\n删除后插件数据将被清除，不可恢复。</string>
+    <string name="delete_showdeleteconfirm">确定要删除 "%1$s" 吗？</string>
+    <string name="deleted" formatted="false">已删除</string>
+    <string name="deleted_count_log_file_s">已删除 %1$s 个日志文件</string>
+    <string name="deleting_backup_backup_name">删除备份: %1$s</string>
+    <string name="deleting_expired_log_file_name">删除过期日志: %1$s</string>
+    <string name="deleting_file_filename">删除文件: %1$s</string>
+    <string name="denied" formatted="false">已拒绝</string>
+    <string name="description" formatted="false">描述</string>
+    <string name="deselect_all" formatted="false">全不选</string>
+    <string name="deselect_all_2" formatted="false">取消全选</string>
+    <string name="desktop_widget" formatted="false">桌面小部件</string>
+    <string name="desktop_widget_desc" formatted="false">添加桌面小部件，快速启动插件</string>
+    <string name="develop_with_html_css_js_n_no_compil" formatted="false">• 使用 HTML/CSS/JS 开发\n• 无需编译，即改即用\n• JS 桥接调用原生功能</string>
+    <string name="developer" formatted="false">开发</string>
+    <string name="developer_2" formatted="false">开发者</string>
+    <string name="developer_options" formatted="false">开发者选项</string>
+    <string name="developer_options_desc" formatted="false">签名验证、调试设置等</string>
+    <string name="developer_tools" formatted="false">插件开发工具</string>
+    <string name="development_docs" formatted="false">开发文档</string>
+    <string name="device" formatted="false">设备</string>
+    <string name="device_build_manufacturer_build_mode">设备: %1$s %2$s\n</string>
+    <string name="dex_file_not_found_dexfile_absolutep">DEX文件不存在: %1$s</string>
+    <string name="dexclassloader_created" formatted="false">DexClassLoader 创建成功</string>
+    <string name="dialog_radius" formatted="false">对话框圆角</string>
+    <string name="dir_exists_plugindir_exists">📂 目录是否存在: %1$s</string>
+    <string name="direct_connection_available" formatted="false">直连可用</string>
+    <string name="directory_langdir_syntaxes_is_empty">⚠️ 目录 %1$s/syntaxes 为空</string>
+    <string name="disabled_color" formatted="false">禁用色</string>
+    <string name="div_class_toc_header_onclick_togglet" formatted="false">    &lt;div class=\'toc-header\' onclick=\'toggleToc()\'>📑 目录 &lt;span class=\'toc-toggle\'>▼&lt;/span>&lt;/div>\n</string>
+    <string name="divider_color" formatted="false">分割线色</string>
+    <string name="dns_resolution_failed" formatted="false">DNS 解析失败</string>
+    <string name="doc_about_desc" formatted="false">关于应用、版本信息</string>
+    <string name="doc_center_desc" formatted="false">使用帮助、开发文档、更新日志等</string>
+    <string name="doc_center_title" formatted="false">文档中心</string>
+    <string name="doc_changelog_desc" formatted="false">版本更新历史记录</string>
+    <string name="doc_contributors_desc" formatted="false">贡献者名单</string>
+    <string name="doc_dev_desc" formatted="false">插件开发文档、API 参考</string>
+    <string name="doc_help_desc" formatted="false">使用帮助、常见问题解答</string>
+    <string name="docs" formatted="false">文档</string>
+    <string name="docs_center" formatted="false">文档中心</string>
+    <string name="docs_center_feature_under_developmen" formatted="false">文档中心功能开发中</string>
+    <string name="docs_feature_under_development" formatted="false">文档功能开发中</string>
+    <string name="domestic_mirror" formatted="false">国内镜像</string>
+    <string name="don_t_ask_again" formatted="false">不再提示</string>
+    <string name="donate_preference_title" formatted="false">捐赠</string>
+    <string name="download" formatted="false">下载</string>
+    <string name="download_and_install_failed" formatted="false">下载安装失败</string>
+    <string name="download_app_updates" formatted="false">下载应用更新</string>
+    <string name="download_cancelled" formatted="false">下载已取消</string>
+    <string name="download_complete_file_absolutepath">下载完成: %1$s</string>
+    <string name="download_failed" formatted="false">下载失败</string>
+    <string name="download_failed_error">下载失败：%1$s</string>
+    <string name="download_failed_error_2">下载失败: %1$s</string>
+    <string name="download_failed_response_code">下载失败: %1$s</string>
+    <string name="download_in_progress" formatted="false">下载正在进行中</string>
+    <string name="download_link_is_empty" formatted="false">下载链接为空</string>
+    <string name="download_progress_progress">下载进度: %1$s%%</string>
+    <string name="download_progress_progress_2">下载进度: %1$s%%</string>
+    <string name="download_successful" formatted="false">下载成功</string>
+    <string name="download_update" formatted="false">下载更新</string>
+    <string name="downloading_0" formatted="false">下载中... 0%%</string>
+    <string name="downloading_0_2" formatted="false">下载中... 0%%</string>
+    <string name="downloading_downloadprogress_plugini">正在下载: %1$s</string>
+    <string name="downloading_progress_downloadedstr_t">下载中... %1$s%% (%2$s/%3$s)</string>
+    <string name="downloading_progress_downloadedstr_t_2">下载中... %1$s%% (%2$s/%3$s)</string>
+    <string name="downloading_release_versionname">正在下载 %1$s...</string>
+    <string name="downloading_release_versionname_prog">正在下载 %1$s... %2$s%% (%3$s/%4$s)</string>
+    <string name="downloading_release_versionname_prog_2">正在下载 %1$s... %2$s%% (%3$s/%4$s)</string>
+    <string name="downloading_uin_tool_versionname">正在下载 UIN Tool %1$s</string>
+    <string name="downloading_update" formatted="false">正在下载更新</string>
+    <string name="due_to_a_package_name_change_pkg_can" formatted="false">⚠️ 由于包名变更，终端内暂时无法使用 pkg 安装软件包，\n</string>
+    <string name="dynamic_shortcuts_refreshed" formatted="false">刷新动态快捷方式完成</string>
+    <string name="e_g_apk_add_python3_pip_install_r_re" formatted="false">如：apk add python3 &amp;&amp; pip install -r requirements.txt</string>
+    <string name="e_g_fastgit" formatted="false">如: FastGit</string>
+    <string name="edit" formatted="false">编辑</string>
+    <string name="edit_html_css_js_or_import_an_existi" formatted="false">编辑 HTML/CSS/JS 或导入已有项目</string>
+    <string name="edit_plugin_json" formatted="false">编辑 plugin.json</string>
+    <string name="edit_terminal_script" formatted="false">编辑终端脚本</string>
+    <string name="edit_the_terminal_launch_script_that" formatted="false">编辑终端启动脚本，插件打开后会在终端中运行</string>
+    <string name="editor_created" formatted="false">✅ 编辑器创建完成</string>
+    <string name="editor_instance_is_null_waiting_to_b" formatted="false">编辑器实例为 null，等待创建</string>
+    <string name="editor_updated_language_and_theme_ap" formatted="false">✅ 编辑器更新完成: 语言和主题已应用</string>
+    <string name="effects" formatted="false">特效</string>
+    <string name="empty" formatted="false">空</string>
+    <string name="empty_doc_h1">📄 空文档</string>
+    <string name="empty_doc_p">文档内容为空</string>
+    <string name="enable_special_permissions_manually_" formatted="false">特殊权限请在系统设置中手动开启</string>
+    <string name="end_of_crash_report_n" formatted="false">================== 异常报告结束 ==================\n</string>
+    <string name="entry_file" formatted="false">入口文件</string>
+    <string name="entry_file_not_found_using_default_p">入口文件不存在，使用默认页面: %1$s</string>
+    <string name="entry_file_not_found_using_default_p_2" formatted="false">⚠️ 入口文件不存在，使用默认页面</string>
+    <string name="entry_path_entrypath">📄 入口路径: %1$s</string>
+    <string name="entry_path_indexpath">📄 入口路径: %1$s</string>
+    <string name="env_pipeline_backend_callback_succes">📊 环境流水线后端启动回调: success=%1$s, port=%2$s, error=%3$s</string>
+    <string name="environment_setup_failed" formatted="false">环境准备失败</string>
+    <string name="error" formatted="false">错误</string>
+    <string name="error_color" formatted="false">错误色</string>
+    <string name="error_could_not_get_activity" formatted="false">{"error":"无法获取Activity"}</string>
+    <string name="error_could_not_get_activity_2" formatted="false">{"error":"无法获取Activity"}</string>
+    <string name="error_could_not_get_address" formatted="false">{"error":"无法获取地址"}</string>
+    <string name="error_could_not_get_address_2" formatted="false">{"error":"无法获取地址"}</string>
+    <string name="error_could_not_get_location" formatted="false">{"error":"无法获取位置"}</string>
+    <string name="error_could_not_get_location_2" formatted="false">{"error":"无法获取位置"}</string>
+    <string name="error_display_over_other_apps_permission_not_granted_to_start_terminal" formatted="false">&TERMUX_APP_NAME; 需要「显示在其他应用上层」权限才能在 Android 10+ 上从后台启动终端会话。\n请在 设置 -> 应用 -> &TERMUX_APP_NAME; -> 高级 中授予。</string>
+    <string name="error_no_name_sensor">{"error":"无%1$s传感器"}</string>
+    <string name="error_no_name_sensor_2">{"error":"无%1$s传感器"}</string>
+    <string name="error_no_wifi_connection" formatted="false">{"error":"无WiFi连接"}</string>
+    <string name="error_no_wifi_connection_2" formatted="false">{"error":"无WiFi连接"}</string>
+    <string name="error_run_command_service_api_help">访问 %1$s 了解 RUN_COMMAND Intent 的更多用法。</string>
+    <string name="error_run_command_service_invalid_execution_command_runner">传递给 RunCommandService 的执行命令运行器无效：`%1$s`</string>
+    <string name="error_run_command_service_invalid_intent_action">传递给 RunCommandService 的 Intent Action 无效：`%1$s`</string>
+    <string name="error_run_command_service_mandatory_extra_missing">传递给 RunCommandService 的必需 Extra 缺失："%1$s"</string>
+    <string name="error_styling_not_installed" formatted="false">未安装 &TERMUX_STYLING_APP_NAME; 插件应用。</string>
+    <string name="error_termux_service_execution_command_shell_name_unset">Shell 名称未设置，但传入了 `%1$s` Shell 创建模式</string>
+    <string name="error_termux_service_invalid_execution_command_runner">传递给 TermuxService 的执行命令运行器无效：`%1$s`</string>
+    <string name="error_termux_service_start_failed_bg" formatted="false">由于 Android 后台限制，应用在后台时无法启动 TermuxService。</string>
+    <string name="error_termux_service_start_failed_general" formatted="false">启动 TermuxService 失败。请检查 logcat 中的异常信息。</string>
+    <string name="error_termux_service_unsupported_execution_command_runner">传递给 TermuxService 的执行命令运行器不支持：`%1$s`</string>
+    <string name="error_termux_service_unsupported_execution_command_shell_create_mode">传递给 TermuxService 的 Shell 创建模式不支持：`%1$s`</string>
+    <string name="event_bus_cleared" formatted="false">事件总线已清理</string>
+    <string name="event_dispatch_error_e_message">事件分发异常: %1$s</string>
+    <string name="exception_e_message">❌ 异常: %1$s</string>
+    <string name="exception_message_throwable_message_">异常信息: %1$s\n</string>
+    <string name="exception_recorded_throwable_message">异常已记录: %1$s</string>
+    <string name="exception_type_throwable_javaclass_n">异常类型: %1$s\n</string>
+    <string name="executing_command">📝 执行命令: %1$s</string>
+    <string name="executing_command_jointostring">📝 执行命令: %1$s</string>
+    <string name="exists" formatted="false">存在</string>
+    <string name="exists_file_interpreter_exists">🔧 是否存在: %1$s</string>
+    <string name="exit" formatted="false">退出</string>
+    <string name="exit_app" formatted="false">退出应用</string>
+    <string name="exit_code_exitcode_if_errmsg_isnotem">退出码: %1$s%2$s</string>
+    <string name="exit_uin_tool" formatted="false">确定要退出 UIN Tool 吗？</string>
+    <string name="expand_sidebar" formatted="false">展开侧边栏</string>
+    <string name="export" formatted="false">导出</string>
+    <string name="export_action" formatted="false">导出</string>
+    <string name="export_done_successcount_succeeded_f">导出完成 (成功 %1$s 个, 失败 %2$s 个)\n%3$s</string>
+    <string name="export_failed_e_message">导出失败: %1$s</string>
+    <string name="export_result_count_fail">成功导出 %1$s 个插件到:
+%2$s
+
+失败 %3$s 个：
+%4$s</string>
+    <string name="export_selectedpluginids_size">导出 (%1$s)</string>
+    <string name="export_successful" formatted="false">导出成功</string>
+    <string name="export_successful_info_name">导出成功: %1$s</string>
+    <string name="export_template" formatted="false">导出模板</string>
+    <string name="export_time">导出时间: %1$s</string>
+    <string name="exported_mirror_list" formatted="false">导出镜像站列表</string>
+    <string name="exported_successcount_plugin_templat">已导出 %1$s 个插件模板到:\n%2$s</string>
+    <string name="exporting" formatted="false">导出中...</string>
+    <string name="exporting_info_name">正在导出: %1$s</string>
+    <string name="exporting_plugins" formatted="false">正在导出插件...</string>
+    <string name="exporting_template_file_name">导出模板文件: %1$s</string>
+    <string name="extra_large_radius" formatted="false">超大圆角</string>
+    <string name="extracting_backup_file" formatted="false">解压备份文件...</string>
+    <string name="extraction_complete_preparing_to_res" formatted="false">解压完成，准备恢复...</string>
+    <string name="extraction_failed" formatted="false">解压失败</string>
+    <string name="failed_js">❌ 失败</string>
+    <string name="failed_to_add_file_entryname">添加文件失败: %1$s</string>
+    <string name="failed_to_add_file_to_zip_file_absol">添加文件到ZIP失败: %1$s</string>
+    <string name="failed_to_add_file_to_zip_file_name">添加文件到ZIP失败: %1$s</string>
+    <string name="failed_to_add_shortcut_e_message">添加快捷方式失败: %1$s</string>
+    <string name="failed_to_add_widget_e_message">添加小部件失败: %1$s</string>
+    <string name="failed_to_call_plugin_method_plugini">❌ 调用插件方法失败: %1$s.%2$s</string>
+    <string name="failed_to_check_task_e_message">检查任务失败: %1$s</string>
+    <string name="failed_to_clear_cache" formatted="false">清理缓存失败</string>
+    <string name="failed_to_clear_data_e_message">清理数据失败: %1$s</string>
+    <string name="failed_to_close_plugin_activity_e_me">关闭插件 Activity 失败: %1$s</string>
+    <string name="failed_to_compress_directory" formatted="false">压缩目录失败</string>
+    <string name="failed_to_compute_hash_file_absolute">计算哈希失败: %1$s</string>
+    <string name="failed_to_copy_asset_assetpath">复制资产失败: %1$s</string>
+    <string name="failed_to_copy_binary_file" formatted="false">二进制文件复制失败</string>
+    <string name="failed_to_copy_directory" formatted="false">复制目录失败</string>
+    <string name="failed_to_copy_file_name_e_message">复制文件失败: %1$s - %2$s</string>
+    <string name="failed_to_copy_offline_alpine_backup">复制离线 Alpine 备份失败: %1$s</string>
+    <string name="failed_to_copy_offline_package" formatted="false">复制离线安装包失败</string>
+    <string name="failed_to_copy_uri_to_file" formatted="false">复制Uri到文件失败</string>
+    <string name="failed_to_create_backup" formatted="false">创建备份失败</string>
+    <string name="failed_to_create_directory_e_message">创建目录失败: %1$s</string>
+    <string name="failed_to_create_directory_path">创建目录失败: %1$s</string>
+    <string name="failed_to_create_legacy_shortcut" formatted="false">创建旧版快捷方式失败</string>
+    <string name="failed_to_create_shortcut" formatted="false">创建快捷方式失败</string>
+    <string name="failed_to_create_work_directory" formatted="false">创建工作目录失败</string>
+    <string name="failed_to_create_work_directory_e_me">创建工作目录失败: %1$s</string>
+    <string name="failed_to_delete_backup" formatted="false">删除备份失败</string>
+    <string name="failed_to_delete_data" formatted="false">删除数据失败</string>
+    <string name="failed_to_delete_file_absolutepath">删除失败: %1$s</string>
+    <string name="failed_to_delete_file_filename">删除文件失败: %1$s</string>
+    <string name="failed_to_download_file" formatted="false">下载文件失败</string>
+    <string name="failed_to_enumerate_assets_e_message">枚举 assets 失败: %1$s</string>
+    <string name="failed_to_export_config" formatted="false">导出配置失败</string>
+    <string name="failed_to_export_mirrors" formatted="false">导出镜像失败</string>
+    <string name="failed_to_export_plugin" formatted="false">导出插件失败</string>
+    <string name="failed_to_export_template" formatted="false">导出模板失败</string>
+    <string name="failed_to_extract_backup" formatted="false">解压备份失败</string>
+    <string name="failed_to_extract_zip_file" formatted="false">解压ZIP文件失败</string>
+    <string name="failed_to_fetch_release_reponame">获取Release失败: %1$s</string>
+    <string name="failed_to_fetch_releases" formatted="false">获取Releases失败</string>
+    <string name="failed_to_fetch_repo_list" formatted="false">获取仓库列表失败</string>
+    <string name="failed_to_generate_cui_script" formatted="false">生成 CUI 脚本失败</string>
+    <string name="failed_to_generate_java_code" formatted="false">生成Java代码失败</string>
+    <string name="failed_to_generate_placeholder_tpk" formatted="false">生成占位 TPK 失败</string>
+    <string name="failed_to_generate_project_files" formatted="false">❌ 生成项目文件失败</string>
+    <string name="failed_to_generate_project_files_2" formatted="false">生成项目文件失败</string>
+    <string name="failed_to_generate_readme" formatted="false">生成README失败</string>
+    <string name="failed_to_generate_template" formatted="false">生成模板失败</string>
+    <string name="failed_to_generate_web_template" formatted="false">生成Web模板失败</string>
+    <string name="failed_to_get_activity" formatted="false">无法获取Activity</string>
+    <string name="failed_to_get_plugin_icon" formatted="false">获取插件图标失败</string>
+    <string name="failed_to_get_plugin_info_e_message">获取插件信息失败: %1$s</string>
+    <string name="failed_to_get_plugincontext" formatted="false">获取PluginContext失败</string>
+    <string name="failed_to_get_version_code" formatted="false">获取版本号失败</string>
+    <string name="failed_to_import_config" formatted="false">导入配置失败</string>
+    <string name="failed_to_import_data" formatted="false">导入数据失败</string>
+    <string name="failed_to_import_mirrors" formatted="false">导入镜像失败</string>
+    <string name="failed_to_import_plugin_set" formatted="false">导入插件集失败</string>
+    <string name="failed_to_import_plugin_set_e_messag">导入插件集失败: %1$s</string>
+    <string name="failed_to_import_web_project" formatted="false">导入Web项目失败</string>
+    <string name="failed_to_install_proot_distro_insta">安装 proot-distro 失败: %1$s</string>
+    <string name="failed_to_list_files" formatted="false">列出文件失败</string>
+    <string name="failed_to_load_1x1_icon_e_message">加载1x1图标失败: %1$s</string>
+    <string name="failed_to_load_backup_list" formatted="false">加载备份列表失败</string>
+    <string name="failed_to_load_backups" formatted="false">加载备份失败</string>
+    <string name="failed_to_load_document_e_message">加载文档失败: %1$s</string>
+    <string name="failed_to_load_document_filename">加载文档失败: %1$s</string>
+    <string name="failed_to_load_grammar_langdir">❌ 加载语法失败: %1$s</string>
+    <string name="failed_to_load_help_document" formatted="false">加载帮助文档失败</string>
+    <string name="failed_to_load_help_document_e_messa">加载帮助文档失败: %1$s</string>
+    <string name="failed_to_load_log_e_message">加载日志失败: %1$s</string>
+    <string name="failed_to_load_logs" formatted="false">加载日志失败</string>
+    <string name="failed_to_load_mirrors" formatted="false">加载镜像站失败</string>
+    <string name="failed_to_load_plugins" formatted="false">加载插件失败</string>
+    <string name="failed_to_load_template_templatepath">加载模板失败: %1$s</string>
+    <string name="failed_to_notify_widget_refresh" formatted="false">通知小部件刷新失败</string>
+    <string name="failed_to_open_browser" formatted="false">打开浏览器失败</string>
+    <string name="failed_to_open_config_e_message">打开配置失败: %1$s</string>
+    <string name="failed_to_open_document_e_message">无法打开文档: %1$s</string>
+    <string name="failed_to_open_host_e_message">打开宿主失败: %1$s</string>
+    <string name="failed_to_open_link_e_message">打开链接失败: %1$s</string>
+    <string name="failed_to_open_log_page" formatted="false">跳转日志页面失败</string>
+    <string name="failed_to_open_main_screen_e_message">打开主界面失败: %1$s</string>
+    <string name="failed_to_open_plugin_pluginid">❌ 打开插件失败: %1$s</string>
+    <string name="failed_to_open_plugin_wizard" formatted="false">跳转插件向导失败</string>
+    <string name="failed_to_open_settings" formatted="false">打开设置失败</string>
+    <string name="failed_to_open_settings_e_message">启动设置失败: %1$s</string>
+    <string name="failed_to_open_settings_e_message_2">无法打开设置: %1$s</string>
+    <string name="failed_to_open_storage_permission_se" formatted="false">打开存储权限设置失败</string>
+    <string name="failed_to_open_terminal_settings" formatted="false">启动终端设置失败</string>
+    <string name="failed_to_open_widget_config" formatted="false">打开小部件配置失败</string>
+    <string name="failed_to_parse_app_settings" formatted="false">解析应用设置失败</string>
+    <string name="failed_to_parse_config_using_default" formatted="false">解析配置失败，使用默认配置</string>
+    <string name="failed_to_parse_json_key">解析JSON失败: %1$s</string>
+    <string name="failed_to_parse_mirror_config" formatted="false">解析镜像配置失败</string>
+    <string name="failed_to_parse_mirror_line_line">解析镜像行失败: %1$s</string>
+    <string name="failed_to_parse_release" formatted="false">解析Release失败</string>
+    <string name="failed_to_parse_work_directory_confi" formatted="false">解析工作目录配置失败</string>
+    <string name="failed_to_read_file" formatted="false">无法读取文件</string>
+    <string name="failed_to_read_file_file_absolutepat">读取文件失败: %1$s</string>
+    <string name="failed_to_read_file_filename">读取文件失败: %1$s</string>
+    <string name="failed_to_read_log_e_message">读取日志失败: %1$s</string>
+    <string name="failed_to_read_shared_file_filename">读取共享文件失败: %1$s</string>
+    <string name="failed_to_record_exception" formatted="false">记录异常失败</string>
+    <string name="failed_to_refresh_all_widgets_e_mess">刷新所有小部件失败: %1$s</string>
+    <string name="failed_to_refresh_plugin_list" formatted="false">刷新插件列表失败</string>
+    <string name="failed_to_refresh_shortcuts" formatted="false">刷新快捷方式失败</string>
+    <string name="failed_to_refresh_widget" formatted="false">刷新小部件失败</string>
+    <string name="failed_to_refresh_widget_e_message">刷新小部件失败: %1$s</string>
+    <string name="failed_to_remove_shortcut" formatted="false">移除快捷方式失败</string>
+    <string name="failed_to_request_permissions" formatted="false">请求权限失败</string>
+    <string name="failed_to_request_permissions_e_mess">请求权限失败: %1$s</string>
+    <string name="failed_to_restore_backup" formatted="false">恢复备份失败</string>
+    <string name="failed_to_restore_ui_config" formatted="false">恢复UI配置失败</string>
+    <string name="failed_to_save_screenshot" formatted="false">保存截图失败</string>
+    <string name="failed_to_save_screenshot_e_message">保存截图失败: %1$s</string>
+    <string name="failed_to_select_binary_file" formatted="false">选择二进制文件失败</string>
+    <string name="failed_to_send_notification" formatted="false">发送通知失败</string>
+    <string name="failed_to_set_default_theme" formatted="false">设置默认主题失败</string>
+    <string name="failed_to_set_language_e_message_for">⚠️ 设置语言失败: %1$s for %2$s</string>
+    <string name="failed_to_start_install" formatted="false">启动安装失败</string>
+    <string name="failed_to_start_plugin_e_message">启动插件失败: %1$s</string>
+    <string name="failed_to_start_terminal" formatted="false">启动终端失败</string>
+    <string name="failed_to_start_terminal_e_message">启动终端失败: %1$s</string>
+    <string name="failed_to_start_terminal_e_message_2">❌ 启动终端失败: %1$s</string>
+    <string name="failed_to_test_mirrors" formatted="false">测试镜像失败</string>
+    <string name="failed_to_uninstall_old_version" formatted="false">卸载旧版本失败</string>
+    <string name="failed_to_unregister_broadcast_recei" formatted="false">注销广播接收器失败</string>
+    <string name="failed_to_unzip_zipfile_absolutepath">解压失败: %1$s</string>
+    <string name="failed_to_update_boolean" formatted="false">更新布尔值失败</string>
+    <string name="failed_to_update_category" formatted="false">更新分类失败</string>
+    <string name="failed_to_update_color" formatted="false">更新颜色失败</string>
+    <string name="failed_to_update_shape" formatted="false">更新形状失败</string>
+    <string name="failed_to_update_size" formatted="false">更新尺寸失败</string>
+    <string name="failed_to_write_file_file_absolutepa">写入文件失败: %1$s</string>
+    <string name="failed_to_write_file_filename">写入文件失败: %1$s</string>
+    <string name="failed_to_write_shared_file_filename">写入共享文件失败: %1$s</string>
+    <string name="fast_domestic_mirror" formatted="false">国内高速镜像</string>
+    <string name="feature_under_development_e_message">功能开发中: %1$s</string>
+    <string name="file" formatted="false">文件</string>
+    <string name="file_content_optional" formatted="false">文件内容（可选）</string>
+    <string name="file_description" formatted="false">文件说明:</string>
+    <string name="file_exists_entryfile_exists">📄 文件是否存在: %1$s</string>
+    <string name="file_exists_file_indexpath_exists">📄 文件是否存在: %1$s</string>
+    <string name="file_is_empty" formatted="false">文件为空</string>
+    <string name="file_list" formatted="false">文件列表</string>
+    <string name="file_name" formatted="false">文件名</string>
+    <string name="file_not_found_filename">文件不存在: %1$s</string>
+    <string name="file_not_found_filepath">文件不存在: %1$s</string>
+    <string name="file_selected" formatted="false">已选择文件</string>
+    <string name="filename_signature_verification_fail">%1$s (签名验证失败)</string>
+    <string name="fill_in_the_plugin_basic_configurati" formatted="false">填写插件的基本配置信息</string>
+    <string name="filteredplugins_size_plugin_s_in_tot">共 %1$s 个插件</string>
+    <string name="finish" formatted="false">完成</string>
+    <string name="first_import_recording_signature_fil">首次导入，记录签名: %1$s</string>
+    <string name="first_install_data_version_info_vers">首次安装，数据版本: %1$s</string>
+    <string name="flashlight" formatted="false">闪光灯</string>
+    <string name="fonts" formatted="false">字体</string>
+    <string name="for_checking_network_status" formatted="false">用于检查网络状态</string>
+    <string name="for_managing_all_files_in_the_plugin" formatted="false">用于管理插件目录的所有文件</string>
+    <string name="for_plugin_recording" formatted="false">用于插件录音功能</string>
+    <string name="for_reading_and_writing_plugin_files" formatted="false">用于读取和写入插件文件</string>
+    <string name="for_the_plugin_s_accessibility_autom" formatted="false">用于插件的无障碍自动化操作</string>
+    <string name="for_the_plugin_s_network_requests" formatted="false">用于插件网络请求</string>
+    <string name="for_the_plugin_s_vibration_feedback" formatted="false">用于插件震动反馈</string>
+    <string name="for_the_plugin_to_get_app_usage_stat" formatted="false">用于插件获取应用使用统计</string>
+    <string name="for_the_plugin_to_get_device_info" formatted="false">用于插件获取设备信息</string>
+    <string name="for_the_plugin_to_get_location" formatted="false">用于插件获取位置信息</string>
+    <string name="for_the_plugin_to_install_apps" formatted="false">用于插件安装应用</string>
+    <string name="for_the_plugin_to_make_phone_calls" formatted="false">用于插件拨打电话</string>
+    <string name="for_the_plugin_to_modify_system_sett" formatted="false">用于插件修改系统设置</string>
+    <string name="for_the_plugin_to_read_modify_calend" formatted="false">用于插件读取/修改日历</string>
+    <string name="for_the_plugin_to_read_modify_contac" formatted="false">用于插件读取/修改联系人</string>
+    <string name="for_the_plugin_to_read_sms" formatted="false">用于插件读取短信</string>
+    <string name="for_the_plugin_to_receive_sms" formatted="false">用于插件接收短信</string>
+    <string name="for_the_plugin_to_send_notifications" formatted="false">用于插件发送通知</string>
+    <string name="for_the_plugin_to_send_sms" formatted="false">用于插件发送短信</string>
+    <string name="for_the_plugin_to_show_overlays" formatted="false">用于插件显示悬浮窗</string>
+    <string name="for_the_plugin_to_take_photos_with_t" formatted="false">用于插件调用相机拍照</string>
+    <string name="found_alpine_offline_resource_assetn">检测到 Alpine 离线资源: %1$s</string>
+    <string name="found_languagedirs_size_language_dir">发现 %1$s 个目录</string>
+    <string name="found_pluginhostactivity_task_closin" formatted="false">找到 PluginHostActivity 任务，正在关闭...</string>
+    <string name="found_python_path">✅ 找到 Python: %1$s</string>
+    <string name="found_usable_default_mirror_mirror">找到可用默认镜像: %1$s</string>
+    <string name="found_usable_mirror_mirror">找到可用镜像: %1$s</string>
+    <string name="found_via_which_python3_result">✅ 通过 which python3 找到: %1$s</string>
+    <string name="found_via_which_result">✅ 通过 which 找到: %1$s</string>
+    <string name="full_api_test_plugin" formatted="false">全接口测试插件</string>
+    <string name="full_color_picker" formatted="false">完整颜色选择器</string>
+    <string name="full_replace_new_length_fulltext_len">全文替换，新长度: %1$s</string>
+    <string name="generate_project_files" formatted="false">生成项目文件</string>
+    <string name="generate_project_files_and_package_a" formatted="false">生成项目文件并打包为 TPK</string>
+    <string name="generate_the_project_structure_and_p" formatted="false">生成项目结构并打包为 TPK</string>
+    <string name="generated_placeholder_tpk_outputtpk_">已生成占位 TPK 文件: %1$s</string>
+    <string name="generating_project_files" formatted="false">生成项目文件...</string>
+    <string name="get_network_status" formatted="false">获取网络状态</string>
+    <string name="get_started" formatted="false">开始使用</string>
+    <string name="get_wifi_status" formatted="false">获取WiFi状态</string>
+    <string name="github_acceleration" formatted="false">GitHub加速</string>
+    <string name="github_acceleration_2" formatted="false">GitHub 加速</string>
+    <string name="github_acceleration_feature_under_de" formatted="false">GitHub加速功能开发中</string>
+    <string name="github_api_error_response_code">GitHub API错误: %1$s</string>
+    <string name="github_mirror_list_n_format_name_url" formatted="false"># GitHub 镜像站列表\n# 格式: 名称|URL|备注\n\n</string>
+    <string name="glass_background_color" formatted="false">玻璃背景色</string>
+    <string name="glass_effect" formatted="false">玻璃效果</string>
+    <string name="glass_effect_disabled" formatted="false">玻璃效果已禁用</string>
+    <string name="glass_effect_preview" formatted="false">玻璃效果预览</string>
+    <string name="global_config_saved_all_widgets_refr" formatted="false">全局配置已保存，所有小部件已刷新</string>
+    <string name="go_to_settings" formatted="false">去设置</string>
+    <string name="go_to_system_settings_to_enable_spec" formatted="false">去系统设置开启特殊权限</string>
+    <string name="going_cui_plugin_branch_embedded_ter" formatted="false">✅ 走 CUI 插件分支（内嵌终端，非悬浮窗）</string>
+    <string name="going_native_plugin_branch_uitype_in">走原生插件分支 (uiType = \'%1$s\')</string>
+    <string name="going_through_normal_backend_start" formatted="false">🔄 走常规后端启动</string>
+    <string name="going_through_proot_other_environmen" formatted="false">🔄 走 proot/other 环境流水线</string>
+    <string name="going_web_plugin_branch" formatted="false">✅ 走 Web 插件分支</string>
+    <string name="got_it" formatted="false">知道了</string>
+    <string name="got_widget_pin_broadcast_intent_acti">收到小部件固定广播: %1$s</string>
+    <string name="grammar_load_complete_success_loaded">语法加载完成 - 成功: %1$s, 失败: %2$s</string>
+    <string name="grammar_load_failed" formatted="false">语法加载失败</string>
+    <string name="grant" formatted="false">授权</string>
+    <string name="grant_2" formatted="false">去授权</string>
+    <string name="grant_all" formatted="false">一键授权</string>
+    <string name="grant_all_2" formatted="false">一键授权所有</string>
+    <string name="grant_all_permissions" formatted="false">一键授权所有权限</string>
+    <string name="granted" formatted="false">已授权</string>
+    <string name="granted_2" formatted="false">已授予</string>
+    <string name="granted_grantedcount_totalcount_n_n">已授权: %1$s / %2$s\n\n</string>
+    <string name="grantedcount_totalcount_granted">%1$s / %2$s 已授予</string>
+    <string name="grid_view" formatted="false">网格视图</string>
+    <string name="gyroscope" formatted="false">陀螺仪</string>
+    <string name="hasbackend_returns_false" formatted="false">   -> hasBackend() 返回 false</string>
+    <string name="health_check_attempts_attempt_s_last">📡 健康检查 %1$s 次: %2$s</string>
+    <string name="health_check_passed_after_attempts_a">✅ 健康检查成功 (尝试 %1$s 次)</string>
+    <string name="health_check_timed_out_after_attempt">❌ 健康检查超时 (尝试 %1$s 次): %2$s</string>
+    <string name="help" formatted="false">帮助</string>
+    <string name="help_2" formatted="false">使用帮助</string>
+    <string name="help_and_development_docs" formatted="false">使用帮助开发文档</string>
+    <string name="help_and_faq" formatted="false">使用帮助、常见问题解答</string>
+    <string name="hide" formatted="false">隐藏</string>
+    <string name="hide_password" formatted="false">隐藏密码</string>
+    <string name="hint_text_color" formatted="false">提示文本色</string>
+    <string name="host_must_not_be_empty" formatted="false">主机不能为空</string>
+    <string name="how_to_add_a_home_screen_widget" formatted="false">如何添加桌面小部件</string>
+    <string name="how_to_use" formatted="false">使用说明</string>
+    <string name="humidity" formatted="false">湿度</string>
+    <string name="i_have_always_wanted_a_truly_free_to" formatted="false">一直以来，我都希望能在手机上有一个真正自由的工具平台，\n</string>
+    <string name="i_hope_you_can_create_something_of_y" formatted="false">希望你能用它创造出属于你自己的东西，\n</string>
+    <string name="icon_preview" formatted="false">图标预览</string>
+    <string name="id_plugin_pluginid_version_plugin_ve">ID: %1$s | 版本: %2$s</string>
+    <string name="ignore" formatted="false">忽略</string>
+    <string name="ignore_signature_verification_dev_on" formatted="false">忽略签名验证（仅开发用）</string>
+    <string name="ignore_version_versionname">忽略版本: %1$s</string>
+    <string name="ignoring_force_update_tagname">忽略强制更新: %1$s</string>
+    <string name="implement_the_plugininterface" formatted="false">实现 PluginInterface 接口</string>
+    <string name="import_action" formatted="false">导入</string>
+    <string name="import_existing_web_project_zip" formatted="false">导入已有 Web 项目 (ZIP)</string>
+    <string name="import_export_and_uninstall_plugins" formatted="false">导入导出卸载插件</string>
+    <string name="import_export_plugin_files" formatted="false">导入/导出插件文件</string>
+    <string name="import_failed" formatted="false">导入失败</string>
+    <string name="import_failed_e_message">导入失败: %1$s</string>
+    <string name="import_failed_filename">导入失败: %1$s</string>
+    <string name="import_label" formatted="false">导入</string>
+    <string name="import_plugins_on_the_manage_page_fi" formatted="false">请先在管理页面导入插件</string>
+    <string name="import_result_count_fail">成功导入 %1$s 个插件，失败 %2$s 个：
+%3$s</string>
+    <string name="import_result_partial_fail">%1$s，失败 %2$s 个：
+%3$s</string>
+    <string name="import_successful_info_name">导入成功: %1$s</string>
+    <string name="imported_count_mirror_s">成功导入 %1$s 个镜像站</string>
+    <string name="imported_count_mirror_s_2">导入 %1$s 个镜像站</string>
+    <string name="in_custom_mode_the_host_won_t_auto_s" formatted="false">「自定义」模式：宿主不自动启动后端，由该命令在 Termux 终端中启动服务，首次执行成功后永久跳过</string>
+    <string name="include_app_settings" formatted="false">包含应用设置</string>
+    <string name="include_ui_config" formatted="false">包含 UI 配置</string>
+    <string name="incomplete_alpine_rootfs_found_clean" formatted="false">检测到不完整的 Alpine rootfs，先清理...</string>
+    <string name="info" formatted="false">提示</string>
+    <string name="info_color" formatted="false">信息色</string>
+    <string name="info_name_directory_does_not_exist">%1$s (目录不存在)</string>
+    <string name="initial_editor_text_length_initialco">编辑器初始文本长度: %1$s</string>
+    <string name="initializing_termux_base_environment" formatted="false">正在初始化 Termux 基础环境（首次约需 1-2 分钟，请稍候）...</string>
+    <string name="input_field_radius" formatted="false">输入框圆角</string>
+    <string name="install" formatted="false">安装</string>
+    <string name="install_failed" formatted="false">安装失败</string>
+    <string name="install_failed_e_message">安装失败: %1$s</string>
+    <string name="install_unknown_apps" formatted="false">安装未知应用</string>
+    <string name="installed" formatted="false">已安装</string>
+    <string name="installed_info_name">安装成功: %1$s</string>
+    <string name="installed_info_name_info_pluginid">安装成功: %1$s (%2$s)</string>
+    <string name="installing_proot_distro_requires_net" formatted="false">正在安装 proot-distro（需联网下载，约需数分钟，请耐心等待）...</string>
+    <string name="insufficient_disk_space" formatted="false">磁盘空间不足</string>
+    <string name="invalid_appwidgetid_finishing_activi" formatted="false">无效的 appWidgetId，结束 Activity</string>
+    <string name="invalid_download_link_please_try_aga" formatted="false">下载链接无效，请稍后重试</string>
+    <string name="invalid_file_path_filename">非法文件路径: %1$s</string>
+    <string name="invalid_file_path_filename_2">非法的文件路径: %1$s</string>
+    <string name="invalid_json" formatted="false">JSON格式错误</string>
+    <string name="invalid_plugin_id_it_should_be_a_rev" formatted="false">插件ID格式不正确，应为域名倒序格式</string>
+    <string name="invalid_plugin_json" formatted="false">plugin.json 格式错误</string>
+    <string name="invalid_port" formatted="false">端口无效</string>
+    <string name="invalid_url_e_message">URL格式错误: %1$s</string>
+    <string name="isbackendready_is_true" formatted="false">   -> isBackendReady 为 true</string>
+    <string name="it_is_just_a_framework_the_real_soul" formatted="false">它只是一个框架，真正的灵魂在于你 —— 每一位使用者。\n\n</string>
+    <string name="java_code_generated_javafilepath">生成Java代码完成: %1$s</string>
+    <string name="js_call_action_data">JS调用: %1$s -> %2$s</string>
+    <string name="js_call_host_action_data_data">JS 调用宿主: %1$s, 数据: %2$s</string>
+    <string name="js_call_plugin_method_params_params">JS 调用插件: %1$s, 参数: %2$s</string>
+    <string name="js_call_showconfirmdialog_title_call">JS调用 showConfirmDialog: %1$s (callbackId=%2$s)</string>
+    <string name="json_applied" formatted="false">JSON 已应用</string>
+    <string name="json_parse_failed_e_message">JSON 解析失败: %1$s</string>
+    <string name="kill_background_processes" formatted="false">结束后台进程</string>
+    <string name="large_icon" formatted="false">大图标</string>
+    <string name="large_radius" formatted="false">大圆角</string>
+    <string name="large_spacing" formatted="false">大间距</string>
+    <string name="later" formatted="false">稍后</string>
+    <string name="latest_logs_at_the_top" formatted="false">最新日志在上方</string>
+    <string name="launched_from_desktop_icon_closing_a" formatted="false">从桌面图标启动，关闭所有插件页面</string>
+    <string name="launchedeffect_loading_plugin_list_a" formatted="false">LaunchedEffect: 加载插件列表和配置</string>
+    <string name="launchedeffect_loading_plugin_list_a_2" formatted="false">LaunchedEffect: 加载插件列表和1x1配置</string>
+    <string name="launcher_does_not_support_pinning_sh" formatted="false">启动器不支持固定快捷方式</string>
+    <string name="launching_plugin_wizard_uitype_uityp">启动插件向导: uiType=%1$s, backend=%2$s</string>
+    <string name="light" formatted="false">光线</string>
+    <string name="light_primary" formatted="false">浅色主题色</string>
+    <string name="light_theme" formatted="false">浅色主题</string>
+    <string name="lines_editedcontent_lines_size">行数: %1$s</string>
+    <string name="list_of_contributors" formatted="false">贡献者名单</string>
+    <string name="list_view" formatted="false">列表视图</string>
+    <string name="listener_execution_error" formatted="false">监听器执行异常</string>
+    <string name="loaded" formatted="false">已加载</string>
+    <string name="loaded_1x1_config_config_pluginid">加载的1x1配置: %1$s</string>
+    <string name="loaded_config_config_pluginid1_confi">加载的配置: %1$s, %2$s, %3$s</string>
+    <string name="loaded_files_size_backup_files">加载了 %1$s 个备份文件</string>
+    <string name="loaded_grammar_langdir_scopename_gra">✅ 加载语法: %1$s -> %2$s (%3$s)</string>
+    <string name="loaded_installedplugins_value_size_p">已加载 %1$s 个插件</string>
+    <string name="loaded_pluginlist_size_plugin_s">已加载 %1$s 个插件</string>
+    <string name="loaded_plugins_size_plugin_s">加载了 %1$s 个插件</string>
+    <string name="loaded_plugins_value_size_plugin_s">已加载 %1$s 个插件</string>
+    <string name="loaded_repos_size_repo_plugin_s">已加载 %1$s 个仓库插件</string>
+    <string name="loading" formatted="false">加载中...</string>
+    <string name="loading_backups_size_backup_file_s">加载 %1$s 个备份文件</string>
+    <string name="loading_backups_value_size_backup_fi">加载 %1$s 个备份文件</string>
+    <string name="loading_config_appwidgetid_appwidget">加载配置: appWidgetId=%1$s, id1=%2$s, id2=%3$s, id3=%4$s</string>
+    <string name="loading_config_from_uiconfig" formatted="false">========== 从 UIConfig 加载配置 ==========</string>
+    <string name="loading_document" formatted="false">加载文档中...</string>
+    <string name="loading_help_document" formatted="false">加载帮助文档...</string>
+    <string name="loading_mirrors_value_size_mirror_s">加载 %1$s 个镜像站</string>
+    <string name="loading_native_plugin_currentplugini">⚠️ 正在加载原生插件: %1$s</string>
+    <string name="loading_perms_size_permission_s">加载 %1$s 个权限</string>
+    <string name="loading_plugin_list" formatted="false">加载插件列表中...</string>
+    <string name="loading_plugins" formatted="false">加载插件中...</string>
+    <string name="loading_plugins_value_size_plugin_s">加载 %1$s 个插件</string>
+    <string name="loading_web_plugin_indexpath">加载 Web 插件: %1$s</string>
+    <string name="loading_web_plugin_indexpath_2">✅ 加载 Web 插件: %1$s</string>
+    <string name="loadwebplugin_complete" formatted="false">loadWebPlugin 完成</string>
+    <string name="location" formatted="false">位置</string>
+    <string name="location_permission" formatted="false">位置权限</string>
+    <string name="lock_acquired" formatted="false">🔒 获取锁成功</string>
+    <string name="log_all_cleared" formatted="false">已删除 %d 个日志文件</string>
+    <string name="log_cleared" formatted="false">日志已清空</string>
+    <string name="log_export_failed" formatted="false">导出失败：%s</string>
+    <string name="log_exported" formatted="false">日志已导出</string>
+    <string name="log_file_logfile_absolutepath">日志文件: %1$s</string>
+    <string name="log_level_switched_to_level_name">日志级别已切换为: %1$s</string>
+    <string name="log_no_records" formatted="false">暂无日志记录</string>
+    <string name="log_system_initialized_level_level_n">日志系统初始化完成，级别: %1$s</string>
+    <string name="loglines_size_lines_in_total">共 %1$s 行</string>
+    <string name="logs_exported" formatted="false">日志已导出</string>
+    <string name="magnetic_field" formatted="false">磁场</string>
+    <string name="main_class" formatted="false">主类名</string>
+    <string name="main_class_mainclass">  主类: %1$s</string>
+    <string name="main_class_not_found_info_mainclass">主类未找到: %1$s</string>
+    <string name="main_screen_opened_resumed" formatted="false">主界面打开/恢复成功</string>
+    <string name="make_phone_calls" formatted="false">拨打电话</string>
+    <string name="manage" formatted="false">管理</string>
+    <string name="manage_all_files" formatted="false">管理所有文件</string>
+    <string name="manage_app_and_plugin_permissions" formatted="false">管理应用和插件权限</string>
+    <string name="manage_each_plugin_s_declared_permis" formatted="false">管理每个插件声明的权限 →</string>
+    <string name="mandatory_update" formatted="false">强制更新</string>
+    <string name="manual_download" formatted="false">手动下载</string>
+    <string name="medium_icon" formatted="false">中图标</string>
+    <string name="medium_radius" formatted="false">中圆角</string>
+    <string name="medium_spacing" formatted="false">中间距</string>
+    <string name="message_dispatch_error_e_message">消息分发异常: %1$s</string>
+    <string name="message_service_not_running_initiali" formatted="false">📡 消息服务未运行，初始化...</string>
+    <string name="message_stored_queue_size_gettotalqu">📦 消息已存储，队列大小: %1$s</string>
+    <string name="messages_cleared_pluginid">🗑️ 已清空消息: %1$s</string>
+    <string name="method_entered">→ %1$s() 进入</string>
+    <string name="method_exited_took_cost_ms">← %1$s() 退出, 耗时: %2$sms</string>
+    <string name="microphone" formatted="false">麦克风</string>
+    <string name="microphone_2" formatted="false">录音</string>
+    <string name="microphone_permission" formatted="false">麦克风权限</string>
+    <string name="migrating_old_data_olddata_size_item">迁移旧数据: %1$s 条 (插件: %2$s)</string>
+    <string name="migrating_old_data_olddata_size_item_2">迁移旧数据: %1$s 条</string>
+    <string name="migration_complete" formatted="false">迁移完成</string>
+    <string name="migration_complete_olddata_size_reco">迁移完成: %1$s 条记录</string>
+    <string name="mirror_settings_saved" formatted="false">镜像设置已保存</string>
+    <string name="missing_dependencies_missingdeps_joi">缺少依赖: %1$s</string>
+    <string name="missing_plugin_json" formatted="false">缺少 plugin.json</string>
+    <string name="missing_pluginid" formatted="false">缺少 pluginId</string>
+    <string name="missing_targetplugin_or_method" formatted="false">缺少 targetPlugin 或 method</string>
+    <string name="modified" formatted="false">已修改</string>
+    <string name="modify_system_settings" formatted="false">修改系统设置</string>
+    <string name="more" formatted="false">更多</string>
+    <string name="msg_add_termux_debug_info" formatted="false">是否在报告中添加 Termux 调试信息？</string>
+    <string name="msg_disabling_terminal_toolbar" formatted="false">禁用终端工具栏</string>
+    <string name="msg_enabling_terminal_toolbar" formatted="false">启用终端工具栏</string>
+    <string name="msg_failed_to_focus_window" formatted="false">无法聚焦窗口</string>
+    <string name="msg_generating_report" formatted="false">正在生成报告</string>
+    <string name="msg_max_terminals_reached" formatted="false">请先关闭现有终端再创建新的。</string>
+    <string name="msg_select_url_copied_to_clipboard" formatted="false">URL 已复制到剪贴板</string>
+    <string name="msg_terminal_reset" formatted="false">终端已重置</string>
+    <string name="must_be_a_reversed_domain_name_e_g_c" formatted="false">⚠️ 格式应为域名倒序，如 com.example.myplugin</string>
+    <string name="must_include_the_package_e_g_com_exa" formatted="false">⚠️ 必须包含包名，如 com.example.MainPlugin</string>
+    <string name="my_native_plugin" formatted="false">我的原生插件</string>
+    <string name="my_plugins" formatted="false">我的插件</string>
+    <string name="my_web_plugin" formatted="false">我的Web插件</string>
+    <string name="name" formatted="false">名称</string>
+    <string name="native_code" formatted="false">原生代码</string>
+    <string name="native_label" formatted="false">原生</string>
+    <string name="native_plugin_compilation_is_current" formatted="false">原生插件编译功能暂时不可用，请使用 Web 插件或等待后续更新</string>
+    <string name="native_plugin_compilation_temporaril" formatted="false">⚠️ 原生插件编译功能暂时禁用</string>
+    <string name="native_plugin_dev_tips">原生插件开发提示\n\n• 必须实现 PluginInterface 接口的所有方法\n• UI 必须通过 Java 代码动态创建，不能使用 XML\n• 示例代码已包含基础的 LinearLayout + Button\n• 可以添加任何原生 Android 控件\n• 修改后需要重新编译生成 DEX\n\n当前已生成 %1$s 个代码文件</string>
+    <string name="native_plugin_example" formatted="false">原生插件示例</string>
+    <string name="native_plugin_load_error" formatted="false">❌ 原生插件加载异常</string>
+    <string name="native_plugin_load_error_2" formatted="false">加载原生插件异常</string>
+    <string name="native_plugin_load_failed" formatted="false">❌ 原生插件加载失败</string>
+    <string name="native_plugin_load_failed_2" formatted="false">原生插件加载失败</string>
+    <string name="native_plugin_loaded_plugininfo_name">✅ 原生插件加载成功: %1$s</string>
+    <string name="native_plugin_missing_plugin_dex" formatted="false">原生插件缺少 plugin.dex</string>
+    <string name="native_ui_android_view" formatted="false">原生 UI (Android View)</string>
+    <string name="nav_dev" formatted="false">开发</string>
+    <string name="nav_manage" formatted="false">管理</string>
+    <string name="nav_repo" formatted="false">仓库</string>
+    <string name="nav_tools" formatted="false">工具</string>
+    <string name="navigation_failed" formatted="false">导航失败</string>
+    <string name="ndescription_plugin_description_n">\n描述: %1$s\n</string>
+    <string name="network" formatted="false">网络</string>
+    <string name="network_connection_failed_check_your" formatted="false">网络连接失败，请检查网络后重试</string>
+    <string name="network_permission" formatted="false">网络权限</string>
+    <string name="network_permission_desc" formatted="false">• 从 GitHub 插件仓库下载插件
+• 检查应用更新
+• 插件网络请求功能
+
+提示：仅用于插件下载和更新功能。</string>
+    <string name="new_file" formatted="false">新增文件</string>
+    <string name="new_version_available" formatted="false">有新版本</string>
+    <string name="new_version_found" formatted="false">发现新版本</string>
+    <string name="next" formatted="false">下一步</string>
+    <string name="nnotice_n_plugin_notice_n">\n说明:\n%1$s\n</string>
+    <string name="no" formatted="false">否</string>
+    <string name="no_backup_files_yet" formatted="false">暂无备份文件</string>
+    <string name="no_description" formatted="false">无描述</string>
+    <string name="no_grammar_file_found_langdir">⚠️ 未找到语法文件: %1$s</string>
+    <string name="no_installed_plugins" formatted="false">暂无已安装插件</string>
+    <string name="no_listeners_eventtype">没有监听器: %1$s</string>
+    <string name="no_log_records_yet" formatted="false">暂无日志记录</string>
+    <string name="no_logs_to_export" formatted="false">没有日志可导出</string>
+    <string name="no_matching_plugin_info_found" formatted="false">未找到对应的插件信息</string>
+    <string name="no_matching_plugins" formatted="false">没有找到相关插件</string>
+    <string name="no_matching_plugins_2" formatted="false">没有匹配的插件</string>
+    <string name="no_matching_plugins_found" formatted="false">没有找到相关插件</string>
+    <string name="no_mirrors_yet" formatted="false">暂无镜像站</string>
+    <string name="no_offline_package_found_assets_alpi" formatted="false">未检测到离线安装包（assets/alpine*），请先将其放入 APK 的 assets 目录</string>
+    <string name="no_plugins_available" formatted="false">暂无可用插件</string>
+    <string name="no_plugins_to_back_up" formatted="false">没有插件可备份</string>
+    <string name="no_plugins_yet" formatted="false">暂无插件</string>
+    <string name="no_pre_command_needed_starting_backe" formatted="false">✅ 无需执行 pre-command，直接启动后端</string>
+    <string name="no_resource_files" formatted="false">暂无资源文件</string>
+    <string name="no_tpk_files_found_in_the_plugin_set" formatted="false">插件集中没有找到 .tpk 文件</string>
+    <string name="no_tpk_templates_in_assets_test_plug" formatted="false">assets/test_plugins 中没有 TPK 模板</string>
+    <string name="no_valid_web_project_found" formatted="false">未找到有效的Web项目</string>
+    <string name="no_widgets_added_yet" formatted="false">没有已添加的小部件</string>
+    <string name="none" formatted="false">无</string>
+    <string name="none_2" formatted="false">-- 无 --</string>
+    <string name="normal_permissions" formatted="false">普通权限</string>
+    <string name="normal_permissions_granted" formatted="false">普通权限已授予</string>
+    <string name="not_connected_js">未连接</string>
+    <string name="not_granted" formatted="false">未授权</string>
+    <string name="not_now" formatted="false">暂不更新</string>
+    <string name="note_optional" formatted="false">备注（可选）</string>
+    <string name="note_some_permissions_e_g_overlay_wi" formatted="false">提示：部分权限（如悬浮窗、修改系统设置）需要在系统设置中手动开启</string>
+    <string name="notice" formatted="false">提示</string>
+    <string name="notification_action_exit" formatted="false">退出</string>
+    <string name="notification_action_wake_lock" formatted="false">获取唤醒锁</string>
+    <string name="notification_action_wake_unlock" formatted="false">释放唤醒锁</string>
+    <string name="notifications" formatted="false">通知</string>
+    <string name="now_explore_more_features_of_uin_too" formatted="false">现在开始探索 UIN Tool 的更多功能吧！</string>
+    <string name="now_explore_the_new_features_of_uin_" formatted="false">现在开始探索 UIN Tool 的新功能吧！</string>
+    <string name="npermissions_summary_granted_summary">\n权限状态: %1$s/%2$s\n</string>
+    <string name="ntap_go_to_settings_to_open_the_app_" formatted="false">\n点击「去设置」打开应用设置页面。</string>
+    <string name="ok" formatted="false">好的</string>
+    <string name="ok_2" formatted="false">确定</string>
+    <string name="old_data_migration_failed" formatted="false">迁移旧数据失败</string>
+    <string name="on_color_text" formatted="false">反色文本</string>
+    <string name="onboarding_close" formatted="false">关闭</string>
+    <string name="onboarding_next" formatted="false">下一步</string>
+    <string name="onboarding_skip" formatted="false">跳过</string>
+    <string name="onboarding_start" formatted="false">开始体验</string>
+    <string name="onboarding_version_updated">UIN Tool 已更新到 v%1$s
+
+新功能、优化和修复已就绪！</string>
+    <string name="one_tap_import_export_plugins_n_supp" formatted="false">• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理</string>
+    <string name="one_tap_import_export_plugins_n_supp_2" formatted="false">• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理\n• 备份恢复所有数据</string>
+    <string name="one_that_can_be_extended_anytime_to_" formatted="false">可以按自己的需求随时扩展功能，而不是等开发者更新。\n\n</string>
+    <string name="onnewintent_called" formatted="false">🔍 onNewIntent() 被调用</string>
+    <string name="onnewintent_launched_from_desktop_ic" formatted="false">onNewIntent: 从桌面图标启动，关闭所有插件页面</string>
+    <string name="onnewintent_opening_plugin_from_shor">onNewIntent: 从快捷方式打开插件: %1$s</string>
+    <string name="open" formatted="false">打开</string>
+    <string name="open_code_editor_files">打开代码编辑器 (%1$s 个文件)</string>
+    <string name="open_plugin" formatted="false">打开插件</string>
+    <string name="open_terminal" formatted="false">打开终端</string>
+    <string name="open_terminal_settings" formatted="false">打开终端设置</string>
+    <string name="open_widget_config" formatted="false">打开小部件配置</string>
+    <string name="open_with_one_tap_no_need_to_enter_t" formatted="false">• 点击即开，无需进入应用\n</string>
+    <string name="opened_from_manage_page_loading_defa" formatted="false">从管理页面打开，加载默认配置</string>
+    <string name="opened_plugin_pluginid">已打开插件 %1$s</string>
+    <string name="opened_plugin_pluginid_2">✅ 已打开插件: %1$s</string>
+    <string name="opening_link_url">打开链接: %1$s</string>
+    <string name="opening_main_screen_simulating_syste" formatted="false">打开主界面 (模拟系统启动器行为)</string>
+    <string name="opening_plugin_directly_pluginid">直接打开插件: %1$s</string>
+    <string name="opening_plugin_from_shortcut_plugini">从快捷方式打开插件: %1$s</string>
+    <string name="opening_plugin_pluginid">打开插件: %1$s</string>
+    <string name="opening_terminal_and_running_command" formatted="false">正在打开终端并执行命令...\n\n若未自动弹出，请在通知栏查看 UIN Tool 终端。</string>
+    <string name="optional_resources_like_images_and_a" formatted="false">可选的图片、音频等资源文件</string>
+    <string name="orientation" formatted="false">方向</string>
+    <string name="other_mode_backend_ready_pluginid_po">✅ other 模式后端就绪: %1$s (端口 %2$s)</string>
+    <string name="other_mode_not_auto_starting_waiting">🔌 other 模式后端：不自动启动进程，等待 pre-command 启动 %1$s</string>
+    <string name="other_mode_polling_port_info_backend">⏳ other 模式轮询端口: %1$s, 超时: %2$ss</string>
+    <string name="other_mode_polling_port_readiness" formatted="false">🔄 other 模式：开始轮询端口就绪</string>
+    <string name="other_mode_port_less_backend_marked_">✅ other 模式无端口后端已标记运行: %1$s</string>
+    <string name="other_mode_port_not_ready_pluginid">⚠️ other 模式端口未就绪: %1$s</string>
+    <string name="other_permissions_location_phone_sms" formatted="false">其他权限（位置、电话、短信等）仅在插件需要时才会请求使用。</string>
+    <string name="output_file_outputtpk_absolutepath">  输出文件: %1$s</string>
+    <string name="overlay" formatted="false">悬浮窗</string>
+    <string name="package_label" formatted="false">打包</string>
+    <string name="packaged_successfully" formatted="false">打包成功！</string>
+    <string name="packaging_complete" formatted="false">✅ 打包完成!</string>
+    <string name="packaging_failed_error">❌ 打包失败: %1$s</string>
+    <string name="packaging_failed_error_2">打包失败: %1$s</string>
+    <string name="packaging_failed_error_4">打包失败: %1$s</string>
+    <string name="packaging_plugin" formatted="false">打包插件...</string>
+    <string name="packaging_successful_n_outputtpk_abs">✅ 打包成功!\n%1$s</string>
+    <string name="packaging_tpk" formatted="false">开始打包 TPK...</string>
+    <string name="packing_plugins_size_plugin_s">正在打包 %1$s 个插件...</string>
+    <string name="paste" formatted="false">粘贴</string>
+    <string name="path_escape_file_canonicalpath">路径逃逸: %1$s</string>
+    <string name="path_resolution_failed_e_message">路径解析失败: %1$s</string>
+    <string name="pendingintent_result_callback_attach" formatted="false">📬 已附加 PendingIntent 结果回调</string>
+    <string name="permission_camera_mic_title" formatted="false">📷 相机/麦克风权限</string>
+    <string name="permission_denied" formatted="false">权限被拒绝</string>
+    <string name="permission_description" formatted="false">权限说明</string>
+    <string name="permission_details" formatted="false">权限详情</string>
+    <string name="permission_details_plugin_name">权限详情 - %1$s</string>
+    <string name="permission_explain_intro" formatted="false">UIN Tool 需要以下权限来正常使用各项功能：</string>
+    <string name="permission_explain_title" formatted="false">权限说明</string>
+    <string name="permission_grant_one_by_one" formatted="false">请依次完成各个权限的授权</string>
+    <string name="permission_granted" formatted="false">权限已授予</string>
+    <string name="permission_management" formatted="false">权限管理</string>
+    <string name="permission_management_desc" formatted="false">管理应用权限和插件权限</string>
+    <string name="permission_management_feature_under_" formatted="false">权限管理功能开发中</string>
+    <string name="permission_network_title" formatted="false">🌐 网络权限</string>
+    <string name="permission_other_note" formatted="false">其他权限（位置、电话、短信等）仅在插件需要时才会请求使用。</string>
+    <string name="permission_permanently_denied" formatted="false">「%s」权限已被永久拒绝，请前往设置中手动开启。</string>
+    <string name="permission_refreshed" formatted="false">权限状态已刷新</string>
+    <string name="permission_request_progress_current_">权限请求进度: (%1$s/%2$s) %3$s</string>
+    <string name="permission_run_command_description" formatted="false">在 &TERMUX_APP_NAME; 环境中执行任意命令并访问文件</string>
+    <string name="permission_run_command_label" formatted="false">在 &TERMUX_APP_NAME; 环境中运行命令</string>
+    <string name="permission_state_cleared_plugin_getp">权限状态已清除 (插件: %1$s)</string>
+    <string name="permission_state_updated_pluginid_st">权限状态已更新: %1$s -> %2$s</string>
+    <string name="permission_state_updated_state_plugi">权限状态已更新: %1$s (插件: %2$s)</string>
+    <string name="permission_status" formatted="false">权限状态</string>
+    <string name="permission_status_refreshed" formatted="false">权限状态已刷新</string>
+    <string name="permission_still_not_granted" formatted="false">权限仍未授予</string>
+    <string name="permission_storage_title" formatted="false">📁 存储权限</string>
+    <string name="permissions_permissions_values_count">权限状态: %1$s/%2$s 已授予</string>
+    <string name="permissions_required_by_the_plugin" formatted="false">插件所需权限</string>
+    <string name="phone" formatted="false">电话</string>
+    <string name="phone_permission" formatted="false">电话权限</string>
+    <string name="ping_failed" formatted="false">ping 失败</string>
+    <string name="place_several_each_pointing_to_a_dif" formatted="false">• 可放置多个，每个指向不同插件</string>
+    <string name="place_the_shortcut_on_your_home_scre" formatted="false">请在桌面放置快捷方式</string>
+    <string name="place_the_widget_on_your_home_screen" formatted="false">请在桌面放置小部件</string>
+    <string name="please_check_the_crash_log_below_for" formatted="false">请查看下方的崩溃日志了解详情</string>
+    <string name="please_enable_special_permissions_ma" formatted="false">请手动开启特殊权限</string>
+    <string name="please_fill_in_the_main_class_name" formatted="false">请填写主类名</string>
+    <string name="please_fill_in_the_plugin_id_and_nam" formatted="false">请填写插件ID和名称</string>
+    <string name="please_select_a_binary_file" formatted="false">请选择二进制文件</string>
+    <string name="please_select_a_plugin" formatted="false">请选择插件</string>
+    <string name="please_select_plugins_to_export_firs" formatted="false">请先选择要导出的插件</string>
+    <string name="plugin_author">作者: %1$s
+</string>
+    <string name="plugin_code" formatted="false">插件代码</string>
+    <string name="plugin_count_plugins_size">插件数量: %1$s</string>
+    <string name="plugin_data_cleared_pluginid">已清理插件数据: %1$s</string>
+    <string name="plugin_default_category" formatted="false">未分类</string>
+    <string name="plugin_dependencies">
+依赖: %1$s
+</string>
+    <string name="plugin_development" formatted="false">插件开发</string>
+    <string name="plugin_development_docs_and_api_refe" formatted="false">插件开发文档、API 参考</string>
+    <string name="plugin_development_tools" formatted="false">插件开发工具</string>
+    <string name="plugin_dex_placeholder" formatted="false">  ⚠️ plugin.dex (占位文件)</string>
+    <string name="plugin_dialog_closed_overlay_hidden" formatted="false">🗑 插件弹窗已关闭，覆盖层隐藏</string>
+    <string name="plugin_dir" formatted="false">插件目录: </string>
+    <string name="plugin_dir_not_found" formatted="false">插件目录不存在</string>
+    <string name="plugin_dir_not_found_plugindir_absol">❌ 插件目录不存在: %1$s</string>
+    <string name="plugin_dir_plugindir_absolutepath">📂 插件目录: %1$s</string>
+    <string name="plugin_directory_packed" formatted="false">插件目录已打包</string>
+    <string name="plugin_does_not_exist" formatted="false">插件不存在</string>
+    <string name="plugin_does_not_exist_pluginid_navig">插件不存在: %1$s，跳转到主界面</string>
+    <string name="plugin_exists_info_name">插件存在: %1$s</string>
+    <string name="plugin_field_author" formatted="false">作者</string>
+    <string name="plugin_field_category" formatted="false">分类</string>
+    <string name="plugin_field_description" formatted="false">描述</string>
+    <string name="plugin_field_id" formatted="false">插件ID</string>
+    <string name="plugin_field_main_class" formatted="false">主类名</string>
+    <string name="plugin_field_name" formatted="false">插件名称</string>
+    <string name="plugin_field_version" formatted="false">版本号</string>
+    <string name="plugin_field_version_name" formatted="false">版本名</string>
+    <string name="plugin_has_no_backend_configured" formatted="false">❌ 插件未配置后端</string>
+    <string name="plugin_has_no_backend_configured_2" formatted="false">插件未配置后端</string>
+    <string name="plugin_icon" formatted="false">插件图标</string>
+    <string name="plugin_id" formatted="false">插件ID</string>
+    <string name="plugin_id_2" formatted="false">插件 ID : </string>
+    <string name="plugin_id_empty_ignoring_result" formatted="false">❌ 插件ID为空，忽略结果</string>
+    <string name="plugin_id_is_empty" formatted="false">❌ 插件ID为空</string>
+    <string name="plugin_id_is_empty_opening_main_scre" formatted="false">插件ID为空，打开主界面</string>
+    <string name="plugin_id_must_not_be_empty" formatted="false">插件ID不能为空</string>
+    <string name="plugin_info">插件信息</string>
+    <string name="plugin_info_name_dependencies_info_d">插件 %1$s 依赖: %2$s</string>
+    <string name="plugin_info_pluginid_has_no_backend_">❌ 插件 %1$s 没有配置后端</string>
+    <string name="plugin_install_error" formatted="false">安装插件异常</string>
+    <string name="plugin_install_failed" formatted="false">安装插件失败</string>
+    <string name="plugin_installed_info_name">插件安装成功: %1$s</string>
+    <string name="plugin_instance_not_found_pluginid">插件实例不存在: %1$s</string>
+    <string name="plugin_instantiated" formatted="false">插件实例化成功</string>
+    <string name="plugin_json_missing" formatted="false">  ⚠️ plugin.json 不存在</string>
+    <string name="plugin_load_complete_pluginid">插件加载完成: %1$s</string>
+    <string name="plugin_load_error_e_message">插件加载异常: %1$s</string>
+    <string name="plugin_load_failed_h3">插件加载失败</string>
+    <string name="plugin_manage_installed" formatted="false">已安装插件</string>
+    <string name="plugin_management" formatted="false">插件管理</string>
+    <string name="plugin_management_desc" formatted="false">导入、导出、卸载插件</string>
+    <string name="plugin_management_feature_under_deve" formatted="false">插件管理功能开发中</string>
+    <string name="plugin_management_ui_initialized" formatted="false">插件管理界面初始化完成</string>
+    <string name="plugin_name" formatted="false">插件名称</string>
+    <string name="plugin_name_permissions">%1$s - 权限</string>
+    <string name="plugin_no_description" formatted="false">无描述</string>
+    <string name="plugin_not_found_currentpluginid">❌ 插件不存在: %1$s</string>
+    <string name="plugin_not_found_currentpluginid_2">插件不存在: %1$s</string>
+    <string name="plugin_not_found_pluginid">插件不存在: %1$s</string>
+    <string name="plugin_not_found_pluginid_2">❌ 插件不存在: %1$s</string>
+    <string name="plugin_not_installed_pluginid">插件未安装: %1$s</string>
+    <string name="plugin_notice_optional" formatted="false">插件说明（可选）</string>
+    <string name="plugin_notification" formatted="false">插件通知</string>
+    <string name="plugin_page_is_in_the_foreground_clo" formatted="false">检测到插件页面在前台，关闭插件页面</string>
+    <string name="plugin_permission_feature_under_deve" formatted="false">插件权限功能开发中</string>
+    <string name="plugin_permission_management" formatted="false">插件权限管理</string>
+    <string name="plugin_permissions" formatted="false">插件权限</string>
+    <string name="plugin_permissions_size_permission_s">%1$s 项权限</string>
+    <string name="plugin_plugin_name">插件: %1$s</string>
+    <string name="plugin_r_name_needs_a_pre_command_in">插件「%1$s」需要在容器环境中先执行启动前命令：\n\n%2$s\n\n是否现在在终端中运行？</string>
+    <string name="plugin_repository" formatted="false">插件仓库</string>
+    <string name="plugin_restore_complete" formatted="false">插件恢复完成</string>
+    <string name="plugin_set" formatted="false">插件集</string>
+    <string name="plugin_signature_verification_failed" formatted="false">插件签名验证失败</string>
+    <string name="plugin_signature_verification_failed_2" formatted="false">插件签名验证失败，文件可能被篡改</string>
+    <string name="plugin_started_successfully_info_nam">插件启动成功: %1$s</string>
+    <string name="plugin_template">插件模板</string>
+    <string name="plugin_ui_type_native" formatted="false">原生代码 UI</string>
+    <string name="plugin_ui_type_web" formatted="false">WebView UI</string>
+    <string name="plugin_uninstall_failed" formatted="false">卸载插件失败</string>
+    <string name="plugin_uninstalled_pluginid">插件卸载成功: %1$s</string>
+    <string name="plugin_unknown_author" formatted="false">未知</string>
+    <string name="plugin_view_created" formatted="false">插件视图创建成功</string>
+    <string name="plugin_view_creation_failed" formatted="false">插件视图创建失败</string>
+    <string name="pluginbackendmanager_startbackend_ca" formatted="false">🔍 PluginBackendManager.startBackend() 被调用</string>
+    <string name="pluginhostactivity_oncreate_called" formatted="false">🚀 PluginHostActivity.onCreate() 被调用</string>
+    <string name="pluginhostactivity_task_closed" formatted="false">PluginHostActivity 任务已关闭</string>
+    <string name="pluginid_plugin_does_not_exist">%1$s (插件不存在)</string>
+    <string name="pluginid_title_title">[%1$s] 标题: %2$s</string>
+    <string name="plugininfo_exists" formatted="false">✅ pluginInfo 存在</string>
+    <string name="plugininfo_is_null" formatted="false">❌ pluginInfo 为 null!</string>
+    <string name="plugininfo_is_null_2" formatted="false">   -> pluginInfo 为 null</string>
+    <string name="plugininfo_is_null_cannot_check_back" formatted="false">❌ pluginInfo 为 null，无法检查后端</string>
+    <string name="pluginmanager_startbackend_called" formatted="false">🔍 PluginManager.startBackend() 被调用</string>
+    <string name="plugins_declare_their_required_permi" formatted="false">插件在 plugin.json 中声明所需权限</string>
+    <string name="pluginshareddata_not_initialized_cal" formatted="false">PluginSharedData 未初始化，请先调用 init()</string>
+    <string name="port_port_held_by_lingering_backend_">⚠️ 端口 %1$s 被残留后端占用 (pid: %2$s)，清理后重启</string>
+    <string name="port_port_is_listening">✅ 端口 %1$s 已监听</string>
+    <string name="port_port_listen_timed_out">❌ 端口 %1$s 监听超时</string>
+    <string name="position_1" formatted="false">位置1</string>
+    <string name="position_1_2" formatted="false">位置 1</string>
+    <string name="position_1_selection_it">位置1 选择: %1$s</string>
+    <string name="position_2" formatted="false">位置2</string>
+    <string name="position_2_2" formatted="false">位置 2</string>
+    <string name="position_2_selection_it">位置2 选择: %1$s</string>
+    <string name="position_3" formatted="false">位置3</string>
+    <string name="position_3_2" formatted="false">位置 3</string>
+    <string name="position_3_selection_it">位置3 选择: %1$s</string>
+    <string name="pre_command" formatted="false">启动前命令</string>
+    <string name="pre_command_executed_in_terminal" formatted="false">已在终端执行启动前命令</string>
+    <string name="pre_command_execution_failed" formatted="false">启动前命令执行失败</string>
+    <string name="pre_command_failed_exitcode_exitcode">❌ pre-command 执行失败: exitCode=%1$s, errmsg=%2$s</string>
+    <string name="pre_command_marked_done" formatted="false">✅ pre-command 已标记为完成</string>
+    <string name="pre_command_optional" formatted="false">启动前命令（可选）</string>
+    <string name="pre_command_succeeded_marking_pre_cm" formatted="false">✅ pre-command 执行成功，标记 pre_cmd_done</string>
+    <string name="precise_location" formatted="false">精确位置</string>
+    <string name="preparing_backup" formatted="false">准备备份...</string>
+    <string name="preparing_build_environment" formatted="false">准备编译环境...</string>
+    <string name="preparing_restore" formatted="false">准备恢复...</string>
+    <string name="preset_colors" formatted="false">预设颜色</string>
+    <string name="pressure" formatted="false">气压</string>
+    <string name="prev" formatted="false">上一步</string>
+    <string name="preview_button_text" formatted="false">预览按钮</string>
+    <string name="preview_text" formatted="false">这是预览文本，显示当前主题效果。</string>
+    <string name="preview_title" formatted="false">预览标题</string>
+    <string name="previous" formatted="false">上一步</string>
+    <string name="primary_color" formatted="false">主题色</string>
+    <string name="primary_text_color" formatted="false">主文本色</string>
+    <string name="process_exited_code_exitcode">进程结束，退出码: %1$s</string>
+    <string name="process_started_pid_processpids_plug">✅ 进程已启动, pid: %1$s</string>
+    <string name="processing_filename_processed_total">正在处理: %1$s (%2$s/%3$s)</string>
+    <string name="processing_plugin_set" formatted="false">正在处理插件集...</string>
+    <string name="progress_bar_height" formatted="false">进度条高度</string>
+    <string name="progress_message">📊 进度: %1$s</string>
+    <string name="project_dir_projectdir_absolutepath">  项目目录: %1$s</string>
+    <string name="project_files_generated" formatted="false">项目文件已生成</string>
+    <string name="project_files_generated_workdir_abso">项目文件生成成功: %1$s</string>
+    <string name="proot_backend_runs_in_a_shared_alpin" formatted="false">Proot 容器：后端在共享 Alpine 容器中运行，环境隔离，不会影响宿主机</string>
+    <string name="proot_container" formatted="false">Proot 容器</string>
+    <string name="proot_distro_install_failed_check_ne" formatted="false">proot-distro 安装失败，请检查网络后重试</string>
+    <string name="proot_distro_installed" formatted="false">proot-distro 已安装</string>
+    <string name="proot_distro_not_installed_installin" formatted="false">proot-distro 未安装，先安装 proot-distro...</string>
+    <string name="proot_distro_restore_exit_code_resul">proot-distro restore 退出码: %1$s</string>
+    <string name="proot_env_prefix">🔧 proot 环境: PREFIX=%1$s TERMUX__PREFIX=%2$s TERMUX_APP__PACKAGE_NAME=%3$s HOME=%4$s TMPDIR=%5$s</string>
+    <string name="proot_env_prefix_env_prefix_termux_p">🔧 proot 环境: PREFIX=%1$s TERMUX__PREFIX=%2$s TERMUX_APP__PACKAGE_NAME=%3$s HOME=%4$s TMPDIR=%5$s</string>
+    <string name="proximity" formatted="false">距离</string>
+    <string name="proxy_acceleration" formatted="false">代理加速</string>
+    <string name="python_not_found_using_default_pytho" formatted="false">⚠️ 未找到 Python，使用默认: python</string>
+    <string name="quick_start" formatted="false">快速开始</string>
+    <string name="reachable" formatted="false">可达</string>
+    <string name="read_calendar" formatted="false">读取日历</string>
+    <string name="read_contacts" formatted="false">读取联系人</string>
+    <string name="read_logs" formatted="false">读取日志</string>
+    <string name="read_phone_status" formatted="false">读取手机状态</string>
+    <string name="read_sms" formatted="false">读取短信</string>
+    <string name="read_storage" formatted="false">读取存储</string>
+    <string name="receive_sms" formatted="false">接收短信</string>
+    <string name="received_event_eventtype">📡 收到事件: %1$s</string>
+    <string name="received_message_message_action_from">📨 收到消息: %1$s from %2$s</string>
+    <string name="received_pre_command_result_callback" formatted="false">📬 收到 pre-command 结果回调</string>
+    <string name="recommend_128x128_png" formatted="false">建议使用 128x128 像素的 PNG 图片</string>
+    <string name="redo" formatted="false">重做</string>
+    <string name="refresh" formatted="false">刷新</string>
+    <string name="refresh_all_widgets" formatted="false">刷新所有小部件</string>
+    <string name="refresh_broadcast_sent" formatted="false">📤 刷新广播已发送</string>
+    <string name="refreshing_plugin_list" formatted="false">刷新插件列表...</string>
+    <string name="refreshing_widget_appwidgetid">刷新小部件: %1$s</string>
+    <string name="refreshing_work_dir_preferencemanage">刷新工作目录: %1$s</string>
+    <string name="registering_event_listener_eventtype">注册事件监听: %1$s</string>
+    <string name="registering_listener_pluginid">📡 注册监听器: %1$s</string>
+    <string name="registering_plugin_message_listener_">注册插件消息监听: %1$s</string>
+    <string name="released_releaseinfo_getformatteddat">发布: %1$s</string>
+    <string name="remind_me_later" formatted="false">稍后提醒</string>
+    <string name="remove_icon" formatted="false">移除图标</string>
+    <string name="removing_event_listener_eventtype">取消事件监听: %1$s</string>
+    <string name="removing_existing_tpk_file" formatted="false">删除已存在的 TPK 文件</string>
+    <string name="removing_old_plugin_info_pluginid">删除旧插件: %1$s</string>
+    <string name="removing_plugin_message_listener_plu">取消插件消息监听: %1$s</string>
+    <string name="rendering_plugin_dialog_request_java">🖼 渲染插件弹窗: %1$s</string>
+    <string name="repo_downloading" formatted="false">下载中...</string>
+    <string name="repo_install" formatted="false">安装</string>
+    <string name="repo_installed" formatted="false">已安装</string>
+    <string name="repo_load_failed" formatted="false">加载失败，请检查网络</string>
+    <string name="repo_no_plugins" formatted="false">暂无可用插件</string>
+    <string name="repo_open" formatted="false">打开</string>
+    <string name="repo_title" formatted="false">插件仓库</string>
+    <string name="repo_update_log">
+更新日志:
+%1$s%2$s</string>
+    <string name="repository" formatted="false">仓库</string>
+    <string name="request_storage_permission" formatted="false">请求存储权限</string>
+    <string name="requesting" formatted="false">请求中...</string>
+    <string name="requesting_group_current_total">请求中: %1$s (%2$s/%3$s)</string>
+    <string name="requesting_permission_permission">请求权限: %1$s</string>
+    <string name="requesting_permissions" formatted="false">正在请求权限...</string>
+    <string name="requesting_permissions_in_batch_perm">批量请求权限: %1$s</string>
+    <string name="res_dir" formatted="false">  ✅ res/ 目录</string>
+    <string name="reset" formatted="false">重置</string>
+    <string name="reset_all_ui_config_to_defaults_this" formatted="false">确定要重置所有 UI 配置为默认值吗？此操作不可撤销。</string>
+    <string name="reset_config" formatted="false">重置配置</string>
+    <string name="reset_mirrors" formatted="false">重置镜像</string>
+    <string name="reset_settings" formatted="false">重置设置</string>
+    <string name="reset_to_default" formatted="false">重置为默认</string>
+    <string name="reset_to_default_config" formatted="false">已重置为默认配置</string>
+    <string name="reset_to_the_default_mirror_list" formatted="false">确定要重置为默认镜像站列表吗？</string>
+    <string name="response_body_is_empty" formatted="false">响应体为空</string>
+    <string name="restore" formatted="false">恢复</string>
+    <string name="restore_complete" formatted="false">恢复完成！</string>
+    <string name="restore_defaults" formatted="false">恢复默认</string>
+    <string name="restore_failed" formatted="false">恢复失败</string>
+    <string name="restore_failed_e_message">恢复失败: %1$s</string>
+    <string name="restore_successful" formatted="false">恢复成功</string>
+    <string name="restoring_app_settings" formatted="false">正在恢复应用设置...</string>
+    <string name="restoring_backup" formatted="false">正在恢复备份...</string>
+    <string name="restoring_mirror_config" formatted="false">正在恢复镜像配置...</string>
+    <string name="restoring_plugins" formatted="false">正在恢复插件...</string>
+    <string name="restoring_plugins_2" formatted="false">恢复插件...</string>
+    <string name="restoring_shared_alpine_container_fi" formatted="false">正在恢复 Alpine 共享容器（首次解压约需数分钟，请耐心等待）...</string>
+    <string name="restoring_ui_config" formatted="false">正在恢复 UI 配置...</string>
+    <string name="restoring_will_overwrite_existing_pl" formatted="false">恢复操作将覆盖现有插件、配置和 UI 主题！\n\n确定要继续吗？</string>
+    <string name="restoring_work_directory_config" formatted="false">正在恢复工作目录配置...</string>
+    <string name="result" formatted="false">操作结果</string>
+    <string name="retry" formatted="false">重试</string>
+    <string name="ripple_effect" formatted="false">波纹效果</string>
+    <string name="root_access" formatted="false">Root权限</string>
+    <string name="run" formatted="false">运行</string>
+    <string name="run_now" formatted="false">现在运行</string>
+    <string name="running_offline_restore_cmd">执行离线恢复: %1$s</string>
+    <string name="runs_in_the_terminal_when_the_plugin" formatted="false">首次打开插件时在终端中执行，成功（exit 0）一次后永久跳过；在 Proot 容器环境初始化依赖</string>
+    <string name="runtime_duration_ms">运行时长: %1$sms</string>
+    <string name="runtime_log_desc" formatted="false">查看、导出、清空运行日志</string>
+    <string name="runtime_logs" formatted="false">运行日志</string>
+    <string name="save" formatted="false">保存</string>
+    <string name="save_config" formatted="false">保存配置</string>
+    <string name="save_exception" formatted="false">保存异常</string>
+    <string name="save_exception_e_message">保存异常: %1$s</string>
+    <string name="save_failed_e_message">保存失败: %1$s</string>
+    <string name="save_in_progress_skipping" formatted="false">保存正在进行中，跳过</string>
+    <string name="save_path" formatted="false">保存路径</string>
+    <string name="save_runtime_logs_to_a_file" formatted="false">保存运行日志到文件</string>
+    <string name="save_settings" formatted="false">保存设置</string>
+    <string name="saved" formatted="false">已保存</string>
+    <string name="saved_successfully" formatted="false">保存成功</string>
+    <string name="saved_values_are_synced_to_the_form_" formatted="false">保存后将同步到表单各字段，字段包括 pluginId/name/version/entry/backendPreCommand 等。</string>
+    <string name="saving" formatted="false">保存中...</string>
+    <string name="saving_config_appwidgetid_appwidgeti">保存配置: appWidgetId=%1$s</string>
+    <string name="saving_config_selected1_selected2_se">保存配置: %1$s, %2$s, %3$s</string>
+    <string name="saving_file_currentfile_content_leng">保存文件: %1$s, 内容长度: %2$s</string>
+    <string name="saving_permission_config_pluginid_pe">保存权限配置: %1$s -> %2$s = %3$s</string>
+    <string name="saving_plugin_signature_pluginid">保存插件签名: %1$s</string>
+    <string name="saving_ui_config_to_uiconfig" formatted="false">========== 保存UI配置到 UIConfig ==========</string>
+    <string name="screenshot_failed" formatted="false">截图失败</string>
+    <string name="screenshot_failed_could_not_get_acti" formatted="false">截图失败: 无法获取Activity</string>
+    <string name="screenshot_failed_e_message">截图失败: %1$s</string>
+    <string name="screenshot_saved_file_absolutepath">截图已保存: %1$s</string>
+    <string name="screenshot_saved_successfully_file_a">截图保存成功: %1$s</string>
+    <string name="scripts_dir" formatted="false">  ✅ scripts/ 目录</string>
+    <string name="search" formatted="false">搜索</string>
+    <string name="search_plugins" formatted="false">搜索插件...</string>
+    <string name="search_results_filtered_size_plugin_">搜索结果: %1$s 个插件</string>
+    <string name="secondary_text_color" formatted="false">副文本色</string>
+    <string name="section_title_size" formatted="false">章节标题大小</string>
+    <string name="select_a_compiled_executable_binary_" formatted="false">选择编译好的可执行二进制文件</string>
+    <string name="select_all" formatted="false">全选</string>
+    <string name="select_backup" formatted="false">选择要恢复的备份</string>
+    <string name="select_binary_file" formatted="false">选择二进制文件</string>
+    <string name="select_icon" formatted="false">选择图标</string>
+    <string name="select_none" formatted="false">全不选</string>
+    <string name="select_plugin" formatted="false">选择插件:</string>
+    <string name="select_plugin_2" formatted="false">选择插件</string>
+    <string name="select_plugin_it">选择插件: %1$s</string>
+    <string name="select_theme" formatted="false">选择主题</string>
+    <string name="selected_plugin_selected">选中的插件: %1$s</string>
+    <string name="selected_state_selected1_selected2_s">选中状态: %1$s, %2$s, %3$s</string>
+    <string name="selectedpluginids_size_selected">已选 %1$s 个</string>
+    <string name="selection_failed_e_message">选择失败: %1$s</string>
+    <string name="send_sms" formatted="false">发送短信</string>
+    <string name="sending_event_eventname">发送事件: %1$s</string>
+    <string name="sending_event_eventname_data">发送事件: %1$s -> %2$s</string>
+    <string name="sending_event_eventtype_data_data">发送事件: %1$s, data: %2$s</string>
+    <string name="sending_message_message_action_from_">发送消息: %1$s from %2$s to %3$s</string>
+    <string name="sending_message_to_targetplugin_acti">📤 发送消息到 %1$s: %2$s</string>
+    <string name="sending_notification_title">发送通知: %1$s</string>
+    <string name="sendrefreshintent_error_e_message">❌ sendRefreshIntent 异常: %1$s</string>
+    <string name="sendrefreshintent_error_e_message_2">sendRefreshIntent 异常: %1$s</string>
+    <string name="sensor_started" formatted="false">传感器已启动</string>
+    <string name="sensor_unavailable_type">传感器不可用: %1$s</string>
+    <string name="separator" formatted="false">--- 分隔线 ---</string>
+    <string name="servicelocator_already_initialized_s" formatted="false">ServiceLocator 已初始化，跳过重复初始化</string>
+    <string name="servicelocator_initialization_comple" formatted="false">ServiceLocator 初始化完成</string>
+    <string name="servicelocator_initialization_failed" formatted="false">ServiceLocator 初始化失败</string>
+    <string name="servicelocator_initialized" formatted="false">ServiceLocator 初始化成功</string>
+    <string name="servicelocator_not_initialized_call_" formatted="false">ServiceLocator 尚未初始化，请先调用 init()</string>
+    <string name="set_as_default" formatted="false">设为默认</string>
+    <string name="set_plugin_icon" formatted="false">设置插件图标</string>
+    <string name="seteditorlanguage_failed" formatted="false">setEditorLanguage: 失败</string>
+    <string name="seteditorlanguage_language_set_to_sc">setEditorLanguage: 成功设置语言 %1$s</string>
+    <string name="setting_default_work_directory_defau">设置默认工作目录: %1$s</string>
+    <string name="settings" formatted="false">设置</string>
+    <string name="settings_apps_uin_tool_permissions_s" formatted="false">设置 → 应用 → UIN Tool → 权限 → 存储</string>
+    <string name="shapes" formatted="false">形状</string>
+    <string name="share" formatted="false">分享</string>
+    <string name="share_failed" formatted="false">分享失败</string>
+    <string name="share_failed_e_message">分享失败: %1$s</string>
+    <string name="shared_data_initialized" formatted="false">共享数据已初始化</string>
+    <string name="shared_user_label" formatted="false">&TERMUX_APP_NAME; user</string>
+    <string name="sharedpreferences_backed_up" formatted="false">SharedPreferences 已备份</string>
+    <string name="sharedpreferences_restore_complete" formatted="false">SharedPreferences 恢复完成</string>
+    <string name="sharing_text_take_50">分享: %1$s...</string>
+    <string name="shortcut" formatted="false">快捷方式</string>
+    <string name="shortcut_added_successfully" formatted="false">快捷方式已添加动成功！</string>
+    <string name="shortcut_already_exists" formatted="false">快捷方式已存在</string>
+    <string name="shortcut_check_update" formatted="false">检查更新</string>
+    <string name="shortcut_check_update_long" formatted="false">检查应用更新</string>
+    <string name="shortcut_created" formatted="false">快捷方式已创建</string>
+    <string name="shortcut_exists" formatted="false">快捷方式已存在</string>
+    <string name="shortcut_not_supported" formatted="false">当前设备/启动器不支持创建快捷方式</string>
+    <string name="shortcut_permission" formatted="false">权限管理</string>
+    <string name="shortcut_permission_long" formatted="false">管理应用和插件权限</string>
+    <string name="shortcut_plugin_manage" formatted="false">插件管理</string>
+    <string name="shortcut_plugin_manage_long" formatted="false">管理已安装插件</string>
+    <string name="shortcut_removed" formatted="false">快捷方式已移除</string>
+    <string name="shortcut_tools" formatted="false">工具</string>
+    <string name="shortcut_tools_long" formatted="false">打开工具页面</string>
+    <string name="show" formatted="false">显示</string>
+    <string name="show_password" formatted="false">显示密码</string>
+    <string name="showing_next_plugin_dialog_plugindia">🖼 显示下一个插件弹窗: %1$s</string>
+    <string name="showing_permission_request_dialog" formatted="false">显示权限请求对话框</string>
+    <string name="shown_on_first_launch_to_explain_the" formatted="false">首次打开时显示，用于说明插件功能</string>
+    <string name="shows_3_plugins_at_once_for_quick_sw" formatted="false">• 同时显示 3 个插件，方便快速切换\n</string>
+    <string name="sigkill_sent_to_process_group_pid">🛑 已向进程组 %1$s 发送 SIGKILL</string>
+    <string name="signature_verification_and_debug_set" formatted="false">签名验证调试设置</string>
+    <string name="signature_verification_enabled" formatted="false">已启用签名验证</string>
+    <string name="signature_verification_failed_file_m">签名验证失败！文件可能被篡改: %1$s</string>
+    <string name="signature_verification_ignored" formatted="false">已忽略签名验证</string>
+    <string name="signature_verification_ignored_2" formatted="false">签名验证已忽略</string>
+    <string name="signature_verification_ignored_ignor">忽略签名验证: %1$s</string>
+    <string name="signature_verification_passed_file_n">签名验证通过: %1$s</string>
+    <string name="size_file_length_formatfilesize">, 大小: %1$s</string>
+    <string name="size_formatfilesize_file_filepath_le">大小: %1$s</string>
+    <string name="size_formatfilesize_tpkfile_length">大小: %1$s</string>
+    <string name="size_plugin_getformattedsize_n">大小: %1$s\n</string>
+    <string name="size_releaseinfo_getformattedsize">大小: %1$s</string>
+    <string name="sizes" formatted="false">尺寸</string>
+    <string name="skip" formatted="false">跳过</string>
+    <string name="small_icon" formatted="false">小图标</string>
+    <string name="small_radius" formatted="false">小圆角</string>
+    <string name="small_spacing" formatted="false">小间距</string>
+    <string name="sms" formatted="false">短信</string>
+    <string name="sms_permission" formatted="false">短信权限</string>
+    <string name="some_permissions_denied" formatted="false">部分权限被拒绝</string>
+    <string name="some_permissions_denied_deniedpermis">部分权限被拒绝: %1$s</string>
+    <string name="source_dir_javasrcdir_absolutepath">  源码目录: %1$s</string>
+    <string name="special" formatted="false">特殊</string>
+    <string name="special_permission_required" formatted="false">需要特殊权限</string>
+    <string name="special_permission_requires_enabling" formatted="false">特殊权限，需在系统设置中开启</string>
+    <string name="special_permission_requires_enabling_2" formatted="false">特殊权限，需在系统设置中手动开启</string>
+    <string name="special_permissions" formatted="false">特殊权限</string>
+    <string name="special_permissions_enable_manually_" formatted="false">特殊权限：需在系统设置中手动开启</string>
+    <string name="src_dir" formatted="false">  ✅ src/ 目录</string>
+    <string name="stack_trace_n" formatted="false">堆栈信息:\n</string>
+    <string name="start_command_required" formatted="false">启动命令（必需）</string>
+    <string name="start_command_run_in_terminal_when_t" formatted="false">启动命令（插件打开时在终端中执行）</string>
+    <string name="start_creating_backup" formatted="false">========== 开始创建备份 ==========</string>
+    <string name="start_download" formatted="false">开始下载</string>
+    <string name="start_exploring" formatted="false">开始体验</string>
+    <string name="start_exporting_ui_config" formatted="false">========== 开始导出UI配置 ==========</string>
+    <string name="start_failed" formatted="false">启动失败</string>
+    <string name="start_importing_ui_config" formatted="false">========== 开始导入UI配置 ==========</string>
+    <string name="start_loading_plugin_list" formatted="false">开始加载插件列表</string>
+    <string name="start_restoring_backup" formatted="false">========== 开始恢复备份 ==========</string>
+    <string name="start_result_success_success_port_po">📊 启动结果: success=%1$s, port=%2$s, error=%3$s, 耗时=%4$sms</string>
+    <string name="start_update_check" formatted="false">开始检查更新</string>
+    <string name="startbackendifneeded_called" formatted="false">🔍 startBackendIfNeeded() 被调用</string>
+    <string name="starting_backend_service" formatted="false">正在启动后端服务...</string>
+    <string name="starting_backend_service_normal_runt" formatted="false">正在启动后端服务（常规运行时）...</string>
+    <string name="starting_container_backend_first_run" formatted="false">正在启动容器后端（首次需初始化容器，约需 1-2 分钟，请耐心等待）...</string>
+    <string name="starting_container_backend_please_wa" formatted="false">正在启动容器后端（请稍候）...</string>
+    <string name="starting_download_downloadurl">开始下载: %1$s</string>
+    <string name="starting_health_check_timeout_readyt">⏳ 开始健康检查，超时: %1$ss</string>
+    <string name="starting_install_file_name">启动安装: %1$s</string>
+    <string name="starting_process" formatted="false">🚀 启动进程...</string>
+    <string name="starting_progress_js">启动中 </string>
+    <string name="starting_sensor_type">启动传感器: %1$s</string>
+    <string name="step1_in_manage_plugins_tap_import_plugi" formatted="false">1. 在「管理」「插件管理」中选择「导入插件」</string>
+    <string name="step1_long_press_an_empty_area_of_the_ho" formatted="false">1. 长按桌面空白处\n</string>
+    <string name="step1_tap_add_to_home_screen_and_choose_" formatted="false">1. 点击「添加到桌面」按钮，系统会提示选择放置位置\n</string>
+    <string name="step1_tap_create_plugin_to_choose_a_type" formatted="false">1. 点击「创建插件」选择类型\n</string>
+    <string name="step2_choose_widgets_or_add_tools_n" formatted="false">2. 选择「小部件」或「添加工具」\n</string>
+    <string name="step2_drag_the_widget_to_reposition_it_n" formatted="false">2. 在桌面拖动小部件可调整位置\n</string>
+    <string name="step2_fill_in_basic_plugin_info_n" formatted="false">2. 填写插件基本信息\n</string>
+    <string name="step2_select_a_tpk_file" formatted="false">2. 选择 .tpk 文件</string>
+    <string name="step3_find_uin_tool_n" formatted="false">3. 找到「UIN Tool」\n</string>
+    <string name="step3_long_press_the_widget_to_resize_or" formatted="false">3. 长按小部件可调整大小或移除\n</string>
+    <string name="step3_the_plugin_will_be_installed_into_" formatted="false">3. 插件将自动安装到 UIN Tool 中</string>
+    <string name="step3_write_code_or_pick_a_binary_file_n" formatted="false">3. 编写代码或选择二进制文件\n</string>
+    <string name="step4_a_shortcut_opens_the_plugin_direct" formatted="false">4. 快捷方式点击后直接打开插件，无需进入应用</string>
+    <string name="step4_export_a_tpk_file_n" formatted="false">4. 导出 TPK 文件\n</string>
+    <string name="step4_long_press_and_drag_it_to_the_home" formatted="false">4. 长按拖拽到桌面即可</string>
+    <string name="step4_run_installed_plugins_on_the_tools" formatted="false">4. 在「工具」页面可以运行已安装的插件</string>
+    <string name="step5_import_and_run_it_in_manage_plugin" formatted="false">5. 在「管理」「插件管理」中导入运行</string>
+    <string name="stopping_backend_pluginid">🛑 停止后端: %1$s</string>
+    <string name="stopping_sensor" formatted="false">停止传感器</string>
+    <string name="storage" formatted="false">存储</string>
+    <string name="storage_permission" formatted="false">存储权限</string>
+    <string name="storage_permission_denied" formatted="false">存储权限被拒绝</string>
+    <string name="storage_permission_desc" formatted="false">• 导入/导出插件文件 (.tpk, .zip)
+• 备份和恢复插件数据
+• 读取和写入工作目录
+• 导出日志文件
+
+提示：我们不会读取您的个人文件，仅操作 UIN_Tool 目录下的文件。</string>
+    <string name="storage_permission_granted" formatted="false">存储权限已授予</string>
+    <string name="storage_permission_is_required_for_n" formatted="false">需要存储权限才能正常使用</string>
+    <string name="storage_permission_is_required_to_ta" formatted="false">需要存储权限才能截图</string>
+    <string name="storage_permission_required" formatted="false">需要存储权限</string>
+    <string name="storage_test_plugin" formatted="false">存储测试插件</string>
+    <string name="success" formatted="false">成功</string>
+    <string name="success_color" formatted="false">成功色</string>
+    <string name="success_false_error_could_not_get_ac" formatted="false">{"success":false,"error":"无法获取Activity上下文"}</string>
+    <string name="success_false_error_could_not_get_ac_2" formatted="false">{"success":false,"error":"无法获取Activity上下文"}</string>
+    <string name="success_false_error_could_not_get_st" formatted="false">{"success":false,"error":"无法获取存储"}</string>
+    <string name="success_false_error_could_not_get_st_2" formatted="false">{"success":false,"error":"无法获取存储"}</string>
+    <string name="success_false_error_empty_response_b" formatted="false">{"success":false,"error":"响应体为空"}</string>
+    <string name="success_false_error_empty_response_b_2" formatted="false">{"success":false,"error":"响应体为空"}</string>
+    <string name="success_false_error_invalid_file_nam" formatted="false">{"success":false,"error":"非法文件名"}</string>
+    <string name="success_false_error_invalid_file_nam_2" formatted="false">{"success":false,"error":"非法文件名"}</string>
+    <string name="success_false_error_missing_network_" formatted="false">{"success":false,"error":"缺少网络权限"}</string>
+    <string name="success_false_error_missing_network__2" formatted="false">{"success":false,"error":"缺少网络权限"}</string>
+    <string name="success_false_error_permission_name_" formatted="false">{"success":false,"error":"权限名不能为空"}</string>
+    <string name="success_false_error_permission_name__2" formatted="false">{"success":false,"error":"权限名不能为空"}</string>
+    <string name="success_false_error_url_must_not_be_" formatted="false">{"success":false,"error":"URL不能为空"}</string>
+    <string name="success_false_error_url_must_not_be__2" formatted="false">{"success":false,"error":"URL不能为空"}</string>
+    <string name="success_false_error_url_or_file_name" formatted="false">{"success":false,"error":"URL或文件名不能为空"}</string>
+    <string name="success_false_error_url_or_file_name_2" formatted="false">{"success":false,"error":"URL或文件名不能为空"}</string>
+    <string name="success_false_message_please_enable_" formatted="false">{"success":false,"message":"特殊权限请在系统设置中手动开启"}</string>
+    <string name="success_false_message_please_enable__2" formatted="false">{"success":false,"message":"特殊权限请在系统设置中手动开启"}</string>
+    <string name="success_false_message_special_permis" formatted="false">{"success":false,"message":"特殊权限需要手动开启"}</string>
+    <string name="success_false_message_special_permis_2" formatted="false">{"success":false,"message":"特殊权限需要手动开启"}</string>
+    <string name="success_true_message_all_permissions" formatted="false">{"success":true,"message":"所有权限已授予"}</string>
+    <string name="success_true_message_all_permissions_2" formatted="false">{"success":true,"message":"所有权限已授予"}</string>
+    <string name="success_true_message_permission_gran" formatted="false">{"success":true,"message":"权限已授予"}</string>
+    <string name="success_true_message_permission_gran_2" formatted="false">{"success":true,"message":"权限已授予"}</string>
+    <string name="successfully_exported_successcount_p">成功导出 %1$s 个插件</string>
+    <string name="successfully_exported_successcount_p_2">成功导出 %1$s 个插件到:\n%2$s</string>
+    <string name="successfully_imported_message">成功导入 %1$s</string>
+    <string name="successfully_imported_successcount_p">成功导入 %1$s 个插件</string>
+    <string name="summary_denied_permission_s_not_gran">%1$s 项权限未授予</string>
+    <string name="surface_color" formatted="false">表面色</string>
+    <string name="surface_variant_color" formatted="false">变体表面色</string>
+    <string name="swipe_left_right_to_browse_features" formatted="false">左右滑动浏览功能介绍</string>
+    <string name="switch_view" formatted="false">切换视图</string>
+    <string name="system" formatted="false">系统</string>
+    <string name="system_permission" formatted="false">系统权限</string>
+    <string name="tag_tag_n">标签: %1$s\n</string>
+    <string name="takes_little_home_screen_space_great" formatted="false">• 占用桌面空间小，适合常用插件\n</string>
+    <string name="tap_a_plugin_card_to_open_it_directl" formatted="false">• 点击插件卡片直接进入对应功能</string>
+    <string name="tap_create_backup_to_back_up_your_pl" formatted="false">点击「创建备份」来备份您的插件</string>
+    <string name="tap_download_update_to_start_downloa" formatted="false">点击「下载更新」开始下载</string>
+    <string name="tap_the_cancel_button" formatted="false">点击取消按钮</string>
+    <string name="tap_the_finish_button_to_generate_th" formatted="false">点击「完成」按钮开始生成项目文件</string>
+    <string name="tap_the_import_button_to_import_plug" formatted="false">点击「导入」按钮导入插件文件</string>
+    <string name="tap_the_save_button" formatted="false">点击保存按钮</string>
+    <string name="tap_to_add_shortcut" formatted="false">点击添加快捷方式</string>
+    <string name="tapped_1x1_confirm_button" formatted="false">点击1x1确认按钮</string>
+    <string name="tapped_1x1_set_default_button" formatted="false">点击1x1设为默认按钮</string>
+    <string name="target_target_plugin_id_pluginid_sel">目标: %1$s, 插件ID: %2$s, selectedTab: %3$s</string>
+    <string name="temperature" formatted="false">温度</string>
+    <string name="template_export_done_templatedir_abs">模板导出完成: %1$s (成功 %2$s, 失败 %3$s)</string>
+    <string name="template_generated_files_size_file_s">生成模板完成，共 %1$s 个文件</string>
+    <string name="terminal" formatted="false">终端</string>
+    <string name="terminal_environment_notice" formatted="false">终端环境提示</string>
+    <string name="terminal_settings" formatted="false">终端设置</string>
+    <string name="terminal_started" formatted="false">启动终端成功</string>
+    <string name="termux_api_preferences_summary" formatted="false">&TERMUX_API_APP_NAME; 应用的偏好设置</string>
+    <string name="termux_api_preferences_title" formatted="false">&TERMUX_API_APP_NAME;</string>
+    <string name="termux_backend_plugin_example_python" formatted="false">Termux 后端插件示例（Python 后端）</string>
+    <string name="termux_command_failed_e_message">Termux 命令执行失败: %1$s</string>
+    <string name="termux_crash_report_notifications_enabled_off" formatted="false">禁用崩溃报告通知。</string>
+    <string name="termux_crash_report_notifications_enabled_on" formatted="false">显示崩溃报告通知。（默认）</string>
+    <string name="termux_crash_report_notifications_enabled_title" formatted="false">崩溃报告通知</string>
+    <string name="termux_debugging_preferences_summary" formatted="false">调试偏好设置</string>
+    <string name="termux_debugging_preferences_title" formatted="false">调试</string>
+    <string name="termux_extra_keys_only_if_no_hardware_off" formatted="false">无论是否连接硬件键盘，始终显示额外按键。（默认）</string>
+    <string name="termux_extra_keys_only_if_no_hardware_on" formatted="false">连接硬件键盘时隐藏额外按键。</string>
+    <string name="termux_extra_keys_only_if_no_hardware_title" formatted="false">仅无硬件时显示额外按键</string>
+    <string name="termux_float_preferences_summary" formatted="false">&TERMUX_FLOAT_APP_NAME; 应用的偏好设置</string>
+    <string name="termux_float_preferences_title" formatted="false">&TERMUX_FLOAT_APP_NAME;</string>
+    <string name="termux_keyboard_header" formatted="false">键盘</string>
+    <string name="termux_local" formatted="false">Termux 本机</string>
+    <string name="termux_log_level_title" formatted="false">日志级别</string>
+    <string name="termux_logging_header" formatted="false">日志记录</string>
+    <string name="termux_not_ready_initializing_bootst" formatted="false">Termux 环境未就绪，开始初始化 bootstrap...</string>
+    <string name="termux_plugin_error_notifications_enabled_off" formatted="false">禁用插件错误的提示和通知。</string>
+    <string name="termux_plugin_error_notifications_enabled_on" formatted="false">显示插件错误的提示和通知。（默认）</string>
+    <string name="termux_plugin_error_notifications_enabled_title" formatted="false">插件错误通知</string>
+    <string name="termux_preferences_summary" formatted="false">&TERMUX_APP_NAME; 应用的偏好设置</string>
+    <string name="termux_preferences_title" formatted="false">&TERMUX_APP_NAME;</string>
+    <string name="termux_ready_checking_alpine" formatted="false">✅ Termux 环境就绪，检查 Alpine...</string>
+    <string name="termux_soft_keyboard_enabled_off" formatted="false">软键盘将被禁用。</string>
+    <string name="termux_soft_keyboard_enabled_on" formatted="false">软键盘将被启用。（默认）</string>
+    <string name="termux_soft_keyboard_enabled_only_if_no_hardware_off" formatted="false">即使连接了硬件键盘，软键盘也将被启用。（默认）</string>
+    <string name="termux_soft_keyboard_enabled_only_if_no_hardware_on" formatted="false">仅当未连接硬件键盘时启用软键盘。</string>
+    <string name="termux_soft_keyboard_enabled_only_if_no_hardware_title" formatted="false">仅无硬件时启用软键盘</string>
+    <string name="termux_soft_keyboard_enabled_title" formatted="false">启用软键盘</string>
+    <string name="termux_tasker_preferences_summary" formatted="false">&TERMUX_TASKER_APP_NAME; 应用的偏好设置</string>
+    <string name="termux_tasker_preferences_title" formatted="false">&TERMUX_TASKER_APP_NAME;</string>
+    <string name="termux_terminal_io_preferences_summary" formatted="false">终端 I/O 偏好设置</string>
+    <string name="termux_terminal_io_preferences_title" formatted="false">终端 I/O</string>
+    <string name="termux_terminal_view_key_logging_enabled_off" formatted="false">日志中不会有终端视图按键条目。（默认）</string>
+    <string name="termux_terminal_view_key_logging_enabled_on" formatted="false">Logcat 日志中将包含终端视图按键条目。\n这些日志非常详细，正常情况下应禁用，否则会导致性能问题。</string>
+    <string name="termux_terminal_view_key_logging_enabled_title" formatted="false">终端视图按键日志</string>
+    <string name="termux_terminal_view_preferences_summary" formatted="false">终端视图偏好设置</string>
+    <string name="termux_terminal_view_preferences_title" formatted="false">终端视图</string>
+    <string name="termux_terminal_view_terminal_margin_adjustment_off" formatted="false">终端边距调整将被禁用。</string>
+    <string name="termux_terminal_view_terminal_margin_adjustment_on" formatted="false">终端边距调整将被启用。\n应启用此选项以尝试修复软键盘覆盖部分额外按键/终端视图的问题。\n如果在您的设备上导致屏幕闪烁，请禁用它。（默认）</string>
+    <string name="termux_terminal_view_terminal_margin_adjustment_title" formatted="false">终端边距调整</string>
+    <string name="termux_terminal_view_view_header" formatted="false">视图</string>
+    <string name="termux_widget_preferences_summary" formatted="false">&TERMUX_WIDGET_APP_NAME; 应用的偏好设置</string>
+    <string name="termux_widget_preferences_title" formatted="false">&TERMUX_WIDGET_APP_NAME;</string>
+    <string name="test" formatted="false">测试</string>
+    <string name="test_backend">测试后端</string>
+    <string name="test_complete" formatted="false">测试完成</string>
+    <string name="test_complete_reachablecount_tested_">测试完成，%1$s/%2$s 个可达</string>
+    <string name="test_failed_e_message">测试失败: %1$s</string>
+    <string name="testing_direct_connection_github_api">测试直连: %1$s</string>
+    <string name="testing_mirror_testurl">测试镜像: %1$s</string>
+    <string name="testing_mirrors" formatted="false">正在测试镜像站...</string>
+    <string name="textmate_initialization_failed" formatted="false">❌ TextMate 初始化失败</string>
+    <string name="textmate_initialized" formatted="false">✅ TextMate 初始化成功</string>
+    <string name="the_following_permissions_must_be_en" formatted="false">以下权限需要在系统设置中手动开启：\n\n</string>
+    <string name="the_main_class_name_must_include_the" formatted="false">主类名必须包含包名，如 com.example.MainPlugin</string>
+    <string name="the_main_class_name_must_include_the_2" formatted="false">主类名必须包含包名</string>
+    <string name="the_plugin_opens_a_fullscreen_termin" formatted="false">插件打开后会进入全屏终端并执行此命令；留空则默认执行 python3 scripts/script.py</string>
+    <string name="theme_colors_corner_radius_settings" formatted="false">主题颜色圆角设置</string>
+    <string name="theme_load_complete_loadedcount_them">主题加载完成 - 共 %1$s 个主题</string>
+    <string name="theme_load_failed" formatted="false">主题加载失败</string>
+    <string name="theme_load_failed_filename_e_message">⚠️ 主题加载失败: %1$s: %2$s</string>
+    <string name="theme_loaded_themename">✅ 主题加载成功: %1$s</string>
+    <string name="then_wait_for_the_terminal_environme" formatted="false">等待终端环境初始化完成（约 30-60 秒）。\n\n</string>
+    <string name="this_device_does_not_support_shortcu" formatted="false">当前设备不支持创建快捷方式</string>
+    <string name="this_feature_requires_android_8_0" formatted="false">Android 8.0+ 才支持此功能</string>
+    <string name="this_is_a_glass_effect_card" formatted="false">这是一个玻璃效果卡片</string>
+    <string name="this_is_a_mandatory_update_you_must_" formatted="false">这是强制更新，必须安装最新版本</string>
+    <string name="this_is_a_native_plugin_example" formatted="false">这是一个原生插件示例</string>
+    <string name="this_is_a_web_plugin_example" formatted="false">这是一个Web插件示例</string>
+    <string name="this_is_an_example_plugin" formatted="false">这是一个示例插件</string>
+    <string name="this_notice_appears_when_the_plugin_" formatted="false">提示：首次打开插件时会显示此说明，用户可选择不再提示</string>
+    <string name="this_plugin_declares_no_permissions" formatted="false">该插件没有声明任何权限</string>
+    <string name="this_plugin_declares_no_permissions_2" formatted="false">该插件没有声明权限</string>
+    <string name="this_requires_android_8_0_long_press" formatted="false">Android 8.0+ 才支持此功能，请长按桌面手动添加</string>
+    <string name="this_will_be_fixed_in_a_future_versi" formatted="false">此问题将在后续版本中修复（可能选择构建部分软件包供下载）。\n\n</string>
+    <string name="time_1x1_bound_plugin_info_name">[%1$s] ✅ 1x1绑定插件: %2$s</string>
+    <string name="time_1x1_widget_updated">[%1$s] ✅ 1x1小部件更新完成</string>
+    <string name="time_all_slots_set">[%1$s] ✅ 所有插槽设置完成</string>
+    <string name="time_allplugins_empty_allplugins_ise">[%1$s]    allPlugins 是否为空: %2$s</string>
+    <string name="time_allplugins_type_allplugins_java">[%1$s]    allPlugins 类型: %2$s</string>
+    <string name="time_click_bound_to_pluginhostactivi">[%1$s]        点击事件已绑定到 PluginHostActivity</string>
+    <string name="time_config_cleared">[%1$s]   配置已清理</string>
+    <string name="time_config_has_displayplugins_size_">[%1$s]    配置插件 %2$s 个，需要填充到 %3$s 个</string>
+    <string name="time_delayed_refresh_executed">[%1$s] ⏰ 延迟刷新执行</string>
+    <string name="time_delayed_refresh_of_all_widgets_">[%1$s] ⏰ 1秒后延迟刷新所有小部件</string>
+    <string name="time_deleted_count">[%1$s] 删除数量</string>
+    <string name="time_deleted_widget_id_appwidgetid">[%1$s]   删除小部件 ID: %2$s</string>
+    <string name="time_directory_exists_plugindir_exis">[%1$s]          目录是否存在: %2$s</string>
+    <string name="time_error_stack_e_stacktracetostrin">[%1$s] ❌ 异常堆栈: %2$s</string>
+    <string name="time_failed_to_get_widget_options_e_">[%1$s]    无法获取小部件选项: %2$s</string>
+    <string name="time_file_exists_iconfile_exists">[%1$s]          文件是否存在: %2$s</string>
+    <string name="time_file_size_iconfile_length_bytes">[%1$s]          文件大小: %2$s bytes</string>
+    <string name="time_filled_toadd_size_plugin_s">[%1$s]    填充了 %2$s 个插件</string>
+    <string name="time_final_displayed_plugin_count">[%1$s] 最终显示插件数量</string>
+    <string name="time_found_appwidgetids_size_1x1_wid">[%1$s] 找到 %2$s 个1x1小部件</string>
+    <string name="time_found_appwidgetids_size_widget_">[%1$s] 📊 找到 %2$s 个小部件</string>
+    <string name="time_found_config_pluginid1_config_p">[%1$s] ✅ 找到配置: pluginId1=%2$s, pluginId2=%3$s, pluginId3=%4$s</string>
+    <string name="time_getcurrenttime_n">时间: %1$s\n</string>
+    <string name="time_icon_decode_failed">[%1$s]          ⚠️ 图标解码失败</string>
+    <string name="time_icon_file_iconfile_absolutepath">[%1$s]          图标文件: %2$s</string>
+    <string name="time_icon_file_not_found">[%1$s]          ⚠️ 图标文件不存在</string>
+    <string name="time_icon_loaded_scaled_width_x_scal">[%1$s]          ✅ 图标加载成功: %2$sx%3$s</string>
+    <string name="time_icon_set_icon_width_x_icon_heig">[%1$s]        图标已设置: %2$sx%3$s</string>
+    <string name="time_layout_widget_layout_grid">[%1$s]    布局文件: widget_layout_grid</string>
+    <string name="time_loadpluginicon_error_e_message">[%1$s]          ❌ loadPluginIcon 异常: %2$s</string>
+    <string name="time_loadpluginicon_loading_icon_of_">[%1$s]        loadPluginIcon: 加载插件 \'%2$s\' 的图标</string>
+    <string name="time_name_set_plugin_name">[%1$s]        名称已设置: %2$s</string>
+    <string name="time_no_config_showing_all_plugins_m">[%1$s] ℹ️ 没有配置，显示所有插件（最多 %2$s 个）</string>
+    <string name="time_no_installed_plugins">[%1$s] ⚠️ 没有已安装的插件!</string>
+    <string name="time_ondeleted_widget_deleted">[%1$s] 🗑️ onDeleted: 小部件被删除</string>
+    <string name="time_ondisabled_widget_feature_disab">[%1$s] ⛔ onDisabled: 小部件功能禁用</string>
+    <string name="time_onenabled_widget_feature_enable">[%1$s] ✅ onEnabled: 小部件功能启用</string>
+    <string name="time_onupdate_called_by_system">[%1$s] 📱 onUpdate 被系统调用</string>
+    <string name="time_onupdate_complete">[%1$s] ✅ onUpdate 完成</string>
+    <string name="time_onupdate_no_widget_ids">[%1$s] ⚠️ onUpdate: 没有小部件ID</string>
+    <string name="time_plugin_count">[%1$s] 插件总数</string>
+    <string name="time_plugin_directory_not_found">[%1$s]          ⚠️ 插件目录不存在</string>
+    <string name="time_plugin_directory_plugindir_abso">[%1$s]          插件目录: %2$s</string>
+    <string name="time_plugin_id_plugin_pluginid">[%1$s]        插件ID: %2$s</string>
+    <string name="time_plugin_index_1_plugin_name_plug">[%1$s]    插件 %2$s: %3$s (%4$s)</string>
+    <string name="time_plugin_list_refreshed">[%1$s] ✅ 插件列表已刷新</string>
+    <string name="time_pluginmanager_instance_pluginma">[%1$s]    PluginManager 实例: %2$s</string>
+    <string name="time_pluginmanager_obtained">[%1$s] ✅ PluginManager 获取成功</string>
+    <string name="time_position_added_plugin_name">[%1$s]    ✅ %2$s 添加成功: %3$s</string>
+    <string name="time_position_index_1_plugin_name">[%1$s]    位置 %2$s: %3$s</string>
+    <string name="time_position_no_plugin_configured">[%1$s]    ℹ️ %2$s 未配置插件</string>
+    <string name="time_position_plugin_exists_skipping">[%1$s]    ℹ️ %2$s 插件已存在，跳过: %3$s</string>
+    <string name="time_position_plugin_not_found_plugi">[%1$s]    ⚠️ %2$s 插件不存在: %3$s</string>
+    <string name="time_position_trying_to_add_plugin_i">[%1$s]    %2$s: 尝试添加插件 ID: %3$s</string>
+    <string name="time_received_refresh_broadcast">[%1$s] 🔄 收到刷新广播</string>
+    <string name="time_refresh1x1widgets_complete">[%1$s] ✅ refresh1x1Widgets 完成</string>
+    <string name="time_refresh1x1widgets_error_e_messa">[%1$s] ❌ refresh1x1Widgets 异常: %2$s</string>
+    <string name="time_refresh1x1widgets_started">[%1$s] 🔄 refresh1x1Widgets 开始</string>
+    <string name="time_refresh_broadcast_handled">[%1$s] ✅ 刷新广播处理完成</string>
+    <string name="time_refreshallwidgets_complete">[%1$s] ✅ refreshAllWidgets 完成</string>
+    <string name="time_refreshallwidgets_error_e_messa">[%1$s] ❌ refreshAllWidgets 异常: %2$s</string>
+    <string name="time_refreshallwidgets_started">[%1$s] 🔄 refreshAllWidgets 开始</string>
+    <string name="time_refreshing_all_widgets">[%1$s] 刷新所有小部件</string>
+    <string name="time_refreshing_widget_appwidgetid">[%1$s] 刷新指定小部件: %2$s</string>
+    <string name="time_refreshing_widget_index_1_id_ap">[%1$s]   ➜ 刷新第 %2$s 个小部件, ID: %3$s</string>
+    <string name="time_remaining_plugins_remaining_siz">[%1$s]    剩余可用插件: %2$s 个</string>
+    <string name="time_remoteviews_created">[%1$s] ✅ RemoteViews 创建成功</string>
+    <string name="time_slot_index_1_slotname_empty_hid">[%1$s]      插槽 %2$s (%3$s): 空，隐藏</string>
+    <string name="time_slot_index_1_slotname_showing_p">[%1$s]      插槽 %2$s (%3$s): 显示插件 \'%4$s\'</string>
+    <string name="time_step_1_creating_remoteviews">[%1$s] 📌 步骤1: 创建 RemoteViews</string>
+    <string name="time_step_2_getting_pluginmanager">[%1$s] 📌 步骤2: 获取 PluginManager</string>
+    <string name="time_step_3_refreshing_plugin_list">[%1$s] 📌 步骤3: 刷新插件列表</string>
+    <string name="time_step_4_getting_all_plugins">[%1$s] 📌 步骤4: 获取所有插件</string>
+    <string name="time_step_5_loading_widget_config">[%1$s] 📌 步骤5: 加载小部件配置</string>
+    <string name="time_step_6_setting_title">[%1$s] 📌 步骤6: 设置标题</string>
+    <string name="time_step_7_setting_max_plugins_slot">[%1$s] 📌 步骤7: 设置 %2$s 个插槽</string>
+    <string name="time_step_8_updating_widget">[%1$s] 📌 步骤8: 更新小部件</string>
+    <string name="time_step_9_verifying_update">[%1$s] 📌 步骤9: 验证更新</string>
+    <string name="time_system_boot_or_app_update_refre">[%1$s] 系统启动或应用更新，5秒后刷新小部件</string>
+    <string name="time_system_currenttimemillis">⏰ 时间: %1$s</string>
+    <string name="time_systemeventreceiver_got_event_i">[%1$s] 📨 SystemEventReceiver 收到事件: %2$s</string>
+    <string name="time_title_set_context_getstring_r_s">[%1$s] ✅ 标题设置完成: %2$s</string>
+    <string name="time_unhandled_event_intent_action">[%1$s] 未处理的事件: %2$s</string>
+    <string name="time_update1x1widget_error_e_message">[%1$s] ❌ update1x1Widget 异常: %2$s</string>
+    <string name="time_updated_empty_widget_no_plugins">[%1$s] ⚠️ 已更新空小部件（无插件）</string>
+    <string name="time_updatewidget_error_e_message">[%1$s] ❌ updateWidget 异常: %2$s</string>
+    <string name="time_updatewidget_invalid_appwidgeti">[%1$s] ⚠️ updateWidget: 无效的 appWidgetId，跳过</string>
+    <string name="time_updating_1x1_widget_id_appwidge">[%1$s] 🚀 开始更新1x1小部件 ID: %2$s</string>
+    <string name="time_updating_widget_id_appwidgetid">[%1$s] 🚀 开始更新小部件 ID: %2$s</string>
+    <string name="time_updating_widget_index_1_id_appw">[%1$s]   ➜ 更新小部件 %2$s, ID: %3$s</string>
+    <string name="time_using_default_icon">[%1$s]        ⚠️ 使用默认图标</string>
+    <string name="time_widget_count">[%1$s] 小部件数量</string>
+    <string name="time_widget_options_updatedviews">[%1$s]    小部件选项: %2$s</string>
+    <string name="time_widget_updated_appwidgetid_appw">[%1$s] ✅ 小部件更新完成, appWidgetId: %2$s</string>
+    <string name="tip_current_config_is_applied_automa" formatted="false">💡 提示：添加后会自动应用当前配置</string>
+    <string name="title_activity_termux_settings" formatted="false">&TERMUX_APP_NAME; 设置</string>
+    <string name="title_backup_manager" formatted="false">备份恢复</string>
+    <string name="title_code_editor" formatted="false">代码编辑器</string>
+    <string name="title_confirm_kill_process" formatted="false">确定要终止此会话吗？</string>
+    <string name="title_create_named_session" formatted="false">新建命名会话</string>
+    <string name="title_dev_doc" formatted="false">开发文档</string>
+    <string name="title_doc_viewer" formatted="false">文档查看</string>
+    <string name="title_file_received" formatted="false">保存文件到 ~/downloads/</string>
+    <string name="title_font_size" formatted="false">标题字体大小</string>
+    <string name="title_github_mirror" formatted="false">GitHub 加速</string>
+    <string name="title_help" formatted="false">使用帮助</string>
+    <string name="title_log_viewer" formatted="false">运行日志</string>
+    <string name="title_max_terminals_reached" formatted="false">已达最大终端数</string>
+    <string name="title_permission_manager" formatted="false">权限管理</string>
+    <string name="title_plugin_manage" formatted="false">插件管理</string>
+    <string name="title_plugin_permission" formatted="false">插件权限管理</string>
+    <string name="title_rename_session" formatted="false">设置会话名称</string>
+    <string name="title_select_url_dialog" formatted="false">点击 URL 复制，长按打开</string>
+    <string name="title_select_url_none_found" formatted="false">终端中未找到 URL。</string>
+    <string name="title_settings" formatted="false">设置</string>
+    <string name="title_share_selected_text" formatted="false">终端文本</string>
+    <string name="title_share_selected_text_with" formatted="false">发送选中文本到：</string>
+    <string name="title_share_transcript" formatted="false">终端记录</string>
+    <string name="title_share_transcript_with" formatted="false">发送记录到：</string>
+    <string name="title_ui_config" formatted="false">UI 个性化</string>
+    <string name="title_widget_1x1_config" formatted="false">配置快捷方式</string>
+    <string name="to_install_packages_please_report_it" formatted="false">💡 如需安装软件包，请在 Termux 社区反馈。</string>
+    <string name="toast_copy_success" formatted="false">已复制到剪贴板</string>
+    <string name="toast_delete_failed" formatted="false">删除失败</string>
+    <string name="toast_delete_success" formatted="false">删除成功</string>
+    <string name="toast_export_failed" formatted="false">导出失败：%s</string>
+    <string name="toast_export_success" formatted="false">导出成功</string>
+    <string name="toast_failed_to_show" formatted="false">Toast 显示失败</string>
+    <string name="toast_import_failed" formatted="false">导入失败：%s</string>
+    <string name="toast_import_success" formatted="false">导入成功：%s</string>
+    <string name="toast_network_error" formatted="false">网络错误，请稍后重试</string>
+    <string name="toast_no_data" formatted="false">暂无数据</string>
+    <string name="toast_no_plugins" formatted="false">暂无已安装的插件</string>
+    <string name="toast_operation_failed" formatted="false">操作失败</string>
+    <string name="toast_operation_success" formatted="false">操作成功</string>
+    <string name="toast_permission_denied" formatted="false">权限被拒绝</string>
+    <string name="toast_permission_granted" formatted="false">权限已授予</string>
+    <string name="toast_please_select_plugin" formatted="false">请先选择要导出的插件</string>
+    <string name="toast_please_select_uninstall" formatted="false">请先选择要卸载的插件</string>
+    <string name="toast_plugin_not_found" formatted="false">插件不存在：%s</string>
+    <string name="toast_save_failed" formatted="false">保存失败：%s</string>
+    <string name="toast_save_success" formatted="false">保存成功</string>
+    <string name="toast_uninstall_failed" formatted="false">卸载失败：%s</string>
+    <string name="toast_uninstall_success" formatted="false">已卸载：%s</string>
+    <string name="toast_work_folder_created" formatted="false">工作目录：%s</string>
+    <string name="toggle_permission" formatted="false">切换权限</string>
+    <string name="toolbox" formatted="false">工具箱</string>
+    <string name="tools" formatted="false">工具</string>
+    <string name="total_cleaned_totalremoved_expired_m">🧹 总计清理 %1$s 条过期消息</string>
+    <string name="tpk_packaged_outputtpk_absolutepath_">✅ TPK 打包完成: %1$s (%2$s KB)</string>
+    <string name="tpk_packaging_failed" formatted="false">❌ TPK 打包失败</string>
+    <string name="tpk_packaging_failed_2" formatted="false">TPK 打包失败</string>
+    <string name="try_other_keywords" formatted="false">尝试其他关键词</string>
+    <string name="type_exit_or_ctrl_d_to_end_the_sessi" formatted="false">输入 exit 或 Ctrl-D 结束会话。</string>
+    <string name="ui_config_apply_success" formatted="false">配置已应用</string>
+    <string name="ui_config_backed_up" formatted="false">UI 配置已备份</string>
+    <string name="ui_config_color" formatted="false">颜色配置</string>
+    <string name="ui_config_export_failed" formatted="false">导出失败: %s</string>
+    <string name="ui_config_export_success" formatted="false">配置已导出</string>
+    <string name="ui_config_exported_successfully" formatted="false">UI配置导出成功</string>
+    <string name="ui_config_file_does_not_exist" formatted="false">UI 配置文件不存在</string>
+    <string name="ui_config_import_failed" formatted="false">配置文件无效</string>
+    <string name="ui_config_import_success" formatted="false">配置已导入</string>
+    <string name="ui_config_imported_successfully" formatted="false">UI配置导入成功</string>
+    <string name="ui_config_preview" formatted="false">实时预览</string>
+    <string name="ui_config_reset_confirm" formatted="false">确定要重置所有 UI 配置吗？</string>
+    <string name="ui_config_reset_success" formatted="false">已重置为默认配置</string>
+    <string name="ui_config_restore_complete" formatted="false">UI 配置恢复完成</string>
+    <string name="ui_config_saved" formatted="false">UI配置保存成功</string>
+    <string name="ui_config_shape" formatted="false">形状配置</string>
+    <string name="ui_customization" formatted="false">UI 个性化</string>
+    <string name="ui_customization_2" formatted="false">UI个性化</string>
+    <string name="ui_customization_desc" formatted="false">自定义主题颜色、圆角大小等</string>
+    <string name="ui_customization_feature_under_devel" formatted="false">UI个性化功能开发中</string>
+    <string name="ui_type_uitype">  UI类型: %1$s</string>
+    <string name="uiconfig_initialized" formatted="false">UIConfig初始化完成</string>
+    <string name="uiconfig_not_initialized_call_init_f" formatted="false">UIConfig未初始化，请先调用init()</string>
+    <string name="uin_community" formatted="false">UIN 社区</string>
+    <string name="uin_tool_app_startup_complete" formatted="false">UIN Tool 应用启动完成</string>
+    <string name="uin_tool_is_a_powerful_plugin_platfo" formatted="false">UIN Tool 是一个强大的插件化工具平台\n\n支持原生 Java 插件和 Web 插件\n内置 Termux 终端环境</string>
+    <string name="uin_tool_is_my_answer_to_that_idea_n" formatted="false">UIN Tool 就是我对这个想法的回答，\n</string>
+    <string name="uin_tool_needs_access_to_all_files_t" formatted="false">UIN Tool 需要管理所有文件的权限，以便导入/导出插件。\n\n请点击「授权」并允许权限。</string>
+    <string name="uin_tool_needs_storage_permission_fo" formatted="false">UIN Tool 需要存储权限来正常运行以下功能：</string>
+    <string name="uin_tool_needs_the_following_permiss" formatted="false">UIN Tool 需要以下权限来正常使用各项功能：</string>
+    <string name="uin_tool_plugin_template" formatted="false">UIN Tool 插件模板</string>
+    <string name="uin_tool_plugins" formatted="false">UIN Tool 插件</string>
+    <string name="uinplugin_js_interface_injected" formatted="false">✅ UINPlugin JS 接口已注入</string>
+    <string name="uinplugin_js_interface_re_injected" formatted="false">✅ UINPlugin JS 接口已重新注入</string>
+    <string name="unable_to_open_link" formatted="false">无法打开链接</string>
+    <string name="uncategorized" formatted="false">未分类</string>
+    <string name="unconfigured_positions_automatically" formatted="false">💡 未配置的位置将自动显示其他插件</string>
+    <string name="undo" formatted="false">撤销</string>
+    <string name="unhandled_method_method">未处理的方法: %1$s</string>
+    <string name="uninstall" formatted="false">卸载</string>
+    <string name="uninstall_failed" formatted="false">卸载失败</string>
+    <string name="uninstall_failed_e_message">卸载失败: %1$s</string>
+    <string name="uninstall_plugin" formatted="false">卸载插件</string>
+    <string name="uninstall_plugin_confirm" formatted="false">确定要卸载插件 "%s" 吗？</string>
+    <string name="uninstall_successful_plugin_name">卸载成功: %1$s</string>
+    <string name="uninstalled_pluginid">卸载成功: %1$s</string>
+    <string name="unknown" formatted="false">未知</string>
+    <string name="unknown_call_action">未知调用: %1$s</string>
+    <string name="unknown_error" formatted="false">未知错误</string>
+    <string name="unknown_host_call_action">未知的宿主调用: %1$s</string>
+    <string name="unknown_sensor_type_type">未知传感器类型: %1$s</string>
+    <string name="unreachable" formatted="false">不可达</string>
+    <string name="update" formatted="false">更新</string>
+    <string name="update_check_failed" formatted="false">检查更新失败</string>
+    <string name="update_check_failed_error">检查更新失败：%1$s</string>
+    <string name="update_check_failed_error_2">检查更新失败: %1$s</string>
+    <string name="update_check_timed_out_update_check_">检查更新超时 (%1$sms)，继续启动</string>
+    <string name="update_dialog_new_version">发现新版本！
+
+版本: %1$s
+大小: %2$s
+发布日期: %3$s
+
+%4$s
+
+%5$s</string>
+    <string name="update_download" formatted="false">更新下载</string>
+    <string name="update_info" formatted="false">更新信息</string>
+    <string name="updated_boolean_key_value">更新布尔值: %1$s = %2$s</string>
+    <string name="updated_color_key_value">更新颜色: %1$s = %2$s</string>
+    <string name="updated_plugin_getformatteddate_n">更新: %1$s\n</string>
+    <string name="updated_shape_key_value">更新形状: %1$s = %2$s</string>
+    <string name="updated_size_key_value">更新尺寸: %1$s = %2$s</string>
+    <string name="updating_editor_file_currentfile_con">更新编辑器: 文件=%1$s, 内容长度=%2$s</string>
+    <string name="updating_editor_text_length_change_c">更新编辑器文本，长度变化: %1$s -> %2$s</string>
+    <string name="url_must_not_be_empty" formatted="false">URL不能为空</string>
+    <string name="usage" formatted="false">使用方法:</string>
+    <string name="usage_access" formatted="false">使用情况访问</string>
+    <string name="use_cdn_proxy_to_speed_up_downloads" formatted="false">使用 CDN 代理加速下载</string>
+    <string name="use_clearplugincache" formatted="false">使用 clearPluginCache()</string>
+    <string name="use_deleteallplugindata" formatted="false">使用 deleteAllPluginData()</string>
+    <string name="use_deletepluginfile" formatted="false">使用 deletePluginFile()</string>
+    <string name="use_getplugincachedir" formatted="false">使用 getPluginCacheDir()</string>
+    <string name="use_getplugindatadir" formatted="false">使用 getPluginDataDir()</string>
+    <string name="use_getpluginfilesize" formatted="false">使用 getPluginFileSize()</string>
+    <string name="use_listpluginfiles" formatted="false">使用 listPluginFiles()</string>
+    <string name="user_cancelled_pre_command_backend_n" formatted="false">❌ 用户取消 pre-command，不启动后端</string>
+    <string name="user_data_backed_up_userdatadir_abso">已备份用户数据: %1$s</string>
+    <string name="user_data_restored" formatted="false">用户数据已恢复</string>
+    <string name="user_ignored_version_latest_versionn">用户已忽略版本: %1$s</string>
+    <string name="user_tapped" formatted="false">用户点击</string>
+    <string name="user_tapped_save" formatted="false">========== 用户点击保存 ==========</string>
+    <string name="using_activity_result_api" formatted="false">使用 Activity Result API</string>
+    <string name="using_existing_work_directory_workfo">使用已有工作目录: %1$s</string>
+    <string name="using_python_interpreter">🔧 使用 Python: %1$s</string>
+    <string name="version" formatted="false">版本</string>
+    <string name="version_code" formatted="false">版本号</string>
+    <string name="version_code_releaseinfo_versioncode">版本代码: %1$s</string>
+    <string name="version_constants_app_version_build_">版本 %1$s (Build %2$s)</string>
+    <string name="version_history_and_changelog" formatted="false">版本更新历史记录</string>
+    <string name="version_name" formatted="false">版本名</string>
+    <string name="version_plugin_versionname_n">版本: %1$s\n</string>
+    <string name="version_plugin_versionname_plugin_ve">版本: %1$s (%2$s)\n</string>
+    <string name="version_releaseinfo_versionname">版本 %1$s</string>
+    <string name="version_update" formatted="false">版本更新</string>
+    <string name="vibrate" formatted="false">震动</string>
+    <string name="vibration_duration_ms">震动: %1$sms</string>
+    <string name="vibration_failed_e_message">震动失败: %1$s</string>
+    <string name="view_development_docs" formatted="false">查看开发文档</string>
+    <string name="view_docs" formatted="false">查看文档</string>
+    <string name="view_docs_desc" formatted="false">使用帮助、开发文档、关于、贡献者</string>
+    <string name="view_export_and_clear_logs" formatted="false">查看导出清空日志</string>
+    <string name="visual_plugin_creation_wizard_n_buil" formatted="false">• 可视化插件创建向导\n• 内置代码编辑器\n• 支持原生和Web插件</string>
+    <string name="visual_plugin_creation_wizard_n_buil_2" formatted="false">• 可视化插件创建向导\n• 内置代码编辑器\n• 支持原生和 Web 插件</string>
+    <string name="w_time_config_object_if_config">[$time]    配置对象: %1$s</string>
+    <string name="w_time_slot_position_if_plugin">[$time]    设置插槽 %1$s (%2$s): %3$s</string>
+    <string name="waiting_for_backend_port_up_to_90s" formatted="false">正在等待后端服务端口就绪（最长 90 秒）...</string>
+    <string name="waiting_for_port_listen_127_0_0_1_po">⏳ 等待端口监听: 127.0.0.1:%1$s (超时: %2$ss)</string>
+    <string name="waiting_for_the_pre_command_session_" formatted="false">正在等待启动前命令会话启动后端...</string>
+    <string name="wake_lock" formatted="false">唤醒锁</string>
+    <string name="warning" formatted="false">警告</string>
+    <string name="warning_color" formatted="false">警告色</string>
+    <string name="web_code_editor" formatted="false">Web 代码编辑</string>
+    <string name="web_dir" formatted="false">  ✅ web/ 目录</string>
+    <string name="web_index_html_default" formatted="false">  ✅ web/index.html (默认)</string>
+    <string name="web_plugin" formatted="false">Web插件</string>
+    <string name="web_plugin_author">作者: %1$s&lt;br></string>
+    <string name="web_plugin_dev_tips">Web 插件开发\n\n• 已生成空白 HTML/CSS/JS 模板文件\n• 点击「打开代码编辑器」修改文件\n• 也可以导入已有的 Web 项目 (ZIP)\n• JavaScript 可通过 UINPlugin.callHost() 调用原生功能\n• 修改 HTML/CSS/JS 后无需重新编译\n\n当前已生成 %1$s 个文件</string>
+    <string name="web_plugin_loaded">Web 插件已加载</string>
+    <string name="web_plugin_packaging_tpk_directly" formatted="false">Web 插件，直接打包 TPK</string>
+    <string name="web_plugin_paused">插件暂停</string>
+    <string name="web_plugin_resumed">插件恢复</string>
+    <string name="web_plugin_support" formatted="false">Web 插件支持</string>
+    <string name="web_plugin_template_frontend_only" formatted="false">Web 插件模板（纯前端）</string>
+    <string name="web_plugin_version">版本: %1$s&lt;br></string>
+    <string name="web_plugins_handled_by_pluginhostact" formatted="false">Web插件由PluginHostActivity处理</string>
+    <string name="web_project_imported_files_size_file">Web项目导入成功，共 %1$s 个文件</string>
+    <string name="web_project_imported_files_size_file_2">Web项目导入成功，%1$s 个文件</string>
+    <string name="web_project_is_empty" formatted="false">Web项目为空</string>
+    <string name="web_ui_backend" formatted="false">Web UI + 后端</string>
+    <string name="web_ui_frontend_only_no_backend" formatted="false">Web UI (纯前端, 无后端)</string>
+    <string name="webview_load_complete" formatted="false">WebView 加载完成</string>
+    <string name="webview_load_complete_plugininfo_nam">WebView 加载完成: %1$s</string>
+    <string name="webview_load_complete_url">✅ WebView 加载完成: %1$s</string>
+    <string name="webview_load_error_description">WebView 加载错误: %1$s</string>
+    <string name="webview_load_error_description_code_">❌ WebView 加载错误: %1$s (code: %2$s), url: %3$s</string>
+    <string name="welcome_to_uin_tool" formatted="false">欢迎使用 UIN Tool</string>
+    <string name="when_enabled_unsigned_plugins_can_be" formatted="false">开启后可以安装未签名的插件，但存在安全风险</string>
+    <string name="widget" formatted="false">小部件</string>
+    <string name="widget_1x1_config_saved" formatted="false">快捷方式配置已保存</string>
+    <string name="widget_1x1_config_saved_refreshing_widget" formatted="false">1x1配置已保存，刷新小部件</string>
+    <string name="widget_1x1_config_title" formatted="false">选择快捷方式插件</string>
+    <string name="widget_1x1_launch_main" formatted="false">打开主界面（默认）</string>
+    <string name="widget_1x1_name" formatted="false">插件快捷方式</string>
+    <string name="widget_1x1_open_main" formatted="false">设为默认</string>
+    <string name="widget_1x1_select_plugin" formatted="false">选择一个插件作为桌面快捷方式</string>
+    <string name="widget_1x1_shortcut_pinned_successfully" formatted="false">1x1 快捷方式固定成功</string>
+    <string name="widget_1x1_shortcut_request_sent" formatted="false">已请求添加1x1快捷方式</string>
+    <string name="widget_1x1_widget_configured" formatted="false">1x1小部件配置完成</string>
+    <string name="widget_3x3_widget" formatted="false">3x3 小部件</string>
+    <string name="widget_3x3_widget_added_successfully" formatted="false">3x3 小部件已添加成功！</string>
+    <string name="widget_3x3_widget_pinned_successfully" formatted="false">3x3 小部件固定成功</string>
+    <string name="widget_config_feature_under_developm" formatted="false">小部件配置功能开发中</string>
+    <string name="widget_config_saved" formatted="false">小部件配置已保存</string>
+    <string name="widget_config_select_plugins" formatted="false">选择要在小部件中显示的插件</string>
+    <string name="widget_config_title" formatted="false">配置小部件</string>
+    <string name="widget_configuration" formatted="false">小部件配置</string>
+    <string name="widget_configured_and_refreshed" formatted="false">小部件配置完成并已刷新</string>
+    <string name="widget_empty" formatted="false">暂无插件\n请先在应用中导入插件</string>
+    <string name="widget_guide_message" formatted="false">长按桌面空白处，选择「小部件」，找到「UIN Tool」拖拽到桌面</string>
+    <string name="widget_guide_title" formatted="false">添加桌面小部件</string>
+    <string name="widget_load_plugins_failed" formatted="false">加载插件失败</string>
+    <string name="widget_name" formatted="false">UIN Tool 小部件</string>
+    <string name="widget_no_plugin" formatted="false">-- 无 --</string>
+    <string name="widget_plugin_1" formatted="false">插件 1</string>
+    <string name="widget_plugin_2" formatted="false">插件 2</string>
+    <string name="widget_plugin_3" formatted="false">插件 3</string>
+    <string name="widget_refresh" formatted="false">刷新</string>
+    <string name="widget_refresh_failed" formatted="false">刷新失败：%s</string>
+    <string name="widget_refresh_notification_sent" formatted="false">小部件刷新通知已发送</string>
+    <string name="widget_refresh_sent" formatted="false">小部件刷新请求已发送</string>
+    <string name="widget_refreshed_appwidgetid">小部件已刷新: %1$s</string>
+    <string name="widget_title" formatted="false">UIN Tool</string>
+    <string name="work_dir_workdir_absolutepath">📂 工作目录: %1$s</string>
+    <string name="work_directory" formatted="false">工作目录</string>
+    <string name="work_directory_constants_work_dir">工作目录: %1$s</string>
+    <string name="work_directory_created" formatted="false">工作目录创建成功</string>
+    <string name="work_directory_created_workdir_absol">工作目录已创建: %1$s</string>
+    <string name="work_directory_defaultfolder_absolut">工作目录: %1$s</string>
+    <string name="work_directory_initialization_failed" formatted="false">工作目录初始化失败</string>
+    <string name="work_directory_initialized" formatted="false">工作目录初始化成功</string>
+    <string name="working" formatted="false">处理中...</string>
+    <string name="write_calendar" formatted="false">写入日历</string>
+    <string name="write_contacts" formatted="false">写入联系人</string>
+    <string name="write_plugin_code" formatted="false">编写插件代码</string>
+    <string name="write_storage" formatted="false">写入存储</string>
+    <string name="writing_file_filename_content_length">写入文件: %1$s, %2$s chars</string>
+    <string name="writing_file_filename_data_size_byte">写入文件: %1$s, %2$s bytes</string>
+    <string name="yes" formatted="false">是</string>
+    <string name="you_are_already_on_the_latest_versio" formatted="false">当前已是最新版本</string>
+    <string name="you_are_already_on_the_latest_versio_2">当前已是最新版本 (v%1$s)</string>
+    <string name="you_are_on_the_latest_version_curren">当前已是最新版本: %1$s</string>
+    <string name="you_can_enable_the_permission_manual" formatted="false">您可以在系统设置中手动开启权限：</string>
+    <string name="you_denied_storage_permission_some_f" formatted="false">您拒绝了存储权限，部分功能将无法正常使用。</string>
+    <string name="your_launcher_doesn_t_support_pinnin" formatted="false">当前启动器不支持固定小部件，请长按桌面手动添加</string>
+    <string name="your_launcher_doesn_t_support_pinnin_2" formatted="false">当前启动器不支持固定快捷方式，请长按桌面手动添加</string>
 </resources>

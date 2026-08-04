@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/viewmodel/BackupViewModel.kt
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,7 +11,7 @@ import com.UIN.Tool.data.local.FileManager
 import com.UIN.Tool.data.repository.BackupRepositoryImpl
 import com.UIN.Tool.domain.model.BackupInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,9 +49,9 @@ class BackupViewModel(
                     isLoading = false,
                     backupCount = _backups.value.size
                 )
-                Logger.i(TAG, "加载 ${_backups.value.size} 个备份文件")
+                Logger.i(TAG, Str.get(R.string.loading_backups_value_size_backup_fi, _backups.value.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "加载备份失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_load_backups), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -63,7 +65,7 @@ class BackupViewModel(
             try {
                 _uiState.value = _uiState.value.copy(
                     isLoading = true,
-                    progressText = "正在创建备份..."
+                    progressText = Str.get(R.string.creating_backup)
                 )
 
                 val backup = repository.createBackup { progress ->
@@ -72,19 +74,19 @@ class BackupViewModel(
 
                 if (backup != null) {
                     _backups.value = repository.getBackups().value
-                    Logger.success(TAG, "备份创建成功: ${backup.name}")
+                    Logger.success(TAG, Str.get(R.string.backup_created_backup_name, backup.name))
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        progressText = "备份完成！"
+                        progressText = Str.get(R.string.backup_complete)
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "备份创建失败"
+                        error = Str.get(R.string.backup_creation_failed)
                     )
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "创建备份失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_create_backup), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -98,7 +100,7 @@ class BackupViewModel(
             try {
                 _uiState.value = _uiState.value.copy(
                     isLoading = true,
-                    progressText = "正在恢复备份..."
+                    progressText = Str.get(R.string.restoring_backup)
                 )
 
                 val success = repository.restoreBackup(backup) { progress ->
@@ -107,19 +109,19 @@ class BackupViewModel(
 
                 if (success) {
                     _backups.value = repository.getBackups().value
-                    Logger.success(TAG, "备份恢复成功")
+                    Logger.success(TAG, Str.get(R.string.backup_restore_successful))
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        progressText = "恢复完成！"
+                        progressText = Str.get(R.string.restore_complete)
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "恢复失败"
+                        error = Str.get(R.string.restore_failed)
                     )
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "恢复备份失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_restore_backup), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -134,10 +136,10 @@ class BackupViewModel(
                 val success = repository.deleteBackup(backup)
                 if (success) {
                     _backups.value = repository.getBackups().value
-                    Logger.success(TAG, "删除备份: ${backup.name}")
+                    Logger.success(TAG, Str.get(R.string.deleting_backup_backup_name, backup.name))
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "删除备份失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_delete_backup), e)
             }
         }
     }

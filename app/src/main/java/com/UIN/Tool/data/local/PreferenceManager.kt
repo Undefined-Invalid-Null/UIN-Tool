@@ -2,7 +2,7 @@ package com.UIN.Tool.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 
 class PreferenceManager(private val context: Context) {
 

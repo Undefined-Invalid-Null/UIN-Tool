@@ -1,5 +1,7 @@
 package com.UIN.Tool.data.remote
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import com.UIN.Tool.domain.model.RepoPluginInfo
 import com.UIN.Tool.log.Logger
 import okhttp3.OkHttpClient
@@ -52,7 +54,7 @@ class GitHubApiService(
                 }
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "获取仓库列表失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_fetch_repo_list), e)
         }
         
         return result
@@ -77,7 +79,7 @@ class GitHubApiService(
                 }
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "获取Release失败: $repoName", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_fetch_release_reponame, repoName), e)
             null
         }
     }
@@ -116,11 +118,11 @@ class GitHubApiService(
                 return null
             }
             
-            plugin.author = "UIN 社区"
-            plugin.description = "UIN Tool 插件"
+            plugin.author = Str.get(R.string.uin_community)
+            plugin.description = Str.get(R.string.uin_tool_plugins)
             plugin
         } catch (e: Exception) {
-            Logger.e(TAG, "解析Release失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_parse_release), e)
             null
         }
     }

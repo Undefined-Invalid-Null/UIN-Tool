@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/core/compiler/JavaToDexCompiler.kt
 package com.UIN.Tool.core.compiler
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -47,7 +49,7 @@ class JavaToDexCompiler(
     }
 
     private fun updateProgress(message: String) {
-        Logger.d(TAG, "📊 进度: $message")
+        Logger.d(TAG, Str.get(R.string.progress_message, message))
         mainHandler.post {
             onProgress?.invoke(message)
         }
@@ -69,24 +71,24 @@ class JavaToDexCompiler(
         mainClass: String = ""
     ) {
         Logger.enter(TAG, "compileAndPackage")
-        Logger.w(TAG, "⚠️ 原生插件编译功能暂时禁用")
-        Logger.w(TAG, "  源码目录: ${javaSrcDir.absolutePath}")
-        Logger.w(TAG, "  项目目录: ${projectDir.absolutePath}")
-        Logger.w(TAG, "  输出文件: ${outputTpk.absolutePath}")
-        Logger.w(TAG, "  UI类型: $uiType")
-        Logger.w(TAG, "  主类: $mainClass")
+        Logger.w(TAG, Str.get(R.string.native_plugin_compilation_temporaril))
+        Logger.w(TAG, Str.get(R.string.source_dir_javasrcdir_absolutepath, javaSrcDir.absolutePath))
+        Logger.w(TAG, Str.get(R.string.project_dir_projectdir_absolutepath, projectDir.absolutePath))
+        Logger.w(TAG, Str.get(R.string.output_file_outputtpk_absolutepath, outputTpk.absolutePath))
+        Logger.w(TAG, Str.get(R.string.ui_type_uitype, uiType))
+        Logger.w(TAG, Str.get(R.string.main_class_mainclass, mainClass))
 
-        updateProgress("⚠️ 原生插件编译功能暂时禁用")
+        updateProgress(Str.get(R.string.native_plugin_compilation_temporaril))
 
         // 如果是 Web 插件，直接打包
         if (uiType == "web") {
-            Logger.i(TAG, "Web 插件，直接打包 TPK")
+            Logger.i(TAG, Str.get(R.string.web_plugin_packaging_tpk_directly))
             packageTpk(projectDir, outputTpk, uiType, false)
             return
         }
 
         // 原生插件：返回错误
-        val errorMsg = "原生插件编译功能暂时不可用，请使用 Web 插件或等待后续更新"
+        val errorMsg = Str.get(R.string.native_plugin_compilation_is_current)
         Logger.e(TAG, errorMsg)
         mainHandler.post {
             onError?.invoke(errorMsg)
@@ -95,9 +97,9 @@ class JavaToDexCompiler(
         // 仍然尝试生成一个占位 TPK
         try {
             packageTpk(projectDir, outputTpk, uiType, false)
-            Logger.w(TAG, "已生成占位 TPK 文件: ${outputTpk.absolutePath}")
+            Logger.w(TAG, Str.get(R.string.generated_placeholder_tpk_outputtpk_, outputTpk.absolutePath))
         } catch (e: Exception) {
-            Logger.e(TAG, "生成占位 TPK 失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_generate_placeholder_tpk), e)
         }
         
         Logger.exit(TAG, "compileAndPackage", System.currentTimeMillis())
@@ -122,10 +124,10 @@ class JavaToDexCompiler(
             outputTpk.parentFile?.mkdirs()
             if (outputTpk.exists()) {
                 outputTpk.delete()
-                Logger.d(TAG, "删除已存在的 TPK 文件")
+                Logger.d(TAG, Str.get(R.string.removing_existing_tpk_file))
             }
 
-            Logger.d(TAG, "开始打包 TPK...")
+            Logger.d(TAG, Str.get(R.string.packaging_tpk))
 
             java.util.zip.ZipOutputStream(java.io.FileOutputStream(outputTpk)).use { zos ->
                 
@@ -135,7 +137,7 @@ class JavaToDexCompiler(
                     addFileToZip(zos, jsonFile, "plugin.json")
                     Logger.d(TAG, "  ✅ plugin.json (${jsonFile.length()} bytes)")
                 } else {
-                    Logger.w(TAG, "  ⚠️ plugin.json 不存在")
+                    Logger.w(TAG, Str.get(R.string.plugin_json_missing))
                 }
 
                 // 2. 添加 icon.png
@@ -151,19 +153,19 @@ class JavaToDexCompiler(
                         val webDir = File(projectDir, "web")
                         if (webDir.exists() && webDir.isDirectory) {
                             addDirToZip(zos, webDir, "web/")
-                            Logger.d(TAG, "  ✅ web/ 目录")
+                            Logger.d(TAG, Str.get(R.string.web_dir))
                         } else {
                             zos.putNextEntry(java.util.zip.ZipEntry("web/index.html"))
                             zos.write(getDefaultWebHtml().toByteArray())
                             zos.closeEntry()
-                            Logger.d(TAG, "  ✅ web/index.html (默认)")
+                            Logger.d(TAG, Str.get(R.string.web_index_html_default))
                         }
                     }
                     if (uiType == "cui") {
                         val scriptsDir = File(projectDir, "scripts")
                         if (scriptsDir.exists() && scriptsDir.isDirectory) {
                             addDirToZip(zos, scriptsDir, "scripts/")
-                            Logger.d(TAG, "  ✅ scripts/ 目录")
+                            Logger.d(TAG, Str.get(R.string.scripts_dir))
                         }
                     }
                 } else {
@@ -171,20 +173,20 @@ class JavaToDexCompiler(
                     zos.putNextEntry(java.util.zip.ZipEntry("plugin.dex"))
                     zos.write("// 原生插件编译功能暂时禁用".toByteArray())
                     zos.closeEntry()
-                    Logger.w(TAG, "  ⚠️ plugin.dex (占位文件)")
+                    Logger.w(TAG, Str.get(R.string.plugin_dex_placeholder))
 
                     // 打包 src 目录
                     val srcDir = File(projectDir, "src")
                     if (srcDir.exists()) {
                         addDirToZip(zos, srcDir, "src/")
-                        Logger.d(TAG, "  ✅ src/ 目录")
+                        Logger.d(TAG, Str.get(R.string.src_dir))
                     }
 
                     // 打包 res 目录
                     val resDir = File(projectDir, "res")
                     if (resDir.exists() && resDir.listFiles()?.isNotEmpty() == true) {
                         addDirToZip(zos, resDir, "res/")
-                        Logger.d(TAG, "  ✅ res/ 目录")
+                        Logger.d(TAG, Str.get(R.string.res_dir))
                     }
                 }
 
@@ -196,7 +198,7 @@ class JavaToDexCompiler(
                 }
             }
 
-            Logger.success(TAG, "✅ TPK 打包完成: ${outputTpk.absolutePath} (${outputTpk.length() / 1024} KB)")
+            Logger.success(TAG, Str.get(R.string.tpk_packaged_outputtpk_absolutepath_, outputTpk.absolutePath, outputTpk.length() / 1024))
             
             mainHandler.post {
                 onComplete?.invoke(outputTpk)
@@ -205,9 +207,9 @@ class JavaToDexCompiler(
             true
 
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ TPK 打包失败", e)
+            Logger.e(TAG, Str.get(R.string.tpk_packaging_failed), e)
             mainHandler.post {
-                onError?.invoke(e.message ?: "TPK 打包失败")
+                onError?.invoke(e.message ?: Str.get(R.string.tpk_packaging_failed_2))
             }
             false
         } finally {
@@ -230,7 +232,7 @@ class JavaToDexCompiler(
             }
             zos.closeEntry()
         } catch (e: Exception) {
-            Logger.e(TAG, "添加文件失败: $entryName", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_add_file_entryname, entryName), e)
         }
     }
 
@@ -262,7 +264,7 @@ class JavaToDexCompiler(
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Web 插件</title>
+                <title>${Str.get(R.string.web_plugin)}</title>
                 <style>
                     body { font-family: sans-serif; padding: 20px; text-align: center; background: #f5f5f5; margin: 0; }
                     .card { max-width: 400px; margin: 40px auto; background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -273,10 +275,10 @@ class JavaToDexCompiler(
             </head>
             <body>
                 <div class="card">
-                    <h1>Web 插件</h1>
-                    <button onclick="UINPlugin.callHost('toast', 'Hello from Web Plugin!')">点我</button>
-                    <button onclick="UINPlugin.callHost('finish', '')">关闭</button>
-                    <script>console.log('Web 插件已加载');</script>
+                    <h1>${Str.get(R.string.web_plugin)}</h1>
+                    <button onclick="UINPlugin.callHost('toast', 'Hello from Web Plugin!')">${Str.get(R.string.click_me)}</button>
+                    <button onclick="UINPlugin.callHost('finish', '')">${Str.get(R.string.close)}</button>
+                    <script>console.log('${Str.get(R.string.web_plugin_loaded)}');</script>
                 </div>
             </body>
             </html>

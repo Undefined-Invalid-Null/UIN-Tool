@@ -1,8 +1,10 @@
 package com.UIN.Tool.core.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -27,7 +29,7 @@ object PluginSharedData {
         if (initialized) return
         this.context = context.applicationContext
         initialized = true
-        Logger.d(TAG, "共享数据已初始化")
+        Logger.d(TAG, Str.get(R.string.shared_data_initialized))
     }
 
     private fun getPrefs(): android.content.SharedPreferences {
@@ -44,7 +46,7 @@ object PluginSharedData {
 
     private fun checkInitialized() {
         if (!initialized) {
-            throw IllegalStateException("PluginSharedData 未初始化，请先调用 init()")
+            throw IllegalStateException(Str.get(R.string.pluginshareddata_not_initialized_cal))
         }
     }
 
@@ -100,7 +102,7 @@ object PluginSharedData {
         return try {
             if (str.isNotEmpty()) JSONObject(str) else null
         } catch (e: Exception) {
-            Logger.e(TAG, "解析JSON失败: $key", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_parse_json_key, key), e)
             null
         }
     }
@@ -128,7 +130,7 @@ object PluginSharedData {
 
     private fun getSafeFile(fileName: String): File? {
         if (fileName.contains("..") || fileName.contains("/../") || fileName.startsWith("/")) {
-            Logger.w(TAG, "非法文件路径: $fileName")
+            Logger.w(TAG, Str.get(R.string.invalid_file_path_filename, fileName))
             return null
         }
         val baseDir = getSharedDir()
@@ -147,7 +149,7 @@ object PluginSharedData {
             file.writeText(content)
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "写入共享文件失败: $fileName", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_write_shared_file_filename, fileName), e)
             false
         }
     }
@@ -159,7 +161,7 @@ object PluginSharedData {
             file.writeBytes(data)
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "写入共享文件失败: $fileName", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_write_shared_file_filename, fileName), e)
             false
         }
     }
@@ -169,7 +171,7 @@ object PluginSharedData {
         return try {
             if (file.exists()) file.readText() else null
         } catch (e: Exception) {
-            Logger.e(TAG, "读取共享文件失败: $fileName", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_read_shared_file_filename, fileName), e)
             null
         }
     }

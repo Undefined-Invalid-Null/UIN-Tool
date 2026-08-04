@@ -1,5 +1,7 @@
 package com.UIN.Tool.core.compiler
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import com.UIN.Tool.log.Logger
 import java.io.File
@@ -24,11 +26,11 @@ object CompilerUtils {
                 }
             }
             
-            Logger.i(TAG, "复制资产到缓存: ${cacheFile.absolutePath}")
+            Logger.i(TAG, Str.get(R.string.copying_asset_to_cache_cachefile_abs, cacheFile.absolutePath))
             cacheFile
             
         } catch (e: Exception) {
-            Logger.e(TAG, "复制资产失败: $assetPath", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_copy_asset_assetpath, assetPath), e)
             null
         }
     }

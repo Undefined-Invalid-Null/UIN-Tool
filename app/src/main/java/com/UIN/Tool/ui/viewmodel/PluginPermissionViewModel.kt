@@ -1,5 +1,7 @@
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -41,9 +43,9 @@ class PluginPermissionViewModel(
                     isLoading = false,
                     pluginCount = _plugins.value.size
                 )
-                Logger.i(TAG, "加载 ${_plugins.value.size} 个插件")
+                Logger.i(TAG, Str.get(R.string.loading_plugins_value_size_plugin_s, _plugins.value.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "加载插件失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_load_plugins), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -55,7 +57,7 @@ class PluginPermissionViewModel(
     fun selectPlugin(pluginId: String) {
         _selectedPluginId.value = pluginId
         loadPluginPermissions(pluginId)
-        Logger.action(TAG, "选择插件", pluginId)
+        Logger.action(TAG, Str.get(R.string.select_plugin_2), pluginId)
     }
     
     private fun loadPluginPermissions(pluginId: String) {
@@ -64,7 +66,7 @@ class PluginPermissionViewModel(
             // 从插件配置加载权限
             val perms = plugin.permissions.associateWith { false }
             _permissions.value = perms
-            Logger.i(TAG, "加载 ${perms.size} 个权限")
+            Logger.i(TAG, Str.get(R.string.loading_perms_size_permission_s, perms.size))
         }
     }
     
@@ -72,7 +74,7 @@ class PluginPermissionViewModel(
         val current = _permissions.value.toMutableMap()
         current[permission] = !(current[permission] ?: false)
         _permissions.value = current
-        Logger.action(TAG, "切换权限", "$permission = ${current[permission]}")
+        Logger.action(TAG, Str.get(R.string.toggle_permission), "$permission = ${current[permission]}")
     }
     
     fun selectAllPermissions(select: Boolean) {
@@ -81,7 +83,7 @@ class PluginPermissionViewModel(
             current[key] = select
         }
         _permissions.value = current
-        Logger.action(TAG, if (select) "全选" else "全不选", "所有权限")
+        Logger.action(TAG, if (select) Str.get(R.string.select_all) else Str.get(R.string.select_none), Str.get(R.string.all_permissions))
     }
     
     data class PermissionUiState(

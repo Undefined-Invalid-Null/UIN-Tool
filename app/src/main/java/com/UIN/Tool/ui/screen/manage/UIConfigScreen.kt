@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/manage/UIConfigScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -149,7 +151,7 @@ private fun loadConfigFromUIConfig(): ConfigState {
 }
 
 private fun saveConfigToUIConfig(config: ConfigState) {
-    AppLog.i(TAG, "========== 保存UI配置到 UIConfig ==========")
+    AppLog.i(TAG, Str.get(R.string.saving_ui_config_to_uiconfig))
 
     val uiConfig = UIConfig.getInstance()
 
@@ -205,7 +207,7 @@ private fun saveConfigToUIConfig(config: ConfigState) {
 
     uiConfig.saveConfig()
 
-    AppLog.success(TAG, "UI配置保存成功")
+    AppLog.success(TAG, Str.get(R.string.ui_config_saved))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -226,28 +228,28 @@ fun UIConfigScreen(
     var saveMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        AppLog.i(TAG, "========== 从 UIConfig 加载配置 ==========")
+        AppLog.i(TAG, Str.get(R.string.loading_config_from_uiconfig))
         configState = loadConfigFromUIConfig()
-        AppLog.success(TAG, "配置加载完成")
+        AppLog.success(TAG, Str.get(R.string.config_loaded))
     }
 
     fun saveConfig() {
         if (isSaving) {
-            AppLog.d(TAG, "保存正在进行中，跳过")
+            AppLog.d(TAG, Str.get(R.string.save_in_progress_skipping))
             return
         }
 
         isSaving = true
-        AppLog.i(TAG, "========== 用户点击保存 ==========")
+        AppLog.i(TAG, Str.get(R.string.user_tapped_save))
 
         try {
             saveConfigToUIConfig(configState)
-            saveMessage = "配置已保存"
-            AppToast.success(context, "配置已保存")
+            saveMessage = Str.get(R.string.config_saved)
+            AppToast.success(context, Str.get(R.string.config_saved))
         } catch (e: Exception) {
-            AppLog.e(TAG, "保存异常", e)
-            saveMessage = "保存失败: ${e.message}"
-            AppToast.error(context, "保存异常: ${e.message}")
+            AppLog.e(TAG, Str.get(R.string.save_exception), e)
+            saveMessage = Str.get(R.string.save_failed_e_message, e.message)
+            AppToast.error(context, Str.get(R.string.save_exception_e_message, e.message))
         } finally {
             scope.launch {
                 delay(500)
@@ -259,18 +261,18 @@ fun UIConfigScreen(
     }
 
     fun resetConfig() {
-        AppLog.i(TAG, "重置配置")
+        AppLog.i(TAG, Str.get(R.string.reset_config))
         val uiConfig = UIConfig.getInstance()
         uiConfig.resetToDefault()
         configState = loadConfigFromUIConfig()
-        AppToast.info(context, "已重置为默认配置")
+        AppToast.info(context, Str.get(R.string.reset_to_default_config))
         showResetDialog = false
-        AppLog.success(TAG, "配置已重置")
+        AppLog.success(TAG, Str.get(R.string.config_reset))
     }
 
     fun importConfig(uri: Uri) {
         try {
-            AppLog.i(TAG, "========== 开始导入UI配置 ==========")
+            AppLog.i(TAG, Str.get(R.string.start_importing_ui_config))
             val tempFile = File(context.cacheDir, "ui_config_import.json")
             if (FileUtils.copyUriToFile(context, uri, tempFile)) {
                 val json = tempFile.readText()
@@ -352,29 +354,29 @@ fun UIConfigScreen(
                 uiConfig.saveConfig()
                 configState = loadConfigFromUIConfig()
 
-                AppToast.success(context, "配置已导入")
+                AppToast.success(context, Str.get(R.string.config_imported))
                 tempFile.delete()
-                AppLog.success(TAG, "UI配置导入成功")
+                AppLog.success(TAG, Str.get(R.string.ui_config_imported_successfully))
             }
         } catch (e: Exception) {
-            AppLog.e(TAG, "导入配置失败", e)
-            AppToast.error(context, "导入失败: ${e.message}")
+            AppLog.e(TAG, Str.get(R.string.failed_to_import_config), e)
+            AppToast.error(context, Str.get(R.string.import_failed_e_message, e.message))
         }
     }
 
     fun exportConfig(uri: Uri) {
         try {
-            AppLog.i(TAG, "========== 开始导出UI配置 ==========")
+            AppLog.i(TAG, Str.get(R.string.start_exporting_ui_config))
             val uiConfig = UIConfig.getInstance()
             val json = uiConfig.getConfig().toString(4)
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(json.toByteArray())
             }
-            AppToast.success(context, "配置已导出")
-            AppLog.success(TAG, "UI配置导出成功")
+            AppToast.success(context, Str.get(R.string.config_exported))
+            AppLog.success(TAG, Str.get(R.string.ui_config_exported_successfully))
         } catch (e: Exception) {
-            AppLog.e(TAG, "导出配置失败", e)
-            AppToast.error(context, "导出失败: ${e.message}")
+            AppLog.e(TAG, Str.get(R.string.failed_to_export_config), e)
+            AppToast.error(context, Str.get(R.string.export_failed_e_message, e.message))
         }
     }
 
@@ -393,7 +395,7 @@ fun UIConfigScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("UI 个性化") },
+                title = { Text(Str.get(R.string.ui_customization)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
@@ -438,7 +440,7 @@ fun UIConfigScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 edgePadding = 0.dp
             ) {
-                listOf("颜色", "形状", "尺寸", "字体", "特效").forEachIndexed { index, title ->
+                listOf(Str.get(R.string.colors), Str.get(R.string.shapes), Str.get(R.string.sizes), Str.get(R.string.fonts), Str.get(R.string.effects)).forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
@@ -467,24 +469,24 @@ fun UIConfigScreen(
                 when (selectedTab) {
                     0 -> {
                         val colorKeys = listOf(
-                            "primary" to "主题色",
-                            "primary_dark" to "深色主题色",
-                            "primary_light" to "浅色主题色",
-                            "accent" to "强调色",
-                            "success" to "成功色",
-                            "warning" to "警告色",
-                            "error" to "错误色",
-                            "info" to "信息色",
-                            "text_primary" to "主文本色",
-                            "text_secondary" to "副文本色",
-                            "text_hint" to "提示文本色",
-                            "text_primary_inverse" to "反色文本",
-                            "background" to "背景色",
-                            "surface" to "表面色",
-                            "surface_variant" to "变体表面色",
-                            "divider" to "分割线色",
-                            "glass_background" to "玻璃背景色",
-                            "disabled" to "禁用色"
+                            "primary" to Str.get(R.string.primary_color),
+                            "primary_dark" to Str.get(R.string.dark_primary),
+                            "primary_light" to Str.get(R.string.light_primary),
+                            "accent" to Str.get(R.string.accent_color),
+                            "success" to Str.get(R.string.success_color),
+                            "warning" to Str.get(R.string.warning_color),
+                            "error" to Str.get(R.string.error_color),
+                            "info" to Str.get(R.string.info_color),
+                            "text_primary" to Str.get(R.string.primary_text_color),
+                            "text_secondary" to Str.get(R.string.secondary_text_color),
+                            "text_hint" to Str.get(R.string.hint_text_color),
+                            "text_primary_inverse" to Str.get(R.string.on_color_text),
+                            "background" to Str.get(R.string.background_color),
+                            "surface" to Str.get(R.string.surface_color),
+                            "surface_variant" to Str.get(R.string.surface_variant_color),
+                            "divider" to Str.get(R.string.divider_color),
+                            "glass_background" to Str.get(R.string.glass_background_color),
+                            "disabled" to Str.get(R.string.disabled_color)
                         )
 
                         items(colorKeys) { (key, displayName) ->
@@ -558,14 +560,14 @@ fun UIConfigScreen(
 
                     1 -> {
                         val shapeKeys = listOf(
-                            "cornerRadiusSmall" to "小圆角",
-                            "cornerRadiusMedium" to "中圆角",
-                            "cornerRadiusLarge" to "大圆角",
-                            "cornerRadiusExtraLarge" to "超大圆角",
-                            "buttonCornerRadius" to "按钮圆角",
-                            "cardCornerRadius" to "卡片圆角",
-                            "dialogCornerRadius" to "对话框圆角",
-                            "inputCornerRadius" to "输入框圆角"
+                            "cornerRadiusSmall" to Str.get(R.string.small_radius),
+                            "cornerRadiusMedium" to Str.get(R.string.medium_radius),
+                            "cornerRadiusLarge" to Str.get(R.string.large_radius),
+                            "cornerRadiusExtraLarge" to Str.get(R.string.extra_large_radius),
+                            "buttonCornerRadius" to Str.get(R.string.button_radius),
+                            "cardCornerRadius" to Str.get(R.string.card_radius),
+                            "dialogCornerRadius" to Str.get(R.string.dialog_radius),
+                            "inputCornerRadius" to Str.get(R.string.input_field_radius)
                         )
 
                         items(shapeKeys) { (key, displayName) ->
@@ -638,18 +640,18 @@ fun UIConfigScreen(
 
                     2 -> {
                         val sizeKeys = listOf(
-                            "buttonHeight" to "按钮高度",
-                            "buttonMinWidth" to "按钮最小宽度",
-                            "buttonElevation" to "按钮阴影",
-                            "cardElevation" to "卡片阴影",
-                            "cardPadding" to "卡片内边距",
-                            "spacingSmall" to "小间距",
-                            "spacingMedium" to "中间距",
-                            "spacingLarge" to "大间距",
-                            "iconSizeSmall" to "小图标",
-                            "iconSizeMedium" to "中图标",
-                            "iconSizeLarge" to "大图标",
-                            "progressHeight" to "进度条高度"
+                            "buttonHeight" to Str.get(R.string.button_height),
+                            "buttonMinWidth" to Str.get(R.string.button_min_width),
+                            "buttonElevation" to Str.get(R.string.button_shadow),
+                            "cardElevation" to Str.get(R.string.card_shadow),
+                            "cardPadding" to Str.get(R.string.card_padding),
+                            "spacingSmall" to Str.get(R.string.small_spacing),
+                            "spacingMedium" to Str.get(R.string.medium_spacing),
+                            "spacingLarge" to Str.get(R.string.large_spacing),
+                            "iconSizeSmall" to Str.get(R.string.small_icon),
+                            "iconSizeMedium" to Str.get(R.string.medium_icon),
+                            "iconSizeLarge" to Str.get(R.string.large_icon),
+                            "progressHeight" to Str.get(R.string.progress_bar_height)
                         )
 
                         items(sizeKeys) { (key, displayName) ->
@@ -761,7 +763,7 @@ fun UIConfigScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            "标题字体大小",
+                                            Str.get(R.string.title_font_size),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -805,7 +807,7 @@ fun UIConfigScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            "正文字体大小",
+                                            Str.get(R.string.body_font_size),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -849,7 +851,7 @@ fun UIConfigScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            "辅助字体大小",
+                                            Str.get(R.string.caption_font_size),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -893,7 +895,7 @@ fun UIConfigScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            "章节标题大小",
+                                            Str.get(R.string.section_title_size),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
@@ -937,7 +939,7 @@ fun UIConfigScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "文字加粗",
+                                        Str.get(R.string.bold_text),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -972,7 +974,7 @@ fun UIConfigScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "玻璃效果",
+                                        Str.get(R.string.glass_effect),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -1005,7 +1007,7 @@ fun UIConfigScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        "波纹效果",
+                                        Str.get(R.string.ripple_effect),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -1039,13 +1041,13 @@ fun UIConfigScreen(
                                         .padding(16.dp)
                                 ) {
                                     Text(
-                                        "玻璃效果预览",
+                                        Str.get(R.string.glass_effect_preview),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        if (configState.enableGlassEffect) "这是一个玻璃效果卡片" else "玻璃效果已禁用",
+                                        if (configState.enableGlassEffect) Str.get(R.string.this_is_a_glass_effect_card) else Str.get(R.string.glass_effect_disabled),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1059,7 +1061,7 @@ fun UIConfigScreen(
                     saveMessage?.let {
                         Text(
                             it,
-                            color = if (it.contains("保存成功") || it.contains("已保存"))
+                            color = if (it.contains(Str.get(R.string.saved_successfully)) || it.contains(Str.get(R.string.saved)))
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.error,
@@ -1094,7 +1096,7 @@ fun UIConfigScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(if (isSaving) "保存中..." else "保存配置", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(if (isSaving) Str.get(R.string.saving) else Str.get(R.string.save_config), fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -1170,10 +1172,10 @@ fun UIConfigScreen(
     // ==================== 重置对话框 ====================
     if (showResetDialog) {
         UIComponents.ConfirmDialog(
-            title = "确认重置",
-            message = "确定要重置所有 UI 配置为默认值吗？此操作不可撤销。",
-            confirmText = "重置",
-            dismissText = "取消",
+            title = Str.get(R.string.confirm_reset),
+            message = Str.get(R.string.reset_all_ui_config_to_defaults_this),
+            confirmText = Str.get(R.string.reset),
+            dismissText = Str.get(R.string.cancel),
             onConfirm = { resetConfig() },
             onDismiss = { showResetDialog = false },
             isDestructive = true

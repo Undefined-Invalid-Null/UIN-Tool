@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/widget/WidgetConfigureActivity.kt
 package com.UIN.Tool.widget
 
+import com.UIN.Tool.utils.Str
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
@@ -65,29 +66,29 @@ class WidgetConfigureActivity : ComponentActivity() {
 
             // 尝试加载配置
             LaunchedEffect(Unit) {
-                Logger.d(TAG, "LaunchedEffect: 加载插件列表和配置")
+                Logger.d(TAG, Str.get(R.string.launchedeffect_loading_plugin_list_a))
                 plugins = pluginManager.plugins.value
-                Logger.d(TAG, "插件数量: ${plugins.size}")
+                Logger.d(TAG, Str.get(R.string.plugin_count_plugins_size, plugins.size))
                 
                 if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                     val config = WidgetConfig.load(this@WidgetConfigureActivity, appWidgetId)
-                    Logger.d(TAG, "加载的配置: ${config?.pluginId1}, ${config?.pluginId2}, ${config?.pluginId3}")
+                    Logger.d(TAG, Str.get(R.string.loaded_config_config_pluginid1_confi, config?.pluginId1, config?.pluginId2, config?.pluginId3))
                     config?.let {
                         selected1 = it.pluginId1
                         selected2 = it.pluginId2
                         selected3 = it.pluginId3
                     }
                 } else {
-                    Logger.d(TAG, "从管理页面打开，加载默认配置")
+                    Logger.d(TAG, Str.get(R.string.opened_from_manage_page_loading_defa))
                     val prefs = getSharedPreferences("widget_global_config", MODE_PRIVATE)
                     selected1 = prefs.getString("global_plugin_1", "") ?: ""
                     selected2 = prefs.getString("global_plugin_2", "") ?: ""
                     selected3 = prefs.getString("global_plugin_3", "") ?: ""
                 }
-                Logger.d(TAG, "选中状态: $selected1, $selected2, $selected3")
+                Logger.d(TAG, Str.get(R.string.selected_state_selected1_selected2_s, selected1, selected2, selected3))
             }
 
-            val pluginNames = listOf("-- 无 --") + plugins.map { it.name }
+            val pluginNames = listOf(Str.get(R.string.none_2)) + plugins.map { it.name }
             val pluginIds = listOf("") + plugins.map { it.pluginId }
 
             UINToolTheme {
@@ -100,27 +101,27 @@ class WidgetConfigureActivity : ComponentActivity() {
                 ) {
                     UIComponents.TitleText(
                         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) 
-                            "配置小部件" 
+                            Str.get(R.string.configure_widget) 
                         else 
-                            "配置桌面小部件"
+                            Str.get(R.string.configure_home_screen_widget)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                        UIComponents.BodyText("选择要显示的插件（最多3个，显示在前3个位置）")
+                        UIComponents.BodyText(Str.get(R.string.choose_plugins_to_show_up_to_3_shown))
                     } else {
-                        UIComponents.BodyText("选择要显示的插件，将应用到所有小部件")
+                        UIComponents.BodyText(Str.get(R.string.choose_plugins_to_display_applied_to))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // ✅ 白色背景下拉框 - 位置1
                     WidgetPluginSelectorWhite(
-                        label = "位置 1",
+                        label = Str.get(R.string.position_1_2),
                         current = selected1,
                         pluginNames = pluginNames,
                         pluginIds = pluginIds,
                         onSelected = { 
-                            Logger.d(TAG, "位置1 选择: $it")
+                            Logger.d(TAG, Str.get(R.string.position_1_selection_it, it))
                             selected1 = it 
                         }
                     )
@@ -129,12 +130,12 @@ class WidgetConfigureActivity : ComponentActivity() {
 
                     // ✅ 白色背景下拉框 - 位置2
                     WidgetPluginSelectorWhite(
-                        label = "位置 2",
+                        label = Str.get(R.string.position_2_2),
                         current = selected2,
                         pluginNames = pluginNames,
                         pluginIds = pluginIds,
                         onSelected = { 
-                            Logger.d(TAG, "位置2 选择: $it")
+                            Logger.d(TAG, Str.get(R.string.position_2_selection_it, it))
                             selected2 = it 
                         }
                     )
@@ -143,12 +144,12 @@ class WidgetConfigureActivity : ComponentActivity() {
 
                     // ✅ 白色背景下拉框 - 位置3
                     WidgetPluginSelectorWhite(
-                        label = "位置 3",
+                        label = Str.get(R.string.position_3_2),
                         current = selected3,
                         pluginNames = pluginNames,
                         pluginIds = pluginIds,
                         onSelected = { 
-                            Logger.d(TAG, "位置3 选择: $it")
+                            Logger.d(TAG, Str.get(R.string.position_3_selection_it, it))
                             selected3 = it 
                         }
                     )
@@ -156,7 +157,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     UIComponents.CaptionText(
-                        "💡 未配置的位置将自动显示其他插件",
+                        Str.get(R.string.unconfigured_positions_automatically),
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
 
@@ -193,7 +194,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "如何添加桌面小部件",
+                                        text = Str.get(R.string.how_to_add_a_home_screen_widget),
                                         style = MaterialTheme.typography.titleSmall,
                                         color = Color(0xFF1A3A4A),
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
@@ -201,10 +202,10 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 }
                                 
                                 Text(
-                                    text = "1. 长按桌面空白处\n" +
-                                           "2. 选择「小部件」或「添加工具」\n" +
-                                           "3. 找到「UIN Tool」\n" +
-                                           "4. 长按拖拽到桌面即可",
+                                    text = Str.get(R.string.step1_long_press_an_empty_area_of_the_ho) +
+                                           Str.get(R.string.step2_choose_widgets_or_add_tools_n) +
+                                           Str.get(R.string.step3_find_uin_tool_n) +
+                                           Str.get(R.string.step4_long_press_and_drag_it_to_the_home),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF444444),
                                     lineHeight = 22.sp,
@@ -219,7 +220,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 )
                                 
                                 Text(
-                                    text = "💡 提示：添加后会自动应用当前配置",
+                                    text = Str.get(R.string.tip_current_config_is_applied_automa),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color(0xFF666666),
                                     modifier = Modifier.padding(top = 4.dp)
@@ -238,7 +239,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         ) {
                             Button(
                                 onClick = {
-                                    Logger.i(TAG, "点击添加快捷方式")
+                                    Logger.i(TAG, Str.get(R.string.tap_to_add_shortcut))
                                     pin1x1Widget()
                                 },
                                 modifier = Modifier
@@ -251,7 +252,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("🔗 添加快捷方式")
+                                Text(Str.get(R.string.add_shortcut))
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -265,10 +266,10 @@ class WidgetConfigureActivity : ComponentActivity() {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         UIComponents.PrimaryButton(
-                            text = "保存",
+                            text = Str.get(R.string.save),
                             onClick = {
-                                Logger.i(TAG, "点击保存按钮")
-                                Logger.d(TAG, "保存配置: $selected1, $selected2, $selected3")
+                                Logger.i(TAG, Str.get(R.string.tap_the_save_button))
+                                Logger.d(TAG, Str.get(R.string.saving_config_selected1_selected2_se, selected1, selected2, selected3))
                                 
                                 if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                                     // 保存到指定小部件
@@ -283,7 +284,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                     appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
                                     WidgetProvider.sendRefreshIntent(this@WidgetConfigureActivity)
                                     
-                                    Logger.success(TAG, "小部件配置完成并已刷新")
+                                    Logger.success(TAG, Str.get(R.string.widget_configured_and_refreshed))
                                     
                                     // ✅ 重要：返回 RESULT_OK，告诉系统配置成功
                                     val resultIntent = Intent().apply {
@@ -302,7 +303,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                     
                                     // ✅ 刷新所有小部件
                                     WidgetProvider.forceRefreshAllWidgets(this@WidgetConfigureActivity)
-                                    Logger.success(TAG, "全局配置已保存，所有小部件已刷新")
+                                    Logger.success(TAG, Str.get(R.string.global_config_saved_all_widgets_refr))
                                     
                                     // ✅ 返回 RESULT_OK
                                     setResult(RESULT_OK)
@@ -310,7 +311,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 
                                 Toast.makeText(
                                     this@WidgetConfigureActivity,
-                                    "配置已保存并刷新",
+                                    Str.get(R.string.config_saved_and_refreshed),
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 
@@ -322,9 +323,9 @@ class WidgetConfigureActivity : ComponentActivity() {
                             modifier = Modifier.weight(1f)
                         )
                         UIComponents.SecondaryButton(
-                            text = "取消",
+                            text = Str.get(R.string.cancel),
                             onClick = {
-                                Logger.i(TAG, "点击取消按钮")
+                                Logger.i(TAG, Str.get(R.string.tap_the_cancel_button))
                                 // ✅ 取消时返回 RESULT_CANCELED
                                 setResult(RESULT_CANCELED)
                                 finish()
@@ -341,18 +342,18 @@ class WidgetConfigureActivity : ComponentActivity() {
     
     private fun refreshWidget(appWidgetId: Int) {
         try {
-            Logger.d(TAG, "刷新小部件: $appWidgetId")
+            Logger.d(TAG, Str.get(R.string.refreshing_widget_appwidgetid, appWidgetId))
             WidgetProvider.updateWidget(this, appWidgetManager, appWidgetId)
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
-            Logger.success(TAG, "小部件已刷新: $appWidgetId")
+            Logger.success(TAG, Str.get(R.string.widget_refreshed_appwidgetid, appWidgetId))
         } catch (e: Exception) {
-            Logger.e(TAG, "刷新小部件失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_refresh_widget_e_message, e.message), e)
         }
     }
     
     private fun refreshAllWidgets() {
         try {
-            Logger.d(TAG, "刷新所有小部件")
+            Logger.d(TAG, Str.get(R.string.refresh_all_widgets))
             val componentName = ComponentName(this, WidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
             if (appWidgetIds.isNotEmpty()) {
@@ -360,12 +361,12 @@ class WidgetConfigureActivity : ComponentActivity() {
                     WidgetProvider.updateWidget(this, appWidgetManager, widgetId)
                     appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)
                 }
-                Logger.success(TAG, "所有小部件已刷新，共 ${appWidgetIds.size} 个")
+                Logger.success(TAG, Str.get(R.string.all_widgets_refreshed_appwidgetids_s, appWidgetIds.size))
             } else {
-                Logger.d(TAG, "没有已添加的小部件")
+                Logger.d(TAG, Str.get(R.string.no_widgets_added_yet))
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "刷新所有小部件失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_refresh_all_widgets_e_mess, e.message), e)
         }
     }
     
@@ -377,36 +378,36 @@ class WidgetConfigureActivity : ComponentActivity() {
                 val componentName = ComponentName(this, Widget1x1Provider::class.java)
                 
                 if (appWidgetManager.isRequestPinAppWidgetSupported()) {
-                    Logger.i(TAG, "开始添加1x1快捷方式")
+                    Logger.i(TAG, Str.get(R.string.adding_1x1_shortcut))
                     
                     // 请求固定小部件
                     appWidgetManager.requestPinAppWidget(componentName, null, null)
                     
                     Toast.makeText(
                         this,
-                        "请在桌面放置快捷方式",
+                        Str.get(R.string.place_the_shortcut_on_your_home_scre),
                         Toast.LENGTH_LONG
                     ).show()
                     
-                    Logger.success(TAG, "已请求添加1x1快捷方式")
+                    Logger.success(TAG, Str.get(R.string.widget_1x1_shortcut_request_sent))
                 } else {
                     Toast.makeText(
                         this,
-                        "当前启动器不支持固定快捷方式，请长按桌面手动添加",
+                        Str.get(R.string.your_launcher_doesn_t_support_pinnin_2),
                         Toast.LENGTH_LONG
                     ).show()
-                    Logger.w(TAG, "启动器不支持固定快捷方式")
+                    Logger.w(TAG, Str.get(R.string.launcher_does_not_support_pinning_sh))
                 }
             } else {
                 Toast.makeText(
                     this,
-                    "Android 8.0+ 才支持此功能，请长按桌面手动添加",
+                    Str.get(R.string.this_requires_android_8_0_long_press),
                     Toast.LENGTH_LONG
                 ).show()
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "添加快捷方式失败: ${e.message}", e)
-            Toast.makeText(this, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Logger.e(TAG, Str.get(R.string.failed_to_add_shortcut_e_message, e.message), e)
+            Toast.makeText(this, Str.get(R.string.add_failed_e_message, e.message), Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -436,7 +437,7 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
         Logger.i(TAG, "1x1 appWidgetId: $appWidgetId")
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            Logger.e(TAG, "无效的 appWidgetId，结束 Activity")
+            Logger.e(TAG, Str.get(R.string.invalid_appwidgetid_finishing_activi))
             finish()
             return
         }
@@ -447,20 +448,20 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
             var selected by remember { mutableStateOf("") }
 
             LaunchedEffect(Unit) {
-                Logger.d(TAG, "LaunchedEffect: 加载插件列表和1x1配置")
+                Logger.d(TAG, Str.get(R.string.launchedeffect_loading_plugin_list_a_2))
                 plugins = pluginManager.plugins.value
-                Logger.d(TAG, "插件数量: ${plugins.size}")
+                Logger.d(TAG, Str.get(R.string.plugin_count_plugins_size, plugins.size))
                 
                 val config = Widget1x1Config.load(this@Widget1x1ConfigureActivity, appWidgetId)
-                Logger.d(TAG, "加载的1x1配置: ${config?.pluginId}")
+                Logger.d(TAG, Str.get(R.string.loaded_1x1_config_config_pluginid, config?.pluginId))
                 
                 config?.let {
                     selected = it.pluginId
                 }
-                Logger.d(TAG, "当前选中: $selected")
+                Logger.d(TAG, Str.get(R.string.currently_selected_selected, selected))
             }
 
-            val pluginNames = listOf("-- 无 --") + plugins.map { it.name }
+            val pluginNames = listOf(Str.get(R.string.none_2)) + plugins.map { it.name }
             val pluginIds = listOf("") + plugins.map { it.pluginId }
 
             UINToolTheme {
@@ -470,19 +471,19 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    UIComponents.TitleText("选择快捷方式插件")
+                    UIComponents.TitleText(Str.get(R.string.choose_shortcut_plugin))
                     Spacer(modifier = Modifier.height(8.dp))
-                    UIComponents.BodyText("选择一个插件作为桌面快捷方式")
+                    UIComponents.BodyText(Str.get(R.string.choose_a_plugin_as_a_home_screen_sho))
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // ✅ 白色背景下拉框
                     WidgetPluginSelectorWhite(
-                        label = "选择插件",
+                        label = Str.get(R.string.select_plugin_2),
                         current = selected,
                         pluginNames = pluginNames,
                         pluginIds = pluginIds,
                         onSelected = { 
-                            Logger.d(TAG, "选择插件: $it")
+                            Logger.d(TAG, Str.get(R.string.select_plugin_it, it))
                             selected = it 
                         }
                     )
@@ -494,17 +495,17 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         UIComponents.PrimaryButton(
-                            text = "确认",
+                            text = Str.get(R.string.confirm_2),
                             onClick = {
-                                Logger.i(TAG, "点击1x1确认按钮")
-                                Logger.d(TAG, "选中的插件: $selected")
+                                Logger.i(TAG, Str.get(R.string.tapped_1x1_confirm_button))
+                                Logger.d(TAG, Str.get(R.string.selected_plugin_selected, selected))
                                 
                                 Widget1x1Config(selected).save(
                                     this@Widget1x1ConfigureActivity,
                                     appWidgetId
                                 )
                                 
-                                Logger.d(TAG, "1x1配置已保存，刷新小部件")
+                                Logger.d(TAG, Str.get(R.string.widget_1x1_config_saved_refreshing_widget))
                                 
                                 val appWidgetManager = AppWidgetManager.getInstance(this@Widget1x1ConfigureActivity)
                                 Widget1x1Provider.update1x1Widget(
@@ -513,7 +514,7 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
                                     appWidgetId
                                 )
                                 
-                                Logger.success(TAG, "1x1小部件配置完成")
+                                Logger.success(TAG, Str.get(R.string.widget_1x1_widget_configured))
                                 
                                 // ✅ 返回 RESULT_OK
                                 val result = Intent().apply {
@@ -525,9 +526,9 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
                             modifier = Modifier.weight(1f)
                         )
                         UIComponents.SecondaryButton(
-                            text = "设为默认",
+                            text = Str.get(R.string.set_as_default),
                             onClick = {
-                                Logger.i(TAG, "点击1x1设为默认按钮")
+                                Logger.i(TAG, Str.get(R.string.tapped_1x1_set_default_button))
                                 Widget1x1Config("").save(
                                     this@Widget1x1ConfigureActivity,
                                     appWidgetId
@@ -590,7 +591,7 @@ fun WidgetPluginSelectorWhite(
             }
         ) {
             OutlinedTextField(
-                value = if (current.isEmpty()) "-- 无 --" else pluginNames[pluginIds.indexOf(current)],
+                value = if (current.isEmpty()) Str.get(R.string.none_2) else pluginNames[pluginIds.indexOf(current)],
                 onValueChange = {},
                 readOnly = true,
                 modifier = Modifier

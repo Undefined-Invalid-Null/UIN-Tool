@@ -1,5 +1,7 @@
 package com.UIN.Tool.core.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.os.Handler
 import android.os.Looper
 import com.UIN.Tool.log.Logger
@@ -46,7 +48,7 @@ object PluginEventBus {
      */
     fun register(eventType: String, listener: EventListener, sticky: Boolean = false) {
         listeners.getOrPut(eventType) { CopyOnWriteArrayList() }.add(listener)
-        Logger.d(TAG, "注册事件监听: $eventType")
+        Logger.d(TAG, Str.get(R.string.registering_event_listener_eventtype, eventType))
         
         // 粘性事件处理
         if (sticky) {
@@ -66,7 +68,7 @@ object PluginEventBus {
      */
     fun registerPluginListener(pluginId: String, listener: PluginMessageListener) {
         pluginListeners.getOrPut(pluginId) { CopyOnWriteArrayList() }.add(listener)
-        Logger.d(TAG, "注册插件消息监听: $pluginId")
+        Logger.d(TAG, Str.get(R.string.registering_plugin_message_listener_, pluginId))
     }
     
     /**
@@ -74,7 +76,7 @@ object PluginEventBus {
      */
     fun unregister(eventType: String, listener: EventListener) {
         listeners[eventType]?.remove(listener)
-        Logger.d(TAG, "取消事件监听: $eventType")
+        Logger.d(TAG, Str.get(R.string.removing_event_listener_eventtype, eventType))
     }
     
     /**
@@ -82,7 +84,7 @@ object PluginEventBus {
      */
     fun unregisterPluginListener(pluginId: String, listener: PluginMessageListener) {
         pluginListeners[pluginId]?.remove(listener)
-        Logger.d(TAG, "取消插件消息监听: $pluginId")
+        Logger.d(TAG, Str.get(R.string.removing_plugin_message_listener_plu, pluginId))
     }
     
     /**
@@ -93,7 +95,7 @@ object PluginEventBus {
      */
     fun postEvent(eventType: String, data: Map<String, Any>? = null, sticky: Boolean = false) {
         if (debugEnabled) {
-            Logger.d(TAG, "发送事件: $eventType, data: $data")
+            Logger.d(TAG, Str.get(R.string.sending_event_eventtype_data_data, eventType, data))
         }
         
         // 保存粘性事件
@@ -104,7 +106,7 @@ object PluginEventBus {
         val list = listeners[eventType]
         if (list.isNullOrEmpty()) {
             if (debugEnabled) {
-                Logger.d(TAG, "没有监听器: $eventType")
+                Logger.d(TAG, Str.get(R.string.no_listeners_eventtype, eventType))
             }
             return
         }
@@ -115,7 +117,7 @@ object PluginEventBus {
                 try {
                     listener.onEvent(eventType, data)
                 } catch (e: Exception) {
-                    Logger.e(TAG, "事件分发异常: ${e.message}", e)
+                    Logger.e(TAG, Str.get(R.string.event_dispatch_error_e_message, e.message), e)
                 }
             }
         }
@@ -127,7 +129,7 @@ object PluginEventBus {
      */
     fun postMessage(message: PluginMessage) {
         if (debugEnabled) {
-            Logger.d(TAG, "发送消息: ${message.action} from ${message.sender} to ${message.target}")
+            Logger.d(TAG, Str.get(R.string.sending_message_message_action_from_, message.action, message.sender, message.target))
         }
         
         // 如果指定了目标，只发给目标插件
@@ -139,7 +141,7 @@ object PluginEventBus {
                         try {
                             listener.onMessage(message)
                         } catch (e: Exception) {
-                            Logger.e(TAG, "消息分发异常: ${e.message}", e)
+                            Logger.e(TAG, Str.get(R.string.message_dispatch_error_e_message, e.message), e)
                         }
                     }
                 }
@@ -154,7 +156,7 @@ object PluginEventBus {
                     try {
                         listener.onMessage(message)
                     } catch (e: Exception) {
-                        Logger.e(TAG, "消息分发异常: ${e.message}", e)
+                        Logger.e(TAG, Str.get(R.string.message_dispatch_error_e_message, e.message), e)
                     }
                 }
             }
@@ -212,6 +214,6 @@ object PluginEventBus {
         listeners.clear()
         pluginListeners.clear()
         stickyEvents.clear()
-        Logger.d(TAG, "事件总线已清理")
+        Logger.d(TAG, Str.get(R.string.event_bus_cleared))
     }
 }

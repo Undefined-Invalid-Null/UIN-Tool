@@ -1,5 +1,7 @@
 package com.UIN.Tool.data.local
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
@@ -25,7 +27,7 @@ class FileManager(private val context: Context) {
             }
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "复制Uri到文件失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_copy_uri_to_file), e)
             false
         }
     }
@@ -35,7 +37,7 @@ class FileManager(private val context: Context) {
             if (!file.exists()) return null
             file.readText()
         } catch (e: Exception) {
-            Logger.e(TAG, "读取文件失败: ${file.absolutePath}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_read_file_file_absolutepat, file.absolutePath), e)
             null
         }
     }
@@ -46,7 +48,7 @@ class FileManager(private val context: Context) {
             file.writeText(content)
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "写入文件失败: ${file.absolutePath}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_write_file_file_absolutepa, file.absolutePath), e)
             false
         }
     }
@@ -62,7 +64,7 @@ class FileManager(private val context: Context) {
                 else -> file.delete()
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "删除失败: ${file.absolutePath}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_delete_file_absolutepath, file.absolutePath), e)
             false
         }
     }
@@ -82,7 +84,7 @@ class FileManager(private val context: Context) {
             }
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "复制目录失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_copy_directory), e)
             false
         }
     }
@@ -97,7 +99,7 @@ class FileManager(private val context: Context) {
             }
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "压缩目录失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_compress_directory), e)
             false
         }
     }
@@ -118,7 +120,7 @@ class FileManager(private val context: Context) {
                 }
                 zos.closeEntry()
             } catch (e: Exception) {
-                Logger.e(TAG, "添加文件到ZIP失败: ${file.absolutePath}", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_add_file_to_zip_file_absol, file.absolutePath), e)
             }
         }
     }
@@ -143,7 +145,7 @@ class FileManager(private val context: Context) {
             }
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "解压失败: ${zipFile.absolutePath}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_unzip_zipfile_absolutepath, zipFile.absolutePath), e)
             false
         }
     }
@@ -166,7 +168,7 @@ class FileManager(private val context: Context) {
             }
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "创建目录失败: $path", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_create_directory_path, path), e)
             false
         }
     }

@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/docs/DocViewerScreen.kt
 package com.UIN.Tool.ui.screen.docs
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.*
@@ -26,7 +28,7 @@ fun DocViewerScreen() {
     val activity = context as? android.app.Activity
 
     val docType = activity?.intent?.getStringExtra("doc_type") ?: "help"
-    val title = activity?.intent?.getStringExtra("title") ?: "文档"
+    val title = activity?.intent?.getStringExtra("title") ?: Str.get(R.string.docs)
 
     var content by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
@@ -62,7 +64,7 @@ fun DocViewerScreen() {
                 .padding(paddingValues)
         ) {
             if (isLoading) {
-                UIComponents.FullScreenLoading("加载文档中...")
+                UIComponents.FullScreenLoading(Str.get(R.string.loading_document))
             } else {
                 AndroidView(
                     factory = { ctx ->
@@ -101,7 +103,7 @@ private suspend fun loadDocument(docType: String, onResult: (String) -> Unit) {
         reader.close()
         onResult(content)
     } catch (e: Exception) {
-        AppLog.e("DocViewer", "加载文档失败: $fileName", e)
-        onResult("加载文档失败: ${e.message}")
+        AppLog.e("DocViewer", Str.get(R.string.failed_to_load_document_filename, fileName), e)
+        onResult(Str.get(R.string.failed_to_load_document_e_message, e.message))
     }
 }

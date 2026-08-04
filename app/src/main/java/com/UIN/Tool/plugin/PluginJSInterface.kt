@@ -1,5 +1,7 @@
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.Manifest
 import android.app.Activity
 import android.app.NotificationChannel
@@ -36,7 +38,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.PermissionUtils
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -65,7 +67,7 @@ class PluginJSInterface(
     companion object {
         private const val TAG = "PluginJSInterface"
         private const val NOTIFICATION_CHANNEL_ID = "plugin_notification_channel"
-        private const val NOTIFICATION_CHANNEL_NAME = "插件通知"
+        private val NOTIFICATION_CHANNEL_NAME = Str.get(R.string.plugin_notification)
     }
 
     private val pendingPermissionCallbacks = mutableMapOf<String, String>()
@@ -95,7 +97,7 @@ class PluginJSInterface(
                 NOTIFICATION_CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "插件通知"
+                description = Str.get(R.string.plugin_notification)
                 enableVibration(true)
                 enableLights(true)
             }
@@ -108,7 +110,7 @@ class PluginJSInterface(
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
             PluginContext(context, pluginDir.absolutePath)
         } catch (e: Exception) {
-            Logger.e(TAG, "获取PluginContext失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_get_plugincontext), e)
             null
         }
     }
@@ -123,7 +125,7 @@ class PluginJSInterface(
             val oldPrefs = context.getSharedPreferences("web_plugin_$pluginId", Context.MODE_PRIVATE)
             val oldData = oldPrefs.all
             if (oldData.isNotEmpty()) {
-                Logger.i(TAG, "迁移旧数据: ${oldData.size} 条")
+                Logger.i(TAG, Str.get(R.string.migrating_old_data_olddata_size_item_2, oldData.size))
                 val pctx = getPluginContext()
                 if (pctx != null) {
                     oldData.forEach { (key, value) ->
@@ -137,12 +139,12 @@ class PluginJSInterface(
                         }
                     }
                     oldPrefs.edit().clear().apply()
-                    Logger.success(TAG, "迁移完成")
+                    Logger.success(TAG, Str.get(R.string.migration_complete))
                 }
             }
             isMigrated = true
         } catch (e: Exception) {
-            Logger.e(TAG, "迁移旧数据失败", e)
+            Logger.e(TAG, Str.get(R.string.old_data_migration_failed), e)
             isMigrated = true
         }
     }
@@ -151,7 +153,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun callHost(action: String, data: String?) {
-        Logger.i(TAG, "JS调用: $action -> $data")
+        Logger.i(TAG, Str.get(R.string.js_call_action_data, action, data))
         val params = data ?: ""
         when (action) {
             "toast" -> showToast(params)
@@ -171,13 +173,13 @@ class PluginJSInterface(
             "setKeepScreenOn" -> setKeepScreenOn(params.toBoolean())
             "sendNotification" -> sendNotification(params, "")    
                     "takeScreenshot" -> takeScreenshot()
-            else -> Logger.w(TAG, "未知调用: $action")
+            else -> Logger.w(TAG, Str.get(R.string.unknown_call_action, action))
         }
     }
 
     @JavascriptInterface
     fun callPlugin(method: String, params: String?) {
-        Logger.i(TAG, "调用插件方法: $method -> $params")
+        Logger.i(TAG, Str.get(R.string.calling_plugin_method_method_params, method, params))
     }
 
     // ==================== 1. 设备标识 ====================
@@ -389,7 +391,7 @@ class PluginJSInterface(
             reader.close()
             sb.toString()
         } catch (e: Exception) {
-            "无法获取CPU信息"
+            Str.get(R.string.could_not_get_cpu_info)
         }
     }
 
@@ -422,7 +424,7 @@ class PluginJSInterface(
         return try {
             val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
             val sensor = sm.getDefaultSensor(type)
-            if (sensor == null) return "{\"error\":\"无${name}传感器\"}"
+            if (sensor == null) return Str.get(R.string.error_no_name_sensor, name)
             // 使用默认值（实际传感器值需要通过监听器获取，这里返回传感器信息）
             JSONObject().apply {
                 put("name", sensor.name)
@@ -439,31 +441,31 @@ class PluginJSInterface(
     }
 
     @JavascriptInterface
-    fun getAccelerometer(): String = getSensorValue(Sensor.TYPE_ACCELEROMETER, "加速度计")
+    fun getAccelerometer(): String = getSensorValue(Sensor.TYPE_ACCELEROMETER, Str.get(R.string.accelerometer))
 
     @JavascriptInterface
-    fun getGyroscope(): String = getSensorValue(Sensor.TYPE_GYROSCOPE, "陀螺仪")
+    fun getGyroscope(): String = getSensorValue(Sensor.TYPE_GYROSCOPE, Str.get(R.string.gyroscope))
 
     @JavascriptInterface
-    fun getLightSensor(): String = getSensorValue(Sensor.TYPE_LIGHT, "光线")
+    fun getLightSensor(): String = getSensorValue(Sensor.TYPE_LIGHT, Str.get(R.string.light))
 
     @JavascriptInterface
-    fun getProximitySensor(): String = getSensorValue(Sensor.TYPE_PROXIMITY, "距离")
+    fun getProximitySensor(): String = getSensorValue(Sensor.TYPE_PROXIMITY, Str.get(R.string.proximity))
 
     @JavascriptInterface
-    fun getMagneticField(): String = getSensorValue(Sensor.TYPE_MAGNETIC_FIELD, "磁场")
+    fun getMagneticField(): String = getSensorValue(Sensor.TYPE_MAGNETIC_FIELD, Str.get(R.string.magnetic_field))
 
     @JavascriptInterface
-    fun getOrientation(): String = getSensorValue(Sensor.TYPE_ORIENTATION, "方向")
+    fun getOrientation(): String = getSensorValue(Sensor.TYPE_ORIENTATION, Str.get(R.string.orientation))
 
     @JavascriptInterface
-    fun getPressureSensor(): String = getSensorValue(Sensor.TYPE_PRESSURE, "气压")
+    fun getPressureSensor(): String = getSensorValue(Sensor.TYPE_PRESSURE, Str.get(R.string.pressure))
 
     @JavascriptInterface
-    fun getTemperatureSensor(): String = getSensorValue(Sensor.TYPE_AMBIENT_TEMPERATURE, "温度")
+    fun getTemperatureSensor(): String = getSensorValue(Sensor.TYPE_AMBIENT_TEMPERATURE, Str.get(R.string.temperature))
 
     @JavascriptInterface
-    fun getHumiditySensor(): String = getSensorValue(Sensor.TYPE_RELATIVE_HUMIDITY, "湿度")
+    fun getHumiditySensor(): String = getSensorValue(Sensor.TYPE_RELATIVE_HUMIDITY, Str.get(R.string.humidity))
 
     @JavascriptInterface
     fun getAvailableSensors(): String {
@@ -492,11 +494,11 @@ class PluginJSInterface(
             else -> -1
         }
         if (sensorType < 0) {
-            sendCallback(callbackId, errJson("未知传感器类型: $type"))
+            sendCallback(callbackId, errJson(Str.get(R.string.unknown_sensor_type_type, type)))
             return
         }
         val sensor = sm.getDefaultSensor(sensorType) ?: run {
-            sendCallback(callbackId, errJson("传感器不可用: $type"))
+            sendCallback(callbackId, errJson(Str.get(R.string.sensor_unavailable_type, type)))
             return
         }
         activeSensorType = type
@@ -539,10 +541,10 @@ class PluginJSInterface(
         sm.registerListener(activeSensorListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         sendCallback(callbackId, JSONObject().apply {
             put("success", true)
-            put("message", "传感器已启动")
+            put("message", Str.get(R.string.sensor_started))
             put("sensor", sensor.name)
         }.toString())
-        Logger.i(TAG, "启动传感器: $type")
+        Logger.i(TAG, Str.get(R.string.starting_sensor_type, type))
     }
 
     @JavascriptInterface
@@ -551,7 +553,7 @@ class PluginJSInterface(
         activeSensorListener?.let { sm.unregisterListener(it) }
         activeSensorListener = null
         activeSensorCallbackId = ""
-        Logger.i(TAG, "停止传感器")
+        Logger.i(TAG, Str.get(R.string.stopping_sensor))
     }
 
     // ==================== 4. 位置 ====================
@@ -568,7 +570,7 @@ class PluginJSInterface(
                     best = location
                 }
             }
-            if (best == null) return "{\"error\":\"无法获取位置\"}"
+            if (best == null) return Str.get(R.string.error_could_not_get_location)
             JSONObject().apply {
                 put("latitude", best.latitude)
                 put("longitude", best.longitude)
@@ -590,7 +592,7 @@ class PluginJSInterface(
             val geocoder = android.location.Geocoder(context)
             val addresses = geocoder.getFromLocation(lat, lng, 1)
             if (addresses == null || addresses.isEmpty()) {
-                return "{\"error\":\"无法获取地址\"}"
+                return Str.get(R.string.error_could_not_get_address)
             }
             val addr = addresses[0]
             JSONObject().apply {
@@ -752,7 +754,7 @@ class PluginJSInterface(
             }
             formatFileSize(total)
         } catch (e: Exception) {
-            "未知"
+            Str.get(R.string.unknown)
         }
     }
 
@@ -767,7 +769,7 @@ class PluginJSInterface(
             }
             formatFileSize(free)
         } catch (e: Exception) {
-            "未知"
+            Str.get(R.string.unknown)
         }
     }
 
@@ -787,7 +789,7 @@ class PluginJSInterface(
             }
             formatFileSize(total - free)
         } catch (e: Exception) {
-            "未知"
+            Str.get(R.string.unknown)
         }
     }
 
@@ -882,7 +884,7 @@ class PluginJSInterface(
         return try {
             val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val wifiInfo = wm.connectionInfo
-            if (wifiInfo == null) return "{\"error\":\"无WiFi连接\"}"
+            if (wifiInfo == null) return Str.get(R.string.error_no_wifi_connection)
             JSONObject().apply {
                 put("ssid", wifiInfo.ssid ?: "")
                 put("bssid", wifiInfo.bssid ?: "")
@@ -1199,7 +1201,7 @@ class PluginJSInterface(
             val obj = JSONObject(json)
             getPluginContext()?.putJSON(key, obj)
         } catch (e: Exception) {
-            Logger.e(TAG, "JSON格式错误", e)
+            Logger.e(TAG, Str.get(R.string.invalid_json), e)
         }
     }
 
@@ -1273,7 +1275,7 @@ class PluginJSInterface(
             }
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "批量存储失败", e)
+            Logger.e(TAG, Str.get(R.string.batch_storage_failed), e)
             false
         }
     }
@@ -1332,7 +1334,7 @@ class PluginJSInterface(
     fun clearAllPluginData() {
         ensureMigration()
         getPluginContext()?.deleteAllPluginData()
-        Logger.i(TAG, "所有插件数据已清除")
+        Logger.i(TAG, Str.get(R.string.all_plugin_data_cleared))
     }
 
     @JavascriptInterface
@@ -1374,7 +1376,7 @@ class PluginJSInterface(
             }
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "导入数据失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_import_data), e)
             false
         }
     }
@@ -1383,7 +1385,7 @@ class PluginJSInterface(
 
     private fun getSafeFile(fileName: String): File? {
         if (fileName.contains("..") || fileName.contains("/../") || fileName.startsWith("/")) {
-            Logger.w(TAG, "非法的文件路径: $fileName")
+            Logger.w(TAG, Str.get(R.string.invalid_file_path_filename_2, fileName))
             return null
         }
         val pctx = getPluginContext() ?: return null
@@ -1563,7 +1565,7 @@ class PluginJSInterface(
     fun callBackendApi(path: String, method: String, body: String?, callbackId: String) {
         val activity = context as? PluginHostActivity
         if (activity == null) {
-            sendCallback(callbackId, "{\"error\":\"无法获取Activity\"}")
+            sendCallback(callbackId, Str.get(R.string.error_could_not_get_activity))
             return
         }
         activity.callBackendApi(path, method, body) { success, response ->
@@ -1577,11 +1579,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpGet(url: String, callbackId: String) {
         if (!hasPermission(Manifest.permission.INTERNET)) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少网络权限\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"URL不能为空\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
             return
         }
         val request = try {
@@ -1591,7 +1593,7 @@ class PluginJSInterface(
                 .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
                 .build()
         } catch (e: Exception) {
-            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            sendCallback(callbackId, errJson(Str.get(R.string.invalid_url_e_message, e.message)))
             return
         }
         httpClient.newCall(request).enqueue(object : Callback {
@@ -1613,11 +1615,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpPost(url: String, jsonBody: String, callbackId: String) {
         if (!hasPermission(Manifest.permission.INTERNET)) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少网络权限\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"URL不能为空\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
             return
         }
         val mediaType = "application/json; charset=utf-8".toMediaType()
@@ -1629,7 +1631,7 @@ class PluginJSInterface(
                 .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
                 .build()
         } catch (e: Exception) {
-            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            sendCallback(callbackId, errJson(Str.get(R.string.invalid_url_e_message, e.message)))
             return
         }
         httpClient.newCall(request).enqueue(object : Callback {
@@ -1651,11 +1653,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpPut(url: String, jsonBody: String, callbackId: String) {
         if (!hasPermission(Manifest.permission.INTERNET)) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少网络权限\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"URL不能为空\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
             return
         }
         val mediaType = "application/json; charset=utf-8".toMediaType()
@@ -1667,7 +1669,7 @@ class PluginJSInterface(
                 .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
                 .build()
         } catch (e: Exception) {
-            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            sendCallback(callbackId, errJson(Str.get(R.string.invalid_url_e_message, e.message)))
             return
         }
         httpClient.newCall(request).enqueue(object : Callback {
@@ -1689,11 +1691,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpDelete(url: String, callbackId: String) {
         if (!hasPermission(Manifest.permission.INTERNET)) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少网络权限\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"URL不能为空\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
             return
         }
         val request = try {
@@ -1703,7 +1705,7 @@ class PluginJSInterface(
                 .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
                 .build()
         } catch (e: Exception) {
-            sendCallback(callbackId, errJson("URL格式错误: ${e.message}"))
+            sendCallback(callbackId, errJson(Str.get(R.string.invalid_url_e_message, e.message)))
             return
         }
         httpClient.newCall(request).enqueue(object : Callback {
@@ -1725,11 +1727,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun downloadFile(url: String, fileName: String, callbackId: String) {
         if (!hasPermission(Manifest.permission.INTERNET)) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"缺少网络权限\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
         if (url.isEmpty() || fileName.isEmpty()) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"URL或文件名不能为空\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_or_file_name))
             return
         }
         Thread {
@@ -1744,17 +1746,17 @@ class PluginJSInterface(
                     return@Thread
                 }
                 val body = response.body ?: run {
-                    sendCallback(callbackId, "{\"success\":false,\"error\":\"响应体为空\"}")
+                    sendCallback(callbackId, Str.get(R.string.success_false_error_empty_response_b))
                     return@Thread
                 }
                 val pctx = getPluginContext()
                 if (pctx == null) {
-                    sendCallback(callbackId, "{\"success\":false,\"error\":\"无法获取存储\"}")
+                    sendCallback(callbackId, Str.get(R.string.success_false_error_could_not_get_st))
                     return@Thread
                 }
                 val safeFile = getSafeFile(fileName)
                 if (safeFile == null) {
-                    sendCallback(callbackId, "{\"success\":false,\"error\":\"非法文件名\"}")
+                    sendCallback(callbackId, Str.get(R.string.success_false_error_invalid_file_nam))
                     return@Thread
                 }
                 safeFile.parentFile?.mkdirs()
@@ -1786,11 +1788,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun requestPermission(permission: String, callbackId: String) {
         if (permission.isEmpty()) {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"权限名不能为空\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_permission_name_))
             return
         }
         if (checkPermission(permission)) {
-            sendCallback(callbackId, "{\"success\":true,\"message\":\"权限已授予\"}")
+            sendCallback(callbackId, Str.get(R.string.success_true_message_permission_gran))
             return
         }
         if (PermissionUtils.isSpecialPermission(permission)) {
@@ -1798,9 +1800,9 @@ class PluginJSInterface(
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 intent.data = Uri.parse("package:${context.packageName}")
                 context.startActivity(intent)
-                sendCallback(callbackId, "{\"success\":false,\"message\":\"特殊权限请在系统设置中手动开启\"}")
+                sendCallback(callbackId, Str.get(R.string.success_false_message_please_enable_))
             } catch (e: Exception) {
-                sendCallback(callbackId, errJson("无法打开设置: ${e.message}"))
+                sendCallback(callbackId, errJson(Str.get(R.string.failed_to_open_settings_e_message_2, e.message)))
             }
             return
         }
@@ -1808,12 +1810,12 @@ class PluginJSInterface(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 pendingPermissionCallbacks[permission] = callbackId
                 activity.requestPermissions(arrayOf(permission), 1002)
-                Logger.i(TAG, "请求权限: $permission")
+                Logger.i(TAG, Str.get(R.string.requesting_permission_permission, permission))
             } else {
-                sendCallback(callbackId, "{\"success\":true,\"message\":\"权限已授予\"}")
+                sendCallback(callbackId, Str.get(R.string.success_true_message_permission_gran))
             }
         } ?: run {
-            sendCallback(callbackId, "{\"success\":false,\"error\":\"无法获取Activity上下文\"}")
+            sendCallback(callbackId, Str.get(R.string.success_false_error_could_not_get_ac))
         }
     }
 
@@ -1827,7 +1829,7 @@ class PluginJSInterface(
                 if (!checkPermission(perm)) permList.add(perm)
             }
             if (permList.isEmpty()) {
-                sendCallback(callbackId, "{\"success\":true,\"message\":\"所有权限已授予\"}")
+                sendCallback(callbackId, Str.get(R.string.success_true_message_all_permissions))
                 return
             }
             val normalPerms = permList.filter { !PermissionUtils.isSpecialPermission(it) }
@@ -1837,7 +1839,7 @@ class PluginJSInterface(
                     if (normalPerms.isNotEmpty()) {
                         requestNormalPermissions(normalPerms, callbackId)
                     } else {
-                        sendCallback(callbackId, "{\"success\":false,\"message\":\"特殊权限需要手动开启\"}")
+                        sendCallback(callbackId, Str.get(R.string.success_false_message_special_permis))
                     }
                 }
                 return
@@ -1854,22 +1856,22 @@ class PluginJSInterface(
         val activity = getActivity() ?: return
         pendingPermissionCallbacks["bulk_$callbackId"] = callbackId
         activity.requestPermissions(permissions.toTypedArray(), 1003)
-        Logger.i(TAG, "批量请求权限: ${permissions.joinToString()}")
+        Logger.i(TAG, Str.get(R.string.requesting_permissions_in_batch_perm, permissions.joinToString()))
     }
 
     private fun showSpecialPermissionDialog(permissions: List<String>, onComplete: () -> Unit) {
         val host = hostActivity() ?: return
         val message = buildString {
-            append("以下权限需要在系统设置中手动开启：\n\n")
+            append(Str.get(R.string.the_following_permissions_must_be_en))
             permissions.forEach { perm ->
                 append("• ${PermissionUtils.getPermissionDisplayName(perm)}\n")
             }
-            append("\n点击「去设置」打开应用设置页面。")
+            append(Str.get(R.string.ntap_go_to_settings_to_open_the_app_))
         }
         host.showPluginConfirmDialog(
-            title = "需要特殊权限",
+            title = Str.get(R.string.special_permission_required),
             message = message,
-            confirmText = "去设置",
+            confirmText = Str.get(R.string.go_to_settings),
             onConfirm = {
                 try {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -1900,7 +1902,7 @@ class PluginJSInterface(
                         val granted = grantResults.getOrNull(index) == PackageManager.PERMISSION_GRANTED
                         sendCallback(
                             callbackId,
-                            "{\"success\":$granted,\"message\":\"${if (granted) "权限已授予" else "权限被拒绝"}\"}"
+                            "{\"success\":$granted,\"message\":\"${if (granted) Str.get(R.string.permission_granted) else Str.get(R.string.permission_denied)}\"}"
                         )
                     }
                 }
@@ -1939,7 +1941,7 @@ class PluginJSInterface(
     @JavascriptInterface
     fun showLoading(message: String) {
         getActivity()?.runOnUiThread {
-            Toast.makeText(context, message ?: "加载中...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, message ?: Str.get(R.string.loading), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1950,10 +1952,10 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun showConfirmDialog(title: String, message: String, callbackId: String) {
-        Logger.d(TAG, "JS调用 showConfirmDialog: $title (callbackId=$callbackId)")
+        Logger.d(TAG, Str.get(R.string.js_call_showconfirmdialog_title_call, title, callbackId))
         val host = hostActivity()
         if (host == null) {
-            sendCallback(callbackId, errJson("无法获取宿主Activity"))
+            sendCallback(callbackId, errJson(Str.get(R.string.could_not_get_host_activity)))
             return
         }
         host.showPluginChoiceDialog(
@@ -1975,7 +1977,7 @@ class PluginJSInterface(
     fun showPromptDialog(title: String, hint: String, callbackId: String) {
         val host = hostActivity()
         if (host == null) {
-            sendCallback(callbackId, errJson("无法获取宿主Activity"))
+            sendCallback(callbackId, errJson(Str.get(R.string.could_not_get_host_activity)))
             return
         }
         host.showPluginPromptDialog(
@@ -1999,17 +2001,17 @@ class PluginJSInterface(
     @JavascriptInterface
     fun copyToClipboard(text: String) {
         if (text.isEmpty()) {
-            showToast("内容为空")
+            showToast(Str.get(R.string.content_is_empty))
             return
         }
         try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("plugin_text", text))
-            showToast("已复制到剪贴板")
-            Logger.i(TAG, "复制到剪贴板: ${text.take(50)}...")
+            showToast(Str.get(R.string.copied_to_clipboard))
+            Logger.i(TAG, Str.get(R.string.copied_to_clipboard_text_take_50, text.take(50)))
         } catch (e: Exception) {
-            Logger.e(TAG, "复制失败", e)
-            showToast("复制失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.copy_failed), e)
+            showToast(Str.get(R.string.copy_failed_e_message, e.message))
         }
     }
 
@@ -2072,9 +2074,9 @@ class PluginJSInterface(
             } else {
                 vibrator.vibrate(duration)
             }
-            Logger.i(TAG, "震动: ${duration}ms")
+            Logger.i(TAG, Str.get(R.string.vibration_duration_ms, duration))
         } catch (e: Exception) {
-            Logger.e(TAG, "震动失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.vibration_failed_e_message, e.message))
         }
     }
 
@@ -2109,9 +2111,9 @@ class PluginJSInterface(
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build()
             notificationManager?.notify(System.currentTimeMillis().toInt(), notification)
-            Logger.i(TAG, "发送通知: $title")
+            Logger.i(TAG, Str.get(R.string.sending_notification_title, title))
         } catch (e: Exception) {
-            Logger.e(TAG, "发送通知失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_send_notification), e)
         }
     }
 
@@ -2163,24 +2165,24 @@ class PluginJSInterface(
     @JavascriptInterface
     fun openUrl(url: String) {
         if (url.isEmpty()) {
-            showToast("URL不能为空")
+            showToast(Str.get(R.string.url_must_not_be_empty))
             return
         }
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            Logger.i(TAG, "打开链接: $url")
+            Logger.i(TAG, Str.get(R.string.opening_link_url, url))
         } catch (e: Exception) {
-            showToast("无法打开链接")
-            Logger.e(TAG, "打开链接失败: ${e.message}")
+            showToast(Str.get(R.string.unable_to_open_link))
+            Logger.e(TAG, Str.get(R.string.failed_to_open_link_e_message, e.message))
         }
     }
 
     @JavascriptInterface
     fun share(text: String) {
         if (text.isEmpty()) {
-            showToast("内容为空")
+            showToast(Str.get(R.string.content_is_empty))
             return
         }
         try {
@@ -2189,11 +2191,11 @@ class PluginJSInterface(
                 putExtra(Intent.EXTRA_TEXT, text)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            context.startActivity(Intent.createChooser(intent, "分享"))
-            Logger.i(TAG, "分享: ${text.take(50)}...")
+            context.startActivity(Intent.createChooser(intent, Str.get(R.string.share)))
+            Logger.i(TAG, Str.get(R.string.sharing_text_take_50, text.take(50)))
         } catch (e: Exception) {
-            Logger.e(TAG, "分享失败", e)
-            showToast("分享失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.share_failed), e)
+            showToast(Str.get(R.string.share_failed_e_message, e.message))
         }
     }
 
@@ -2237,11 +2239,11 @@ class PluginJSInterface(
     fun takeScreenshot() {
         val activity = getActivity()
         if (activity == null) {
-            showToast("截图失败: 无法获取Activity")
+            showToast(Str.get(R.string.screenshot_failed_could_not_get_acti))
             return
         }
         if (!hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-            showToast("需要存储权限才能截图")
+            showToast(Str.get(R.string.storage_permission_is_required_to_ta))
             return
         }
         activity.runOnUiThread {
@@ -2263,8 +2265,8 @@ class PluginJSInterface(
                 decorView.draw(canvas)
                 saveScreenshot(bitmap)
             } catch (e: Exception) {
-                Logger.e(TAG, "截图失败", e)
-                showToast("截图失败: ${e.message}")
+                Logger.e(TAG, Str.get(R.string.screenshot_failed), e)
+                showToast(Str.get(R.string.screenshot_failed_e_message, e.message))
             }
         }
     }
@@ -2277,11 +2279,11 @@ class PluginJSInterface(
             FileOutputStream(file).use { fos ->
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
             }
-            showToast("截图已保存: ${file.absolutePath}")
-            Logger.i(TAG, "截图保存成功: ${file.absolutePath}")
+            showToast(Str.get(R.string.screenshot_saved_file_absolutepath, file.absolutePath))
+            Logger.i(TAG, Str.get(R.string.screenshot_saved_successfully_file_a, file.absolutePath))
         } catch (e: Exception) {
-            Logger.e(TAG, "保存截图失败", e)
-            showToast("保存截图失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.failed_to_save_screenshot), e)
+            showToast(Str.get(R.string.failed_to_save_screenshot_e_message, e.message))
         }
     }
 
@@ -2316,7 +2318,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun sendEvent(eventName: String, data: String?) {
-        Logger.d(TAG, "发送事件: $eventName -> $data")
+        Logger.d(TAG, Str.get(R.string.sending_event_eventname_data, eventName, data))
         val activity = context as? PluginHostActivity
         if (activity != null) {
             val js = """
@@ -2330,13 +2332,13 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun addEventListener(eventName: String, callbackId: String) {
-        Logger.d(TAG, "添加事件监听: $eventName (callback: $callbackId)")
+        Logger.d(TAG, Str.get(R.string.adding_event_listener_eventname_call, eventName, callbackId))
     }
     
     @JavascriptInterface
 fun ping(host: String, callbackId: String) {
     if (host.isEmpty()) {
-        sendCallback(callbackId, errJson("主机不能为空"))
+        sendCallback(callbackId, errJson(Str.get(R.string.host_must_not_be_empty)))
         return
     }
 
@@ -2375,7 +2377,7 @@ fun ping(host: String, callbackId: String) {
                 put("time", if (success && timeMs >= 0) timeMs else System.currentTimeMillis() - startTime)
             }.toString())
         } catch (e: Exception) {
-            sendCallback(callbackId, errJson(e.message ?: "ping 失败"))
+            sendCallback(callbackId, errJson(e.message ?: Str.get(R.string.ping_failed)))
         }
     }.start()
 }
@@ -2383,7 +2385,7 @@ fun ping(host: String, callbackId: String) {
     @JavascriptInterface
 fun resolveDns(host: String, callbackId: String) {
     if (host.isEmpty()) {
-        sendCallback(callbackId, errJson("主机不能为空"))
+        sendCallback(callbackId, errJson(Str.get(R.string.host_must_not_be_empty)))
         return
     }
     Thread {
@@ -2397,7 +2399,7 @@ fun resolveDns(host: String, callbackId: String) {
                 put("ips", ips)
             }.toString())
         } catch (e: Exception) {
-            sendCallback(callbackId, errJson(e.message ?: "DNS 解析失败"))
+            sendCallback(callbackId, errJson(e.message ?: Str.get(R.string.dns_resolution_failed)))
         }
     }.start()
 }
@@ -2407,7 +2409,7 @@ fun dns(host: String, callbackId: String) = resolveDns(host, callbackId)
 
     @JavascriptInterface
 fun dnsLookup(host: String): String {
-    if (host.isEmpty()) return errJson("主机不能为空")
+    if (host.isEmpty()) return errJson(Str.get(R.string.host_must_not_be_empty))
     return try {
         val all = InetAddress.getAllByName(host)
         val ips = JSONArray()
@@ -2418,7 +2420,7 @@ fun dnsLookup(host: String): String {
             put("ips", ips)
         }.toString()
     } catch (e: Exception) {
-        errJson(e.message ?: "DNS 解析失败")
+        errJson(e.message ?: Str.get(R.string.dns_resolution_failed))
     }
 }
 
@@ -2437,7 +2439,7 @@ fun dnsLookup(host: String): String {
                 val script = "if(window.UINPluginCallbacks && window.UINPluginCallbacks[$jsId]){window.UINPluginCallbacks[$jsId]($jsData);}"
                 activity.evaluateJavascript(script)
             } catch (e: Exception) {
-                Logger.e(TAG, "回调执行失败: $callbackId", e)
+                Logger.e(TAG, Str.get(R.string.callback_execution_failed_callbackid, callbackId), e)
             }
         }
     }
@@ -2465,7 +2467,7 @@ fun dnsLookup(host: String): String {
         return JSONObject().apply {
             put("success", false)
             if (code != null) put("code", code)
-            put("error", message ?: "未知错误")
+            put("error", message ?: Str.get(R.string.unknown_error))
         }.toString()
     }
 
@@ -2474,12 +2476,12 @@ fun dnsLookup(host: String): String {
     }
 
     private fun showAlert(message: String) {
-        hostActivity()?.showPluginInfoDialog(title = "提示", message = message)
+        hostActivity()?.showPluginInfoDialog(title = Str.get(R.string.notice), message = message)
     }
 
     private fun showConfirm(message: String) {
         hostActivity()?.showPluginConfirmDialog(
-            title = "确认",
+            title = Str.get(R.string.confirm_2),
             message = message,
             onConfirm = {},
             onDismiss = {}

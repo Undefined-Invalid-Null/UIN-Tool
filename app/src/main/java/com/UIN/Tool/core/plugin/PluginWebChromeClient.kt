@@ -1,5 +1,7 @@
 package com.UIN.Tool.core.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
@@ -17,13 +19,13 @@ class PluginWebChromeClient(
     override fun onProgressChanged(view: WebView, newProgress: Int) {
         super.onProgressChanged(view, newProgress)
         if (newProgress == 100) {
-            Logger.success(TAG, "插件加载完成: $pluginId")
+            Logger.success(TAG, Str.get(R.string.plugin_load_complete_pluginid, pluginId))
         }
     }
     
     override fun onReceivedTitle(view: WebView, title: String) {
         super.onReceivedTitle(view, title)
-        Logger.i(TAG, "[$pluginId] 标题: $title")
+        Logger.i(TAG, Str.get(R.string.pluginid_title_title, pluginId, title))
     }
     
     override fun onJsAlert(view: WebView, url: String, message: String, result: JsResult): Boolean {
@@ -36,10 +38,10 @@ class PluginWebChromeClient(
     override fun onJsConfirm(view: WebView, url: String, message: String, result: JsResult): Boolean {
         Logger.i(TAG, "JS Confirm: $message")
         android.app.AlertDialog.Builder(context)
-            .setTitle("确认")
+            .setTitle(Str.get(R.string.confirm_2))
             .setMessage(message)
-            .setPositiveButton("确定") { _, _ -> result.confirm() }
-            .setNegativeButton("取消") { _, _ -> result.cancel() }
+            .setPositiveButton(Str.get(R.string.ok_2)) { _, _ -> result.confirm() }
+            .setNegativeButton(Str.get(R.string.cancel)) { _, _ -> result.cancel() }
             .show()
         return true
     }

@@ -1,10 +1,11 @@
 // ui/screen/dev/CodeEditorScreen.kt
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
-import android.util.Log
 import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -208,7 +209,7 @@ private fun setEditorLanguage(editor: CodeEditor?, fileName: String) {
     if (editor == null) return
     try {
         val scopeName = getLanguageScopeName(fileName)
-        Log.d(DEBUG_TAG, "setEditorLanguage: scopeName=$scopeName, fileName=$fileName")
+        AppLog.d(DEBUG_TAG, "setEditorLanguage: scopeName=$scopeName, fileName=$fileName")
         val language = TextMateLanguage.create(scopeName, true)
         language.isAutoCompleteEnabled = true
         language.setCompleterKeywords(
@@ -225,10 +226,10 @@ private fun setEditorLanguage(editor: CodeEditor?, fileName: String) {
         editor.setEditorLanguage(language)
         val autoCompletion = editor.getComponent(EditorAutoCompletion::class.java)
         autoCompletion?.isEnabled = true
-        Log.d(DEBUG_TAG, "setEditorLanguage: 成功设置语言 $scopeName")
+        AppLog.d(DEBUG_TAG, Str.get(R.string.seteditorlanguage_language_set_to_sc, scopeName))
     } catch (e: Exception) {
-        Log.e(DEBUG_TAG, "setEditorLanguage: 失败", e)
-        AppLog.w(TAG, "⚠️ 设置语言失败: ${e.message} for $fileName")
+        AppLog.e(DEBUG_TAG, Str.get(R.string.seteditorlanguage_failed), e)
+        AppLog.w(TAG, Str.get(R.string.failed_to_set_language_e_message_for, e.message, fileName))
     }
 }
 
@@ -236,7 +237,7 @@ private fun setEditorLanguage(editor: CodeEditor?, fileName: String) {
 private fun applyTheme(editor: CodeEditor?, themeName: String) {
     if (editor == null) return
     try {
-        Log.d(DEBUG_TAG, "applyTheme: 开始应用主题 $themeName")
+        AppLog.d(DEBUG_TAG, Str.get(R.string.applytheme_applying_theme_themename, themeName))
         val themeRegistry = ThemeRegistry.getInstance()
         if (!themeRegistry.setTheme(themeName)) {
             val context = editor.context
@@ -247,9 +248,9 @@ private fun applyTheme(editor: CodeEditor?, themeName: String) {
                 val themeModel = ThemeModel(themeSource, themeName)
                 themeModel.isDark = DARK_THEMES.contains(themeName)
                 themeRegistry.loadTheme(themeModel, true)
-                Log.d(DEBUG_TAG, "applyTheme: 从 assets 加载主题 $themeName")
+                AppLog.d(DEBUG_TAG, Str.get(R.string.applytheme_loading_theme_themename_f, themeName))
             } catch (e: Exception) {
-                Log.w(DEBUG_TAG, "applyTheme: 主题文件不存在 $themeName", e)
+                AppLog.e(DEBUG_TAG, Str.get(R.string.applytheme_theme_file_not_found_them, themeName), e)
                 val isDark = DARK_THEMES.contains(themeName)
                 editor.colorScheme = if (isDark) getDarkColorScheme() else getLightColorScheme()
                 return
@@ -258,9 +259,9 @@ private fun applyTheme(editor: CodeEditor?, themeName: String) {
         val newScheme = TextMateColorScheme.create(themeRegistry)
         editor.colorScheme = newScheme
         editor.invalidate()
-        Log.d(DEBUG_TAG, "applyTheme: 成功应用主题 $themeName")
+        AppLog.d(DEBUG_TAG, Str.get(R.string.applytheme_theme_applied_themename, themeName))
     } catch (e: Exception) {
-        Log.e(DEBUG_TAG, "applyTheme: 失败", e)
+        AppLog.e(DEBUG_TAG, Str.get(R.string.applytheme_failed), e)
         val isDark = DARK_THEMES.contains(themeName)
         editor.colorScheme = if (isDark) getDarkColorScheme() else getLightColorScheme()
     }
@@ -292,7 +293,7 @@ fun ThemeSelectionDialog(
                     .padding(20.dp)
             ) {
                 Text(
-                    text = "选择主题",
+                    text = Str.get(R.string.select_theme),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1A1A1A)
@@ -308,7 +309,7 @@ fun ThemeSelectionDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "当前主题",
+                        text = Str.get(R.string.current_theme),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF666666)
                     )
@@ -330,7 +331,7 @@ fun ThemeSelectionDialog(
                 Divider(color = Color(0xFFEEEEEE), modifier = Modifier.padding(vertical = 8.dp))
 
                 Text(
-                    text = "深色主题",
+                    text = Str.get(R.string.dark_theme),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF333333)
@@ -360,7 +361,7 @@ fun ThemeSelectionDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "浅色主题",
+                    text = Str.get(R.string.light_theme),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF333333)
@@ -398,7 +399,7 @@ fun ThemeSelectionDialog(
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("关闭", fontWeight = FontWeight.Medium)
+                    Text(Str.get(R.string.close), fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -484,7 +485,7 @@ fun FileTreeItem(
         ) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = "删除",
+                contentDescription = Str.get(R.string.delete),
                 modifier = Modifier.size(14.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -537,13 +538,13 @@ fun CodeEditorScreen(
     // ✅ 修复：切换文件时，使用 LaunchedEffect 确保应用高亮
     // ============================================================
     LaunchedEffect(currentFile, currentTheme) {
-        Log.d(DEBUG_TAG, "LaunchedEffect: currentFile=$currentFile, theme=$currentTheme")
+        AppLog.d(DEBUG_TAG, "LaunchedEffect: currentFile=$currentFile, theme=$currentTheme")
         // 延迟执行，确保编辑器已创建
         delay(100)
         
         editorInstance?.let { editor ->
             val newContent = contents[currentFile] ?: ""
-            Log.d(DEBUG_TAG, "更新编辑器: 文件=$currentFile, 内容长度=${newContent.length}")
+            AppLog.d(DEBUG_TAG, Str.get(R.string.updating_editor_file_currentfile_con, currentFile, newContent.length))
             
             // ✅ 先设置语言和主题
             setEditorLanguage(editor, currentFile)
@@ -558,9 +559,9 @@ fun CodeEditorScreen(
             // ✅ 强制刷新
             editor.invalidate()
             isEditorReady = true
-            Log.d(DEBUG_TAG, "✅ 编辑器更新完成: 语言和主题已应用")
+            AppLog.d(DEBUG_TAG, Str.get(R.string.editor_updated_language_and_theme_ap))
         } ?: run {
-            Log.d(DEBUG_TAG, "编辑器实例为 null，等待创建")
+            AppLog.d(DEBUG_TAG, Str.get(R.string.editor_instance_is_null_waiting_to_b))
         }
     }
 
@@ -570,7 +571,7 @@ fun CodeEditorScreen(
             contents[currentFile] = newContent
             editedContent = newContent
             hasChanges = false
-            Log.d(DEBUG_TAG, "保存文件: $currentFile, 内容长度: ${newContent.length}")
+            AppLog.d(DEBUG_TAG, Str.get(R.string.saving_file_currentfile_content_leng, currentFile, newContent.length))
         }
     }
 
@@ -587,7 +588,7 @@ fun CodeEditorScreen(
             currentFile = fileName
             editedContent = content
             hasChanges = false
-            Log.d(DEBUG_TAG, "添加文件: $fileName")
+            AppLog.d(DEBUG_TAG, Str.get(R.string.adding_file_filename, fileName))
         }
     }
 
@@ -602,7 +603,7 @@ fun CodeEditorScreen(
             currentFile = files.firstOrNull() ?: ""
             editedContent = contents[currentFile] ?: ""
         }
-        Log.d(DEBUG_TAG, "删除文件: $fileName")
+        AppLog.d(DEBUG_TAG, Str.get(R.string.deleting_file_filename, fileName))
     }
 
     var isDragging by remember { mutableStateOf(false) }
@@ -628,19 +629,19 @@ fun CodeEditorScreen(
                     ) {
                         Icon(
                             if (isSidebarVisible) Icons.Default.MenuOpen else Icons.Default.Menu,
-                            contentDescription = if (isSidebarVisible) "收起侧边栏" else "展开侧边栏"
+                            contentDescription = if (isSidebarVisible) Str.get(R.string.collapse_sidebar) else Str.get(R.string.expand_sidebar)
                         )
                     }
                 },
                 actions = {
                     IconButton(onClick = { undo() }) {
-                        Icon(Icons.Default.Undo, contentDescription = "撤销")
+                        Icon(Icons.Default.Undo, contentDescription = Str.get(R.string.undo))
                     }
                     IconButton(onClick = { redo() }) {
-                        Icon(Icons.Default.Redo, contentDescription = "重做")
+                        Icon(Icons.Default.Redo, contentDescription = Str.get(R.string.redo))
                     }
                     IconButton(onClick = { showThemeDialog = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = "选择主题")
+                        Icon(Icons.Default.Palette, contentDescription = Str.get(R.string.select_theme))
                     }
                     Button(
                         onClick = { saveAll() },
@@ -651,7 +652,7 @@ fun CodeEditorScreen(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
-                        Text("完成", fontWeight = FontWeight.Medium)
+                        Text(Str.get(R.string.finish), fontWeight = FontWeight.Medium)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -681,7 +682,7 @@ fun CodeEditorScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "文件列表",
+                                Str.get(R.string.file_list),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -691,7 +692,7 @@ fun CodeEditorScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Add,
-                                    contentDescription = "新增文件",
+                                    contentDescription = Str.get(R.string.new_file),
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -784,14 +785,14 @@ fun CodeEditorScreen(
                     Row {
                         if (hasChanges) {
                             Text(
-                                "已修改",
+                                Str.get(R.string.modified),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.tertiary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
                         Text(
-                            "行数: ${editedContent.lines().size}",
+                            Str.get(R.string.lines_editedcontent_lines_size, editedContent.lines().size),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -805,7 +806,7 @@ fun CodeEditorScreen(
                 // ============================================================
                 AndroidView(
                     factory = { ctx ->
-                        Log.d(DEBUG_TAG, "创建 CodeEditor 实例 (factory)")
+                        AppLog.d(DEBUG_TAG, Str.get(R.string.creating_codeeditor_instance_factory))
                         CodeEditor(ctx).apply {
                             layoutParams = ViewGroup.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -828,7 +829,7 @@ fun CodeEditorScreen(
                             // 设置初始内容
                             val initialContent = contents[currentFile] ?: ""
                             setText(initialContent)
-                            Log.d(DEBUG_TAG, "编辑器初始文本长度: ${initialContent.length}")
+                            AppLog.d(DEBUG_TAG, Str.get(R.string.initial_editor_text_length_initialco, initialContent.length))
                             
                             // 内容变更监听
                             subscribeEvent(ContentChangeEvent::class.java) { event, _ ->
@@ -847,7 +848,7 @@ fun CodeEditorScreen(
                                         if (currentFile.isNotEmpty()) {
                                             contents[currentFile] = fullText
                                         }
-                                        Log.d(DEBUG_TAG, "全文替换，新长度: ${fullText.length}")
+                                        AppLog.d(DEBUG_TAG, Str.get(R.string.full_replace_new_length_fulltext_len, fullText.length))
                                     }
                                 }
                             }
@@ -858,7 +859,7 @@ fun CodeEditorScreen(
                             
                             editorInstance = this
                             isEditorReady = true
-                            Log.d(DEBUG_TAG, "✅ 编辑器创建完成")
+                            AppLog.d(DEBUG_TAG, Str.get(R.string.editor_created))
                         }
                     },
                     update = { editor ->
@@ -866,7 +867,7 @@ fun CodeEditorScreen(
                         val currentText = editor.text.toString()
                         val targetContent = contents[currentFile] ?: ""
                         if (currentText != targetContent && targetContent.isNotEmpty()) {
-                            Log.d(DEBUG_TAG, "更新编辑器文本，长度变化: ${currentText.length} -> ${targetContent.length}")
+                            AppLog.d(DEBUG_TAG, Str.get(R.string.updating_editor_text_length_change_c, currentText.length, targetContent.length))
                             editor.setText(targetContent)
                             editedContent = targetContent
                             hasChanges = false
@@ -912,13 +913,13 @@ fun CodeEditorScreen(
         AlertDialog(
             onDismissRequest = { showAddFileDialog = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("添加新文件") },
+            title = { Text(Str.get(R.string.add_new_file)) },
             text = {
                 Column {
                     UIComponents.TextInput(
                         value = newFileName,
                         onValueChange = { newFileName = it },
-                        label = "文件名",
+                        label = Str.get(R.string.file_name),
                         placeholder = if (uiType == "web") "web/new.html" else "src/com/example/NewClass.java",
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -926,7 +927,7 @@ fun CodeEditorScreen(
                     UIComponents.TextInput(
                         value = newFileContent,
                         onValueChange = { newFileContent = it },
-                        label = "文件内容（可选）",
+                        label = Str.get(R.string.file_content_optional),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = false
                     )
@@ -934,7 +935,7 @@ fun CodeEditorScreen(
             },
             confirmButton = {
                 UIComponents.PrimaryButton(
-                    text = "添加",
+                    text = Str.get(R.string.add),
                     onClick = {
                         if (newFileName.isNotEmpty()) {
                             addFile(newFileName, newFileContent)
@@ -946,7 +947,7 @@ fun CodeEditorScreen(
             },
             dismissButton = {
                 UIComponents.TextButton(
-                    text = "取消",
+                    text = Str.get(R.string.cancel),
                     onClick = { showAddFileDialog = false }
                 )
             }
@@ -955,10 +956,10 @@ fun CodeEditorScreen(
 
     if (showDeleteConfirm != null) {
         UIComponents.ConfirmDialog(
-            title = "确认删除",
-            message = "确定要删除 \"${showDeleteConfirm}\" 吗？",
-            confirmText = "删除",
-            dismissText = "取消",
+            title = Str.get(R.string.confirm_delete),
+            message = Str.get(R.string.delete_1_s, showDeleteConfirm),
+            confirmText = Str.get(R.string.delete),
+            dismissText = Str.get(R.string.cancel),
             onConfirm = {
                 deleteFile(showDeleteConfirm!!)
                 showDeleteConfirm = null

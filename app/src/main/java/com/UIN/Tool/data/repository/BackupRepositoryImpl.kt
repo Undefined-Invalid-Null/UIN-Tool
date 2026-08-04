@@ -1,11 +1,13 @@
 package com.UIN.Tool.data.repository
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.data.local.FileManager
 import com.UIN.Tool.domain.model.BackupInfo
 import com.UIN.Tool.domain.repository.BackupRepository
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,9 +56,9 @@ class BackupRepositoryImpl(
                     ?: emptyList()
 
                 _backups.value = backups
-                Logger.i(TAG, "加载 ${backups.size} 个备份文件")
+                Logger.i(TAG, Str.get(R.string.loading_backups_size_backup_file_s, backups.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "加载备份列表失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_load_backup_list), e)
             }
         }
     }
@@ -64,7 +66,7 @@ class BackupRepositoryImpl(
     override suspend fun createBackup(progress: (String) -> Unit): BackupInfo? {
         return withContext(Dispatchers.IO) {
             try {
-                progress("准备备份...")
+                progress(Str.get(R.string.preparing_backup))
 
                 val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                 val plugins = pluginManager.plugins.value
@@ -75,7 +77,7 @@ class BackupRepositoryImpl(
                 backupFile.parentFile?.mkdirs()
                 if (backupFile.exists()) backupFile.delete()
 
-                progress("正在备份插件 (${plugins.size} 个)...")
+                progress(Str.get(R.string.backing_up_plugins_plugins_size, plugins.size))
                 val result = fileManager.zipDirectory(File(Constants.PLUGIN_DIR), backupFile)
 
                 if (result) {
@@ -87,15 +89,15 @@ class BackupRepositoryImpl(
                         pluginCount = plugins.size
                     )
                     _backups.value = (_backups.value + backupInfo).sortedByDescending { it.date }
-                    Logger.success(TAG, "备份创建成功: ${backupFile.name}")
-                    progress("备份完成！")
+                    Logger.success(TAG, Str.get(R.string.backup_created_backupfile_name, backupFile.name))
+                    progress(Str.get(R.string.backup_complete))
                     return@withContext backupInfo
                 } else {
-                    Logger.e(TAG, "备份创建失败")
+                    Logger.e(TAG, Str.get(R.string.backup_creation_failed))
                     return@withContext null
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "创建备份失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_create_backup), e)
                 return@withContext null
             }
         }
@@ -104,20 +106,20 @@ class BackupRepositoryImpl(
     override suspend fun restoreBackup(backup: BackupInfo, progress: (String) -> Unit): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                progress("准备恢复...")
+                progress(Str.get(R.string.preparing_restore))
 
                 val tempDir = File(Constants.TEMP_DIR, "restore_${System.currentTimeMillis()}")
                 tempDir.mkdirs()
 
-                progress("解压备份文件...")
+                progress(Str.get(R.string.extracting_backup_file))
                 val unzipResult = fileManager.unzipFile(backup.file, tempDir)
                 if (!unzipResult) {
-                    Logger.e(TAG, "解压备份失败")
+                    Logger.e(TAG, Str.get(R.string.failed_to_extract_backup))
                     fileManager.deleteRecursively(tempDir)
                     return@withContext false
                 }
 
-                progress("恢复插件...")
+                progress(Str.get(R.string.restoring_plugins_2))
                 val pluginsBackup = File(tempDir, "plugins")
                 if (pluginsBackup.exists()) {
                     val pluginDir = File(Constants.PLUGIN_DIR)
@@ -128,20 +130,20 @@ class BackupRepositoryImpl(
                     fileManager.copyDirectory(pluginsBackup, pluginDir)
                 }
 
-                progress("刷新插件列表...")
+                progress(Str.get(R.string.refreshing_plugin_list))
                 pluginManager.refreshPlugins()
 
-                progress("清理临时文件...")
+                progress(Str.get(R.string.cleaning_up_temporary_files))
                 fileManager.deleteRecursively(tempDir)
 
                 // 刷新备份列表
                 loadBackups()
 
-                Logger.success(TAG, "备份恢复成功")
-                progress("恢复完成！")
+                Logger.success(TAG, Str.get(R.string.backup_restore_successful))
+                progress(Str.get(R.string.restore_complete))
                 return@withContext true
             } catch (e: Exception) {
-                Logger.e(TAG, "恢复备份失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_restore_backup), e)
                 return@withContext false
             }
         }
@@ -152,12 +154,12 @@ class BackupRepositoryImpl(
             try {
                 if (backup.file.delete()) {
                     _backups.value = _backups.value.filter { it.file != backup.file }
-                    Logger.success(TAG, "删除备份: ${backup.name}")
+                    Logger.success(TAG, Str.get(R.string.deleting_backup_backup_name, backup.name))
                     return@withContext true
                 }
                 return@withContext false
             } catch (e: Exception) {
-                Logger.e(TAG, "删除备份失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_delete_backup), e)
                 return@withContext false
             }
         }

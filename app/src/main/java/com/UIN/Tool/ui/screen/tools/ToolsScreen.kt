@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/tools/ToolsScreen.kt
 package com.UIN.Tool.ui.screen.tools
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,12 +37,12 @@ fun ToolsScreen() {
 
     var searchText by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
-    var selectedCategory by remember { mutableStateOf("全部") }
+    var selectedCategory by remember { mutableStateOf(Str.get(R.string.all)) }
     var isGridView by remember { mutableStateOf(false) }
     var showShortcutDialog by remember { mutableStateOf<PluginInfo?>(null) }
 
     val categories = remember(plugins) {
-        listOf("全部") + plugins.map { it.category }.distinct().filter { it != "未分类" } + listOf("未分类")
+        listOf(Str.get(R.string.all)) + plugins.map { it.category }.distinct().filter { it != Str.get(R.string.uncategorized) } + listOf(Str.get(R.string.uncategorized))
     }
 
     val filteredPlugins = remember(searchText, selectedCategory, plugins) {
@@ -49,7 +51,7 @@ fun ToolsScreen() {
         } else {
             plugins
         }
-        if (selectedCategory != "全部") {
+        if (selectedCategory != Str.get(R.string.all)) {
             result = result.filter { it.category == selectedCategory }
         }
         result
@@ -61,7 +63,7 @@ fun ToolsScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UIComponents.TitleText("工具箱")
+            UIComponents.TitleText(Str.get(R.string.toolbox))
             Row {
                 UIComponents.IconButton(
                     icon = if (isSearching) Icons.Default.Close else Icons.Default.Search,
@@ -78,7 +80,7 @@ fun ToolsScreen() {
             UIComponents.TextInput(
                 value = searchText,
                 onValueChange = { searchText = it },
-                placeholder = "搜索插件...",
+                placeholder = Str.get(R.string.search_plugins),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 leadingIcon = Icons.Default.Search
             )
@@ -115,10 +117,10 @@ fun ToolsScreen() {
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         UIComponents.BodyText(
-                            if (searchText.isNotEmpty()) "没有找到相关插件" else "暂无插件"
+                            if (searchText.isNotEmpty()) Str.get(R.string.no_matching_plugins_found) else Str.get(R.string.no_plugins_yet)
                         )
                         UIComponents.CaptionText(
-                            if (searchText.isNotEmpty()) "尝试其他关键词" else "请先在管理页面导入插件"
+                            if (searchText.isNotEmpty()) Str.get(R.string.try_other_keywords) else Str.get(R.string.import_plugins_on_the_manage_page_fi)
                         )
                     }
                 }
@@ -158,8 +160,8 @@ fun ToolsScreen() {
     // 快捷方式创建对话框
     showShortcutDialog?.let { plugin ->
         UIComponents.ConfirmDialog(
-            title = "创建快捷方式",
-            message = "是否在桌面创建 \"${plugin.name}\" 的快捷方式？",
+            title = Str.get(R.string.create_shortcut),
+            message = Str.get(R.string.create_a_shortcut_for_plugin_name_on, plugin.name),
             onConfirm = {
                 scope.launch {
                     PluginShortcutHelper.createShortcut(context, plugin)
@@ -206,7 +208,7 @@ fun PluginListItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(plugin.name, style = MaterialTheme.typography.titleMedium)
                 UIComponents.BodyText(
-                    plugin.description.ifEmpty { "无描述" }
+                    plugin.description.ifEmpty { Str.get(R.string.no_description) }
                 )
                 Row(
                     modifier = Modifier.padding(top = 4.dp),

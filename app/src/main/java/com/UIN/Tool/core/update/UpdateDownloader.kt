@@ -1,5 +1,7 @@
 package com.UIN.Tool.core.update
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -12,7 +14,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import com.UIN.Tool.MainActivity
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -60,10 +62,10 @@ class UpdateDownloader(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "更新下载",
+                Str.get(R.string.update_download),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "应用更新下载进度"
+                description = Str.get(R.string.app_update_download_progress)
                 setShowBadge(false)
             }
             notificationManager.createNotificationChannel(channel)
@@ -72,7 +74,7 @@ class UpdateDownloader(
 
     fun startDownload(downloadUrl: String, versionName: String) {
         if (isDownloading) {
-            Logger.w(TAG, "下载正在进行中")
+            Logger.w(TAG, Str.get(R.string.download_in_progress))
             return
         }
 
@@ -94,8 +96,8 @@ class UpdateDownloader(
             file.delete()
         }
 
-        Logger.i(TAG, "开始下载: $downloadUrl")
-        Logger.param(TAG, "保存路径", file.absolutePath)
+        Logger.i(TAG, Str.get(R.string.starting_download_downloadurl, downloadUrl))
+        Logger.param(TAG, Str.get(R.string.save_path), file.absolutePath)
 
         // 显示通知
         showNotification(versionName)
@@ -109,10 +111,10 @@ class UpdateDownloader(
 
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    throw Exception("下载失败: ${response.code}")
+                    throw Exception(Str.get(R.string.download_failed_response_code, response.code))
                 }
 
-                val body = response.body ?: throw Exception("响应体为空")
+                val body = response.body ?: throw Exception(Str.get(R.string.response_body_is_empty))
                 val contentLength = body.contentLength()
 
                 FileOutputStream(file).use { fos ->
@@ -127,7 +129,7 @@ class UpdateDownloader(
                             if (!isDownloading) {
                                 fos.close()
                                 file.delete()
-                                throw Exception("下载已取消")
+                                throw Exception(Str.get(R.string.download_cancelled))
                             }
 
                             fos.write(buffer, 0, bytesRead)
@@ -141,23 +143,23 @@ class UpdateDownloader(
                                 lastProgress = progress
                                 updateNotification(progress, downloaded, contentLength)
                                 onDownloadListener?.onProgress(progress, downloaded, contentLength)
-                                Logger.d(TAG, "下载进度: $progress%")
+                                Logger.d(TAG, Str.get(R.string.download_progress_progress, progress))
                             }
                         }
                     }
                 }
 
-                Logger.success(TAG, "下载完成: ${file.absolutePath}")
+                Logger.success(TAG, Str.get(R.string.download_complete_file_absolutepath, file.absolutePath))
 
                 notificationManager.cancel(NOTIFICATION_ID)
                 isDownloading = false
                 onDownloadListener?.onSuccess(file)
 
             } catch (e: Exception) {
-                Logger.e(TAG, "下载失败", e)
+                Logger.e(TAG, Str.get(R.string.download_failed), e)
                 notificationManager.cancel(NOTIFICATION_ID)
                 isDownloading = false
-                onDownloadListener?.onFailed(e.message ?: "下载失败")
+                onDownloadListener?.onFailed(e.message ?: Str.get(R.string.download_failed))
             }
         }
 
@@ -168,12 +170,12 @@ class UpdateDownloader(
         isDownloading = false
         downloadThread?.interrupt()
         notificationManager.cancel(NOTIFICATION_ID)
-        Logger.i(TAG, "下载已取消")
+        Logger.i(TAG, Str.get(R.string.download_cancelled))
     }
 
     fun installApk(file: File) {
         if (!file.exists()) {
-            Logger.e(TAG, "APK文件不存在: ${file.absolutePath}")
+            Logger.e(TAG, Str.get(R.string.apk_file_not_found_file_absolutepath, file.absolutePath))
             return
         }
 
@@ -191,9 +193,9 @@ class UpdateDownloader(
             }
 
             context.startActivity(intent)
-            Logger.success(TAG, "启动安装: ${file.name}")
+            Logger.success(TAG, Str.get(R.string.starting_install_file_name, file.name))
         } catch (e: Exception) {
-            Logger.e(TAG, "启动安装失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_start_install), e)
         }
     }
 
@@ -209,8 +211,8 @@ class UpdateDownloader(
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("正在下载 UIN Tool $versionName")
-            .setContentText("下载中... 0%")
+            .setContentTitle(Str.get(R.string.downloading_uin_tool_versionname, versionName))
+            .setContentText(Str.get(R.string.downloading_0))
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -226,8 +228,8 @@ class UpdateDownloader(
         val totalStr = formatSize(total)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("正在下载更新")
-            .setContentText("下载中... $progress% ($downloadedStr/$totalStr)")
+            .setContentTitle(Str.get(R.string.downloading_update))
+            .setContentText(Str.get(R.string.downloading_progress_downloadedstr_t, progress, downloadedStr, totalStr))
             .setProgress(100, progress, false)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)

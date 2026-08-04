@@ -1,8 +1,10 @@
 package com.UIN.Tool.data.remote
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import com.UIN.Tool.domain.model.MirrorItem
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
@@ -72,9 +74,9 @@ class MirrorManager(
                 url = url,
                 isDefault = true,
                 remark = when {
-                    url.contains("fastgit") -> "国内高速镜像"
-                    url.contains("ghproxy") -> "代理加速"
-                    url.contains("moeyy") -> "国内镜像"
+                    url.contains("fastgit") -> Str.get(R.string.fast_domestic_mirror)
+                    url.contains("ghproxy") -> Str.get(R.string.proxy_acceleration)
+                    url.contains("moeyy") -> Str.get(R.string.domestic_mirror)
                     else -> ""
                 }
             )
@@ -105,7 +107,7 @@ class MirrorManager(
                 )
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "解析镜像行失败: $line", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_parse_mirror_line_line, line), e)
         }
         return null
     }

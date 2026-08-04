@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/viewmodel/MainViewModel.kt
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.UIN.Tool.core.di.ServiceLocator
@@ -42,9 +44,9 @@ class MainViewModel : ViewModel() {
                     isLoading = false,
                     pluginCount = _plugins.value.size
                 )
-                Logger.i(TAG, "已加载 ${_plugins.value.size} 个插件")
+                Logger.i(TAG, Str.get(R.string.loaded_plugins_value_size_plugin_s, _plugins.value.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "加载插件失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_load_plugins), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message

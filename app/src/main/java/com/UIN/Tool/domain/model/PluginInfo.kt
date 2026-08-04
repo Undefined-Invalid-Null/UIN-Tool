@@ -1,6 +1,8 @@
 // domain/model/PluginInfo.kt
 package com.UIN.Tool.domain.model
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import org.json.JSONObject  // ✅ 添加这个导入
 
 /**
@@ -19,7 +21,7 @@ data class PluginInfo(
     var mainClass: String = "",
     var updateUrl: String = "",
     var apiLevel: Int = 21,
-    var category: String = "未分类",
+    var category: String = Str.get(R.string.uncategorized),
     var signature: String = "",
     var uiType: String = "native",
     var entry: String = "web/index.html",
@@ -88,7 +90,7 @@ data class PluginInfo(
             "python" -> "Python"
             "node" -> "Node.js"
             "php" -> "PHP"
-            "binary" -> "二进制程序"
+            "binary" -> Str.get(R.string.binary_program)
             "deno" -> "Deno"
             "go" -> "Go"
             "ruby" -> "Ruby"
@@ -96,7 +98,7 @@ data class PluginInfo(
             "lua" -> "Lua"
             "java" -> "Java"
             "rust" -> "Rust"
-            else -> "未知"
+            else -> Str.get(R.string.unknown)
         }
     }
 
@@ -258,7 +260,7 @@ data class PluginInfo(
                     mainClass = obj.optString("mainClass", ""),
                     updateUrl = obj.optString("updateUrl", ""),
                     apiLevel = obj.optInt("apiLevel", 21),
-                    category = obj.optString("category", "未分类"),
+                    category = obj.optString("category", Str.get(R.string.uncategorized)),
                     signature = obj.optString("signature", ""),
                     uiType = obj.optString("uiType", "native"),
                     entry = obj.optString("entry", "web/index.html"),

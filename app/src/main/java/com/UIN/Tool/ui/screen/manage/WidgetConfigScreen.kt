@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/manage/WidgetConfigScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
+import com.UIN.Tool.utils.Str
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
@@ -60,50 +61,50 @@ class WidgetConfigActivity : ComponentActivity() {
     private fun pinWidget() {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                AppToast.showLong(this, "Android 8.0+ 才支持此功能")
+                AppToast.showLong(this, Str.get(R.string.this_feature_requires_android_8_0))
                 return
             }
 
             val componentName = ComponentName(this, WidgetProvider::class.java)
 
             if (!appWidgetManager.isRequestPinAppWidgetSupported()) {
-                AppToast.showLong(this, "当前启动器不支持固定小部件，请长按桌面手动添加")
+                AppToast.showLong(this, Str.get(R.string.your_launcher_doesn_t_support_pinnin))
                 return
             }
 
-            AppLog.i(TAG, "开始添加3x3小部件")
+            AppLog.i(TAG, Str.get(R.string.adding_3x3_widget))
             appWidgetManager.requestPinAppWidget(componentName, null, null)
 
-            AppToast.showLong(this, "请在桌面放置小部件")
+            AppToast.showLong(this, Str.get(R.string.place_the_widget_on_your_home_screen))
 
         } catch (e: Exception) {
-            AppLog.e(TAG, "添加小部件失败: ${e.message}", e)
-            AppToast.error(this, "添加失败: ${e.message}")
+            AppLog.e(TAG, Str.get(R.string.failed_to_add_widget_e_message, e.message), e)
+            AppToast.error(this, Str.get(R.string.add_failed_e_message, e.message))
         }
     }
 
     private fun pinShortcut() {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                AppToast.showLong(this, "Android 8.0+ 才支持此功能")
+                AppToast.showLong(this, Str.get(R.string.this_feature_requires_android_8_0))
                 return
             }
 
             val componentName = ComponentName(this, Widget1x1Provider::class.java)
 
             if (!appWidgetManager.isRequestPinAppWidgetSupported()) {
-                AppToast.showLong(this, "当前启动器不支持固定快捷方式，请长按桌面手动添加")
+                AppToast.showLong(this, Str.get(R.string.your_launcher_doesn_t_support_pinnin_2))
                 return
             }
 
-            AppLog.i(TAG, "开始添加快捷方式")
+            AppLog.i(TAG, Str.get(R.string.adding_shortcut))
             appWidgetManager.requestPinAppWidget(componentName, null, null)
 
-            AppToast.showLong(this, "请在桌面放置快捷方式")
+            AppToast.showLong(this, Str.get(R.string.place_the_shortcut_on_your_home_scre))
 
         } catch (e: Exception) {
-            AppLog.e(TAG, "添加快捷方式失败: ${e.message}", e)
-            AppToast.error(this, "添加失败: ${e.message}")
+            AppLog.e(TAG, Str.get(R.string.failed_to_add_shortcut_e_message, e.message), e)
+            AppToast.error(this, Str.get(R.string.add_failed_e_message, e.message))
         }
     }
 }
@@ -120,7 +121,7 @@ fun WidgetConfigScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "小部件",
+                        Str.get(R.string.widget),
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 },
@@ -128,7 +129,7 @@ fun WidgetConfigScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = Str.get(R.string.back),
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -175,7 +176,7 @@ fun WidgetConfigScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "快捷方式",
+                                text = Str.get(R.string.shortcut),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -185,7 +186,7 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "1x1 快捷方式，点击直接打开插件，快速访问常用功能",
+                            text = Str.get(R.string.a_1x1_shortcut_that_opens_a_plugin_w),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp
@@ -194,9 +195,9 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "• 占用桌面空间小，适合常用插件\n" +
-                                   "• 点击即开，无需进入应用\n" +
-                                   "• 可放置多个，每个指向不同插件",
+                            text = Str.get(R.string.takes_little_home_screen_space_great) +
+                                   Str.get(R.string.open_with_one_tap_no_need_to_enter_t) +
+                                   Str.get(R.string.place_several_each_pointing_to_a_dif),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
@@ -217,11 +218,11 @@ fun WidgetConfigScreen(
                         ) {
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "添加",
+                                contentDescription = Str.get(R.string.add),
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("添加到桌面", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text(Str.get(R.string.add_to_home_screen), fontSize = 15.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -255,7 +256,7 @@ fun WidgetConfigScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "3x3 小部件",
+                                text = Str.get(R.string.widget_3x3_widget),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -265,7 +266,7 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "3x3 小部件，在桌面展示多个插件，一目了然",
+                            text = Str.get(R.string.a_3x3_widget_showing_multiple_plugin),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp
@@ -274,9 +275,9 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "• 同时显示 3 个插件，方便快速切换\n" +
-                                   "• 自动轮播展示插件状态\n" +
-                                   "• 点击插件卡片直接进入对应功能",
+                            text = Str.get(R.string.shows_3_plugins_at_once_for_quick_sw) +
+                                   Str.get(R.string.auto_rotates_to_show_plugin_status_n) +
+                                   Str.get(R.string.tap_a_plugin_card_to_open_it_directl),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
@@ -297,11 +298,11 @@ fun WidgetConfigScreen(
                         ) {
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "添加",
+                                contentDescription = Str.get(R.string.add),
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("添加到桌面", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text(Str.get(R.string.add_to_home_screen), fontSize = 15.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -336,17 +337,17 @@ fun WidgetConfigScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "使用说明",
+                                text = Str.get(R.string.how_to_use),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Text(
-                            text = "1. 点击「添加到桌面」按钮，系统会提示选择放置位置\n" +
-                                   "2. 在桌面拖动小部件可调整位置\n" +
-                                   "3. 长按小部件可调整大小或移除\n" +
-                                   "4. 快捷方式点击后直接打开插件，无需进入应用",
+                            text = Str.get(R.string.step1_tap_add_to_home_screen_and_choose_) +
+                                   Str.get(R.string.step2_drag_the_widget_to_reposition_it_n) +
+                                   Str.get(R.string.step3_long_press_the_widget_to_resize_or) +
+                                   Str.get(R.string.step4_a_shortcut_opens_the_plugin_direct),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp

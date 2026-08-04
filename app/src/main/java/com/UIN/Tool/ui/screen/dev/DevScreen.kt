@@ -1,6 +1,8 @@
 // ui/screen/dev/DevScreen.kt
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Intent
 // ui/screen/dev/DevScreen.kt - 添加缺失的 import
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +25,7 @@ import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -52,7 +54,7 @@ fun DevScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        UIComponents.TitleText("开发")
+        UIComponents.TitleText(Str.get(R.string.developer))
 
         // ============================================================
         // 终端卡片
@@ -60,9 +62,9 @@ fun DevScreen() {
         UIComponents.Card(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.SectionTitle("终端")
+            UIComponents.SectionTitle(Str.get(R.string.terminal))
             Text(
-                text = "启动完整的 Linux 终端环境\n基于 Termux 核心引擎",
+                text = Str.get(R.string.a_full_linux_terminal_environment_nb),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -72,32 +74,32 @@ fun DevScreen() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 UIComponents.PrimaryButton(
-                    text = "打开终端",
+                    text = Str.get(R.string.open_terminal),
                     icon = Icons.Default.Terminal,
                     onClick = {
                         try {
                             val intent = Intent(context, TermuxActivity::class.java)
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             context.startActivity(intent)
-                            AppLog.i(TAG, "启动终端成功")
+                            AppLog.i(TAG, Str.get(R.string.terminal_started))
                         } catch (e: Exception) {
-                            AppLog.e(TAG, "启动终端失败", e)
-                            AppToast.error(context, "启动终端失败: ${e.message}")
+                            AppLog.e(TAG, Str.get(R.string.failed_to_start_terminal), e)
+                            AppToast.error(context, Str.get(R.string.failed_to_start_terminal_e_message, e.message))
                         }
                     },
                     modifier = Modifier.weight(1f)
                 )
                 UIComponents.SecondaryButton(
-                    text = "终端设置",
+                    text = Str.get(R.string.terminal_settings),
                     icon = Icons.Default.Settings,
                     onClick = {
                         try {
                             val intent = Intent(context, SettingsActivity::class.java)
                             context.startActivity(intent)
-                            AppLog.i(TAG, "打开终端设置")
+                            AppLog.i(TAG, Str.get(R.string.open_terminal_settings))
                         } catch (e: Exception) {
-                            AppLog.e(TAG, "启动终端设置失败", e)
-                            AppToast.error(context, "启动设置失败: ${e.message}")
+                            AppLog.e(TAG, Str.get(R.string.failed_to_open_terminal_settings), e)
+                            AppToast.error(context, Str.get(R.string.failed_to_open_settings_e_message, e.message))
                         }
                     },
                     modifier = Modifier.weight(1f)
@@ -111,23 +113,23 @@ fun DevScreen() {
         UIComponents.Card(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.SectionTitle("插件开发工具")
+            UIComponents.SectionTitle(Str.get(R.string.plugin_development_tools))
             Text(
-                text = "创建 UIN Tool 插件，支持原生、Web 和 CUI 终端三种前端，多种后端语言",
+                text = Str.get(R.string.create_uin_tool_plugins_with_native_),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
             UIComponents.PrimaryButton(
-                text = "创建插件",
+                text = Str.get(R.string.create_plugin),
                 icon = Icons.Default.Add,
                 onClick = { showCreatePluginDialog = true },
                 modifier = Modifier.fillMaxWidth()
             )
 
             UIComponents.SecondaryButton(
-                text = if (isExporting) "导出中..." else "导出模板",
+                text = if (isExporting) Str.get(R.string.exporting) else Str.get(R.string.export_template),
                 icon = Icons.Default.FileDownload,
                 onClick = {
                     if (!isExporting) {
@@ -150,26 +152,26 @@ fun DevScreen() {
         UIComponents.Card(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.SectionTitle("快速开始")
+            UIComponents.SectionTitle(Str.get(R.string.quick_start))
             Text(
-                text = "1. 点击「创建插件」选择类型\n" +
-                        "2. 填写插件基本信息\n" +
-                        "3. 编写代码或选择二进制文件\n" +
-                        "4. 导出 TPK 文件\n" +
-                        "5. 在「管理」「插件管理」中导入运行",
+                text = Str.get(R.string.step1_tap_create_plugin_to_choose_a_type) +
+                        Str.get(R.string.step2_fill_in_basic_plugin_info_n) +
+                        Str.get(R.string.step3_write_code_or_pick_a_binary_file_n) +
+                        Str.get(R.string.step4_export_a_tpk_file_n) +
+                        Str.get(R.string.step5_import_and_run_it_in_manage_plugin),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             UIComponents.SecondaryButton(
-                text = "查看开发文档",
+                text = Str.get(R.string.view_development_docs),
                 icon = Icons.Default.Info,
                 onClick = {
                     try {
                         val intent = Intent(context, DocBrowserActivity::class.java)
                         context.startActivity(intent)
                     } catch (e: Exception) {
-                        AppToast.warning(context, "文档功能开发中")
+                        AppToast.warning(context, Str.get(R.string.docs_feature_under_development))
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -188,13 +190,13 @@ fun DevScreen() {
             containerColor = Color.White,
             title = {
                 Text(
-                    "选择前端类型",
+                    Str.get(R.string.choose_frontend_type),
                     color = Color(0xFF1A1A1A)
                 )
             },
             text = {
                 Text(
-                    "请选择插件的前端 UI 类型：",
+                    Str.get(R.string.choose_the_plugin_frontend_ui_type),
                     color = Color(0xFF555555)
                 )
             },
@@ -205,7 +207,7 @@ fun DevScreen() {
                 ) {
                     // 原生 UI
                     UIComponents.PrimaryButton(
-                        text = "原生 UI (Android View)",
+                        text = Str.get(R.string.native_ui_android_view),
                         onClick = {
                             selectedUiType = "native"
                             showCreatePluginDialog = false
@@ -216,7 +218,7 @@ fun DevScreen() {
                     
                     // ✅ 纯 WebView（无后端）
                     UIComponents.PrimaryButton(
-                        text = "Web UI (纯前端, 无后端)",
+                        text = Str.get(R.string.web_ui_frontend_only_no_backend),
                         onClick = {
                             selectedUiType = "web"
                             isWebViewOnly = true
@@ -229,7 +231,7 @@ fun DevScreen() {
                     
                     // WebView + 后端
                     UIComponents.PrimaryButton(
-                        text = "Web UI + 后端",
+                        text = Str.get(R.string.web_ui_backend),
                         onClick = {
                             selectedUiType = "web"
                             isWebViewOnly = false
@@ -241,7 +243,7 @@ fun DevScreen() {
                     
                     // ✅ CUI 终端
                     UIComponents.PrimaryButton(
-                        text = "CUI 终端 (命令行界面)",
+                        text = Str.get(R.string.cui_terminal_command_line),
                         onClick = {
                             selectedUiType = "cui"
                             isWebViewOnly = false
@@ -258,7 +260,7 @@ fun DevScreen() {
                             contentColor = Color(0xFF888888)
                         )
                     ) {
-                        Text("取消")
+                        Text(Str.get(R.string.cancel))
                     }
                 }
             },
@@ -275,13 +277,13 @@ fun DevScreen() {
             containerColor = Color.White,
             title = {
                 Text(
-                    "选择后端语言",
+                    Str.get(R.string.choose_backend_language),
                     color = Color(0xFF1A1A1A)
                 )
             },
             text = {
                 Text(
-                    "请选择 Web 插件的后端语言：",
+                    Str.get(R.string.choose_the_web_plugin_backend_langua),
                     color = Color(0xFF555555)
                 )
             },
@@ -294,8 +296,8 @@ fun DevScreen() {
                         "python" to "Python",
                         "node" to "Node.js",
                         "php" to "PHP",
-                        "binary" to "二进制文件",
-                        "other" to "自定义（手动启动）"
+                        "binary" to Str.get(R.string.binary_file),
+                        "other" to Str.get(R.string.custom_manual_start)
                     )
                     backends.forEach { (key, label) ->
                         UIComponents.PrimaryButton(
@@ -315,7 +317,7 @@ fun DevScreen() {
                             contentColor = Color(0xFF888888)
                         )
                     ) {
-                        Text("取消")
+                        Text(Str.get(R.string.cancel))
                     }
                 }
             },
@@ -334,10 +336,10 @@ private fun navigateToWizard(context: android.content.Context, uiType: String, b
             putExtra("backend_type", backend)
         }
         context.startActivity(intent)
-        AppLog.i(TAG, "启动插件向导: uiType=$uiType, backend=$backend")
+        AppLog.i(TAG, Str.get(R.string.launching_plugin_wizard_uitype_uityp, uiType, backend))
     } catch (e: Exception) {
-        AppLog.e(TAG, "跳转插件向导失败", e)
-        AppToast.error(context, "功能开发中: ${e.message}")
+        AppLog.e(TAG, Str.get(R.string.failed_to_open_plugin_wizard), e)
+        AppToast.error(context, Str.get(R.string.feature_under_development_e_message, e.message))
     }
 }
 
@@ -355,7 +357,7 @@ private fun exportTemplates(
             ?: emptyList()
 
         if (tpkNames.isEmpty()) {
-            AppToast.warning(context, "assets/test_plugins 中没有 TPK 模板")
+            AppToast.warning(context, Str.get(R.string.no_tpk_templates_in_assets_test_plug))
             return
         }
 
@@ -378,9 +380,9 @@ private fun exportTemplates(
                 }
                 successCount++
                 exportedNames.add(name)
-                AppLog.d(TAG, "导出模板文件: $name")
+                AppLog.d(TAG, Str.get(R.string.exporting_template_file_name, name))
             } catch (e: Exception) {
-                AppLog.w(TAG, "复制文件失败: $name - ${e.message}")
+                AppLog.w(TAG, Str.get(R.string.failed_to_copy_file_name_e_message, name, e.message))
                 failCount++
             }
         }
@@ -389,17 +391,17 @@ private fun exportTemplates(
         readmeFile.writeText(buildTemplateReadme(exportedNames))
 
         val message = if (failCount == 0) {
-            "已导出 $successCount 个插件模板到:\n${templateDir.absolutePath}"
+            Str.get(R.string.exported_successcount_plugin_templat, successCount, templateDir.absolutePath)
         } else {
-            "导出完成 (成功 $successCount 个, 失败 $failCount 个)\n${templateDir.absolutePath}"
+            Str.get(R.string.export_done_successcount_succeeded_f, successCount, failCount, templateDir.absolutePath)
         }
 
         AppToast.showLong(context, message)
-        AppLog.success(TAG, "模板导出完成: ${templateDir.absolutePath} (成功 $successCount, 失败 $failCount)")
+        AppLog.success(TAG, Str.get(R.string.template_export_done_templatedir_abs, templateDir.absolutePath, successCount, failCount))
 
     } catch (e: Exception) {
-        AppLog.e(TAG, "导出模板失败", e)
-        AppToast.error(context, "导出失败: ${e.message}")
+        AppLog.e(TAG, Str.get(R.string.failed_to_export_template), e)
+        AppToast.error(context, Str.get(R.string.export_failed_e_message, e.message))
     }
 }
 
@@ -408,34 +410,34 @@ private fun exportTemplates(
 // ============================================================
 private fun buildTemplateReadme(files: List<String>): String {
     val descMap = mapOf(
-        "com.example.cuitest.tpk" to "CUI 终端插件示例（全屏终端执行脚本）",
-        "com.example.othertest.tpk" to "自定义后端插件示例（other 模式，pre-command 手动启动）",
-        "com.example.termuxtest.tpk" to "Termux 后端插件示例（Python 后端）",
-        "com.test.allapi.tpk" to "全接口测试插件",
-        "com.test.storage.tpk" to "存储测试插件",
-        "NativeTestPlugin.tpk" to "原生插件示例",
-        "web_plugin_template.tpk" to "Web 插件模板（纯前端）"
+        "com.example.cuitest.tpk" to Str.get(R.string.cui_terminal_plugin_example_fullscre),
+        "com.example.othertest.tpk" to Str.get(R.string.custom_backend_plugin_example_other_),
+        "com.example.termuxtest.tpk" to Str.get(R.string.termux_backend_plugin_example_python),
+        "com.test.allapi.tpk" to Str.get(R.string.full_api_test_plugin),
+        "com.test.storage.tpk" to Str.get(R.string.storage_test_plugin),
+        "NativeTestPlugin.tpk" to Str.get(R.string.native_plugin_example),
+        "web_plugin_template.tpk" to Str.get(R.string.web_plugin_template_frontend_only)
     )
     val sb = StringBuilder()
     sb.appendLine("============================================================")
-    sb.appendLine("UIN Tool 插件模板")
+    sb.appendLine(Str.get(R.string.uin_tool_plugin_template))
     sb.appendLine("============================================================")
     sb.appendLine()
-    sb.appendLine("导出时间: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+    sb.appendLine(Str.get(R.string.export_time, java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())))
     sb.appendLine()
-    sb.appendLine("文件说明:")
+    sb.appendLine(Str.get(R.string.file_description))
     sb.appendLine("------------------------------------------------------------")
     files.forEachIndexed { index, name ->
         val prefix = if (index == files.lastIndex) "└── " else "├── "
-        sb.appendLine("$prefix$name  ${descMap[name] ?: "插件模板"}")
+        sb.appendLine("$prefix$name  ${descMap[name] ?: Str.get(R.string.plugin_template)}")
     }
     sb.appendLine()
-    sb.appendLine("使用方法:")
+    sb.appendLine(Str.get(R.string.usage))
     sb.appendLine("------------------------------------------------------------")
-    sb.appendLine("1. 在「管理」「插件管理」中选择「导入插件」")
-    sb.appendLine("2. 选择 .tpk 文件")
-    sb.appendLine("3. 插件将自动安装到 UIN Tool 中")
-    sb.appendLine("4. 在「工具」页面可以运行已安装的插件")
+    sb.appendLine(Str.get(R.string.step1_in_manage_plugins_tap_import_plugi))
+    sb.appendLine(Str.get(R.string.step2_select_a_tpk_file))
+    sb.appendLine(Str.get(R.string.step3_the_plugin_will_be_installed_into_))
+    sb.appendLine(Str.get(R.string.step4_run_installed_plugins_on_the_tools))
     sb.appendLine()
     sb.appendLine("============================================================")
     return sb.toString().trimEnd()

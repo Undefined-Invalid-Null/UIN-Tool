@@ -1,12 +1,14 @@
 package com.UIN.Tool.core.update
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -64,14 +66,14 @@ class UpdateChecker(
                 val currentVersionCode = getCurrentVersionCode()
                 val currentVersionName = getCurrentVersionName()
 
-                Logger.param(TAG, "当前版本", "$currentVersionName (代码: $currentVersionCode)")
+                Logger.param(TAG, Str.get(R.string.current_version), Str.get(R.string.currentversionname_code_currentversi, currentVersionName, currentVersionCode))
 
                 // 测试镜像站
                 val workingUrl = testMirrors()
                 if (workingUrl == null) {
-                    Logger.e(TAG, "所有镜像均不可用")
+                    Logger.e(TAG, Str.get(R.string.all_mirrors_are_unavailable))
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        onUpdateListener?.onCheckFailed("网络连接失败，请检查网络后重试")
+                        onUpdateListener?.onCheckFailed(Str.get(R.string.network_connection_failed_check_your))
                     }
                     return@Thread
                 }
@@ -105,8 +107,8 @@ class UpdateChecker(
                     }
                 }
 
-                Logger.param(TAG, "有新版本", hasNewer)
-                Logger.param(TAG, "强制更新", forceUpdate)
+                Logger.param(TAG, Str.get(R.string.new_version_available), hasNewer)
+                Logger.param(TAG, Str.get(R.string.mandatory_update), forceUpdate)
 
                 val finalReleases = releases
                 val finalHasNewer = hasNewer
@@ -117,9 +119,9 @@ class UpdateChecker(
                 }
 
             } catch (e: Exception) {
-                Logger.e(TAG, "检查更新失败", e)
+                Logger.e(TAG, Str.get(R.string.update_check_failed), e)
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    onUpdateListener?.onCheckFailed(e.message ?: "检查更新失败")
+                    onUpdateListener?.onCheckFailed(e.message ?: Str.get(R.string.update_check_failed))
                 }
             } finally {
                 Logger.exit(TAG, "checkUpdate", System.currentTimeMillis())
@@ -129,9 +131,9 @@ class UpdateChecker(
 
     private fun testMirrors(): String? {
         // 先尝试直连
-        Logger.d(TAG, "测试直连: $GITHUB_API")
+        Logger.d(TAG, Str.get(R.string.testing_direct_connection_github_api, GITHUB_API))
         if (testUrl(GITHUB_API)) {
-            Logger.success(TAG, "直连可用")
+            Logger.success(TAG, Str.get(R.string.direct_connection_available))
             return GITHUB_API
         }
 
@@ -147,22 +149,22 @@ class UpdateChecker(
 
         for (mirror in mirrorsToTest) {
             val testUrl = getMirrorUrl(mirror, GITHUB_API)
-            Logger.d(TAG, "测试镜像: $testUrl")
+            Logger.d(TAG, Str.get(R.string.testing_mirror_testurl, testUrl))
             if (testUrl(testUrl)) {
                 currentMirror = mirror
-                Logger.success(TAG, "找到可用镜像: $mirror")
+                Logger.success(TAG, Str.get(R.string.found_usable_mirror_mirror, mirror))
                 return testUrl
             }
         }
 
         // 如果配置的镜像都不可用，尝试默认镜像
         if (enabledMirrors.isNotEmpty() && useCdn) {
-            Logger.d(TAG, "配置镜像不可用，尝试默认镜像")
+            Logger.d(TAG, Str.get(R.string.configured_mirror_unavailable_trying))
             for (mirror in DEFAULT_MIRRORS) {
                 val testUrl = getMirrorUrl(mirror, GITHUB_API)
                 if (testUrl(testUrl)) {
                     currentMirror = mirror
-                    Logger.success(TAG, "找到可用默认镜像: $mirror")
+                    Logger.success(TAG, Str.get(R.string.found_usable_default_mirror_mirror, mirror))
                     return testUrl
                 }
             }
@@ -199,14 +201,14 @@ class UpdateChecker(
 
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
-                throw Exception("GitHub API错误: ${response.code}")
+                throw Exception(Str.get(R.string.github_api_error_response_code, response.code))
             }
 
             val body = response.body?.string() ?: return emptyList()
             return parseReleases(body)
 
         } catch (e: Exception) {
-            Logger.e(TAG, "获取Releases失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_fetch_releases), e)
             throw e
         }
     }
@@ -301,11 +303,11 @@ class UpdateChecker(
 
     fun ignoreVersion(versionName: String) {
         preferenceManager.setIgnoredVersion(versionName)
-        Logger.i(TAG, "忽略版本: $versionName")
+        Logger.i(TAG, Str.get(R.string.ignore_version_versionname, versionName))
     }
 
     fun ignoreForceUpdate(tagName: String) {
         preferenceManager.setForceUpdateIgnored(tagName)
-        Logger.i(TAG, "忽略强制更新: $tagName")
+        Logger.i(TAG, Str.get(R.string.ignoring_force_update_tagname, tagName))
     }
 }

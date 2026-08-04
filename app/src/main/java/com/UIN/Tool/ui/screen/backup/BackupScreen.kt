@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/backup/BackupScreen.kt
 package com.UIN.Tool.ui.screen.backup
 
+import com.UIN.Tool.R
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.BackupInfo
 import com.UIN.Tool.log.Logger
@@ -51,7 +53,7 @@ private fun addFileToZip(
         }
         zos.closeEntry()
     } catch (e: Exception) {
-        AppLog.e("Backup", "添加文件到ZIP失败: $entryName", e)
+        AppLog.e("Backup", Str.get(R.string.backup_add_zip_failed_entry, entryName), e)
     }
 }
 
@@ -76,7 +78,7 @@ private fun addDirToZip(
                 }
                 zos.closeEntry()
             } catch (e: Exception) {
-                AppLog.e("Backup", "添加文件失败: $entryName", e)
+                AppLog.e("Backup", Str.get(R.string.failed_to_add_file_entryname, entryName), e)
             }
         }
     }
@@ -126,29 +128,29 @@ fun BackupScreen() {
                 ?: emptyList()
 
             backups = files
-            AppLog.d("BackupScreen", "加载了 ${files.size} 个备份文件")
+            AppLog.d("BackupScreen", Str.get(R.string.loaded_files_size_backup_files, files.size))
         } catch (e: Exception) {
-            AppLog.e("BackupScreen", "加载备份列表失败", e)
+            AppLog.e("BackupScreen", Str.get(R.string.failed_to_load_backup_list), e)
         }
     }
 
     fun createBackup() {
         scope.launch {
             try {
-                AppLog.i("Backup", "========== 开始创建备份 ==========")
+                AppLog.i("Backup", Str.get(R.string.start_creating_backup))
                 isLoading = true
                 showProgress = true
                 progressValue = 0f
-                progressMessage = "正在创建备份..."
+                progressMessage = Str.get(R.string.creating_backup)
 
                 val plugins = pluginManager.plugins.value
                 val pluginDir = File(Constants.PLUGIN_DIR)
 
                 if (!pluginDir.exists()) {
-                    progressMessage = "没有插件可备份"
+                    progressMessage = Str.get(R.string.no_plugins_to_back_up)
                     showProgress = false
                     isLoading = false
-                    AppToast.info(context, "没有插件可备份")
+                    AppToast.info(context, Str.get(R.string.no_plugins_to_back_up))
                     return@launch
                 }
 
@@ -160,25 +162,25 @@ fun BackupScreen() {
                 ).use { zos ->
 
                     progressValue = 0.1f
-                    progressMessage = "正在打包 ${plugins.size} 个插件..."
+                    progressMessage = Str.get(R.string.packing_plugins_size_plugin_s, plugins.size)
                     addDirToZip(zos, pluginDir, "plugins/")
-                    AppLog.d("Backup", "插件目录已打包")
+                    AppLog.d("Backup", Str.get(R.string.plugin_directory_packed))
 
                     if (includeUiConfig) {
                         progressValue = 0.4f
-                        progressMessage = "正在备份 UI 配置..."
+                        progressMessage = Str.get(R.string.backing_up_ui_config)
                         val uiConfigFile = File(context.filesDir, "ui_config.json")
                         if (uiConfigFile.exists()) {
                             addFileToZip(zos, uiConfigFile, "config/ui_config.json")
-                            AppLog.d("Backup", "UI 配置已备份")
+                            AppLog.d("Backup", Str.get(R.string.ui_config_backed_up))
                         } else {
-                            AppLog.w("Backup", "UI 配置文件不存在")
+                            AppLog.w("Backup", Str.get(R.string.ui_config_file_does_not_exist))
                         }
                     }
 
                     if (includeSettings) {
                         progressValue = 0.55f
-                        progressMessage = "正在备份应用设置..."
+                        progressMessage = Str.get(R.string.backing_up_app_settings)
                         val prefsDir = File(context.filesDir.parent, "shared_prefs")
                         if (prefsDir.exists()) {
                             prefsDir.listFiles()?.forEach { prefFile ->
@@ -190,12 +192,12 @@ fun BackupScreen() {
                                     )
                                 }
                             }
-                            AppLog.d("Backup", "SharedPreferences 已备份")
+                            AppLog.d("Backup", Str.get(R.string.sharedpreferences_backed_up))
                         }
                     }
 
                     progressValue = 0.7f
-                    progressMessage = "正在备份工作目录配置..."
+                    progressMessage = Str.get(R.string.backing_up_work_directory_config)
                     val configJson = org.json.JSONObject().apply {
                         put("work_folder", Constants.WORK_DIR)
                         put("backup_time", timestamp)
@@ -210,7 +212,7 @@ fun BackupScreen() {
 
                     if (includeSettings) {
                         progressValue = 0.8f
-                        progressMessage = "正在备份应用设置..."
+                        progressMessage = Str.get(R.string.backing_up_app_settings)
                         val prefs = context.getSharedPreferences("uin_tool_prefs", Context.MODE_PRIVATE)
                         val settings = org.json.JSONObject().apply {
                             put("view_mode", prefs.getString("view_mode", "list"))
@@ -224,7 +226,7 @@ fun BackupScreen() {
                     }
 
                     progressValue = 0.85f
-                    progressMessage = "正在备份镜像配置..."
+                    progressMessage = Str.get(R.string.backing_up_mirror_config)
                     val mirrorPrefs = context.getSharedPreferences("github_mirror", Context.MODE_PRIVATE)
                     val mirrorConfig = org.json.JSONObject().apply {
                         put("enabled_mirrors", mirrorPrefs.getString("enabled_mirrors", ""))
@@ -237,18 +239,18 @@ fun BackupScreen() {
                 }
 
                 progressValue = 0.95f
-                progressMessage = "备份完成！"
+                progressMessage = Str.get(R.string.backup_complete)
                 progressValue = 1f
 
                 loadBackups()
-                AppLog.success("Backup", "备份创建成功")
-                AppLog.d("Backup", "备份文件大小: ${formatFileSize(backupFile.length())}")
-                AppToast.success(context, "备份成功 (${formatFileSize(backupFile.length())})")
+                AppLog.success("Backup", Str.get(R.string.backup_created_successfully))
+                AppLog.d("Backup", Str.get(R.string.backup_file_size_formatfilesize_back, formatFileSize(backupFile.length())))
+                AppToast.success(context, Str.get(R.string.backup_successful_formatfilesize_bac, formatFileSize(backupFile.length())))
 
             } catch (e: Exception) {
-                AppLog.e("Backup", "创建备份异常", e)
-                progressMessage = "备份失败: ${e.message}"
-                AppToast.error(context, "备份失败: ${e.message}")
+                AppLog.e("Backup", Str.get(R.string.backup_creation_exception), e)
+                progressMessage = Str.get(R.string.backup_failed_e_message, e.message)
+                AppToast.error(context, Str.get(R.string.backup_failed_e_message, e.message))
             } finally {
                 showProgress = false
                 isLoading = false
@@ -260,17 +262,17 @@ fun BackupScreen() {
     fun restoreBackup(backup: BackupInfo) {
         scope.launch {
             try {
-                AppLog.i("Backup", "========== 开始恢复备份 ==========")
+                AppLog.i("Backup", Str.get(R.string.start_restoring_backup))
                 isLoading = true
                 showProgress = true
                 progressValue = 0f
-                progressMessage = "正在恢复备份..."
+                progressMessage = Str.get(R.string.restoring_backup)
 
                 val tempDir = File(Constants.TEMP_DIR, "restore_${System.currentTimeMillis()}")
                 tempDir.mkdirs()
 
                 progressValue = 0.1f
-                progressMessage = "解压备份文件..."
+                progressMessage = Str.get(R.string.extracting_backup_file)
 
                 java.util.zip.ZipFile(backup.file).use { zipFile ->
                     val entries = zipFile.entries()
@@ -291,25 +293,25 @@ fun BackupScreen() {
                 }
 
                 progressValue = 0.3f
-                progressMessage = "解压完成，准备恢复..."
+                progressMessage = Str.get(R.string.extraction_complete_preparing_to_res)
 
                 val pluginsBackup = File(tempDir, "plugins")
                 if (pluginsBackup.exists()) {
                     progressValue = 0.4f
-                    progressMessage = "正在恢复插件..."
+                    progressMessage = Str.get(R.string.restoring_plugins)
                     val pluginDir = File(Constants.PLUGIN_DIR)
                     if (pluginDir.exists()) {
                         FileUtils.deleteRecursively(pluginDir)
                     }
                     pluginDir.mkdirs()
                     FileUtils.copyDirectory(pluginsBackup, pluginDir)
-                    AppLog.success("Backup", "插件恢复完成")
+                    AppLog.success("Backup", Str.get(R.string.plugin_restore_complete))
                 }
 
                 val uiConfigBackup = File(tempDir, "config/ui_config.json")
                 if (uiConfigBackup.exists()) {
                     progressValue = 0.6f
-                    progressMessage = "正在恢复 UI 配置..."
+                    progressMessage = Str.get(R.string.restoring_ui_config)
                     val destUiConfig = File(context.filesDir, "ui_config.json")
                     uiConfigBackup.copyTo(destUiConfig, overwrite = true)
 
@@ -385,29 +387,29 @@ fun BackupScreen() {
                             uiConfig.updateBoolean("enableBold", font.optBoolean("enableBold", true))
                         }
                         uiConfig.saveConfig()
-                        AppLog.success("Backup", "UI 配置恢复完成")
+                        AppLog.success("Backup", Str.get(R.string.ui_config_restore_complete))
                     } catch (e: Exception) {
-                        AppLog.e("Backup", "恢复UI配置失败", e)
+                        AppLog.e("Backup", Str.get(R.string.failed_to_restore_ui_config), e)
                     }
                 }
 
                 val prefsBackupDir = File(tempDir, "config/shared_prefs")
                 if (prefsBackupDir.exists()) {
                     progressValue = 0.7f
-                    progressMessage = "正在恢复应用设置..."
+                    progressMessage = Str.get(R.string.restoring_app_settings)
                     val destPrefsDir = File(context.filesDir.parent, "shared_prefs")
                     destPrefsDir.mkdirs()
                     prefsBackupDir.listFiles()?.forEach { prefFile ->
                         val destFile = File(destPrefsDir, prefFile.name)
                         prefFile.copyTo(destFile, overwrite = true)
                     }
-                    AppLog.success("Backup", "SharedPreferences 恢复完成")
+                    AppLog.success("Backup", Str.get(R.string.sharedpreferences_restore_complete))
                 }
 
                 val workFolderBackup = File(tempDir, "config/work_folder.json")
                 if (workFolderBackup.exists()) {
                     progressValue = 0.8f
-                    progressMessage = "正在恢复工作目录配置..."
+                    progressMessage = Str.get(R.string.restoring_work_directory_config)
                     val json = workFolderBackup.readText()
                     try {
                         val config = org.json.JSONObject(json)
@@ -417,14 +419,14 @@ fun BackupScreen() {
                             prefs.edit().putString("work_folder", workFolder).apply()
                         }
                     } catch (e: Exception) {
-                        AppLog.e("Backup", "解析工作目录配置失败", e)
+                        AppLog.e("Backup", Str.get(R.string.failed_to_parse_work_directory_confi), e)
                     }
                 }
 
                 val settingsBackup = File(tempDir, "config/settings.json")
                 if (settingsBackup.exists()) {
                     progressValue = 0.85f
-                    progressMessage = "正在恢复应用设置..."
+                    progressMessage = Str.get(R.string.restoring_app_settings)
                     val json = settingsBackup.readText()
                     try {
                         val settings = org.json.JSONObject(json)
@@ -435,14 +437,14 @@ fun BackupScreen() {
                             putString("current_theme", settings.optString("current_theme", "default"))
                         }.apply()
                     } catch (e: Exception) {
-                        AppLog.e("Backup", "解析应用设置失败", e)
+                        AppLog.e("Backup", Str.get(R.string.failed_to_parse_app_settings), e)
                     }
                 }
 
                 val mirrorBackup = File(tempDir, "config/github_mirror.json")
                 if (mirrorBackup.exists()) {
                     progressValue = 0.9f
-                    progressMessage = "正在恢复镜像配置..."
+                    progressMessage = Str.get(R.string.restoring_mirror_config)
                     val json = mirrorBackup.readText()
                     try {
                         val config = org.json.JSONObject(json)
@@ -452,28 +454,28 @@ fun BackupScreen() {
                             putBoolean("use_cdn", config.optBoolean("use_cdn", true))
                         }.apply()
                     } catch (e: Exception) {
-                        AppLog.e("Backup", "解析镜像配置失败", e)
+                        AppLog.e("Backup", Str.get(R.string.failed_to_parse_mirror_config), e)
                     }
                 }
 
                 progressValue = 0.95f
-                progressMessage = "清理临时文件..."
+                progressMessage = Str.get(R.string.cleaning_up_temporary_files)
                 FileUtils.deleteRecursively(tempDir)
 
-                progressMessage = "刷新插件列表..."
+                progressMessage = Str.get(R.string.refreshing_plugin_list)
                 pluginManager.refreshPlugins()
 
                 progressValue = 1f
-                progressMessage = "恢复完成！"
+                progressMessage = Str.get(R.string.restore_complete)
 
                 loadBackups()
-                AppLog.success("Backup", "备份恢复成功")
-                AppToast.success(context, "恢复成功")
+                AppLog.success("Backup", Str.get(R.string.backup_restore_successful))
+                AppToast.success(context, Str.get(R.string.restore_successful))
 
             } catch (e: Exception) {
-                AppLog.e("Backup", "恢复备份异常", e)
-                progressMessage = "恢复失败: ${e.message}"
-                AppToast.error(context, "恢复失败: ${e.message}")
+                AppLog.e("Backup", Str.get(R.string.backup_restore_exception), e)
+                progressMessage = Str.get(R.string.restore_failed_e_message, e.message)
+                AppToast.error(context, Str.get(R.string.restore_failed_e_message, e.message))
             } finally {
                 showProgress = false
                 isLoading = false
@@ -487,14 +489,14 @@ fun BackupScreen() {
         try {
             if (backup.file.delete()) {
                 loadBackups()
-                AppToast.success(context, "已删除")
-                AppLog.i("Backup", "删除备份: ${backup.name}")
+                AppToast.success(context, Str.get(R.string.deleted))
+                AppLog.i("Backup", Str.get(R.string.deleting_backup_backup_name, backup.name))
             } else {
-                AppToast.error(context, "删除失败")
+                AppToast.error(context, Str.get(R.string.delete_failed))
             }
         } catch (e: Exception) {
-            AppLog.e("BackupScreen", "删除备份失败", e)
-            AppToast.error(context, "删除失败: ${e.message}")
+            AppLog.e("BackupScreen", Str.get(R.string.failed_to_delete_backup), e)
+            AppToast.error(context, Str.get(R.string.delete_failed_e_message, e.message))
         }
     }
 
@@ -512,7 +514,7 @@ fun BackupScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UIComponents.TitleText("备份恢复")
+            UIComponents.TitleText(Str.get(R.string.backup_restore))
 
             if (!isLoading) {
                 UIComponents.IconButton(
@@ -523,7 +525,7 @@ fun BackupScreen() {
         }
 
         UIComponents.PrimaryButton(
-            text = "创建备份",
+            text = Str.get(R.string.create_backup),
             icon = Icons.Default.Backup,
             onClick = { createBackup() },
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -545,7 +547,7 @@ fun BackupScreen() {
                     .padding(12.dp)
             ) {
                 Text(
-                    text = "备份选项",
+                    text = Str.get(R.string.backup_options),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -561,7 +563,7 @@ fun BackupScreen() {
                             uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
-                    Text("包含 UI 配置", color = MaterialTheme.colorScheme.onSurface)
+                    Text(Str.get(R.string.include_ui_config), color = MaterialTheme.colorScheme.onSurface)
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -574,7 +576,7 @@ fun BackupScreen() {
                             uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
-                    Text("包含应用设置", color = MaterialTheme.colorScheme.onSurface)
+                    Text(Str.get(R.string.include_app_settings), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -610,8 +612,8 @@ fun BackupScreen() {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    UIComponents.TitleText("暂无备份文件")
-                    UIComponents.BodyText("点击「创建备份」来备份您的插件")
+                    UIComponents.TitleText(Str.get(R.string.no_backup_files_yet))
+                    UIComponents.BodyText(Str.get(R.string.tap_create_backup_to_back_up_your_pl))
                 }
             }
         } else {
@@ -634,8 +636,8 @@ fun BackupScreen() {
 
     deleteTarget?.let { backup ->
         UIComponents.ConfirmDialog(
-            title = "确认删除",
-            message = "确定要删除备份 \"${backup.name}\" 吗？",
+            title = Str.get(R.string.confirm_delete),
+            message = Str.get(R.string.delete_backup_backup_name, backup.name),
             onConfirm = {
                 deleteBackup(backup)
                 deleteTarget = null
@@ -646,8 +648,8 @@ fun BackupScreen() {
 
     if (showRestoreConfirm && restoreTarget != null) {
         UIComponents.ConfirmDialog(
-            title = "确认恢复",
-            message = "恢复操作将覆盖现有插件、配置和 UI 主题！\n\n确定要继续吗？",
+            title = Str.get(R.string.confirm_restore),
+            message = Str.get(R.string.restoring_will_overwrite_existing_pl),
             onConfirm = {
                 restoreTarget?.let { restoreBackup(it) }
                 restoreTarget = null
@@ -729,7 +731,7 @@ fun BackupItemCardCompact(
                             )
                         )
                         Text(
-                            text = "${backup.pluginCount}个",
+                            text = Str.get(R.string.backup_plugincount, backup.pluginCount),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 10.sp
@@ -755,7 +757,7 @@ fun BackupItemCardCompact(
                     contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
                     Text(
-                        text = "恢复",
+                        text = Str.get(R.string.restore),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -774,7 +776,7 @@ fun BackupItemCardCompact(
                     contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
                     Text(
-                        text = "删除",
+                        text = Str.get(R.string.delete),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )

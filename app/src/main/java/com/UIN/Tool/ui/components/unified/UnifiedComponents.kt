@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/components/unified/UnifiedComponents.kt
 package com.UIN.Tool.ui.components.unified
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -292,13 +294,13 @@ fun UnifiedTextField(
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "隐藏密码" else "显示密码"
+                            contentDescription = if (passwordVisible) Str.get(R.string.hide_password) else Str.get(R.string.show_password)
                         )
                     }
                 }
                 if (showClearButton && value.isNotEmpty()) {
                     IconButton(onClick = { onValueChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "清除")
+                        Icon(Icons.Default.Clear, contentDescription = Str.get(R.string.clear_2))
                     }
                 }
                 trailingIcon?.let {

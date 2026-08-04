@@ -1,5 +1,7 @@
 package com.UIN.Tool.core.accessibility
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.view.accessibility.AccessibilityEvent
@@ -18,23 +20,23 @@ class UinAccessibilityService : AccessibilityService() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        Logger.i(TAG, "无障碍服务创建")
+        Logger.i(TAG, Str.get(R.string.accessibility_service_created))
     }
     
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event?.let {
-            Logger.d(TAG, "无障碍事件: ${it.eventType}")
+            Logger.d(TAG, Str.get(R.string.accessibility_event_it_eventtype, it.eventType))
         }
     }
     
     override fun onInterrupt() {
-        Logger.i(TAG, "无障碍服务中断")
+        Logger.i(TAG, Str.get(R.string.accessibility_service_interrupted))
     }
     
     override fun onDestroy() {
         instance = null
         super.onDestroy()
-        Logger.i(TAG, "无障碍服务销毁")
+        Logger.i(TAG, Str.get(R.string.accessibility_service_destroyed))
     }
     
     override fun onServiceConnected() {
@@ -45,7 +47,7 @@ class UinAccessibilityService : AccessibilityService() {
             notificationTimeout = 100
         }
         setServiceInfo(info)
-        Logger.success(TAG, "无障碍服务已连接")
+        Logger.success(TAG, Str.get(R.string.accessibility_service_connected))
     }
     
     fun performBack() {

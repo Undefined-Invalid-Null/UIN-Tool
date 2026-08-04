@@ -1,6 +1,8 @@
 // ui/screen/dev/PluginWizardSteps.kt
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -97,12 +99,12 @@ fun PluginConfigStep(
         UIComponents.TextInput(
             value = pluginId,
             onValueChange = onPluginIdChange,
-            label = "插件ID",
+            label = Str.get(R.string.plugin_id),
             placeholder = "com.example.myplugin",
             modifier = Modifier.fillMaxWidth(),
             isError = pluginId.isNotEmpty() && !pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$")),
             supportingText = if (pluginId.isNotEmpty() && !pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                "⚠️ 格式应为域名倒序，如 com.example.myplugin"
+                Str.get(R.string.must_be_a_reversed_domain_name_e_g_c)
             } else null
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -110,8 +112,8 @@ fun PluginConfigStep(
         UIComponents.TextInput(
             value = pluginName,
             onValueChange = onPluginNameChange,
-            label = "插件名称",
-            placeholder = "我的插件",
+            label = Str.get(R.string.plugin_name),
+            placeholder = Str.get(R.string.my_plugins),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -119,8 +121,8 @@ fun PluginConfigStep(
         UIComponents.TextInput(
             value = pluginAuthor,
             onValueChange = onPluginAuthorChange,
-            label = "作者",
-            placeholder = "开发者",
+            label = Str.get(R.string.author),
+            placeholder = Str.get(R.string.developer_2),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -128,8 +130,8 @@ fun PluginConfigStep(
         UIComponents.TextInput(
             value = pluginDescription,
             onValueChange = onPluginDescriptionChange,
-            label = "描述",
-            placeholder = "这是一个示例插件",
+            label = Str.get(R.string.description),
+            placeholder = Str.get(R.string.this_is_an_example_plugin),
             modifier = Modifier.fillMaxWidth(),
             singleLine = false
         )
@@ -142,14 +144,14 @@ fun PluginConfigStep(
             UIComponents.TextInput(
                 value = pluginVersion,
                 onValueChange = onPluginVersionChange,
-                label = "版本号",
+                label = Str.get(R.string.version_code),
                 placeholder = "1",
                 modifier = Modifier.weight(1f)
             )
             UIComponents.TextInput(
                 value = pluginVersionName,
                 onValueChange = onPluginVersionNameChange,
-                label = "版本名",
+                label = Str.get(R.string.version_name),
                 placeholder = "1.0.0",
                 modifier = Modifier.weight(1f)
             )
@@ -160,19 +162,19 @@ fun PluginConfigStep(
             UIComponents.TextInput(
                 value = mainClass,
                 onValueChange = onMainClassChange,
-                label = "主类名",
+                label = Str.get(R.string.main_class),
                 placeholder = "com.example.MainPlugin",
                 modifier = Modifier.fillMaxWidth(),
                 isError = mainClass.isNotEmpty() && !mainClass.contains("."),
                 supportingText = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
-                    "⚠️ 必须包含包名，如 com.example.MainPlugin"
+                    Str.get(R.string.must_include_the_package_e_g_com_exa)
                 } else null
             )
         } else if (uiType == "web") {
             UIComponents.TextInput(
                 value = entryPath,
                 onValueChange = onEntryPathChange,
-                label = "入口文件",
+                label = Str.get(R.string.entry_file),
                 placeholder = "web/index.html",
                 modifier = Modifier.fillMaxWidth()
             )
@@ -184,13 +186,13 @@ fun PluginConfigStep(
         UIComponents.TextInput(
             value = pluginNotice,
             onValueChange = onPluginNoticeChange,
-            label = "插件说明（可选）",
-            placeholder = "首次打开时显示，用于说明插件功能",
+            label = Str.get(R.string.plugin_notice_optional),
+            placeholder = Str.get(R.string.shown_on_first_launch_to_explain_the),
             modifier = Modifier.fillMaxWidth(),
             singleLine = false
         )
         UIComponents.CaptionText(
-            "提示：首次打开插件时会显示此说明，用户可选择不再提示",
+            Str.get(R.string.this_notice_appears_when_the_plugin_),
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
 
@@ -199,15 +201,15 @@ fun PluginConfigStep(
 
             if (backendType != "other") {
                 // ✅ 后端运行环境
-                UIComponents.BodyText("后端运行环境")
+                UIComponents.BodyText(Str.get(R.string.backend_environment))
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val options = listOf(
-                        "termux" to "Termux 本机",
-                        "proot" to "Proot 容器"
+                        "termux" to Str.get(R.string.termux_local),
+                        "proot" to Str.get(R.string.proot_container)
                     )
                     options.forEach { (key, label) ->
                         FilterChip(
@@ -222,7 +224,7 @@ fun PluginConfigStep(
                     }
                 }
                 UIComponents.CaptionText(
-                    "Proot 容器：后端在共享 Alpine 容器中运行，环境隔离，不会影响宿主机",
+                    Str.get(R.string.proot_backend_runs_in_a_shared_alpin),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -232,19 +234,19 @@ fun PluginConfigStep(
             UIComponents.TextInput(
                 value = backendPreCommand,
                 onValueChange = onBackendPreCommandChange,
-                label = if (backendType == "other") "启动命令（必需）" else "启动前命令（可选）",
+                label = if (backendType == "other") Str.get(R.string.start_command_required) else Str.get(R.string.pre_command_optional),
                 placeholder = if (backendType == "other")
                     "proot-distro login alpine --bind ... -- python3 server.py"
                 else
-                    "如：apk add python3 && pip install -r requirements.txt",
+                    Str.get(R.string.e_g_apk_add_python3_pip_install_r_re),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = false
             )
             UIComponents.CaptionText(
                 if (backendType == "other")
-                    "「自定义」模式：宿主不自动启动后端，由该命令在 Termux 终端中启动服务，首次执行成功后永久跳过"
+                    Str.get(R.string.in_custom_mode_the_host_won_t_auto_s)
                 else
-                    "首次打开插件时在终端中执行，成功（exit 0）一次后永久跳过；在 Proot 容器环境初始化依赖",
+                    Str.get(R.string.runs_in_the_terminal_when_the_plugin),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }
@@ -256,13 +258,13 @@ fun PluginConfigStep(
             UIComponents.TextInput(
                 value = backendPreCommand,
                 onValueChange = onBackendPreCommandChange,
-                label = "启动命令（插件打开时在终端中执行）",
+                label = Str.get(R.string.start_command_run_in_terminal_when_t),
                 placeholder = "python3 scripts/script.py",
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = false
             )
             UIComponents.CaptionText(
-                "插件打开后会进入全屏终端并执行此命令；留空则默认执行 python3 scripts/script.py",
+                Str.get(R.string.the_plugin_opens_a_fullscreen_termin),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }
@@ -306,13 +308,13 @@ fun PluginIconStep(
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "图标预览",
+                    contentDescription = Str.get(R.string.icon_preview),
                     modifier = Modifier.size(80.dp)
                 )
             } else {
                 Icon(
                     Icons.Default.Image,
-                    contentDescription = "图标预览",
+                    contentDescription = Str.get(R.string.icon_preview),
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -325,14 +327,14 @@ fun PluginIconStep(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             UIComponents.PrimaryButton(
-                text = if (iconPath.isNotEmpty()) "更换图标" else "选择图标",
+                text = if (iconPath.isNotEmpty()) Str.get(R.string.change_icon) else Str.get(R.string.select_icon),
                 icon = Icons.Default.FileUpload,
                 onClick = { iconPickerLauncher.launch("image/*") }
             )
 
             if (iconPath.isNotEmpty()) {
                 UIComponents.SecondaryButton(
-                    text = "移除图标",
+                    text = Str.get(R.string.remove_icon),
                     onClick = { onIconSelected("") }
                 )
             }
@@ -341,7 +343,7 @@ fun PluginIconStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         UIComponents.CaptionText(
-            "建议使用 128x128 像素的 PNG 图片"
+            Str.get(R.string.recommend_128x128_png)
         )
     }
 }
@@ -356,17 +358,7 @@ fun NativeCodeStep(
             modifier = Modifier.fillMaxWidth()
         ) {
             UIComponents.BodyText(
-                """
-                    原生插件开发提示
-
-                    • 必须实现 PluginInterface 接口的所有方法
-                    • UI 必须通过 Java 代码动态创建，不能使用 XML
-                    • 示例代码已包含基础的 LinearLayout + Button
-                    • 可以添加任何原生 Android 控件
-                    • 修改后需要重新编译生成 DEX
-
-                    当前已生成 ${if (fileCount > 0) fileCount else 0} 个代码文件
-                """.trimIndent(),
+                Str.get(R.string.native_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -374,7 +366,7 @@ fun NativeCodeStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         UIComponents.PrimaryButton(
-            text = "打开代码编辑器 (${fileCount} 个文件)",
+            text = Str.get(R.string.open_code_editor_files, fileCount),
             icon = Icons.Default.Edit,
             onClick = onOpenEditor,
             modifier = Modifier.fillMaxWidth()
@@ -393,17 +385,7 @@ fun WebCodeStep(
             modifier = Modifier.fillMaxWidth()
         ) {
             UIComponents.BodyText(
-                """
-                    Web 插件开发
-
-                    • 已生成空白 HTML/CSS/JS 模板文件
-                    • 点击「打开代码编辑器」修改文件
-                    • 也可以导入已有的 Web 项目 (ZIP)
-                    • JavaScript 可通过 UINPlugin.callHost() 调用原生功能
-                    • 修改 HTML/CSS/JS 后无需重新编译
-
-                    当前已生成 ${if (fileCount > 0) fileCount else 0} 个文件
-                """.trimIndent(),
+                Str.get(R.string.web_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -411,7 +393,7 @@ fun WebCodeStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         UIComponents.PrimaryButton(
-            text = "打开代码编辑器 (${fileCount} 个文件)",
+            text = Str.get(R.string.open_code_editor_files, fileCount),
             icon = Icons.Default.Edit,
             onClick = onOpenEditor,
             modifier = Modifier.fillMaxWidth()
@@ -420,7 +402,7 @@ fun WebCodeStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         UIComponents.SecondaryButton(
-            text = "导入已有 Web 项目 (ZIP)",
+            text = Str.get(R.string.import_existing_web_project_zip),
             icon = Icons.Default.FileUpload,
             onClick = onImportWebProject,
             modifier = Modifier.fillMaxWidth()
@@ -438,17 +420,7 @@ fun CuiCodeStep(
             modifier = Modifier.fillMaxWidth()
         ) {
             UIComponents.BodyText(
-                """
-                    CUI 终端插件开发
-
-                    • 插件打开后会在全屏终端中运行启动命令
-                    • 默认启动命令：python3 scripts/script.py
-                    • 脚本需为 Python/Shell 等可执行脚本
-                    • 可在「配置插件信息」步骤修改启动命令
-                    • 点击「打开代码编辑器」编辑脚本文件
-
-                    当前已生成 ${if (fileCount > 0) fileCount else 0} 个文件
-                """.trimIndent(),
+                Str.get(R.string.cui_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -456,7 +428,7 @@ fun CuiCodeStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         UIComponents.PrimaryButton(
-            text = "打开代码编辑器 (${fileCount} 个文件)",
+            text = Str.get(R.string.open_code_editor_files, fileCount),
             icon = Icons.Default.Edit,
             onClick = onOpenEditor,
             modifier = Modifier.fillMaxWidth()
@@ -481,9 +453,9 @@ fun ResourcesStep(
     }
 
     Column {
-        UIComponents.BodyText("添加资源文件（可选）")
+        UIComponents.BodyText(Str.get(R.string.add_resource_files_optional))
         Spacer(modifier = Modifier.height(8.dp))
-        UIComponents.CaptionText("添加图片、音频等资源文件")
+        UIComponents.CaptionText(Str.get(R.string.add_images_audio_resources))
         Spacer(modifier = Modifier.height(16.dp))
 
         if (resourcePaths.isEmpty()) {
@@ -504,7 +476,7 @@ fun ResourcesStep(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.CaptionText("暂无资源文件")
+                        UIComponents.CaptionText(Str.get(R.string.no_resource_files))
                     }
                 }
             }
@@ -553,7 +525,7 @@ fun ResourcesStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         UIComponents.PrimaryButton(
-            text = "添加资源文件",
+            text = Str.get(R.string.add_resource_files),
             icon = Icons.Default.Add,
             onClick = { resourcePickerLauncher.launch("*/*") },
             modifier = Modifier.fillMaxWidth()
@@ -569,7 +541,7 @@ fun PackageStep(
     tpkFile: File?
 ) {
     Column {
-        UIComponents.TitleText("生成项目文件")
+        UIComponents.TitleText(Str.get(R.string.generate_project_files))
         Spacer(modifier = Modifier.height(8.dp))
 
         UIComponents.Card(
@@ -603,10 +575,10 @@ fun PackageStep(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UIComponents.TitleText("打包成功！")
+                        UIComponents.TitleText(Str.get(R.string.packaged_successfully))
                         Spacer(modifier = Modifier.height(8.dp))
                         UIComponents.CaptionText(tpkFile.absolutePath)
-                        UIComponents.CaptionText("大小: ${formatFileSize(tpkFile.length())}")
+                        UIComponents.CaptionText(Str.get(R.string.size_formatfilesize_tpkfile_length, formatFileSize(tpkFile.length())))
                     } else {
                         Icon(
                             Icons.Default.Build,
@@ -615,8 +587,8 @@ fun PackageStep(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UIComponents.BodyText("点击「完成」按钮开始生成项目文件")
-                        if (compileMessage.isNotEmpty() && !compileMessage.contains("成功")) {
+                        UIComponents.BodyText(Str.get(R.string.tap_the_finish_button_to_generate_th))
+                        if (compileMessage.isNotEmpty() && !compileMessage.contains(Str.get(R.string.success))) {
                             Spacer(modifier = Modifier.height(8.dp))
                             UIComponents.CaptionText(
                                 compileMessage,
@@ -641,14 +613,7 @@ fun BinaryFileSelectionStep(
             modifier = Modifier.fillMaxWidth()
         ) {
             UIComponents.BodyText(
-                """
-                    选择编译好的二进制可执行文件作为后端
-
-                    • 该文件将作为插件后端启动
-                    • 必须监听 127.0.0.1:8000 端口
-                    • 必须提供 /health 健康检查端点
-                    • 文件需要具有可执行权限
-                """.trimIndent(),
+                Str.get(R.string.binary_backend_instructions),
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -667,10 +632,10 @@ fun BinaryFileSelectionStep(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        UIComponents.BodyText("已选择文件")
+                        UIComponents.BodyText(Str.get(R.string.file_selected))
                         UIComponents.CaptionText(File(filePath).name)
                         UIComponents.CaptionText(
-                            "大小: ${formatFileSize(File(filePath).length())}",
+                            Str.get(R.string.size_formatfilesize_file_filepath_le, formatFileSize(File(filePath).length())),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -686,7 +651,7 @@ fun BinaryFileSelectionStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         UIComponents.PrimaryButton(
-            text = if (filePath.isNotEmpty()) "更换二进制文件" else "选择二进制文件",
+            text = if (filePath.isNotEmpty()) Str.get(R.string.change_binary_file) else Str.get(R.string.select_binary_file),
             icon = Icons.Default.FileUpload,
             onClick = onFilePicker,
             modifier = Modifier.fillMaxWidth()

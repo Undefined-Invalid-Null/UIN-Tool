@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/dev/DevDocScreen.kt
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,17 +34,17 @@ fun DevDocScreen() {
     val activity = context as? android.app.Activity
 
     val docs = listOf(
-        DevDocItem(Icons.Default.Help, "使用帮助", "使用帮助、常见问题解答", "help"),
-        DevDocItem(Icons.Default.DeveloperMode, "开发文档", "插件开发文档、API 参考", "dev"),
-        DevDocItem(Icons.Default.Update, "更新日志", "版本更新历史记录", "changelog"),
-        DevDocItem(Icons.Default.Info, "关于", "关于应用、版本信息", "about"),
-        DevDocItem(Icons.Default.People, "贡献者", "贡献者名单", "contributors")
+        DevDocItem(Icons.Default.Help, Str.get(R.string.help_2), Str.get(R.string.help_and_faq), "help"),
+        DevDocItem(Icons.Default.DeveloperMode, Str.get(R.string.development_docs), Str.get(R.string.plugin_development_docs_and_api_refe), "dev"),
+        DevDocItem(Icons.Default.Update, Str.get(R.string.changelog), Str.get(R.string.version_history_and_changelog), "changelog"),
+        DevDocItem(Icons.Default.Info, Str.get(R.string.about), Str.get(R.string.about_the_app_and_version_info), "about"),
+        DevDocItem(Icons.Default.People, Str.get(R.string.contributors), Str.get(R.string.list_of_contributors), "contributors")
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("文档中心") },
+                title = { Text(Str.get(R.string.docs_center)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
@@ -69,7 +71,7 @@ fun DevDocScreen() {
                                 intent.putExtra("doc_type", doc.id)
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                AppToast.error(context, "无法打开文档: ${e.message}")
+                                AppToast.error(context, Str.get(R.string.failed_to_open_document_e_message, e.message))
                             }
                         }
                 ) {

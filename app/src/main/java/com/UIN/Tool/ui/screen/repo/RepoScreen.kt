@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/repo/RepoScreen.kt
 package com.UIN.Tool.ui.screen.repo
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,7 +35,7 @@ fun RepoScreen() {
     LaunchedEffect(Unit) {
         repoViewModel.init(context)
         repoViewModel.loadPlugins()
-        AppLog.i(TAG, "开始加载插件列表")
+        AppLog.i(TAG, Str.get(R.string.start_loading_plugin_list))
     }
 
     val uiState by repoViewModel.uiState.collectAsState()
@@ -51,7 +53,7 @@ fun RepoScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UIComponents.TitleText("插件仓库")
+            UIComponents.TitleText(Str.get(R.string.plugin_repository))
             UIComponents.IconButton(
                 icon = Icons.Default.Refresh,
                 onClick = { repoViewModel.refresh() }
@@ -68,7 +70,7 @@ fun RepoScreen() {
                     repoViewModel.searchPlugins(text)
                 }
             },
-            placeholder = "搜索插件...",
+            placeholder = Str.get(R.string.search_plugins),
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             leadingIcon = Icons.Default.Search
         )
@@ -83,7 +85,7 @@ fun RepoScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        UIComponents.BodyText("正在下载: ${downloadProgress.pluginId}")
+                        UIComponents.BodyText(Str.get(R.string.downloading_downloadprogress_plugini, downloadProgress.pluginId))
                         UIComponents.BodyText(
                             "${downloadProgress.progress}%",
                             modifier = Modifier.align(Alignment.CenterVertically)
@@ -101,7 +103,7 @@ fun RepoScreen() {
 
         when {
             uiState.isLoading && filteredPlugins.isEmpty() -> {
-                UIComponents.FullScreenLoading("加载插件列表中...")
+                UIComponents.FullScreenLoading(Str.get(R.string.loading_plugin_list))
             }
             filteredPlugins.isEmpty() -> {
                 Box(
@@ -117,10 +119,10 @@ fun RepoScreen() {
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         UIComponents.BodyText(
-                            if (searchText.isNotEmpty()) "没有找到相关插件" else "暂无可用插件"
+                            if (searchText.isNotEmpty()) Str.get(R.string.no_matching_plugins) else Str.get(R.string.no_plugins_available)
                         )
                         UIComponents.CaptionText(
-                            if (searchText.isNotEmpty()) "尝试其他关键词" else "请检查网络连接后刷新"
+                            if (searchText.isNotEmpty()) Str.get(R.string.try_other_keywords) else Str.get(R.string.check_your_network_connection_and_re)
                         )
                     }
                 }
@@ -150,19 +152,19 @@ fun RepoScreen() {
             title = plugin.name,
             message = buildString {
                 append("ID: ${plugin.pluginId}\n")
-                append("版本: ${plugin.versionName}\n")
-                append("作者: ${plugin.author}\n")
-                append("大小: ${plugin.getFormattedSize()}\n")
-                append("更新: ${plugin.getFormattedDate()}\n")
+                append(Str.get(R.string.version_plugin_versionname_n, plugin.versionName))
+                append(Str.get(R.string.author_plugin_author_n, plugin.author))
+                append(Str.get(R.string.size_plugin_getformattedsize_n, plugin.getFormattedSize()))
+                append(Str.get(R.string.updated_plugin_getformatteddate_n, plugin.getFormattedDate()))
                 if (plugin.description.isNotEmpty()) {
-                    append("\n描述: ${plugin.description}\n")
+                    append(Str.get(R.string.ndescription_plugin_description_n, plugin.description))
                 }
                 if (plugin.updateLog.isNotEmpty()) {
-                    append("\n更新日志:\n${plugin.updateLog.take(200)}${if (plugin.updateLog.length > 200) "..." else ""}")
+                    append(Str.get(R.string.repo_update_log, plugin.updateLog.take(200), if (plugin.updateLog.length > 200) "..." else ""))
                 }
             },
-            confirmText = if (installedIds.contains(plugin.pluginId)) "打开" else "安装",
-            dismissText = "关闭",
+            confirmText = if (installedIds.contains(plugin.pluginId)) Str.get(R.string.open) else Str.get(R.string.install),
+            dismissText = Str.get(R.string.close),
             onConfirm = {
                 if (installedIds.contains(plugin.pluginId)) {
                     pluginManager.openPlugin(plugin.pluginId, context)
@@ -207,7 +209,7 @@ fun RepoPluginCard(
                             Badge(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer
                             ) {
-                                Text("已安装")
+                                Text(Str.get(R.string.installed))
                             }
                         }
                     ) { }
@@ -218,7 +220,7 @@ fun RepoPluginCard(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                UIComponents.CaptionText("作者: ${plugin.author}")
+                UIComponents.CaptionText(Str.get(R.string.author_plugin_author, plugin.author))
                 UIComponents.CaptionText(plugin.getFormattedDate())
             }
             if (plugin.description.isNotEmpty()) {
@@ -244,14 +246,14 @@ fun RepoPluginCard(
                     }
                     isInstalled -> {
                         UIComponents.SecondaryButton(
-                            text = "打开",
+                            text = Str.get(R.string.open),
                             onClick = onOpen,
                             modifier = Modifier.height(32.dp)
                         )
                     }
                     else -> {
                         UIComponents.PrimaryButton(
-                            text = "安装",
+                            text = Str.get(R.string.install),
                             onClick = onInstall,
                             modifier = Modifier.height(32.dp)
                         )

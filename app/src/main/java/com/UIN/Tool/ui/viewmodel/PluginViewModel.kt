@@ -1,5 +1,7 @@
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -42,9 +44,9 @@ class PluginViewModel(
                     isLoading = false,
                     pluginCount = _installedPlugins.value.size
                 )
-                Logger.i(TAG, "已加载 ${_installedPlugins.value.size} 个插件")
+                Logger.i(TAG, Str.get(R.string.loaded_installedplugins_value_size_p, _installedPlugins.value.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "加载插件失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_load_plugins), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -56,12 +58,12 @@ class PluginViewModel(
     fun selectPlugin(pluginId: String) {
         val plugin = pluginManager.getPluginInfo(pluginId)
         _selectedPlugin.value = plugin
-        Logger.action(TAG, "选择插件", plugin?.name ?: "未知")
+        Logger.action(TAG, Str.get(R.string.select_plugin_2), plugin?.name ?: Str.get(R.string.unknown))
     }
     
     fun openPlugin(pluginId: String, context: Context) {
         pluginManager.openPlugin(pluginId, context)
-        Logger.action(TAG, "打开插件", pluginId)
+        Logger.action(TAG, Str.get(R.string.open_plugin), pluginId)
     }
     
     suspend fun uninstallPlugin(pluginId: String): Boolean {
@@ -69,11 +71,11 @@ class PluginViewModel(
             val result = pluginManager.uninstallPlugin(pluginId)
             if (result) {
                 loadPlugins()
-                Logger.success(TAG, "卸载成功: $pluginId")
+                Logger.success(TAG, Str.get(R.string.uninstalled_pluginid, pluginId))
             }
             result
         } catch (e: Exception) {
-            Logger.e(TAG, "卸载失败", e)
+            Logger.e(TAG, Str.get(R.string.uninstall_failed), e)
             false
         }
     }
@@ -83,11 +85,11 @@ class PluginViewModel(
             val info = pluginManager.installPlugin(file, fileName)
             if (info != null) {
                 loadPlugins()
-                Logger.success(TAG, "安装成功: ${info.name}")
+                Logger.success(TAG, Str.get(R.string.installed_info_name, info.name))
             }
             info
         } catch (e: Exception) {
-            Logger.e(TAG, "安装失败", e)
+            Logger.e(TAG, Str.get(R.string.install_failed), e)
             null
         }
     }

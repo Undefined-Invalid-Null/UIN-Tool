@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/widget/WidgetProvider.kt
 package com.UIN.Tool.widget
 
+import com.UIN.Tool.utils.Str
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -17,7 +18,7 @@ import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginHostActivity
 import com.UIN.Tool.plugin.PluginManager
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,13 +34,13 @@ class WidgetConfig(
 
     fun save(context: Context, appWidgetId: Int) {
         val key = "widget_$appWidgetId"
-        Logger.d("WidgetConfig", "保存配置: appWidgetId=$appWidgetId")
+        Logger.d("WidgetConfig", Str.get(R.string.saving_config_appwidgetid_appwidgeti, appWidgetId))
         context.getSharedPreferences(Constants.PREF_WIDGET, Context.MODE_PRIVATE).edit().apply {
             putString("${key}_1", pluginId1)
             putString("${key}_2", pluginId2)
             putString("${key}_3", pluginId3)
         }.apply()
-        Logger.success("WidgetConfig", "配置保存成功")
+        Logger.success("WidgetConfig", Str.get(R.string.config_saved_2))
     }
 
     companion object {
@@ -50,7 +51,7 @@ class WidgetConfig(
             val id2 = prefs.getString("${key}_2", "") ?: ""
             val id3 = prefs.getString("${key}_3", "") ?: ""
             
-            Logger.d("WidgetConfig", "加载配置: appWidgetId=$appWidgetId, id1=$id1, id2=$id2, id3=$id3")
+            Logger.d("WidgetConfig", Str.get(R.string.loading_config_appwidgetid_appwidget, appWidgetId, id1, id2, id3))
             
             return if (id1.isEmpty() && id2.isEmpty() && id3.isEmpty()) {
                 null
@@ -116,24 +117,24 @@ class WidgetProvider : AppWidgetProvider() {
         fun refreshAllWidgets(context: Context) {
             val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             Logger.i(TAG, "══════════════════════════════════════════════════")
-            Logger.i(TAG, "[$time] 🔄 refreshAllWidgets 开始")
+            Logger.i(TAG, Str.get(R.string.time_refreshallwidgets_started, time))
             
             try {
                 val appWidgetManager = AppWidgetManager.getInstance(context)
                 val componentName = ComponentName(context, WidgetProvider::class.java)
                 val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
                 
-                Logger.i(TAG, "[$time] 📊 找到 ${appWidgetIds.size} 个小部件")
+                Logger.i(TAG, Str.get(R.string.time_found_appwidgetids_size_widget_, time, appWidgetIds.size))
                 
                 appWidgetIds.forEachIndexed { index, appWidgetId ->
-                    Logger.i(TAG, "[$time]   ➜ 刷新第 ${index + 1} 个小部件, ID: $appWidgetId")
+                    Logger.i(TAG, Str.get(R.string.time_refreshing_widget_index_1_id_ap, time, index + 1, appWidgetId))
                     updateWidget(context, appWidgetManager, appWidgetId)
                 }
                 
-                Logger.i(TAG, "[$time] ✅ refreshAllWidgets 完成")
+                Logger.i(TAG, Str.get(R.string.time_refreshallwidgets_complete, time))
                 Logger.i(TAG, "══════════════════════════════════════════════════")
             } catch (e: Exception) {
-                Logger.e(TAG, "[$time] ❌ refreshAllWidgets 异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.time_refreshallwidgets_error_e_messa, time, e.message), e)
             }
         }
 
@@ -147,9 +148,9 @@ class WidgetProvider : AppWidgetProvider() {
             try {
                 val intent = Intent(ACTION_REFRESH_WIDGET).setPackage(context.packageName)
                 context.sendBroadcast(intent)
-                Logger.d(TAG, "📤 刷新广播已发送")
+                Logger.d(TAG, Str.get(R.string.refresh_broadcast_sent))
             } catch (e: Exception) {
-                Logger.e(TAG, "❌ sendRefreshIntent 异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.sendrefreshintent_error_e_message, e.message), e)
             }
         }
 
@@ -158,113 +159,113 @@ class WidgetProvider : AppWidgetProvider() {
             val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             
             if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                Logger.w(TAG, "[$time] ⚠️ updateWidget: 无效的 appWidgetId，跳过")
+                Logger.w(TAG, Str.get(R.string.time_updatewidget_invalid_appwidgeti, time))
                 return
             }
 
             Logger.enter(TAG, "updateWidget")
             Logger.param(TAG, "appWidgetId", appWidgetId)
             Logger.i(TAG, "[$time] ══════════════════════════════════════════════════")
-            Logger.i(TAG, "[$time] 🚀 开始更新小部件 ID: $appWidgetId")
+            Logger.i(TAG, Str.get(R.string.time_updating_widget_id_appwidgetid, time, appWidgetId))
             
             try {
                 // ============================================================
                 // 步骤1: 创建 RemoteViews
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤1: 创建 RemoteViews")
+                Logger.i(TAG, Str.get(R.string.time_step_1_creating_remoteviews, time))
                 val views = RemoteViews(context.packageName, R.layout.widget_layout_grid)
-                Logger.success(TAG, "[$time] ✅ RemoteViews 创建成功")
-                Logger.d(TAG, "[$time]    布局文件: widget_layout_grid")
+                Logger.success(TAG, Str.get(R.string.time_remoteviews_created, time))
+                Logger.d(TAG, Str.get(R.string.time_layout_widget_layout_grid, time))
 
                 // ============================================================
                 // 步骤2: 获取插件管理器
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤2: 获取 PluginManager")
+                Logger.i(TAG, Str.get(R.string.time_step_2_getting_pluginmanager, time))
                 val pluginManager = PluginManager.getInstance(context)
-                Logger.success(TAG, "[$time] ✅ PluginManager 获取成功")
-                Logger.d(TAG, "[$time]    PluginManager 实例: ${pluginManager.hashCode()}")
+                Logger.success(TAG, Str.get(R.string.time_pluginmanager_obtained, time))
+                Logger.d(TAG, Str.get(R.string.time_pluginmanager_instance_pluginma, time, pluginManager.hashCode()))
 
                 // ============================================================
                 // 步骤3: 刷新插件列表
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤3: 刷新插件列表")
+                Logger.i(TAG, Str.get(R.string.time_step_3_refreshing_plugin_list, time))
                 pluginManager.refreshPlugins()
-                Logger.success(TAG, "[$time] ✅ 插件列表已刷新")
+                Logger.success(TAG, Str.get(R.string.time_plugin_list_refreshed, time))
 
                 // ============================================================
                 // 步骤4: 获取所有插件
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤4: 获取所有插件")
+                Logger.i(TAG, Str.get(R.string.time_step_4_getting_all_plugins, time))
                 val allPlugins = pluginManager.plugins.value
-                Logger.param(TAG, "[$time] 插件总数", allPlugins.size)
-                Logger.d(TAG, "[$time]    allPlugins 类型: ${allPlugins.javaClass.simpleName}")
-                Logger.d(TAG, "[$time]    allPlugins 是否为空: ${allPlugins.isEmpty()}")
+                Logger.param(TAG, Str.get(R.string.time_plugin_count, time), allPlugins.size)
+                Logger.d(TAG, Str.get(R.string.time_allplugins_type_allplugins_java, time, allPlugins.javaClass.simpleName))
+                Logger.d(TAG, Str.get(R.string.time_allplugins_empty_allplugins_ise, time, allPlugins.isEmpty()))
                 
                 if (allPlugins.isEmpty()) {
-                    Logger.w(TAG, "[$time] ⚠️ 没有已安装的插件!")
+                    Logger.w(TAG, Str.get(R.string.time_no_installed_plugins, time))
                     views.setTextViewText(R.id.widget_title, context.getString(R.string.app_name))
                     for (i in 0 until MAX_PLUGINS) {
                         val slotId = getSlotId(i)
                         views.setViewVisibility(slotId, android.view.View.GONE)
                     }
                     appWidgetManager.updateAppWidget(appWidgetId, views)
-                    Logger.w(TAG, "[$time] ⚠️ 已更新空小部件（无插件）")
+                    Logger.w(TAG, Str.get(R.string.time_updated_empty_widget_no_plugins, time))
                     Logger.exit(TAG, "updateWidget", System.currentTimeMillis())
                     return
                 }
                 
                 // 打印所有插件信息
                 allPlugins.forEachIndexed { index, plugin ->
-                    Logger.d(TAG, "[$time]    插件 ${index + 1}: ${plugin.name} (${plugin.pluginId})")
+                    Logger.d(TAG, Str.get(R.string.time_plugin_index_1_plugin_name_plug, time, index + 1, plugin.name, plugin.pluginId))
                 }
 
                 // ============================================================
                 // 步骤5: 加载配置
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤5: 加载小部件配置")
+                Logger.i(TAG, Str.get(R.string.time_step_5_loading_widget_config, time))
                 val config = WidgetConfig.load(context, appWidgetId)
-                Logger.d(TAG, "[$time]    配置对象: ${if (config != null) "存在" else "null"}")
+                Logger.d(TAG, Str.get(R.string.w_time_config_object_if_config, if (config != null) Str.get(R.string.exists) else "null"))
                 
                 var displayPlugins = mutableListOf<PluginInfo>()
                 
                 if (config != null && config.hasSelectedPlugins()) {
-                    Logger.i(TAG, "[$time] ✅ 找到配置: pluginId1=${config.pluginId1}, pluginId2=${config.pluginId2}, pluginId3=${config.pluginId3}")
+                    Logger.i(TAG, Str.get(R.string.time_found_config_pluginid1_config_p, time, config.pluginId1, config.pluginId2, config.pluginId3))
                     
                     // 按配置添加插件
-                    addPluginById(config.pluginId1, pluginManager, displayPlugins, "位置1", time)
-                    addPluginById(config.pluginId2, pluginManager, displayPlugins, "位置2", time)
-                    addPluginById(config.pluginId3, pluginManager, displayPlugins, "位置3", time)
+                    addPluginById(config.pluginId1, pluginManager, displayPlugins, Str.get(R.string.position_1), time)
+                    addPluginById(config.pluginId2, pluginManager, displayPlugins, Str.get(R.string.position_2), time)
+                    addPluginById(config.pluginId3, pluginManager, displayPlugins, Str.get(R.string.position_3), time)
                     
                     // 如果配置的插件少于9个，用其他插件填充
                     if (displayPlugins.size < MAX_PLUGINS) {
-                        Logger.d(TAG, "[$time]    配置插件 ${displayPlugins.size} 个，需要填充到 $MAX_PLUGINS 个")
+                        Logger.d(TAG, Str.get(R.string.time_config_has_displayplugins_size_, time, displayPlugins.size, MAX_PLUGINS))
                         val remaining = allPlugins.filter { !displayPlugins.contains(it) }
-                        Logger.d(TAG, "[$time]    剩余可用插件: ${remaining.size} 个")
+                        Logger.d(TAG, Str.get(R.string.time_remaining_plugins_remaining_siz, time, remaining.size))
                         val toAdd = remaining.take(MAX_PLUGINS - displayPlugins.size)
                         displayPlugins.addAll(toAdd)
-                        Logger.d(TAG, "[$time]    填充了 ${toAdd.size} 个插件")
+                        Logger.d(TAG, Str.get(R.string.time_filled_toadd_size_plugin_s, time, toAdd.size))
                     }
                 } else {
-                    Logger.i(TAG, "[$time] ℹ️ 没有配置，显示所有插件（最多 $MAX_PLUGINS 个）")
+                    Logger.i(TAG, Str.get(R.string.time_no_config_showing_all_plugins_m, time, MAX_PLUGINS))
                     displayPlugins = allPlugins.take(MAX_PLUGINS).toMutableList()
                 }
                 
-                Logger.param(TAG, "[$time] 最终显示插件数量", displayPlugins.size)
+                Logger.param(TAG, Str.get(R.string.time_final_displayed_plugin_count, time), displayPlugins.size)
                 displayPlugins.forEachIndexed { index, plugin ->
-                    Logger.d(TAG, "[$time]    位置 ${index + 1}: ${plugin.name}")
+                    Logger.d(TAG, Str.get(R.string.time_position_index_1_plugin_name, time, index + 1, plugin.name))
                 }
 
                 // ============================================================
                 // 步骤6: 设置标题
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤6: 设置标题")
+                Logger.i(TAG, Str.get(R.string.time_step_6_setting_title, time))
                 views.setTextViewText(R.id.widget_title, context.getString(R.string.app_name))
-                Logger.success(TAG, "[$time] ✅ 标题设置完成: ${context.getString(R.string.app_name)}")
+                Logger.success(TAG, Str.get(R.string.time_title_set_context_getstring_r_s, time, context.getString(R.string.app_name)))
 
                 // ============================================================
                 // 步骤7: 设置每个插槽
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤7: 设置 $MAX_PLUGINS 个插槽")
+                Logger.i(TAG, Str.get(R.string.time_step_7_setting_max_plugins_slot, time, MAX_PLUGINS))
                 for (i in 0 until MAX_PLUGINS) {
                     val slotId = getSlotId(i)
                     val plugin = if (i < displayPlugins.size) displayPlugins[i] else null
@@ -280,30 +281,30 @@ class WidgetProvider : AppWidgetProvider() {
                         8 -> "slot_9"
                         else -> "unknown"
                     }
-                    Logger.d(TAG, "[$time]    设置插槽 ${i + 1} ($slotName): ${if (plugin != null) plugin.name else "空"}")
+                    Logger.d(TAG, Str.get(R.string.w_time_slot_position_if_plugin, i + 1, slotName, if (plugin != null) plugin.name else Str.get(R.string.empty)))
                     setupSlot(views, slotId, plugin, context, appWidgetId, i, time)
                 }
-                Logger.success(TAG, "[$time] ✅ 所有插槽设置完成")
+                Logger.success(TAG, Str.get(R.string.time_all_slots_set, time))
 
                 // ============================================================
                 // 步骤8: 更新小部件
                 // ============================================================
-                Logger.i(TAG, "[$time] 📌 步骤8: 更新小部件")
+                Logger.i(TAG, Str.get(R.string.time_step_8_updating_widget, time))
                 appWidgetManager.updateAppWidget(appWidgetId, views)
-                Logger.success(TAG, "[$time] ✅ 小部件更新完成, appWidgetId: $appWidgetId")
+                Logger.success(TAG, Str.get(R.string.time_widget_updated_appwidgetid_appw, time, appWidgetId))
                 
                 // 验证更新是否成功
-                Logger.i(TAG, "[$time] 📌 步骤9: 验证更新")
+                Logger.i(TAG, Str.get(R.string.time_step_9_verifying_update, time))
                 try {
                     val updatedViews = appWidgetManager.getAppWidgetOptions(appWidgetId)
-                    Logger.d(TAG, "[$time]    小部件选项: $updatedViews")
+                    Logger.d(TAG, Str.get(R.string.time_widget_options_updatedviews, time, updatedViews))
                 } catch (e: Exception) {
-                    Logger.w(TAG, "[$time]    无法获取小部件选项: ${e.message}")
+                    Logger.w(TAG, Str.get(R.string.time_failed_to_get_widget_options_e_, time, e.message))
                 }
 
             } catch (e: Exception) {
-                Logger.e(TAG, "[$time] ❌ updateWidget 异常: ${e.message}", e)
-                Logger.e(TAG, "[$time] ❌ 异常堆栈: ${e.stackTraceToString()}")
+                Logger.e(TAG, Str.get(R.string.time_updatewidget_error_e_message, time, e.message), e)
+                Logger.e(TAG, Str.get(R.string.time_error_stack_e_stacktracetostrin, time, e.stackTraceToString()))
             } finally {
                 Logger.exit(TAG, "updateWidget", System.currentTimeMillis())
                 Logger.i(TAG, "[$time] ══════════════════════════════════════════════════")
@@ -317,19 +318,19 @@ class WidgetProvider : AppWidgetProvider() {
             position: String,
             time: String
         ) {
-            Logger.d(TAG, "[$time]    $position: 尝试添加插件 ID: $pluginId")
+            Logger.d(TAG, Str.get(R.string.time_position_trying_to_add_plugin_i, time, position, pluginId))
             if (!pluginId.isNullOrEmpty()) {
                 val plugin = pluginManager.getPluginInfo(pluginId)
                 if (plugin != null && !list.contains(plugin)) {
                     list.add(plugin)
-                    Logger.success(TAG, "[$time]    ✅ $position 添加成功: ${plugin.name}")
+                    Logger.success(TAG, Str.get(R.string.time_position_added_plugin_name, time, position, plugin.name))
                 } else if (plugin == null) {
-                    Logger.w(TAG, "[$time]    ⚠️ $position 插件不存在: $pluginId")
+                    Logger.w(TAG, Str.get(R.string.time_position_plugin_not_found_plugi, time, position, pluginId))
                 } else {
-                    Logger.d(TAG, "[$time]    ℹ️ $position 插件已存在，跳过: ${plugin.name}")
+                    Logger.d(TAG, Str.get(R.string.time_position_plugin_exists_skipping, time, position, plugin.name))
                 }
             } else {
-                Logger.d(TAG, "[$time]    ℹ️ $position 未配置插件")
+                Logger.d(TAG, Str.get(R.string.time_position_no_plugin_configured, time, position))
             }
         }
 
@@ -373,21 +374,21 @@ class WidgetProvider : AppWidgetProvider() {
             }
             
             if (plugin != null) {
-                Logger.d(TAG, "[$time]      插槽 ${index + 1} ($slotName): 显示插件 '${plugin.name}'")
+                Logger.d(TAG, Str.get(R.string.time_slot_index_1_slotname_showing_p, time, index + 1, slotName, plugin.name))
                 
                 // 显示插件
                 views.setViewVisibility(slotId, android.view.View.VISIBLE)
                 views.setTextViewText(nameId, plugin.name)
-                Logger.d(TAG, "[$time]        名称已设置: ${plugin.name}")
+                Logger.d(TAG, Str.get(R.string.time_name_set_plugin_name, time, plugin.name))
                 
                 // 加载图标
                 val icon = loadPluginIcon(context, plugin, time)
                 if (icon != null) {
                     views.setImageViewBitmap(iconId, icon)
-                    Logger.d(TAG, "[$time]        图标已设置: ${icon.width}x${icon.height}")
+                    Logger.d(TAG, Str.get(R.string.time_icon_set_icon_width_x_icon_heig, time, icon.width, icon.height))
                 } else {
                     views.setImageViewResource(iconId, R.drawable.ic_extension)
-                    Logger.w(TAG, "[$time]        ⚠️ 使用默认图标")
+                    Logger.w(TAG, Str.get(R.string.time_using_default_icon, time))
                 }
                 
                 // 点击事件
@@ -398,11 +399,11 @@ class WidgetProvider : AppWidgetProvider() {
                     context, appWidgetId + slotId, clickIntent, getPendingIntentFlags()
                 )
                 views.setOnClickPendingIntent(slotId, pendingIntent)
-                Logger.d(TAG, "[$time]        点击事件已绑定到 PluginHostActivity")
-                Logger.d(TAG, "[$time]        插件ID: ${plugin.pluginId}")
+                Logger.d(TAG, Str.get(R.string.time_click_bound_to_pluginhostactivi, time))
+                Logger.d(TAG, Str.get(R.string.time_plugin_id_plugin_pluginid, time, plugin.pluginId))
                 
             } else {
-                Logger.d(TAG, "[$time]      插槽 ${index + 1} ($slotName): 空，隐藏")
+                Logger.d(TAG, Str.get(R.string.time_slot_index_1_slotname_empty_hid, time, index + 1, slotName))
                 views.setViewVisibility(slotId, android.view.View.GONE)
             }
         }
@@ -439,37 +440,37 @@ class WidgetProvider : AppWidgetProvider() {
 
         @JvmStatic
         fun loadPluginIcon(context: Context, plugin: PluginInfo, time: String = ""): Bitmap? {
-            Logger.d(TAG, "[$time]        loadPluginIcon: 加载插件 '${plugin.name}' 的图标")
+            Logger.d(TAG, Str.get(R.string.time_loadpluginicon_loading_icon_of_, time, plugin.name))
             try {
                 val pluginDir = File(Constants.PLUGIN_DIR, plugin.pluginId)
-                Logger.d(TAG, "[$time]          插件目录: ${pluginDir.absolutePath}")
-                Logger.d(TAG, "[$time]          目录是否存在: ${pluginDir.exists()}")
+                Logger.d(TAG, Str.get(R.string.time_plugin_directory_plugindir_abso, time, pluginDir.absolutePath))
+                Logger.d(TAG, Str.get(R.string.time_directory_exists_plugindir_exis, time, pluginDir.exists()))
                 
                 if (pluginDir.exists()) {
                     val iconPath = if (plugin.icon.isNotEmpty()) plugin.icon else "icon.png"
                     val iconFile = File(pluginDir, iconPath)
-                    Logger.d(TAG, "[$time]          图标文件: ${iconFile.absolutePath}")
-                    Logger.d(TAG, "[$time]          文件是否存在: ${iconFile.exists()}")
-                    Logger.d(TAG, "[$time]          文件大小: ${iconFile.length()} bytes")
+                    Logger.d(TAG, Str.get(R.string.time_icon_file_iconfile_absolutepath, time, iconFile.absolutePath))
+                    Logger.d(TAG, Str.get(R.string.time_file_exists_iconfile_exists, time, iconFile.exists()))
+                    Logger.d(TAG, Str.get(R.string.time_file_size_iconfile_length_bytes, time, iconFile.length()))
                     
                     if (iconFile.exists()) {
                         val options = BitmapFactory.Options().apply { inSampleSize = 2 }
                         val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath, options)
                         if (bitmap != null) {
                             val scaled = Bitmap.createScaledBitmap(bitmap, 64, 64, true)
-                            Logger.success(TAG, "[$time]          ✅ 图标加载成功: ${scaled.width}x${scaled.height}")
+                            Logger.success(TAG, Str.get(R.string.time_icon_loaded_scaled_width_x_scal, time, scaled.width, scaled.height))
                             return scaled
                         } else {
-                            Logger.w(TAG, "[$time]          ⚠️ 图标解码失败")
+                            Logger.w(TAG, Str.get(R.string.time_icon_decode_failed, time))
                         }
                     } else {
-                        Logger.w(TAG, "[$time]          ⚠️ 图标文件不存在")
+                        Logger.w(TAG, Str.get(R.string.time_icon_file_not_found, time))
                     }
                 } else {
-                    Logger.w(TAG, "[$time]          ⚠️ 插件目录不存在")
+                    Logger.w(TAG, Str.get(R.string.time_plugin_directory_not_found, time))
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "[$time]          ❌ loadPluginIcon 异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.time_loadpluginicon_error_e_message, time, e.message), e)
             }
             return null
         }
@@ -478,20 +479,20 @@ class WidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
         Logger.i(TAG, "══════════════════════════════════════════════════")
-        Logger.i(TAG, "[$time] 📱 onUpdate 被系统调用")
-        Logger.param(TAG, "[$time] 小部件数量", appWidgetIds.size)
+        Logger.i(TAG, Str.get(R.string.time_onupdate_called_by_system, time))
+        Logger.param(TAG, Str.get(R.string.time_widget_count, time), appWidgetIds.size)
         Logger.d(TAG, "[$time] appWidgetIds: ${appWidgetIds.joinToString()}")
         
         if (appWidgetIds.isEmpty()) {
-            Logger.w(TAG, "[$time] ⚠️ onUpdate: 没有小部件ID")
+            Logger.w(TAG, Str.get(R.string.time_onupdate_no_widget_ids, time))
             return
         }
         
         appWidgetIds.forEachIndexed { index, appWidgetId ->
-            Logger.i(TAG, "[$time]   ➜ 更新小部件 ${index + 1}, ID: $appWidgetId")
+            Logger.i(TAG, Str.get(R.string.time_updating_widget_index_1_id_appw, time, index + 1, appWidgetId))
             updateWidget(context, appWidgetManager, appWidgetId)
         }
-        Logger.i(TAG, "[$time] ✅ onUpdate 完成")
+        Logger.i(TAG, Str.get(R.string.time_onupdate_complete, time))
         Logger.i(TAG, "══════════════════════════════════════════════════")
     }
 
@@ -501,22 +502,22 @@ class WidgetProvider : AppWidgetProvider() {
         
         when (intent.action) {
             ACTION_REFRESH_WIDGET -> {
-                Logger.i(TAG, "[$time] 🔄 收到刷新广播")
+                Logger.i(TAG, Str.get(R.string.time_received_refresh_broadcast, time))
                 val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
                 Logger.param(TAG, "[$time] appWidgetId", appWidgetId)
                 
                 if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                    Logger.d(TAG, "[$time] 刷新指定小部件: $appWidgetId")
+                    Logger.d(TAG, Str.get(R.string.time_refreshing_widget_appwidgetid, time, appWidgetId))
                     val appWidgetManager = AppWidgetManager.getInstance(context)
                     updateWidget(context, appWidgetManager, appWidgetId)
                 } else {
-                    Logger.d(TAG, "[$time] 刷新所有小部件")
+                    Logger.d(TAG, Str.get(R.string.time_refreshing_all_widgets, time))
                     refreshAllWidgets(context)
                 }
-                Logger.i(TAG, "[$time] ✅ 刷新广播处理完成")
+                Logger.i(TAG, Str.get(R.string.time_refresh_broadcast_handled, time))
             }
             else -> {
-                Logger.d(TAG, "[$time] 未处理的事件: ${intent.action}")
+                Logger.d(TAG, Str.get(R.string.time_unhandled_event_intent_action, time, intent.action))
                 super.onReceive(context, intent)
             }
         }
@@ -525,12 +526,12 @@ class WidgetProvider : AppWidgetProvider() {
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
         Logger.i(TAG, "══════════════════════════════════════════════════")
-        Logger.i(TAG, "[$time] 🗑️ onDeleted: 小部件被删除")
-        Logger.param(TAG, "[$time] 删除数量", appWidgetIds.size)
+        Logger.i(TAG, Str.get(R.string.time_ondeleted_widget_deleted, time))
+        Logger.param(TAG, Str.get(R.string.time_deleted_count, time), appWidgetIds.size)
         appWidgetIds.forEach { appWidgetId ->
-            Logger.d(TAG, "[$time]   删除小部件 ID: $appWidgetId")
+            Logger.d(TAG, Str.get(R.string.time_deleted_widget_id_appwidgetid, time, appWidgetId))
             WidgetConfig.delete(context, appWidgetId)
-            Logger.d(TAG, "[$time]   配置已清理")
+            Logger.d(TAG, Str.get(R.string.time_config_cleared, time))
         }
         Logger.i(TAG, "══════════════════════════════════════════════════")
     }
@@ -538,10 +539,10 @@ class WidgetProvider : AppWidgetProvider() {
     override fun onEnabled(context: Context) {
         val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
         Logger.i(TAG, "══════════════════════════════════════════════════")
-        Logger.i(TAG, "[$time] ✅ onEnabled: 小部件功能启用")
-        Logger.i(TAG, "[$time] ⏰ 1秒后延迟刷新所有小部件")
+        Logger.i(TAG, Str.get(R.string.time_onenabled_widget_feature_enable, time))
+        Logger.i(TAG, Str.get(R.string.time_delayed_refresh_of_all_widgets_, time))
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            Logger.d(TAG, "[$time] ⏰ 延迟刷新执行")
+            Logger.d(TAG, Str.get(R.string.time_delayed_refresh_executed, time))
             forceRefreshAllWidgets(context)
         }, 1000)
         Logger.i(TAG, "══════════════════════════════════════════════════")
@@ -550,7 +551,7 @@ class WidgetProvider : AppWidgetProvider() {
     override fun onDisabled(context: Context) {
         val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
         Logger.i(TAG, "══════════════════════════════════════════════════")
-        Logger.i(TAG, "[$time] ⛔ onDisabled: 小部件功能禁用")
+        Logger.i(TAG, Str.get(R.string.time_ondisabled_widget_feature_disab, time))
         Logger.i(TAG, "══════════════════════════════════════════════════")
     }
 }
@@ -566,19 +567,19 @@ class Widget1x1Provider : AppWidgetProvider() {
         @JvmStatic
         fun refresh1x1Widgets(context: Context) {
             val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
-            Logger.i(TAG, "[$time] 🔄 refresh1x1Widgets 开始")
+            Logger.i(TAG, Str.get(R.string.time_refresh1x1widgets_started, time))
             try {
                 val appWidgetManager = AppWidgetManager.getInstance(context)
                 val componentName = ComponentName(context, Widget1x1Provider::class.java)
                 val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-                Logger.d(TAG, "[$time] 找到 ${appWidgetIds.size} 个1x1小部件")
+                Logger.d(TAG, Str.get(R.string.time_found_appwidgetids_size_1x1_wid, time, appWidgetIds.size))
                 
                 appWidgetIds.forEach { appWidgetId ->
                     update1x1Widget(context, appWidgetManager, appWidgetId)
                 }
-                Logger.success(TAG, "[$time] ✅ refresh1x1Widgets 完成")
+                Logger.success(TAG, Str.get(R.string.time_refresh1x1widgets_complete, time))
             } catch (e: Exception) {
-                Logger.e(TAG, "[$time] ❌ refresh1x1Widgets 异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.time_refresh1x1widgets_error_e_messa, time, e.message), e)
             }
         }
 
@@ -589,7 +590,7 @@ class Widget1x1Provider : AppWidgetProvider() {
                 intent.setClass(context, Widget1x1Provider::class.java)
                 context.sendBroadcast(intent)
             } catch (e: Exception) {
-                Logger.e(TAG, "sendRefreshIntent 异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.sendrefreshintent_error_e_message_2, e.message), e)
             }
         }
 
@@ -600,7 +601,7 @@ class Widget1x1Provider : AppWidgetProvider() {
 
             Logger.enter(TAG, "update1x1Widget")
             Logger.param(TAG, "appWidgetId", appWidgetId)
-            Logger.i(TAG, "[$time] 🚀 开始更新1x1小部件 ID: $appWidgetId")
+            Logger.i(TAG, Str.get(R.string.time_updating_1x1_widget_id_appwidge, time, appWidgetId))
             
             try {
                 val views = RemoteViews(context.packageName, R.layout.widget_layout_1x1)
@@ -642,15 +643,15 @@ class Widget1x1Provider : AppWidgetProvider() {
                             context, appWidgetId, pluginIntent, getPendingIntentFlags()
                         )
                         views.setOnClickPendingIntent(R.id.widget_1x1_root, pluginPendingIntent)
-                        Logger.d(TAG, "[$time] ✅ 1x1绑定插件: ${info.name}")
+                        Logger.d(TAG, Str.get(R.string.time_1x1_bound_plugin_info_name, time, info.name))
                     }
                 }
 
                 appWidgetManager.updateAppWidget(appWidgetId, views)
-                Logger.success(TAG, "[$time] ✅ 1x1小部件更新完成")
+                Logger.success(TAG, Str.get(R.string.time_1x1_widget_updated, time))
 
             } catch (e: Exception) {
-                Logger.e(TAG, "[$time] ❌ update1x1Widget 异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.time_update1x1widget_error_e_message, time, e.message), e)
             } finally {
                 Logger.exit(TAG, "update1x1Widget", System.currentTimeMillis())
             }
@@ -669,7 +670,7 @@ class Widget1x1Provider : AppWidgetProvider() {
                     }
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "加载1x1图标失败: ${e.message}")
+                Logger.e(TAG, Str.get(R.string.failed_to_load_1x1_icon_e_message, e.message))
             }
             return null
         }
@@ -723,12 +724,12 @@ class SystemEventReceiver : android.content.BroadcastReceiver() {
     
     override fun onReceive(context: Context, intent: Intent?) {
         val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
-        Logger.i(TAG, "[$time] 📨 SystemEventReceiver 收到事件: ${intent?.action}")
+        Logger.i(TAG, Str.get(R.string.time_systemeventreceiver_got_event_i, time, intent?.action))
         
         if (intent?.action in listOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED)) {
-            Logger.d(TAG, "[$time] 系统启动或应用更新，5秒后刷新小部件")
+            Logger.d(TAG, Str.get(R.string.time_system_boot_or_app_update_refre, time))
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                Logger.d(TAG, "[$time] ⏰ 延迟刷新执行")
+                Logger.d(TAG, Str.get(R.string.time_delayed_refresh_executed, time))
                 WidgetProvider.forceRefreshAllWidgets(context)
                 Widget1x1Provider.refresh1x1Widgets(context)
             }, 5000)

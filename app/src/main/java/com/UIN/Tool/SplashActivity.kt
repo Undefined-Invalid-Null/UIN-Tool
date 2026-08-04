@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/SplashActivity.kt
 package com.UIN.Tool
 
+import com.UIN.Tool.utils.Str
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -50,7 +51,7 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.screen.onboarding.OnboardingActivity
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.MarkdownRenderer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -80,13 +81,13 @@ class SplashActivity : ComponentActivity() {
     ) { results ->
         val allGranted = results.values.all { it }
         if (allGranted) {
-            AppLog.success(TAG, "所有存储权限已授予")
+            AppLog.success(TAG, Str.get(R.string.all_storage_permissions_granted))
             createWorkDirectory()
             // 关闭权限弹窗后由 LaunchedEffect(hasStoragePermission) 统一触发导航，避免双重导航
             showPermissionExplain = false
         } else {
             val deniedPermissions = results.filter { !it.value }.keys
-            AppLog.w(TAG, "部分权限被拒绝: $deniedPermissions")
+            AppLog.w(TAG, Str.get(R.string.some_permissions_denied_deniedpermis, deniedPermissions))
             
             val shouldShowRationale = deniedPermissions.any { permission ->
                 shouldShowRequestPermissionRationale(permission)
@@ -130,8 +131,8 @@ class SplashActivity : ComponentActivity() {
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             startActivity(intent)
                         } catch (e: Exception) {
-                            AppLog.e(TAG, "打开浏览器失败", e)
-                            Toast.makeText(this, "无法打开链接", Toast.LENGTH_SHORT).show()
+                            AppLog.e(TAG, Str.get(R.string.failed_to_open_browser), e)
+                            Toast.makeText(this, Str.get(R.string.unable_to_open_link), Toast.LENGTH_SHORT).show()
                         }
                     },
                     onStartDownload = { releaseInfo ->
@@ -150,13 +151,13 @@ class SplashActivity : ComponentActivity() {
 
     private fun checkPermissionAfterReturn() {
         if (hasStoragePermission()) {
-            AppLog.success(TAG, "权限已授予")
+            AppLog.success(TAG, Str.get(R.string.permission_granted))
             showPermissionExplain = false
             showPermissionDenied = false
             createWorkDirectory()
             // 状态变更后由 LaunchedEffect(hasStoragePermission) 统一触发导航
         } else {
-            AppLog.w(TAG, "权限仍未授予")
+            AppLog.w(TAG, Str.get(R.string.permission_still_not_granted))
             showPermissionExplain = false
             showPermissionDenied = true
         }
@@ -180,7 +181,7 @@ class SplashActivity : ComponentActivity() {
         if (hasRequestedPermission) return
         hasRequestedPermission = true
 
-        AppLog.i(TAG, "请求存储权限")
+        AppLog.i(TAG, Str.get(R.string.request_storage_permission))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -189,7 +190,7 @@ class SplashActivity : ComponentActivity() {
                     intent.data = Uri.parse("package:$packageName")
                     manageStorageLauncher.launch(intent)
                 } catch (e: Exception) {
-                    AppLog.e(TAG, "打开存储权限设置失败", e)
+                    AppLog.e(TAG, Str.get(R.string.failed_to_open_storage_permission_se), e)
                     requestNormalStoragePermission()
                 }
             }
@@ -228,22 +229,22 @@ class SplashActivity : ComponentActivity() {
                 val dir = File(path)
                 if (!dir.exists()) {
                     dir.mkdirs()
-                    AppLog.d(TAG, "创建目录: $path")
+                    AppLog.d(TAG, Str.get(R.string.creating_directory_path, path))
                 }
             }
 
             Logger.init(Constants.LOG_DIR)
             AppLog.i(TAG, "══════════════════════════════════════════════════")
-            AppLog.i(TAG, "应用启动 - UIN Tool v${Constants.APP_VERSION}")
-            AppLog.i(TAG, "工作目录: ${Constants.WORK_DIR}")
+            AppLog.i(TAG, Str.get(R.string.app_launch_uin_tool_v_constants_app_, Constants.APP_VERSION))
+            AppLog.i(TAG, Str.get(R.string.work_directory_constants_work_dir, Constants.WORK_DIR))
             AppLog.i(TAG, "══════════════════════════════════════════════════")
 
             preferenceManager.setWorkFolder(Constants.WORK_DIR)
-            AppLog.success(TAG, "工作目录创建成功")
+            AppLog.success(TAG, Str.get(R.string.work_directory_created))
 
         } catch (e: Exception) {
-            AppLog.e(TAG, "创建工作目录失败", e)
-            Toast.makeText(this, "创建目录失败: ${e.message}", Toast.LENGTH_LONG).show()
+            AppLog.e(TAG, Str.get(R.string.failed_to_create_work_directory), e)
+            Toast.makeText(this, Str.get(R.string.failed_to_create_directory_e_message, e.message), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -251,27 +252,27 @@ class SplashActivity : ComponentActivity() {
         AppLog.enter(TAG, "startDownload")
 
         if (releaseInfo.downloadUrl.isNullOrEmpty()) {
-            AppLog.e(TAG, "下载链接为空")
-            Toast.makeText(this, "下载链接无效，请稍后重试", Toast.LENGTH_SHORT).show()
+            AppLog.e(TAG, Str.get(R.string.download_link_is_empty))
+            Toast.makeText(this, Str.get(R.string.invalid_download_link_please_try_aga), Toast.LENGTH_SHORT).show()
             return
         }
 
         updateDownloader = UpdateDownloader(this)
         updateDownloader?.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
             override fun onStart() {
-                AppLog.d(TAG, "开始下载")
+                AppLog.d(TAG, Str.get(R.string.start_download))
             }
 
             override fun onProgress(progress: Int, downloaded: Long, total: Long) {}
 
             override fun onSuccess(file: File) {
-                AppLog.success(TAG, "下载成功")
+                AppLog.success(TAG, Str.get(R.string.download_successful))
                 updateDownloader?.installApk(file)
             }
 
             override fun onFailed(error: String) {
-                AppLog.e(TAG, "下载失败: $error")
-                Toast.makeText(this@SplashActivity, "下载失败: $error", Toast.LENGTH_LONG).show()
+                AppLog.e(TAG, Str.get(R.string.download_failed_error_2, error))
+                Toast.makeText(this@SplashActivity, Str.get(R.string.download_failed_error_2, error), Toast.LENGTH_LONG).show()
             }
         })
 
@@ -305,7 +306,7 @@ class SplashActivity : ComponentActivity() {
 
             AppLog.exit(TAG, "navigateToNext", System.currentTimeMillis())
         } catch (e: Exception) {
-            AppLog.e(TAG, "导航失败", e)
+            AppLog.e(TAG, Str.get(R.string.navigation_failed), e)
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
@@ -357,14 +358,14 @@ fun SplashScreenWithUpdate(
             Handler(Looper.getMainLooper()).postDelayed({
                 if (!isCompleted) {
                     isChecking = false
-                    AppLog.w("SplashScreen", "检查更新超时 (${UPDATE_CHECK_TIMEOUT}ms)，继续启动")
+                    AppLog.w("SplashScreen", Str.get(R.string.update_check_timed_out_update_check_, UPDATE_CHECK_TIMEOUT))
                     onNavigate()
                 }
             }, UPDATE_CHECK_TIMEOUT)
 
             updateChecker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
                 override fun onCheckStart() {
-                    AppLog.d("SplashScreen", "开始检查更新")
+                    AppLog.d("SplashScreen", Str.get(R.string.start_update_check))
                 }
 
                 override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
@@ -376,7 +377,7 @@ fun SplashScreenWithUpdate(
                         val latest = releases.first()
 
                         if (!forceUpdate && isVersionIgnored(preferenceManager, latest.versionName)) {
-                            AppLog.i("SplashScreen", "用户已忽略版本: ${latest.versionName}")
+                            AppLog.i("SplashScreen", Str.get(R.string.user_ignored_version_latest_versionn, latest.versionName))
                             onNavigate()
                             return
                         }
@@ -393,7 +394,7 @@ fun SplashScreenWithUpdate(
                     if (isCompleted) return
                     isCompleted = true
                     isChecking = false
-                    AppLog.e("SplashScreen", "检查更新失败: $error")
+                    AppLog.e("SplashScreen", Str.get(R.string.update_check_failed_error_2, error))
                     onNavigate()
                 }
 
@@ -401,7 +402,7 @@ fun SplashScreenWithUpdate(
                     if (isCompleted) return
                     isCompleted = true
                     isChecking = false
-                    AppLog.i("SplashScreen", "当前已是最新版本: $currentVersion")
+                    AppLog.i("SplashScreen", Str.get(R.string.you_are_on_the_latest_version_curren, currentVersion))
                     onNavigate()
                 }
             })
@@ -468,7 +469,7 @@ fun SplashScreenWithUpdate(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "版本 ${Constants.APP_VERSION} (Build ${Constants.APP_VERSION_CODE})",
+                text = Str.get(R.string.version_constants_app_version_build_, Constants.APP_VERSION, Constants.APP_VERSION_CODE),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF9AA6B2)
             )
@@ -482,7 +483,7 @@ fun SplashScreenWithUpdate(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "正在检查更新...",
+                    text = Str.get(R.string.checking_for_updates),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF9AA6B2)
                 )
@@ -591,7 +592,7 @@ fun PermissionExplainDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "需要存储权限",
+                    text = Str.get(R.string.storage_permission_required),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.onSurface
@@ -600,7 +601,7 @@ fun PermissionExplainDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "UIN Tool 需要存储权限来正常运行以下功能：",
+                    text = Str.get(R.string.uin_tool_needs_storage_permission_fo),
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -621,26 +622,26 @@ fun PermissionExplainDialog(
                 ) {
                     PermissionItem(
                         icon = Icons.Outlined.FileCopy,
-                        text = "导入/导出插件文件"
+                        text = Str.get(R.string.import_export_plugin_files)
                     )
                     PermissionItem(
                         icon = Icons.Outlined.Backup,
-                        text = "备份和恢复插件数据"
+                        text = Str.get(R.string.back_up_and_restore_plugin_data)
                     )
                     PermissionItem(
                         icon = Icons.Outlined.Description,
-                        text = "保存运行日志到文件"
+                        text = Str.get(R.string.save_runtime_logs_to_a_file)
                     )
                     PermissionItem(
                         icon = Icons.Outlined.Download,
-                        text = "下载应用更新"
+                        text = Str.get(R.string.download_app_updates)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "点击「去授权」后，请在系统设置中允许存储权限",
+                    text = Str.get(R.string.after_tapping_grant_allow_storage_pe),
                     fontSize = 12.sp,
                     color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
@@ -673,7 +674,7 @@ fun PermissionExplainDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("退出", fontSize = 15.sp)
+                        Text(Str.get(R.string.exit), fontSize = 15.sp)
                     }
 
                     Button(
@@ -693,7 +694,7 @@ fun PermissionExplainDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("去授权", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text(Str.get(R.string.grant_2), fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -754,7 +755,7 @@ fun PermissionDeniedDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "权限被拒绝",
+                    text = Str.get(R.string.permission_denied),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFD32F2F)
@@ -763,7 +764,7 @@ fun PermissionDeniedDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "您拒绝了存储权限，部分功能将无法正常使用。",
+                    text = Str.get(R.string.you_denied_storage_permission_some_f),
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -773,7 +774,7 @@ fun PermissionDeniedDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "您可以在系统设置中手动开启权限：",
+                    text = Str.get(R.string.you_can_enable_the_permission_manual),
                     fontSize = 13.sp,
                     color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
@@ -804,7 +805,7 @@ fun PermissionDeniedDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "设置 → 应用 → UIN Tool → 权限 → 存储",
+                            text = Str.get(R.string.settings_apps_uin_tool_permissions_s),
                             fontSize = 13.sp,
                             color = colorScheme.primary,
                             fontWeight = FontWeight.Medium
@@ -835,7 +836,7 @@ fun PermissionDeniedDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("退出", fontSize = 15.sp)
+                        Text(Str.get(R.string.exit), fontSize = 15.sp)
                     }
 
                     Button(
@@ -855,7 +856,7 @@ fun PermissionDeniedDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("去设置", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text(Str.get(R.string.go_to_settings), fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -934,7 +935,7 @@ fun UpdateDialog(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = if (forceUpdate) "强制更新" else "发现新版本",
+                        text = if (forceUpdate) Str.get(R.string.mandatory_update) else Str.get(R.string.new_version_found),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (forceUpdate) Color(0xFFD32F2F) else colorScheme.onSurface
@@ -944,7 +945,7 @@ fun UpdateDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "版本 ${releaseInfo.versionName}",
+                    text = Str.get(R.string.version_releaseinfo_versionname, releaseInfo.versionName),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = colorScheme.onSurface
@@ -955,17 +956,17 @@ fun UpdateDialog(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "版本代码: ${releaseInfo.versionCode}",
+                        text = Str.get(R.string.version_code_releaseinfo_versioncode, releaseInfo.versionCode),
                         fontSize = 12.sp,
                         color = colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "大小: ${releaseInfo.getFormattedSize()}",
+                        text = Str.get(R.string.size_releaseinfo_getformattedsize, releaseInfo.getFormattedSize()),
                         fontSize = 12.sp,
                         color = colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "发布: ${releaseInfo.getFormattedDate()}",
+                        text = Str.get(R.string.released_releaseinfo_getformatteddat, releaseInfo.getFormattedDate()),
                         fontSize = 12.sp,
                         color = colorScheme.onSurfaceVariant
                     )
@@ -986,7 +987,7 @@ fun UpdateDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "更新日志",
+                            text = Str.get(R.string.changelog),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = colorScheme.onSurface
@@ -1016,7 +1017,7 @@ fun UpdateDialog(
                                 webViewClient = object : WebViewClient() {
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         super.onPageFinished(view, url)
-                                        AppLog.d("UpdateDialog", "WebView 加载完成")
+                                        AppLog.d("UpdateDialog", Str.get(R.string.webview_load_complete))
                                     }
                                 }
 
@@ -1093,7 +1094,7 @@ fun UpdateDialog(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("下载更新", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text(Str.get(R.string.download_update), fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     }
 
                     Row(
@@ -1117,7 +1118,7 @@ fun UpdateDialog(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("手动下载", fontSize = 13.sp)
+                            Text(Str.get(R.string.manual_download), fontSize = 13.sp)
                         }
 
                         if (!forceUpdate) {
@@ -1138,7 +1139,7 @@ fun UpdateDialog(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("暂不更新", fontSize = 13.sp)
+                                Text(Str.get(R.string.not_now), fontSize = 13.sp)
                             }
                         }
                     }
@@ -1191,7 +1192,7 @@ fun DownloadProgressDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "正在下载更新",
+                        text = Str.get(R.string.downloading_update),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = colorScheme.onSurface
@@ -1238,7 +1239,7 @@ fun DownloadProgressDialog(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("取消下载", fontSize = 14.sp)
+                    Text(Str.get(R.string.cancel_download), fontSize = 14.sp)
                 }
             }
         }
@@ -1258,5 +1259,5 @@ private fun setVersionIgnored(preferenceManager: PreferenceManager, versionName:
     if (versionName.isEmpty()) return
     val prefs = preferenceManager.getPrefs()
     prefs.edit().putString(Constants.KEY_IGNORE_VERSION, versionName).apply()
-    AppLog.i("SplashScreen", "忽略版本: $versionName")
+    AppLog.i("SplashScreen", Str.get(R.string.ignore_version_versionname, versionName))
 }

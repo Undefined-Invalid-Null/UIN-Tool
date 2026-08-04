@@ -1,6 +1,7 @@
 // ui/screen/manage/PluginManageScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
+import com.UIN.Tool.R
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,6 +29,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.PluginInfo
@@ -62,13 +64,13 @@ fun PluginManageScreen(
     var exportProgress by remember { mutableStateOf("") }
     var showPermissionDetail by remember { mutableStateOf<PluginInfo?>(null) }
     var searchText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("全部") }
+    var selectedCategory by remember { mutableStateOf(Str.get(R.string.all)) }
 
     fun loadPlugins() {
         pluginManager.refreshPlugins()
         plugins = pluginManager.plugins.value
         selectedPluginIds = emptySet()
-        AppLog.d(TAG, "加载了 ${plugins.size} 个插件")
+        AppLog.d(TAG, Str.get(R.string.loaded_plugins_size_plugin_s, plugins.size))
     }
 
     fun refreshWidgets() {
@@ -76,12 +78,12 @@ fun PluginManageScreen(
             com.UIN.Tool.widget.WidgetProvider.forceRefreshAllWidgets(context)
             com.UIN.Tool.widget.Widget1x1Provider.refresh1x1Widgets(context)
         } catch (e: Exception) {
-            AppLog.e(TAG, "刷新小部件失败", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_refresh_widget), e)
         }
     }
 
     val categories = remember(plugins) {
-        listOf("全部") + plugins.map { it.category }.distinct()
+        listOf(Str.get(R.string.all)) + plugins.map { it.category }.distinct()
     }
 
     val filteredPlugins = remember(searchText, selectedCategory, plugins) {
@@ -93,7 +95,7 @@ fun PluginManageScreen(
                 plugin.description.contains(searchText, ignoreCase = true)
             }
         }
-        if (selectedCategory != "全部") {
+        if (selectedCategory != Str.get(R.string.all)) {
             result = result.filter { it.category == selectedCategory }
         }
         result
@@ -108,18 +110,18 @@ fun PluginManageScreen(
                 if (FileUtils.copyUriToFile(context, uri, tempFile)) {
                     val info = pluginManager.installPlugin(tempFile, fileName)
                     if (info != null) {
-                        AppLog.success(TAG, "导入成功: ${info.name}")
+                        AppLog.success(TAG, Str.get(R.string.import_successful_info_name, info.name))
                         loadPlugins()
                         refreshWidgets()
-                        showResultDialog = "导入成功: ${info.name}"
+                        showResultDialog = Str.get(R.string.import_successful_info_name, info.name)
                     } else {
-                        showResultDialog = "导入失败: $fileName"
+                        showResultDialog = Str.get(R.string.import_failed_filename, fileName)
                     }
                 }
                 tempFile.delete()
             } catch (e: Exception) {
-                AppLog.e(TAG, "导入失败", e)
-                showResultDialog = "导入失败: ${e.message}"
+                AppLog.e(TAG, Str.get(R.string.import_failed), e)
+                showResultDialog = Str.get(R.string.import_failed_e_message, e.message)
             } finally {
                 isLoading = false
             }
@@ -145,23 +147,23 @@ fun PluginManageScreen(
                         tempFile.delete()
                     } catch (e: Exception) {
                         failCount++
-                        failNames.add(uri.lastPathSegment ?: "未知")
+                        failNames.add(uri.lastPathSegment ?: Str.get(R.string.unknown))
                     }
                 }
 
-                val message = "成功导入 $successCount 个插件"
+                val message = Str.get(R.string.successfully_imported_successcount_p, successCount)
                 showResultDialog = if (failCount > 0) {
-                    "$message，失败 ${failCount} 个：\n${failNames.joinToString("\n")}"
+                    Str.get(R.string.import_result_partial_fail, message, failCount, failNames.joinToString("\n"))
                 } else {
-                    "成功导入 $message"
+                    Str.get(R.string.successfully_imported_message, message)
                 }
                 if (successCount > 0) {
                     loadPlugins()
                     refreshWidgets()
                 }
             } catch (e: Exception) {
-                AppLog.e(TAG, "批量导入失败", e)
-                showResultDialog = "批量导入失败: ${e.message}"
+                AppLog.e(TAG, Str.get(R.string.batch_import_failed), e)
+                showResultDialog = Str.get(R.string.batch_import_failed_e_message, e.message)
             } finally {
                 isLoading = false
             }
@@ -172,11 +174,11 @@ fun PluginManageScreen(
         scope.launch {
             try {
                 isLoading = true
-                exportProgress = "正在处理插件集..."
+                exportProgress = Str.get(R.string.processing_plugin_set)
 
                 val zipFile = File(context.cacheDir, "temp_plugin_set_${System.currentTimeMillis()}.zip")
                 if (!FileUtils.copyUriToFile(context, uri, zipFile)) {
-                    showResultDialog = "无法读取文件"
+                    showResultDialog = Str.get(R.string.failed_to_read_file)
                     return@launch
                 }
 
@@ -201,7 +203,7 @@ fun PluginManageScreen(
                         }
 
                         if (total == 0) {
-                            showResultDialog = "插件集中没有找到 .tpk 文件"
+                            showResultDialog = Str.get(R.string.no_tpk_files_found_in_the_plugin_set)
                             return@launch
                         }
 
@@ -211,7 +213,7 @@ fun PluginManageScreen(
                             if (!entry.isDirectory && entry.name.endsWith(".tpk")) {
                                 processed++
                                 val fileName = File(entry.name).name
-                                exportProgress = "正在处理: $fileName ($processed/$total)"
+                                exportProgress = Str.get(R.string.processing_filename_processed_total, fileName, processed, total)
 
                                 val outFile = File(extractDir, fileName)
                                 zf.getInputStream(entry).use { input ->
@@ -222,14 +224,14 @@ fun PluginManageScreen(
 
                                 if (!SecurityUtils.verifyFileSignature(outFile, preferenceManager)) {
                                     failCount++
-                                    failNames.add("$fileName (签名验证失败)")
+                                    failNames.add(Str.get(R.string.filename_signature_verification_fail, fileName))
                                     continue
                                 }
 
                                 val info = pluginManager.installPlugin(outFile, fileName)
                                 if (info != null) {
                                     successCount++
-                                    AppLog.success(TAG, "导入成功: ${info.name}")
+                                    AppLog.success(TAG, Str.get(R.string.import_successful_info_name, info.name))
                                 } else {
                                     failCount++
                                     failNames.add(fileName)
@@ -243,21 +245,21 @@ fun PluginManageScreen(
                 }
 
                 val message = if (failCount > 0) {
-                    "成功导入 $successCount 个插件，失败 ${failCount} 个：\n${failNames.joinToString("\n")}"
+                    Str.get(R.string.import_result_count_fail, successCount, failCount, failNames.joinToString("\n"))
                 } else {
-                    "成功导入 $successCount 个插件"
+                    Str.get(R.string.successfully_imported_successcount_p, successCount)
                 }
                 showResultDialog = message
 
                 if (successCount > 0) {
                     loadPlugins()
                     refreshWidgets()
-                    AppToast.success(context, "成功导入 $successCount 个插件")
+                    AppToast.success(context, Str.get(R.string.successfully_imported_successcount_p, successCount))
                 }
 
             } catch (e: Exception) {
-                AppLog.e(TAG, "导入插件集失败", e)
-                showResultDialog = "导入插件集失败: ${e.message}"
+                AppLog.e(TAG, Str.get(R.string.failed_to_import_plugin_set), e)
+                showResultDialog = Str.get(R.string.failed_to_import_plugin_set_e_messag, e.message)
             } finally {
                 isLoading = false
                 exportProgress = ""
@@ -268,14 +270,14 @@ fun PluginManageScreen(
     fun exportSelectedPlugins() {
         val selectedIds = selectedPluginIds.toList()
         if (selectedIds.isEmpty()) {
-            AppToast.warning(context, "请先选择要导出的插件")
+            AppToast.warning(context, Str.get(R.string.please_select_plugins_to_export_firs))
             return
         }
 
         scope.launch {
             try {
                 isLoading = true
-                exportProgress = "正在导出插件..."
+                exportProgress = Str.get(R.string.exporting_plugins)
 
                 val exportDir = File(Constants.DOWNLOAD_DIR, "exports")
                 if (!exportDir.exists()) {
@@ -296,33 +298,33 @@ fun PluginManageScreen(
                         if (info != null) {
                             val pluginDir = pluginManager.getPluginDirFile(pluginId)
                             if (pluginDir != null && pluginDir.exists()) {
-                                exportProgress = "正在导出: ${info.name}"
+                                exportProgress = Str.get(R.string.exporting_info_name, info.name)
                                 addPluginDirToZip(zos, pluginDir, "${info.pluginId}/")
                                 successCount++
-                                AppLog.success(TAG, "导出成功: ${info.name}")
+                                AppLog.success(TAG, Str.get(R.string.export_successful_info_name, info.name))
                             } else {
-                                failedList.add("${info.name} (目录不存在)")
+                                failedList.add(Str.get(R.string.info_name_directory_does_not_exist, info.name))
                             }
                         } else {
-                            failedList.add("$pluginId (插件不存在)")
+                            failedList.add(Str.get(R.string.pluginid_plugin_does_not_exist, pluginId))
                         }
                     }
                 }
 
                 val message = if (failedList.isNotEmpty()) {
-                    "成功导出 $successCount 个插件到:\n${zipFile.absolutePath}\n\n失败 ${failedList.size} 个：\n${failedList.joinToString("\n")}"
+                    Str.get(R.string.export_result_count_fail, successCount, zipFile.absolutePath, failedList.size, failedList.joinToString("\n"))
                 } else {
-                    "成功导出 $successCount 个插件到:\n${zipFile.absolutePath}"
+                    Str.get(R.string.successfully_exported_successcount_p_2, successCount, zipFile.absolutePath)
                 }
                 showResultDialog = message
 
-                AppToast.success(context, "成功导出 $successCount 个插件")
+                AppToast.success(context, Str.get(R.string.successfully_exported_successcount_p, successCount))
 
                 selectedPluginIds = emptySet()
 
             } catch (e: Exception) {
-                AppLog.e(TAG, "导出插件失败", e)
-                showResultDialog = "导出失败: ${e.message}"
+                AppLog.e(TAG, Str.get(R.string.failed_to_export_plugin), e)
+                showResultDialog = Str.get(R.string.export_failed_e_message, e.message)
             } finally {
                 isLoading = false
                 exportProgress = ""
@@ -337,11 +339,11 @@ fun PluginManageScreen(
                 pluginManager.uninstallPlugin(plugin.pluginId)
                 loadPlugins()
                 refreshWidgets()
-                AppLog.success(TAG, "卸载成功: ${plugin.name}")
+                AppLog.success(TAG, Str.get(R.string.uninstall_successful_plugin_name, plugin.name))
                 showDeleteDialog = null
             } catch (e: Exception) {
-                AppLog.e(TAG, "卸载失败", e)
-                AppToast.error(context, "卸载失败: ${e.message}")
+                AppLog.e(TAG, Str.get(R.string.uninstall_failed), e)
+                AppToast.error(context, Str.get(R.string.uninstall_failed_e_message, e.message))
             } finally {
                 isLoading = false
             }
@@ -355,22 +357,22 @@ fun PluginManageScreen(
                 pluginManager.requestPluginPermissionsByGroups(
                     plugin.pluginId,
                     onProgress = { group, current, total ->
-                        AppLog.d(TAG, "权限请求进度: ($current/$total) $group")
+                        AppLog.d(TAG, Str.get(R.string.permission_request_progress_current_, current, total, group))
                     },
                     onComplete = { allGranted ->
                         isLoading = false
                         if (allGranted) {
-                            AppToast.success(context, "所有权限已授予")
+                            AppToast.success(context, Str.get(R.string.all_permissions_granted))
                         } else {
-                            AppToast.warning(context, "部分权限被拒绝")
+                            AppToast.warning(context, Str.get(R.string.some_permissions_denied))
                         }
                         showPermissionDialog = null
                     }
                 )
             } catch (e: Exception) {
-                AppLog.e(TAG, "请求权限失败", e)
+                AppLog.e(TAG, Str.get(R.string.failed_to_request_permissions), e)
                 isLoading = false
-                AppToast.error(context, "请求权限失败: ${e.message}")
+                AppToast.error(context, Str.get(R.string.failed_to_request_permissions_e_mess, e.message))
             }
         }
     }
@@ -397,7 +399,7 @@ fun PluginManageScreen(
 
     LaunchedEffect(Unit) {
         loadPlugins()
-        AppLog.i(TAG, "插件管理界面初始化完成")
+        AppLog.i(TAG, Str.get(R.string.plugin_management_ui_initialized))
     }
 
     Column(
@@ -410,7 +412,7 @@ fun PluginManageScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UIComponents.TitleText("插件管理")
+            UIComponents.TitleText(Str.get(R.string.plugin_management))
             Row {
                 UIComponents.IconButton(
                     icon = Icons.Default.Refresh,
@@ -422,7 +424,7 @@ fun PluginManageScreen(
         UIComponents.TextInput(
             value = searchText,
             onValueChange = { searchText = it },
-            placeholder = "搜索插件...",
+            placeholder = Str.get(R.string.search_plugins),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -479,21 +481,21 @@ fun PluginManageScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             UIComponents.PrimaryButton(
-                text = "导入",
+                text = Str.get(R.string.import_label),
                 icon = Icons.Default.FileUpload,
                 onClick = { importLauncher.launch("*/*") },
                 modifier = Modifier.weight(1f),
                 enabled = !isLoading
             )
             UIComponents.SecondaryButton(
-                text = "批量",
+                text = Str.get(R.string.batch),
                 icon = Icons.Default.Add,
                 onClick = { batchImportLauncher.launch(arrayOf("*/*")) },
                 modifier = Modifier.weight(1f),
                 enabled = !isLoading
             )
             UIComponents.SecondaryButton(
-                text = "插件集",
+                text = Str.get(R.string.plugin_set),
                 icon = Icons.Default.Archive,
                 onClick = { importZipLauncher.launch("application/zip") },
                 modifier = Modifier.weight(1f),
@@ -508,14 +510,14 @@ fun PluginManageScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             UIComponents.SecondaryButton(
-                text = "导出 (${selectedPluginIds.size})",
+                text = Str.get(R.string.export_selectedpluginids_size, selectedPluginIds.size),
                 icon = Icons.Default.FileDownload,
                 onClick = { exportSelectedPlugins() },
                 modifier = Modifier.weight(1f),
                 enabled = selectedPluginIds.isNotEmpty() && !isLoading
             )
             UIComponents.SecondaryButton(
-                text = "删除",
+                text = Str.get(R.string.delete),
                 icon = Icons.Default.Delete,
                 onClick = {
                     if (selectedPluginIds.isNotEmpty()) {
@@ -536,7 +538,7 @@ fun PluginManageScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "共 ${filteredPlugins.size} 个插件",
+                text = Str.get(R.string.filteredplugins_size_plugin_s_in_tot, filteredPlugins.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -553,13 +555,13 @@ fun PluginManageScreen(
                     }
                 ) {
                     Text(
-                        if (selectedPluginIds.size == filteredPlugins.size) "取消全选" else "全选",
+                        if (selectedPluginIds.size == filteredPlugins.size) Str.get(R.string.deselect_all_2) else Str.get(R.string.select_all),
                         fontSize = 12.sp
                     )
                 }
                 if (selectedPluginIds.isNotEmpty()) {
                     Text(
-                        text = "已选 ${selectedPluginIds.size} 个",
+                        text = Str.get(R.string.selectedpluginids_size_selected, selectedPluginIds.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -577,7 +579,7 @@ fun PluginManageScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "加载插件中...",
+                            text = Str.get(R.string.loading_plugins),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -598,17 +600,17 @@ fun PluginManageScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (searchText.isNotEmpty() || selectedCategory != "全部") {
-                                "没有匹配的插件"
+                            text = if (searchText.isNotEmpty() || selectedCategory != Str.get(R.string.all)) {
+                                Str.get(R.string.no_matching_plugins)
                             } else {
-                                "暂无已安装插件"
+                                Str.get(R.string.no_installed_plugins)
                             },
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        if (searchText.isEmpty() && selectedCategory == "全部") {
+                        if (searchText.isEmpty() && selectedCategory == Str.get(R.string.all)) {
                             Text(
-                                text = "点击「导入」按钮导入插件文件",
+                                text = Str.get(R.string.tap_the_import_button_to_import_plug),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -648,10 +650,10 @@ fun PluginManageScreen(
     // ==================== 删除确认对话框 ====================
     if (showDeleteDialog != null) {
         UIComponents.ConfirmDialog(
-            title = "确认删除",
-            message = "确定要删除插件 \"${showDeleteDialog!!.name}\" 吗？\n\n删除后插件数据将被清除，不可恢复。",
-            confirmText = "删除",
-            dismissText = "取消",
+            title = Str.get(R.string.confirm_delete),
+            message = Str.get(R.string.delete_plugin_showdeletedialog_name_, showDeleteDialog!!.name),
+            confirmText = Str.get(R.string.delete),
+            dismissText = Str.get(R.string.cancel),
             onConfirm = {
                 showDeleteDialog?.let { uninstallPlugin(it) }
             },
@@ -663,7 +665,7 @@ fun PluginManageScreen(
     // ==================== 操作结果对话框 ====================
     if (showResultDialog != null) {
         UIComponents.InfoDialog(
-            title = "操作结果",
+            title = Str.get(R.string.result),
             message = showResultDialog!!,
             onDismiss = { showResultDialog = null }
         )
@@ -674,8 +676,8 @@ fun PluginManageScreen(
         UIComponents.ConfirmDialog(
             title = showDetailDialog!!.name,
             message = buildDetailMessage(showDetailDialog!!),
-            confirmText = "运行",
-            dismissText = "关闭",
+            confirmText = Str.get(R.string.run),
+            dismissText = Str.get(R.string.close),
             onConfirm = {
                 ServiceLocator.getPluginManager().openPlugin(showDetailDialog!!.pluginId, context)
                 showDetailDialog = null
@@ -724,7 +726,7 @@ private fun addPluginDirToZip(
                 }
                 zos.closeEntry()
             } catch (e: Exception) {
-                AppLog.e("PluginManage", "添加文件到ZIP失败: ${file.name}", e)
+                AppLog.e("PluginManage", Str.get(R.string.failed_to_add_file_to_zip_file_name, file.name), e)
             }
         }
     }
@@ -737,25 +739,25 @@ private fun addPluginDirToZip(
 private fun buildDetailMessage(plugin: PluginInfo): String {
     return buildString {
         append("ID: ${plugin.pluginId}\n")
-        append("版本: ${plugin.versionName} (${plugin.version})\n")
-        append("作者: ${plugin.author.ifEmpty { "未知" }}\n")
-        append("分类: ${plugin.category}\n")
+        append(Str.get(R.string.version_plugin_versionname_plugin_ve, plugin.versionName, plugin.version))
+        append(Str.get(R.string.plugin_author, plugin.author.ifEmpty { Str.get(R.string.unknown) }))
+        append(Str.get(R.string.category_plugin_category_n, plugin.category))
         if (plugin.description.isNotEmpty()) {
-            append("\n描述: ${plugin.description}\n")
+            append(Str.get(R.string.ndescription_plugin_description_n, plugin.description))
         }
         // 显示插件说明（如果存在）
         if (plugin.hasNotice()) {
-            append("\n说明:\n${plugin.notice}\n")
+            append(Str.get(R.string.nnotice_n_plugin_notice_n, plugin.notice))
         }
         if (plugin.dependencies.isNotEmpty()) {
-            append("\n依赖: ${plugin.dependencies.joinToString(", ")}\n")
+            append(Str.get(R.string.plugin_dependencies, plugin.dependencies.joinToString(", ")))
         }
         if (plugin.permissions.isNotEmpty()) {
             val pluginManager = ServiceLocator.getPluginManager()
             val summary = pluginManager.getPluginPermissionSummary(plugin.pluginId)
-            append("\n权限状态: ${summary.granted}/${summary.total}\n")
+            append(Str.get(R.string.npermissions_summary_granted_summary, summary.granted, summary.total))
             if (!summary.isAllGranted) {
-                append("${summary.denied} 项权限未授予")
+                append(Str.get(R.string.summary_denied_permission_s_not_gran, summary.denied))
             }
         }
     }
@@ -820,7 +822,7 @@ fun PermissionManagementDialog(
                         modifier = Modifier.size(28.dp)
                     )
                     Text(
-                        "权限管理",
+                        Str.get(R.string.permission_management),
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -831,7 +833,7 @@ fun PermissionManagementDialog(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                "已授权",
+                                Str.get(R.string.granted),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -841,7 +843,7 @@ fun PermissionManagementDialog(
                 }
 
                 Text(
-                    text = "插件: ${plugin.name}",
+                    text = Str.get(R.string.plugin_plugin_name, plugin.name),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -854,7 +856,7 @@ fun PermissionManagementDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "权限状态: ${permissions.values.count { it }}/${permissions.size} 已授予",
+                            text = Str.get(R.string.permissions_permissions_values_count, permissions.values.count { it }, permissions.size),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -864,7 +866,7 @@ fun PermissionManagementDialog(
                         ) {
                             Icon(
                                 Icons.Default.Refresh,
-                                contentDescription = "刷新",
+                                contentDescription = Str.get(R.string.refresh),
                                 modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -876,7 +878,7 @@ fun PermissionManagementDialog(
 
                 if (permissions.isEmpty()) {
                     Text(
-                        text = "该插件没有声明任何权限",
+                        text = Str.get(R.string.this_plugin_declares_no_permissions),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -896,16 +898,16 @@ fun PermissionManagementDialog(
                                         pluginManager.requestPluginPermissionsByGroups(
                                             plugin.pluginId,
                                             onProgress = { group, current, total ->
-                                                progressMessage = "请求中: $group ($current/$total)"
+                                                progressMessage = Str.get(R.string.requesting_group_current_total, group, current, total)
                                             },
                                             onComplete = { allGranted ->
                                                 isRequesting = false
                                                 progressMessage = ""
                                                 refreshPermissions()
                                                 if (allGranted) {
-                                                    AppToast.success(context, "所有权限已授予")
+                                                    AppToast.success(context, Str.get(R.string.all_permissions_granted))
                                                 } else {
-                                                    AppToast.warning(context, "部分权限被拒绝")
+                                                    AppToast.warning(context, Str.get(R.string.some_permissions_denied))
                                                 }
                                             }
                                         )
@@ -938,16 +940,16 @@ fun PermissionManagementDialog(
                                 pluginManager.requestPluginPermissionsByGroups(
                                     plugin.pluginId,
                                     onProgress = { group, current, total ->
-                                        progressMessage = "请求中: $group ($current/$total)"
+                                        progressMessage = Str.get(R.string.requesting_group_current_total, group, current, total)
                                     },
                                     onComplete = { allGranted ->
                                         isRequesting = false
                                         progressMessage = ""
                                         refreshPermissions()
                                         if (allGranted) {
-                                            AppToast.success(context, "所有权限已授予")
+                                            AppToast.success(context, Str.get(R.string.all_permissions_granted))
                                         } else {
-                                            AppToast.warning(context, "部分权限被拒绝")
+                                            AppToast.warning(context, Str.get(R.string.some_permissions_denied))
                                         }
                                     }
                                 )
@@ -973,7 +975,7 @@ fun PermissionManagementDialog(
                                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
-                            Text(if (isRequesting) "请求中..." else "一键授权所有权限", fontSize = 14.sp)
+                            Text(if (isRequesting) Str.get(R.string.requesting) else Str.get(R.string.grant_all_permissions), fontSize = 14.sp)
                         }
                     }
 
@@ -988,7 +990,7 @@ fun PermissionManagementDialog(
                                     intent.data = Uri.parse("package:${context.packageName}")
                                     context.startActivity(intent)
                                 } catch (e: Exception) {
-                                    AppToast.error(context, "打开设置失败")
+                                    AppToast.error(context, Str.get(R.string.failed_to_open_settings))
                                 }
                             },
                             modifier = Modifier
@@ -1002,7 +1004,7 @@ fun PermissionManagementDialog(
                         ) {
                             Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("去系统设置开启特殊权限", fontSize = 14.sp)
+                            Text(Str.get(R.string.go_to_system_settings_to_enable_spec), fontSize = 14.sp)
                         }
                     }
 
@@ -1017,7 +1019,7 @@ fun PermissionManagementDialog(
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("关闭", fontSize = 14.sp)
+                        Text(Str.get(R.string.close), fontSize = 14.sp)
                     }
                 }
             }
@@ -1048,22 +1050,22 @@ fun PermissionDetailDialog(
     }
 
     UIComponents.ConfirmDialog(
-        title = "权限详情 - ${plugin.name}",
+        title = Str.get(R.string.permission_details_plugin_name, plugin.name),
         message = buildString {
             val grantedCount = permissions.values.count { it }
             val totalCount = permissions.size
-            append("已授权: $grantedCount / $totalCount\n\n")
+            append(Str.get(R.string.granted_grantedcount_totalcount_n_n, grantedCount, totalCount))
             if (permissions.isEmpty()) {
-                append("该插件没有声明任何权限")
+                append(Str.get(R.string.this_plugin_declares_no_permissions))
             } else {
                 permissions.entries.forEach { (permission, granted) ->
-                    val status = if (granted) "已授予" else "未授权"
+                    val status = if (granted) Str.get(R.string.granted_2) else Str.get(R.string.not_granted)
                     append("• ${PluginPermissionManager.getPermissionDisplayName(permission)}: $status\n")
                 }
             }
         },
-        confirmText = if (permissions.values.any { !it }) "一键授权" else "确定",
-        dismissText = "关闭",
+        confirmText = if (permissions.values.any { !it }) Str.get(R.string.grant_all) else Str.get(R.string.ok_2),
+        dismissText = Str.get(R.string.close),
         onConfirm = {
             if (permissions.values.any { !it }) {
                 isRequesting = true
@@ -1073,9 +1075,9 @@ fun PermissionDetailDialog(
                         isRequesting = false
                         refreshPermissions()
                         if (allGranted) {
-                            AppToast.success(context, "所有权限已授予")
+                            AppToast.success(context, Str.get(R.string.all_permissions_granted))
                         } else {
-                            AppToast.warning(context, "部分权限被拒绝")
+                            AppToast.warning(context, Str.get(R.string.some_permissions_denied))
                         }
                     }
                 )
@@ -1125,7 +1127,7 @@ fun PermissionItemCompact(
                 )
                 if (PluginPermissionManager.isSpecialPermission(permission)) {
                     Text(
-                        text = "特殊权限，需在系统设置中开启",
+                        text = Str.get(R.string.special_permission_requires_enabling),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -1138,7 +1140,7 @@ fun PermissionItemCompact(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = "已授予",
+                        text = Str.get(R.string.granted_2),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -1154,7 +1156,7 @@ fun PermissionItemCompact(
                     ),
                     shape = RoundedCornerShape(4.dp)
                 ) {
-                    Text("授权", fontSize = 11.sp)
+                    Text(Str.get(R.string.grant), fontSize = 11.sp)
                 }
             }
         }
@@ -1352,7 +1354,7 @@ fun PluginManageItem(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "原生",
+                                text = Str.get(R.string.native_label),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
@@ -1369,7 +1371,7 @@ fun PluginManageItem(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "${plugin.permissions.size} 项权限",
+                                text = Str.get(R.string.plugin_permissions_size_permission_s, plugin.permissions.size),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (hasMissingPermissions)
                                     MaterialTheme.colorScheme.onErrorContainer

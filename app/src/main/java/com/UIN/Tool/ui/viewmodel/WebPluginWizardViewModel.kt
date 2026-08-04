@@ -1,9 +1,11 @@
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.TemplateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,13 +25,13 @@ class WebPluginWizardViewModel : ViewModel() {
     private val _pluginId = MutableStateFlow("com.example.mywebplugin")
     val pluginId: StateFlow<String> = _pluginId.asStateFlow()
     
-    private val _pluginName = MutableStateFlow("我的Web插件")
+    private val _pluginName = MutableStateFlow(Str.get(R.string.my_web_plugin))
     val pluginName: StateFlow<String> = _pluginName.asStateFlow()
     
-    private val _pluginAuthor = MutableStateFlow("开发者")
+    private val _pluginAuthor = MutableStateFlow(Str.get(R.string.developer_2))
     val pluginAuthor: StateFlow<String> = _pluginAuthor.asStateFlow()
     
-    private val _pluginDescription = MutableStateFlow("这是一个Web插件示例")
+    private val _pluginDescription = MutableStateFlow(Str.get(R.string.this_is_a_web_plugin_example))
     val pluginDescription: StateFlow<String> = _pluginDescription.asStateFlow()
     
     private val _pluginVersion = MutableStateFlow("1")
@@ -127,9 +129,9 @@ class WebPluginWizardViewModel : ViewModel() {
                 _fileContents.value = files
                 _fileList.value = files.keys.toList()
                 
-                Logger.i(TAG, "生成模板完成，共 ${files.size} 个文件")
+                Logger.i(TAG, Str.get(R.string.template_generated_files_size_file_s, files.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "生成模板失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_generate_template), e)
             }
         }
     }

@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/data/repository/PluginRepositoryImpl.kt
 package com.UIN.Tool.data.repository
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import com.UIN.Tool.UinApplication
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.domain.repository.IPluginRepository
@@ -29,11 +31,11 @@ class PluginRepositoryImpl(
             val file = java.io.File(filePath)
             val info = pluginManager.installPlugin(file, file.name)
             if (info != null) {
-                Logger.success(TAG, "安装成功: ${info.name}")
+                Logger.success(TAG, Str.get(R.string.installed_info_name, info.name))
             }
             info
         } catch (e: Exception) {
-            Logger.e(TAG, "安装插件失败", e)
+            Logger.e(TAG, Str.get(R.string.plugin_install_failed), e)
             null
         }
     }
@@ -42,11 +44,11 @@ class PluginRepositoryImpl(
         return try {
             val result = pluginManager.uninstallPlugin(pluginId)
             if (result) {
-                Logger.success(TAG, "卸载成功: $pluginId")
+                Logger.success(TAG, Str.get(R.string.uninstalled_pluginid, pluginId))
             }
             result
         } catch (e: Exception) {
-            Logger.e(TAG, "卸载插件失败", e)
+            Logger.e(TAG, Str.get(R.string.plugin_uninstall_failed), e)
             false
         }
     }

@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/MainActivity.kt
 package com.UIN.Tool
 
+import com.UIN.Tool.utils.Str
 import android.app.ActivityManager
 import android.app.AlertDialog
 import android.content.Intent
@@ -38,14 +39,14 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginHostActivity
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.ui.log.LogViewerActivity
+import com.UIN.Tool.ui.screen.log.LogViewerActivity
 import com.UIN.Tool.ui.screen.dev.DevScreen
 import com.UIN.Tool.ui.screen.manage.ManageScreen
 import com.UIN.Tool.ui.screen.repo.RepoScreen
 import com.UIN.Tool.ui.screen.tools.ToolsScreen
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.CrashLogUtils
 import com.UIN.Tool.utils.UIConfig
 import java.io.File
@@ -73,11 +74,11 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (hasManageStoragePermission()) {
-            AppLog.success(TAG, "存储权限已授予")
+            AppLog.success(TAG, Str.get(R.string.storage_permission_granted))
             checkAndSetWorkFolder()
         } else {
-            AppLog.w(TAG, "存储权限被拒绝")
-            android.widget.Toast.makeText(this, "需要存储权限才能正常使用", android.widget.Toast.LENGTH_LONG).show()
+            AppLog.w(TAG, Str.get(R.string.storage_permission_denied))
+            android.widget.Toast.makeText(this, Str.get(R.string.storage_permission_is_required_for_n), android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -93,7 +94,7 @@ class MainActivity : ComponentActivity() {
                         putExtra("auto_open", true)
                     })
                 } catch (e: Exception) {
-                    AppLog.e(TAG, "跳转日志页面失败", e)
+                    AppLog.e(TAG, Str.get(R.string.failed_to_open_log_page), e)
                 }
             }, 500)
         }
@@ -106,10 +107,10 @@ class MainActivity : ComponentActivity() {
 
         Logger.init(Constants.LOG_DIR)
         AppLog.i(TAG, "══════════════════════════════════════════════════")
-        AppLog.i(TAG, "应用启动")
-        AppLog.param(TAG, "版本", getVersionCode().toString())
-        AppLog.param(TAG, "Android版本", "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-        AppLog.param(TAG, "设备", "${Build.MANUFACTURER} ${Build.MODEL}")
+        AppLog.i(TAG, Str.get(R.string.app_launch))
+        AppLog.param(TAG, Str.get(R.string.version), getVersionCode().toString())
+        AppLog.param(TAG, Str.get(R.string.android_version), "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+        AppLog.param(TAG, Str.get(R.string.device), "${Build.MANUFACTURER} ${Build.MODEL}")
 
         val pluginId = intent.getStringExtra(EXTRA_PLUGIN_ID)
         val openPlugin = intent.getBooleanExtra(EXTRA_OPEN_PLUGIN, false)
@@ -120,12 +121,12 @@ class MainActivity : ComponentActivity() {
                              intent.hasCategory(Intent.CATEGORY_LAUNCHER)
         
         if (isFromLauncher) {
-            AppLog.i(TAG, "从桌面图标启动，关闭所有插件页面")
+            AppLog.i(TAG, Str.get(R.string.launched_from_desktop_icon_closing_a))
             closeAllPluginActivities()
         }
         
         if (!pluginId.isNullOrEmpty() && openPlugin) {
-            AppLog.i(TAG, "从快捷方式打开插件: $pluginId")
+            AppLog.i(TAG, Str.get(R.string.opening_plugin_from_shortcut_plugini, pluginId))
             openPluginDirectly(pluginId)
             return
         }
@@ -166,12 +167,12 @@ class MainActivity : ComponentActivity() {
                              intent.hasCategory(Intent.CATEGORY_LAUNCHER)
         
         if (isFromLauncher) {
-            AppLog.i(TAG, "onNewIntent: 从桌面图标启动，关闭所有插件页面")
+            AppLog.i(TAG, Str.get(R.string.onnewintent_launched_from_desktop_ic))
             closeAllPluginActivities()
         }
         
         if (!pluginId.isNullOrEmpty() && openPlugin) {
-            AppLog.i(TAG, "onNewIntent: 从快捷方式打开插件: $pluginId")
+            AppLog.i(TAG, Str.get(R.string.onnewintent_opening_plugin_from_shor, pluginId))
             openPluginDirectly(pluginId)
             return
         }
@@ -207,41 +208,41 @@ class MainActivity : ComponentActivity() {
                 val info = task.taskInfo
                 val topActivity = info.topActivity
                 if (topActivity?.className?.contains("PluginHostActivity") == true) {
-                    AppLog.i(TAG, "找到 PluginHostActivity 任务，正在关闭...")
+                    AppLog.i(TAG, Str.get(R.string.found_pluginhostactivity_task_closin))
                     task.finishAndRemoveTask()
-                    AppLog.i(TAG, "PluginHostActivity 任务已关闭")
+                    AppLog.i(TAG, Str.get(R.string.pluginhostactivity_task_closed))
                 }
             }
         } catch (e: Exception) {
-            AppLog.e(TAG, "关闭插件 Activity 失败: ${e.message}", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_close_plugin_activity_e_me, e.message), e)
         }
     }
 
     private fun openPluginDirectly(pluginId: String) {
-        AppLog.i(TAG, "直接打开插件: $pluginId")
+        AppLog.i(TAG, Str.get(R.string.opening_plugin_directly_pluginid, pluginId))
         try {
             val info = pluginManager.getPluginInfo(pluginId)
             
             if (info == null) {
-                AppLog.w(TAG, "插件不存在: $pluginId，跳转到主界面")
+                AppLog.w(TAG, Str.get(R.string.plugin_does_not_exist_pluginid_navig, pluginId))
                 finish()
                 startActivity(Intent(this, MainActivity::class.java))
                 return
             }
             
-            AppLog.i(TAG, "插件存在: ${info.name}")
+            AppLog.i(TAG, Str.get(R.string.plugin_exists_info_name, info.name))
             
             val intent = Intent(this, PluginHostActivity::class.java).apply {
                 putExtra(PluginHostActivity.EXTRA_PLUGIN_ID, pluginId)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)
-            AppLog.success(TAG, "插件启动成功: ${info.name}")
+            AppLog.success(TAG, Str.get(R.string.plugin_started_successfully_info_nam, info.name))
             
             finish()
             
         } catch (e: Exception) {
-            AppLog.e(TAG, "启动插件失败: ${e.message}", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_start_plugin_e_message, e.message), e)
             finish()
             startActivity(Intent(this, MainActivity::class.java))
         }
@@ -313,7 +314,7 @@ class MainActivity : ComponentActivity() {
                 packageInfo.versionCode
             }
         } catch (e: Exception) {
-            AppLog.e(TAG, "获取版本号失败", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_get_version_code), e)
             1
         }
     }
@@ -323,10 +324,10 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!hasManageStoragePermission()) {
-                AppLog.w(TAG, "需要管理所有文件权限")
+                AppLog.w(TAG, Str.get(R.string.all_files_access_permission_required))
                 showPermissionDialog()
             } else {
-                AppLog.success(TAG, "管理所有文件权限已授予")
+                AppLog.success(TAG, Str.get(R.string.all_files_access_permission_granted))
                 checkAndSetWorkFolder()
             }
         } else {
@@ -335,10 +336,10 @@ class MainActivity : ComponentActivity() {
                     android.Manifest.permission.WRITE_EXTERNAL_STORAGE
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                AppLog.w(TAG, "需要存储权限")
+                AppLog.w(TAG, Str.get(R.string.storage_permission_required))
                 showPermissionDialog()
             } else {
-                AppLog.success(TAG, "存储权限已授予")
+                AppLog.success(TAG, Str.get(R.string.storage_permission_granted))
                 checkAndSetWorkFolder()
             }
         }
@@ -355,16 +356,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showPermissionDialog() {
-        AppLog.d(TAG, "显示权限请求对话框")
+        AppLog.d(TAG, Str.get(R.string.showing_permission_request_dialog))
         AlertDialog.Builder(this)
-            .setTitle("需要存储权限")
-            .setMessage("UIN Tool 需要管理所有文件的权限，以便导入/导出插件。\n\n请点击「授权」并允许权限。")
-            .setPositiveButton("授权") { _, _ ->
-                AppLog.action(TAG, "用户点击", "授权")
+            .setTitle(Str.get(R.string.storage_permission_required))
+            .setMessage(Str.get(R.string.uin_tool_needs_access_to_all_files_t))
+            .setPositiveButton(Str.get(R.string.grant)) { _, _ ->
+                AppLog.action(TAG, Str.get(R.string.user_tapped), Str.get(R.string.grant))
                 requestManageStoragePermission()
             }
-            .setNegativeButton("退出") { _, _ ->
-                AppLog.action(TAG, "用户点击", "退出")
+            .setNegativeButton(Str.get(R.string.exit)) { _, _ ->
+                AppLog.action(TAG, Str.get(R.string.user_tapped), Str.get(R.string.exit))
                 finishAffinity()
             }
             .setCancelable(false)
@@ -372,7 +373,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestManageStoragePermission() {
-        AppLog.i(TAG, "请求存储权限")
+        AppLog.i(TAG, Str.get(R.string.request_storage_permission))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
             intent.data = Uri.parse("package:$packageName")
@@ -396,26 +397,26 @@ class MainActivity : ComponentActivity() {
                 val defaultFolder = File(Constants.WORK_DIR)
                 if (!defaultFolder.exists()) {
                     defaultFolder.mkdirs()
-                    AppLog.i(TAG, "创建工作目录: ${defaultFolder.absolutePath}")
+                    AppLog.i(TAG, Str.get(R.string.creating_work_directory_defaultfolde, defaultFolder.absolutePath))
                 }
                 preferenceManager.setWorkFolder(defaultFolder.absolutePath)
-                AppLog.success(TAG, "设置默认工作目录: ${defaultFolder.absolutePath}")
-                android.widget.Toast.makeText(this, "工作目录: ${defaultFolder.absolutePath}", android.widget.Toast.LENGTH_LONG).show()
+                AppLog.success(TAG, Str.get(R.string.setting_default_work_directory_defau, defaultFolder.absolutePath))
+                android.widget.Toast.makeText(this, Str.get(R.string.work_directory_defaultfolder_absolut, defaultFolder.absolutePath), android.widget.Toast.LENGTH_LONG).show()
             } else {
                 val folder = File(workFolder)
                 if (!folder.exists()) {
                     folder.mkdirs()
-                    AppLog.i(TAG, "创建工作目录: ${folder.absolutePath}")
+                    AppLog.i(TAG, Str.get(R.string.creating_work_directory_folder_absol, folder.absolutePath))
                 }
-                AppLog.i(TAG, "使用已有工作目录: $workFolder")
+                AppLog.i(TAG, Str.get(R.string.using_existing_work_directory_workfo, workFolder))
             }
 
             pluginManager.refreshPlugins()
 
         } catch (e: Exception) {
-            AppLog.e(TAG, "创建工作目录失败: ${e.message}", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_create_work_directory_e_me, e.message), e)
             CrashLogUtils.logException(this, e, "MainActivity")
-            android.widget.Toast.makeText(this, "创建工作目录失败: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(this, Str.get(R.string.failed_to_create_work_directory_e_me, e.message), android.widget.Toast.LENGTH_SHORT).show()
         }
         AppLog.exit(TAG, "checkAndSetWorkFolder", System.currentTimeMillis())
     }
@@ -431,7 +432,7 @@ class MainActivity : ComponentActivity() {
                 val info = task.taskInfo
                 val topActivity = info.topActivity
                 if (topActivity?.className?.contains("PluginHostActivity") == true) {
-                    AppLog.i(TAG, "检测到插件页面在前台，关闭插件页面")
+                    AppLog.i(TAG, Str.get(R.string.plugin_page_is_in_the_foreground_clo))
                     task.finishAndRemoveTask()
                     val intent = Intent(this, MainActivity::class.java)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -440,7 +441,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } catch (e: Exception) {
-            AppLog.e(TAG, "检查任务失败: ${e.message}", e)
+            AppLog.e(TAG, Str.get(R.string.failed_to_check_task_e_message, e.message), e)
         }
 
         val uiConfig = UIConfig.getInstance()
@@ -458,7 +459,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        AppLog.i(TAG, "应用退出")
+        AppLog.i(TAG, Str.get(R.string.app_exit))
     }
 
     override fun onBackPressed() {
@@ -467,7 +468,7 @@ class MainActivity : ComponentActivity() {
         showExitDialog = true
     }
 
-    @Deprecated("使用 Activity Result API")
+    @Deprecated("Using Activity Result API")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -477,11 +478,11 @@ class MainActivity : ComponentActivity() {
         AppLog.d(TAG, "onRequestPermissionsResult, requestCode: $requestCode")
         if (requestCode == 100) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                AppLog.success(TAG, "存储权限已授予")
+                AppLog.success(TAG, Str.get(R.string.storage_permission_granted))
                 checkAndSetWorkFolder()
             } else {
-                AppLog.w(TAG, "存储权限被拒绝")
-                android.widget.Toast.makeText(this, "需要存储权限才能正常使用", android.widget.Toast.LENGTH_SHORT).show()
+                AppLog.w(TAG, Str.get(R.string.storage_permission_denied))
+                android.widget.Toast.makeText(this, Str.get(R.string.storage_permission_is_required_for_n), android.widget.Toast.LENGTH_SHORT).show()
                 finishAffinity()
             }
         }
@@ -501,10 +502,10 @@ fun MainContent(
     var selectedTab by remember { mutableStateOf(initialTab) }
 
     val tabs = listOf(
-        "开发" to R.drawable.ic_developer_mode,
-        "工具" to R.drawable.ic_grid_view,
-        "仓库" to R.drawable.ic_repo,
-        "管理" to R.drawable.ic_settings
+        Str.get(R.string.developer) to R.drawable.ic_developer_mode,
+        Str.get(R.string.tools) to R.drawable.ic_grid_view,
+        Str.get(R.string.repository) to R.drawable.ic_repo,
+        Str.get(R.string.manage) to R.drawable.ic_settings
     )
 
     LaunchedEffect(checkUpdate) {
@@ -516,10 +517,10 @@ fun MainContent(
     // ✅ 退出对话框 - 使用 UIComponents.ConfirmDialog
     if (showExitDialog) {
         UIComponents.ConfirmDialog(
-            title = "退出应用",
-            message = "确定要退出 UIN Tool 吗？",
-            confirmText = "退出",
-            dismissText = "取消",
+            title = Str.get(R.string.exit_app),
+            message = Str.get(R.string.exit_uin_tool),
+            confirmText = Str.get(R.string.exit),
+            dismissText = Str.get(R.string.cancel),
             onConfirm = onExitConfirm,
             onDismiss = onExitDismiss,
             isDestructive = true

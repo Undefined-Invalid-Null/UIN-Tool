@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/utils/AppToast.kt
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -37,7 +38,7 @@ object AppToast {
                 currentToast = Toast.makeText(appContext, message, duration)
                 currentToast?.show()
             } catch (e: Exception) {
-                Logger.e(TAG, "Toast 显示失败", e)
+                Logger.e(TAG, Str.get(R.string.toast_failed_to_show), e)
             }
         }
     }

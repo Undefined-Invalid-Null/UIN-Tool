@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/components/UIComponents.kt
 package com.UIN.Tool.ui.components
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -259,8 +261,8 @@ object UIComponents {
         message: String,
         onConfirm: () -> Unit,
         onDismiss: () -> Unit,
-        confirmText: String = "确定",
-        dismissText: String = "取消",
+        confirmText: String = Str.get(R.string.ok_2),
+        dismissText: String = Str.get(R.string.cancel),
         isDestructive: Boolean = false
     ) {
         com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog(
@@ -279,7 +281,7 @@ object UIComponents {
         title: String,
         message: String,
         onDismiss: () -> Unit,
-        buttonText: String = "确定"
+        buttonText: String = Str.get(R.string.ok_2)
     ) {
         com.UIN.Tool.ui.components.unified.UnifiedInfoDialog(
             title = title,
@@ -350,7 +352,7 @@ object UIComponents {
     // ==================== 加载指示器 ====================
 
     @Composable
-    fun FullScreenLoading(message: String = "加载中...") {
+    fun FullScreenLoading(message: String = Str.get(R.string.loading)) {
         com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator(
             message = message
         )

@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionExplainScreen.kt
 package com.UIN.Tool.ui.screen.permission
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,7 +24,7 @@ fun PermissionExplainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("权限说明") },
+                title = { Text(Str.get(R.string.permission_description)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.Default.ArrowBack,
@@ -45,51 +47,33 @@ fun PermissionExplainScreen(
                 .padding(16.dp)
         ) {
             UIComponents.BodyText(
-                "UIN Tool 需要以下权限来正常使用各项功能：",
+                Str.get(R.string.uin_tool_needs_the_following_permiss),
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             PermissionExplainCard(
                 icon = Icons.Default.Folder,
-                title = "存储权限",
-                description = """
-                    • 导入/导出插件文件 (.tpk, .zip)
-                    • 备份和恢复插件数据
-                    • 读取和写入工作目录
-                    • 导出日志文件
-
-                    提示：我们不会读取您的个人文件，仅操作 UIN_Tool 目录下的文件。
-                """.trimIndent()
+                title = Str.get(R.string.storage_permission),
+                description = Str.get(R.string.storage_permission_desc)
             )
 
             PermissionExplainCard(
                 icon = Icons.Default.Wifi,
-                title = "网络权限",
-                description = """
-                    • 从 GitHub 插件仓库下载插件
-                    • 检查应用更新
-                    • 插件网络请求功能
-
-                    提示：仅用于插件下载和更新功能。
-                """.trimIndent()
+                title = Str.get(R.string.network_permission),
+                description = Str.get(R.string.network_permission_desc)
             )
 
             PermissionExplainCard(
                 icon = Icons.Default.Camera,
-                title = "相机/麦克风权限",
-                description = """
-                    • 插件可能需要调用相机拍照
-                    • 插件可能需要录音功能
-
-                    提示：这些权限仅在您安装的插件需要时才会使用。
-                """.trimIndent()
+                title = Str.get(R.string.camera_microphone_permission),
+                description = Str.get(R.string.camera_microphone_permission_desc)
             )
 
             UIComponents.Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             ) {
                 UIComponents.BodyText(
-                    "其他权限（位置、电话、短信等）仅在插件需要时才会请求使用。",
+                    Str.get(R.string.other_permissions_location_phone_sms),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)

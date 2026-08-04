@@ -1,6 +1,8 @@
 // ui/screen/dev/BasePluginWizardScreen.kt
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,7 +27,7 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -71,7 +73,7 @@ fun BasePluginWizardScreen(
         if (uri != null) {
             handleBinaryFileSelection(context, uri) { filePath ->
                 viewModel.binaryFilePath.value = filePath
-                AppToast.success(context, "二进制文件已选择")
+                AppToast.success(context, Str.get(R.string.binary_file_selected))
             }
         }
     }
@@ -82,7 +84,7 @@ fun BasePluginWizardScreen(
         if (uri != null) {
             handleWebProjectImport(context, uri) { files, contents ->
                 viewModel.updateFiles(files, contents)
-                AppToast.success(context, "Web项目导入成功，共 ${files.size} 个文件")
+                AppToast.success(context, Str.get(R.string.web_project_imported_files_size_file, files.size))
             }
         }
     }
@@ -95,7 +97,7 @@ fun BasePluginWizardScreen(
             val updatedFiles = data?.getStringArrayListExtra("file_list") ?: emptyList()
             val updatedContents = data?.getSerializableExtra("file_contents") as? HashMap<String, String> ?: emptyMap()
             viewModel.updateFiles(updatedFiles, updatedContents)
-            AppToast.info(context, "代码已更新，共 ${updatedFiles.size} 个文件")
+            AppToast.info(context, Str.get(R.string.code_updated_updatedfiles_size_file_, updatedFiles.size))
         }
     }
 
@@ -156,7 +158,7 @@ fun BasePluginWizardScreen(
             viewModel.backendPreCommand.value = json.optString("backendPreCommand", viewModel.backendPreCommand.value)
             true
         } catch (e: Exception) {
-            AppToast.error(context, "JSON 解析失败: ${e.message}")
+            AppToast.error(context, Str.get(R.string.json_parse_failed_e_message, e.message))
             false
         }
     }
@@ -165,7 +167,7 @@ fun BasePluginWizardScreen(
         scope.launch {
             try {
                 viewModel.isCompiling.value = true
-                viewModel.compileMessage.value = "准备编译环境..."
+                viewModel.compileMessage.value = Str.get(R.string.preparing_build_environment)
                 viewModel.compileProgress.value = 0
 
                 val safePluginId = viewModel.pluginId.value
@@ -179,18 +181,18 @@ fun BasePluginWizardScreen(
                 workDir.mkdirs()
                 outputTpk.parentFile?.mkdirs()
 
-                viewModel.compileMessage.value = "生成项目文件..."
+                viewModel.compileMessage.value = Str.get(R.string.generating_project_files)
                 viewModel.compileProgress.value = 10
 
                 val saveSuccess = viewModel.generateProjectFiles(workDir)
                 if (!saveSuccess) {
-                    viewModel.compileMessage.value = "❌ 生成项目文件失败"
+                    viewModel.compileMessage.value = Str.get(R.string.failed_to_generate_project_files)
                     viewModel.isCompiling.value = false
-                    AppToast.error(context, "生成项目文件失败")
+                    AppToast.error(context, Str.get(R.string.failed_to_generate_project_files_2))
                     return@launch
                 }
 
-                viewModel.compileMessage.value = "项目文件已生成"
+                viewModel.compileMessage.value = Str.get(R.string.project_files_generated)
                 viewModel.compileProgress.value = 30
 
                 if (uiType == "web" && backendType == "binary") {
@@ -201,12 +203,12 @@ fun BasePluginWizardScreen(
                         destFile.parentFile?.mkdirs()
                         srcFile.copyTo(destFile, overwrite = true)
                         destFile.setExecutable(true)
-                        AppLog.d(TAG, "二进制文件已复制: ${destFile.absolutePath}")
+                        AppLog.d(TAG, Str.get(R.string.binary_file_copied_destfile_absolute, destFile.absolutePath))
                     }
                 }
 
                 if (uiType == "native") {
-                    viewModel.compileMessage.value = "开始编译 Java 代码..."
+                    viewModel.compileMessage.value = Str.get(R.string.compiling_java_code)
                     viewModel.compileProgress.value = 40
 
                     val compiler = JavaToDexCompiler(context)
@@ -214,27 +216,27 @@ fun BasePluginWizardScreen(
                     compiler.setOnProgressListener { message ->
                         viewModel.compileMessage.value = message
                         when {
-                            message.contains("编译") -> viewModel.compileProgress.value = 50
+                            message.contains(Str.get(R.string.compile)) -> viewModel.compileProgress.value = 50
                             message.contains("JAR") -> viewModel.compileProgress.value = 65
                             message.contains("DEX") -> viewModel.compileProgress.value = 75
-                            message.contains("打包") -> viewModel.compileProgress.value = 85
+                            message.contains(Str.get(R.string.package_label)) -> viewModel.compileProgress.value = 85
                         }
                     }
 
                     compiler.setOnCompleteListener { resultFile ->
-                        viewModel.compileMessage.value = "✅ 编译打包完成!"
+                        viewModel.compileMessage.value = Str.get(R.string.compile_and_package_complete)
                         viewModel.compileProgress.value = 100
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
-                        AppToast.success(context, "✅ 编译打包成功!\n${outputTpk.absolutePath}")
+                        AppToast.success(context, Str.get(R.string.compile_and_package_successful_n_out, outputTpk.absolutePath))
                         onFinish()
                     }
 
                     compiler.setOnErrorListener { error ->
-                        viewModel.compileMessage.value = "❌ 编译失败: $error"
+                        viewModel.compileMessage.value = Str.get(R.string.compilation_failed_error, error)
                         viewModel.compileProgress.value = 0
                         viewModel.isCompiling.value = false
-                        AppToast.error(context, "编译失败: $error")
+                        AppToast.error(context, Str.get(R.string.compilation_failed_error_2, error))
                     }
 
                     val srcDir = File(workDir, "src")
@@ -249,7 +251,7 @@ fun BasePluginWizardScreen(
                     )
 
                 } else {
-                    viewModel.compileMessage.value = "打包插件..."
+                    viewModel.compileMessage.value = Str.get(R.string.packaging_plugin)
                     viewModel.compileProgress.value = 60
 
                     val compiler = JavaToDexCompiler(context)
@@ -257,24 +259,24 @@ fun BasePluginWizardScreen(
                     compiler.setOnProgressListener { message ->
                         viewModel.compileMessage.value = message
                         when {
-                            message.contains("打包") -> viewModel.compileProgress.value = 80
+                            message.contains(Str.get(R.string.package_label)) -> viewModel.compileProgress.value = 80
                         }
                     }
 
                     compiler.setOnCompleteListener { resultFile ->
-                        viewModel.compileMessage.value = "✅ 打包完成!"
+                        viewModel.compileMessage.value = Str.get(R.string.packaging_complete)
                         viewModel.compileProgress.value = 100
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
-                        AppToast.success(context, "✅ 打包成功!\n${outputTpk.absolutePath}")
+                        AppToast.success(context, Str.get(R.string.packaging_successful_n_outputtpk_abs, outputTpk.absolutePath))
                         onFinish()
                     }
 
                     compiler.setOnErrorListener { error ->
-                        viewModel.compileMessage.value = "❌ 打包失败: $error"
+                        viewModel.compileMessage.value = Str.get(R.string.packaging_failed_error, error)
                         viewModel.compileProgress.value = 0
                         viewModel.isCompiling.value = false
-                        AppToast.error(context, "打包失败: $error")
+                        AppToast.error(context, Str.get(R.string.packaging_failed_error_2, error))
                     }
 
                     compiler.packageTpk(
@@ -286,51 +288,51 @@ fun BasePluginWizardScreen(
                 }
 
             } catch (e: Exception) {
-                AppLog.e(TAG, "编译打包异常", e)
-                viewModel.compileMessage.value = "❌ 异常: ${e.message}"
+                AppLog.e(TAG, Str.get(R.string.compile_package_exception), e)
+                viewModel.compileMessage.value = Str.get(R.string.exception_e_message, e.message)
                 viewModel.isCompiling.value = false
-                AppToast.error(context, "编译打包异常: ${e.message}")
+                AppToast.error(context, Str.get(R.string.compile_package_exception_e_message, e.message))
             }
         }
     }
 
     fun getStepTitle(): String {
         return when (currentStep) {
-            0 -> "配置插件信息"
-            1 -> "设置插件图标"
+            0 -> Str.get(R.string.configure_plugin_info)
+            1 -> Str.get(R.string.set_plugin_icon)
             2 -> when {
-                uiType == "web" && backendType == "binary" -> "选择二进制文件"
-                uiType == "web" -> "Web 代码编辑"
-                uiType == "cui" -> "编辑终端脚本"
-                else -> "编写插件代码"
+                uiType == "web" && backendType == "binary" -> Str.get(R.string.select_binary_file)
+                uiType == "web" -> Str.get(R.string.web_code_editor)
+                uiType == "cui" -> Str.get(R.string.edit_terminal_script)
+                else -> Str.get(R.string.write_plugin_code)
             }
             3 -> when {
-                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> "生成项目文件"
-                uiType == "cui" -> "生成项目文件"
-                else -> "添加资源文件"
+                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> Str.get(R.string.generate_project_files)
+                uiType == "cui" -> Str.get(R.string.generate_project_files)
+                else -> Str.get(R.string.add_resource_files)
             }
-            4 -> "生成项目文件"
-            else -> "生成项目文件"
+            4 -> Str.get(R.string.generate_project_files)
+            else -> Str.get(R.string.generate_project_files)
         }
     }
 
     fun getStepDesc(): String {
         return when (currentStep) {
-            0 -> "填写插件的基本配置信息"
-            1 -> "选择一个 PNG 图片作为图标（可选）"
+            0 -> Str.get(R.string.fill_in_the_plugin_basic_configurati)
+            1 -> Str.get(R.string.choose_a_png_image_as_the_icon_optio)
             2 -> when {
-                uiType == "web" && backendType == "binary" -> "选择编译好的可执行二进制文件"
-                uiType == "web" -> "编辑 HTML/CSS/JS 或导入已有项目"
-                uiType == "cui" -> "编辑终端启动脚本，插件打开后会在终端中运行"
-                else -> "实现 PluginInterface 接口"
+                uiType == "web" && backendType == "binary" -> Str.get(R.string.select_a_compiled_executable_binary_)
+                uiType == "web" -> Str.get(R.string.edit_html_css_js_or_import_an_existi)
+                uiType == "cui" -> Str.get(R.string.edit_the_terminal_launch_script_that)
+                else -> Str.get(R.string.implement_the_plugininterface)
             }
             3 -> when {
-                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> "生成项目文件并打包为 TPK"
-                uiType == "cui" -> "生成项目文件并打包为 TPK"
-                else -> "可选的图片、音频等资源文件"
+                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> Str.get(R.string.generate_project_files_and_package_a)
+                uiType == "cui" -> Str.get(R.string.generate_project_files_and_package_a)
+                else -> Str.get(R.string.optional_resources_like_images_and_a)
             }
-            4 -> "生成项目结构并打包为 TPK"
-            else -> "生成项目文件"
+            4 -> Str.get(R.string.generate_the_project_structure_and_p)
+            else -> Str.get(R.string.generate_project_files)
         }
     }
 
@@ -338,11 +340,11 @@ fun BasePluginWizardScreen(
         return when (currentStep) {
             0 -> {
                 if (viewModel.pluginId.value.isEmpty() || viewModel.pluginName.value.isEmpty()) {
-                    AppToast.warning(context, "请填写插件ID和名称")
+                    AppToast.warning(context, Str.get(R.string.please_fill_in_the_plugin_id_and_nam))
                     return false
                 }
                 if (!viewModel.pluginId.value.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                    AppToast.warning(context, "插件ID格式不正确，应为域名倒序格式")
+                    AppToast.warning(context, Str.get(R.string.invalid_plugin_id_it_should_be_a_rev))
                     return false
                 }
                 true
@@ -350,17 +352,17 @@ fun BasePluginWizardScreen(
             2 -> {
                 if (uiType == "web" && backendType == "binary") {
                     if (viewModel.binaryFilePath.value.isEmpty()) {
-                        AppToast.warning(context, "请选择二进制文件")
+                        AppToast.warning(context, Str.get(R.string.please_select_a_binary_file))
                         return false
                     }
                     true
                 } else if (uiType == "native") {
                     if (viewModel.mainClass.value.isEmpty()) {
-                        AppToast.warning(context, "请填写主类名")
+                        AppToast.warning(context, Str.get(R.string.please_fill_in_the_main_class_name))
                         return false
                     }
                     if (!viewModel.mainClass.value.contains(".")) {
-                        AppToast.warning(context, "主类名必须包含包名，如 com.example.MainPlugin")
+                        AppToast.warning(context, Str.get(R.string.the_main_class_name_must_include_the))
                         return false
                     }
                     true
@@ -378,11 +380,11 @@ fun BasePluginWizardScreen(
                 title = {
                     Text(
                         when {
-                            uiType == "native" -> "创建原生插件"
-                            backendType == "binary" -> "创建二进制后端插件"
-                            uiType == "web" && backendType.isEmpty() -> "创建 Web 插件"
-                            uiType == "cui" -> "创建 CUI 插件"
-                            else -> "创建 Web + 后端插件"
+                            uiType == "native" -> Str.get(R.string.create_native_plugin)
+                            backendType == "binary" -> Str.get(R.string.create_binary_backend_plugin)
+                            uiType == "web" && backendType.isEmpty() -> Str.get(R.string.create_web_plugin)
+                            uiType == "cui" -> Str.get(R.string.create_cui_plugin)
+                            else -> Str.get(R.string.create_web_backend_plugin)
                         }
                     )
                 },
@@ -430,7 +432,7 @@ fun BasePluginWizardScreen(
                 ) {
                     if (currentStep > 0) {
                         UIComponents.SecondaryButton(
-                            text = "上一步",
+                            text = Str.get(R.string.previous),
                             onClick = { if (currentStep > 0) currentStep-- },
                             modifier = Modifier.weight(1f)
                         )
@@ -438,7 +440,7 @@ fun BasePluginWizardScreen(
 
                     if (currentStep < totalSteps - 1) {
                         UIComponents.PrimaryButton(
-                            text = "下一步",
+                            text = Str.get(R.string.next),
                             onClick = {
                                 if (validateCurrentStep()) {
                                     if (currentStep < totalSteps - 1) currentStep++
@@ -448,7 +450,7 @@ fun BasePluginWizardScreen(
                         )
                     } else {
                         UIComponents.PrimaryButton(
-                            text = if (viewModel.isCompiling.value) "处理中..." else "完成",
+                            text = if (viewModel.isCompiling.value) Str.get(R.string.working) else Str.get(R.string.finish),
                             onClick = {
                                 if (validateCurrentStep()) {
                                     startCompileAndPackage()
@@ -612,7 +614,7 @@ fun BasePluginWizardScreen(
         AlertDialog(
             onDismissRequest = { showJsonEditor = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("编辑 plugin.json") },
+            title = { Text(Str.get(R.string.edit_plugin_json)) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
@@ -628,7 +630,7 @@ fun BasePluginWizardScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "保存后将同步到表单各字段，字段包括 pluginId/name/version/entry/backendPreCommand 等。",
+                        Str.get(R.string.saved_values_are_synced_to_the_form_),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -639,13 +641,13 @@ fun BasePluginWizardScreen(
                     onClick = {
                         if (applyPluginJson(jsonDraft)) {
                             showJsonEditor = false
-                            AppToast.success(context, "JSON 已应用")
+                            AppToast.success(context, Str.get(R.string.json_applied))
                         }
                     }
-                ) { Text("保存") }
+                ) { Text(Str.get(R.string.save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showJsonEditor = false }) { Text("取消") }
+                TextButton(onClick = { showJsonEditor = false }) { Text(Str.get(R.string.cancel)) }
             }
         )
     }

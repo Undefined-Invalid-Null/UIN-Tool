@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/manage/ManageScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -33,7 +35,7 @@ import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.ui.log.LogViewerActivity
+import com.UIN.Tool.ui.screen.log.LogViewerActivity
 import com.UIN.Tool.ui.screen.backup.BackupManagerActivity
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
 import com.UIN.Tool.ui.screen.permission.PermissionManagerActivity
@@ -86,7 +88,7 @@ fun ManageScreen(
     fun performCheckUpdate(showNoUpdateToast: Boolean = false) {
         if (isCheckingUpdate) return
         isCheckingUpdate = true
-        updateMessage = "正在检查更新..."
+        updateMessage = Str.get(R.string.checking_for_updates)
 
         updateChecker?.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
             override fun onCheckStart() {}
@@ -103,17 +105,14 @@ fun ManageScreen(
                     hasNewVersion = true
                     shouldShowUpdateDialog = true
                     val latest = releases.first()
-                    updateMessage = """
-                        发现新版本！
-
-                        版本: ${latest.versionName}
-                        大小: ${latest.getFormattedSize()}
-                        发布日期: ${latest.getFormattedDate()}
-
-                        ${if (forceUpdate) "这是强制更新，必须安装最新版本" else "点击「下载更新」开始下载"}
-
-                        ${latest.releaseNotes?.take(200) ?: ""}${if ((latest.releaseNotes?.length ?: 0) > 200) "..." else ""}
-                    """.trimIndent()
+                    updateMessage = Str.get(
+                        R.string.update_dialog_new_version,
+                        latest.versionName,
+                        latest.getFormattedSize(),
+                        latest.getFormattedDate(),
+                        if (forceUpdate) Str.get(R.string.this_is_a_mandatory_update_you_must_) else Str.get(R.string.tap_download_update_to_start_downloa),
+                        (latest.releaseNotes?.take(200) ?: "") + if ((latest.releaseNotes?.length ?: 0) > 200) "..." else ""
+                    )
                     downloadTarget = latest
                     showUpdateDialog = true
                 } else {
@@ -121,7 +120,7 @@ fun ManageScreen(
                     shouldShowUpdateDialog = false
                     if (showNoUpdateToast) {
                         // ✅ 移除 Emoji
-                        AppToast.info(context, "当前已是最新版本")
+                        AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio))
                     }
                 }
             }
@@ -130,7 +129,7 @@ fun ManageScreen(
                 isCheckingUpdate = false
                 hasCheckedUpdate = true
                 if (showNoUpdateToast) {
-                    AppToast.error(context, "检查更新失败：$error")
+                    AppToast.error(context, Str.get(R.string.update_check_failed_error, error))
                 }
             }
 
@@ -141,7 +140,7 @@ fun ManageScreen(
                 shouldShowUpdateDialog = false
                 if (showNoUpdateToast) {
                     // ✅ 移除 Emoji
-                    AppToast.info(context, "当前已是最新版本 (v$currentVersion)")
+                    AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio_2, currentVersion))
                 }
             }
         })
@@ -158,13 +157,13 @@ fun ManageScreen(
 
     fun startDownload(release: ReleaseInfo) {
         showProgressDialog = true
-        progressMessage = "正在下载 ${release.versionName}..."
+        progressMessage = Str.get(R.string.downloading_release_versionname, release.versionName)
 
         updateDownloader?.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
             override fun onStart() {}
 
             override fun onProgress(progress: Int, downloaded: Long, total: Long) {
-                progressMessage = "正在下载 ${release.versionName}... $progress% (${formatFileSize(downloaded)}/${formatFileSize(total)})"
+                progressMessage = Str.get(R.string.downloading_release_versionname_prog, release.versionName, progress, formatFileSize(downloaded), formatFileSize(total))
             }
 
             override fun onSuccess(file: File) {
@@ -174,7 +173,7 @@ fun ManageScreen(
 
             override fun onFailed(error: String) {
                 showProgressDialog = false
-                updateMessage = "下载失败：$error"
+                updateMessage = Str.get(R.string.download_failed_error, error)
                 showUpdateDialog = true
             }
         })
@@ -184,124 +183,124 @@ fun ManageScreen(
 
     fun openWidgetConfig() {
         try {
-            AppLog.i(TAG, "打开小部件配置")
+            AppLog.i(TAG, Str.get(R.string.open_widget_config))
             val intent = Intent(context, WidgetConfigActivity::class.java)
             context.startActivity(intent)
         } catch (e: Exception) {
-            AppLog.e(TAG, "打开小部件配置失败", e)
-            AppToast.error(context, "打开配置失败: ${e.message}")
+            AppLog.e(TAG, Str.get(R.string.failed_to_open_widget_config), e)
+            AppToast.error(context, Str.get(R.string.failed_to_open_config_e_message, e.message))
         }
     }
 
     val menuItems = listOf(
         ManageMenuItem(
             id = "plugin_manage",
-            title = "插件管理",
+            title = Str.get(R.string.plugin_management),
             icon = Icons.Default.Extension,
-            description = "导入导出卸载插件"
+            description = Str.get(R.string.import_export_and_uninstall_plugins)
         ) {
             try {
                 context.startActivity(Intent(context, PluginManageActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, "插件管理功能开发中")
+                AppToast.warning(context, Str.get(R.string.plugin_management_feature_under_deve))
             }
         },
         ManageMenuItem(
             id = "permission",
-            title = "权限管理",
+            title = Str.get(R.string.permission_management),
             icon = Icons.Default.Security,
-            description = "管理应用和插件权限"
+            description = Str.get(R.string.manage_app_and_plugin_permissions)
         ) {
             try {
                 context.startActivity(Intent(context, PermissionManagerActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, "权限管理功能开发中")
+                AppToast.warning(context, Str.get(R.string.permission_management_feature_under_))
             }
         },
         ManageMenuItem(
             id = "docs",
-            title = "文档中心",
+            title = Str.get(R.string.docs_center),
             icon = Icons.Default.Info,
-            description = "使用帮助开发文档"
+            description = Str.get(R.string.help_and_development_docs)
         ) {
             try {
                 context.startActivity(Intent(context, DocBrowserActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, "文档中心功能开发中")
+                AppToast.warning(context, Str.get(R.string.docs_center_feature_under_developmen))
             }
         },
         ManageMenuItem(
             id = "logs",
-            title = "运行日志",
+            title = Str.get(R.string.runtime_logs),
             icon = Icons.Default.BugReport,
-            description = "查看导出清空日志"
+            description = Str.get(R.string.view_export_and_clear_logs)
         ) {
             context.startActivity(Intent(context, LogViewerActivity::class.java))
         },
         ManageMenuItem(
             id = "backup",
-            title = "备份恢复",
+            title = Str.get(R.string.backup_restore),
             icon = Icons.Default.Backup,
-            description = "备份恢复插件配置"
+            description = Str.get(R.string.back_up_and_restore_plugin_config)
         ) {
             try {
                 val intent = Intent(context, BackupManagerActivity::class.java)
                 context.startActivity(intent)
             } catch (e: Exception) {
-                AppToast.warning(context, "备份恢复功能开发中")
+                AppToast.warning(context, Str.get(R.string.backup_restore_feature_under_develop))
             }
         },
         ManageMenuItem(
             id = "ui_config",
-            title = "UI个性化",
+            title = Str.get(R.string.ui_customization_2),
             icon = Icons.Default.Palette,
-            description = "主题颜色圆角设置"
+            description = Str.get(R.string.theme_colors_corner_radius_settings)
         ) {
             try {
                 val intent = Intent(context, UIConfigActivity::class.java)
                 context.startActivity(intent)
             } catch (e: Exception) {
-                AppToast.warning(context, "UI个性化功能开发中")
+                AppToast.warning(context, Str.get(R.string.ui_customization_feature_under_devel))
             }
         },
         ManageMenuItem(
             id = "widget_config",
-            title = "小部件配置",
+            title = Str.get(R.string.widget_configuration),
             icon = Icons.Default.Widgets,
-            description = "配置快捷方式和小部件"
+            description = Str.get(R.string.configure_shortcuts_and_widgets)
         ) {
             try {
                 val intent = Intent(context, WidgetConfigActivity::class.java)
                 context.startActivity(intent)
             } catch (e: Exception) {
-                AppToast.warning(context, "小部件配置功能开发中")
+                AppToast.warning(context, Str.get(R.string.widget_config_feature_under_developm))
             }
         },
         ManageMenuItem(
             id = "update",
-            title = "检查更新",
+            title = Str.get(R.string.check_for_updates),
             icon = Icons.Default.Update,
-            description = "检查GitHub最新版本"
+            description = Str.get(R.string.check_latest_github_version)
         ) {
             performCheckUpdate(showNoUpdateToast = true)
         },
         ManageMenuItem(
             id = "github_mirror",
-            title = "GitHub加速",
+            title = Str.get(R.string.github_acceleration),
             icon = Icons.Default.Settings,
-            description = "配置镜像站加速"
+            description = Str.get(R.string.configure_mirror_acceleration)
         ) {
             try {
                 context.startActivity(Intent(context, GitHubMirrorActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, "GitHub加速功能开发中")
+                AppToast.warning(context, Str.get(R.string.github_acceleration_feature_under_de))
             }
         },
         ManageMenuItem(
             id = "developer",
-            title = "开发者选项",
+            title = Str.get(R.string.developer_options),
             icon = Icons.Default.DeveloperMode,
-            description = "签名验证调试设置"
+            description = Str.get(R.string.signature_verification_and_debug_set)
         ) {
             showDeveloperOptions = true
         }
@@ -317,7 +316,7 @@ fun ManageScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UIComponents.TitleText("管理")
+            UIComponents.TitleText(Str.get(R.string.manage))
             UIComponents.IconButton(
                 icon = Icons.Default.Refresh,
                 onClick = { /* 刷新插件列表 */ }
@@ -350,10 +349,10 @@ fun ManageScreen(
     // ==================== 更新对话框 ====================
     if (showUpdateDialog && shouldShowUpdateDialog) {
         UIComponents.ConfirmDialog(
-            title = if (isCheckingUpdate) "检查更新" else "更新信息",
+            title = if (isCheckingUpdate) Str.get(R.string.check_for_updates) else Str.get(R.string.update_info),
             message = updateMessage,
-            confirmText = if (!isCheckingUpdate && downloadTarget != null) "下载更新" else "确定",
-            dismissText = if (!isCheckingUpdate && downloadTarget == null) "关闭" else "取消",
+            confirmText = if (!isCheckingUpdate && downloadTarget != null) Str.get(R.string.download_update) else Str.get(R.string.ok_2),
+            dismissText = if (!isCheckingUpdate && downloadTarget == null) Str.get(R.string.close) else Str.get(R.string.cancel),
             onConfirm = {
                 if (downloadTarget != null) {
                     startDownload(downloadTarget!!)
@@ -394,7 +393,7 @@ fun ManageScreen(
             shape = RoundedCornerShape(20.dp),
             title = {
                 Text(
-                    "开发者选项",
+                    Str.get(R.string.developer_options),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             },
@@ -413,14 +412,14 @@ fun ManageScreen(
                             )
                         )
                         Text(
-                            text = "忽略签名验证（仅开发用）",
+                            text = Str.get(R.string.ignore_signature_verification_dev_on),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "开启后可以安装未签名的插件，但存在安全风险",
+                        text = Str.get(R.string.when_enabled_unsigned_plugins_can_be),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -428,13 +427,13 @@ fun ManageScreen(
             },
             confirmButton = {
                 UIComponents.PrimaryButton(
-                    text = "保存",
+                    text = Str.get(R.string.save),
                     onClick = {
                         PluginManager.setIgnoreSignatureWarning(ignoreSignature)
                         // ✅ 移除 Emoji
                         AppToast.info(
                             context,
-                            if (ignoreSignature) "已忽略签名验证" else "已启用签名验证"
+                            if (ignoreSignature) Str.get(R.string.signature_verification_ignored) else Str.get(R.string.signature_verification_enabled)
                         )
                         showDeveloperOptions = false
                     },
@@ -443,7 +442,7 @@ fun ManageScreen(
             },
             dismissButton = {
                 UIComponents.TextButton(
-                    text = "取消",
+                    text = Str.get(R.string.cancel),
                     onClick = { showDeveloperOptions = false }
                 )
             }

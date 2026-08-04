@@ -1,6 +1,8 @@
 // OnboardingScreen.kt
 package com.UIN.Tool.ui.screen.onboarding
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,18 +46,18 @@ fun OnboardingScreen(
 
     val items = if (isVersionUpdate) {
         listOf(
-            OnboardingItem("版本更新", "UIN Tool 已更新到 v${versionName ?: "4.5.0"}\n\n新功能、优化和修复已就绪！", Icons.Outlined.SystemUpdate),
-            OnboardingItem("插件管理", "• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理", Icons.Outlined.Folder),
-            OnboardingItem("插件开发", "• 可视化插件创建向导\n• 内置代码编辑器\n• 支持原生和Web插件", Icons.Outlined.DeveloperMode),
-            OnboardingItem("开始使用", "现在开始探索 UIN Tool 的新功能吧！", Icons.Outlined.RocketLaunch)
+            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "4.5.0"), Icons.Outlined.SystemUpdate),
+            OnboardingItem(Str.get(R.string.plugin_management), Str.get(R.string.one_tap_import_export_plugins_n_supp), Icons.Outlined.Folder),
+            OnboardingItem(Str.get(R.string.plugin_development), Str.get(R.string.visual_plugin_creation_wizard_n_buil), Icons.Outlined.DeveloperMode),
+            OnboardingItem(Str.get(R.string.get_started), Str.get(R.string.now_explore_the_new_features_of_uin_), Icons.Outlined.RocketLaunch)
         )
     } else {
         listOf(
-            OnboardingItem("欢迎使用 UIN Tool", "UIN Tool 是一个强大的插件化工具平台\n\n支持原生 Java 插件和 Web 插件\n内置 Termux 终端环境", Icons.Outlined.RocketLaunch),
-            OnboardingItem("插件管理", "• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理\n• 备份恢复所有数据", Icons.Outlined.Folder),
-            OnboardingItem("插件开发工具", "• 可视化插件创建向导\n• 内置代码编辑器\n• 支持原生和 Web 插件", Icons.Outlined.DeveloperMode),
-            OnboardingItem("Web 插件支持", "• 使用 HTML/CSS/JS 开发\n• 无需编译，即改即用\n• JS 桥接调用原生功能", Icons.Outlined.Language),
-            OnboardingItem("一切就绪", "现在开始探索 UIN Tool 的更多功能吧！", Icons.Outlined.CheckCircle)
+            OnboardingItem(Str.get(R.string.welcome_to_uin_tool), Str.get(R.string.uin_tool_is_a_powerful_plugin_platfo), Icons.Outlined.RocketLaunch),
+            OnboardingItem(Str.get(R.string.plugin_management), Str.get(R.string.one_tap_import_export_plugins_n_supp_2), Icons.Outlined.Folder),
+            OnboardingItem(Str.get(R.string.plugin_development_tools), Str.get(R.string.visual_plugin_creation_wizard_n_buil_2), Icons.Outlined.DeveloperMode),
+            OnboardingItem(Str.get(R.string.web_plugin_support), Str.get(R.string.develop_with_html_css_js_n_no_compil), Icons.Outlined.Language),
+            OnboardingItem(Str.get(R.string.all_set), Str.get(R.string.now_explore_more_features_of_uin_too), Icons.Outlined.CheckCircle)
         )
     }
 
@@ -73,7 +75,7 @@ fun OnboardingScreen(
         // 跳过按钮
         if (pagerState.currentPage > 0) {
             Text(
-                text = "跳过",
+                text = Str.get(R.string.skip),
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -123,7 +125,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "欢迎使用 UIN Tool",
+                            text = Str.get(R.string.welcome_to_uin_tool),
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = colorScheme.onBackground
@@ -168,7 +170,7 @@ fun OnboardingScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "作者的话",
+                                        text = Str.get(R.string.a_word_from_the_author),
                                         style = MaterialTheme.typography.titleSmall.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF0D47A1)
@@ -177,12 +179,12 @@ fun OnboardingScreen(
                                 }
 
                                 Text(
-                                    text = "一直以来，我都希望能在手机上有一个真正自由的工具平台，\n" +
-                                           "可以按自己的需求随时扩展功能，而不是等开发者更新。\n\n" +
-                                           "UIN Tool 就是我对这个想法的回答，\n" +
-                                           "它只是一个框架，真正的灵魂在于你 —— 每一位使用者。\n\n" +
-                                           "希望你能用它创造出属于你自己的东西，\n" +
-                                           "也欢迎分享你的插件给更多人。\n\n" +
+                                    text = Str.get(R.string.i_have_always_wanted_a_truly_free_to) +
+                                           Str.get(R.string.one_that_can_be_extended_anytime_to_) +
+                                           Str.get(R.string.uin_tool_is_my_answer_to_that_idea_n) +
+                                           Str.get(R.string.it_is_just_a_framework_the_real_soul) +
+                                           Str.get(R.string.i_hope_you_can_create_something_of_y) +
+                                           Str.get(R.string.and_share_your_plugins_with_more_peo) +
                                            "— UIN Team",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = Color(0xFF0D47A1)
@@ -221,7 +223,7 @@ fun OnboardingScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "终端环境提示",
+                                        text = Str.get(R.string.terminal_environment_notice),
                                         style = MaterialTheme.typography.titleSmall.copy(
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFFBF360C)
@@ -230,11 +232,11 @@ fun OnboardingScreen(
                                 }
 
                                 Text(
-                                    text = "⚠️ 首次使用前，请先打开「开发」页面点击「打开终端」，\n" +
-                                           "等待终端环境初始化完成（约 30-60 秒）。\n\n" +
-                                           "⚠️ 由于包名变更，终端内暂时无法使用 pkg 安装软件包，\n" +
-                                           "此问题将在后续版本中修复（可能选择构建部分软件包供下载）。\n\n" +
-                                           "💡 如需安装软件包，请在 Termux 社区反馈。",
+                                    text = Str.get(R.string.before_first_use_open_the_dev_page_a) +
+                                           Str.get(R.string.then_wait_for_the_terminal_environme) +
+                                           Str.get(R.string.due_to_a_package_name_change_pkg_can) +
+                                           Str.get(R.string.this_will_be_fixed_in_a_future_versi) +
+                                           Str.get(R.string.to_install_packages_please_report_it),
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = Color(0xFFBF360C)
                                     ),
@@ -246,7 +248,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "左右滑动浏览功能介绍",
+                            text = Str.get(R.string.swipe_left_right_to_browse_features),
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
@@ -339,7 +341,7 @@ fun OnboardingScreen(
             shape = MaterialTheme.shapes.medium
         ) {
             Text(
-                text = if (pagerState.currentPage == items.size - 1) "开始体验" else "下一步",
+                text = if (pagerState.currentPage == items.size - 1) Str.get(R.string.start_exploring) else Str.get(R.string.next),
                 style = MaterialTheme.typography.titleMedium
             )
         }

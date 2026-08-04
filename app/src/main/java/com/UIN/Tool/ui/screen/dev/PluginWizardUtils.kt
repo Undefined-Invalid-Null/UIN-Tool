@@ -1,12 +1,14 @@
 // ui/screen/dev/PluginWizardUtils.kt
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.FileUtils
 import com.UIN.Tool.utils.TemplateUtils
 import java.io.File
@@ -119,12 +121,12 @@ fun generateReadme(
             "PLUGIN_VERSION" to pluginVersion,
             "PLUGIN_VERSION_NAME" to pluginVersionName,
             "PLUGIN_AUTHOR" to pluginAuthor,
-            "UI_TYPE" to if (uiType == "web") "WebView" else "原生代码"
+            "UI_TYPE" to if (uiType == "web") "WebView" else Str.get(R.string.native_code)
         )
         val readme = TemplateUtils.generateReadme(context, vars)
         File(workDir, "README.md").writeText(readme)
     } catch (e: Exception) {
-        AppLog.e(TAG, "生成README失败", e)
+        AppLog.e(TAG, Str.get(R.string.failed_to_generate_readme), e)
     }
 }
 
@@ -138,18 +140,18 @@ fun validateCurrentStep(
     return when (currentStep) {
         0 -> {
             if (pluginId.isEmpty() || pluginName.isEmpty()) {
-                Toast.makeText(context, "请填写插件ID和名称", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.please_fill_in_the_plugin_id_and_nam), Toast.LENGTH_SHORT).show()
                 return false
             }
             if (!pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                Toast.makeText(context, "插件ID格式不正确，应为域名倒序格式", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.invalid_plugin_id_it_should_be_a_rev), Toast.LENGTH_SHORT).show()
                 return false
             }
             true
         }
         2 -> {
             if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
-                Toast.makeText(context, "主类名必须包含包名", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.the_main_class_name_must_include_the_2), Toast.LENGTH_SHORT).show()
                 return false
             }
             true
@@ -181,13 +183,13 @@ fun handleBinaryFileSelection(
         if (FileUtils.copyUriToFile(context, uri, destFile)) {
             destFile.setExecutable(true)
             onSelected(destFile.absolutePath)
-            AppLog.d(TAG, "二进制文件已保存: ${destFile.absolutePath}")
+            AppLog.d(TAG, Str.get(R.string.binary_file_saved_destfile_absolutep, destFile.absolutePath))
         } else {
-            AppLog.e(TAG, "二进制文件复制失败")
+            AppLog.e(TAG, Str.get(R.string.failed_to_copy_binary_file))
         }
     } catch (e: Exception) {
-        AppLog.e(TAG, "选择二进制文件失败", e)
-        AppToast.error(context, "选择失败: ${e.message}")
+        AppLog.e(TAG, Str.get(R.string.failed_to_select_binary_file), e)
+        AppToast.error(context, Str.get(R.string.selection_failed_e_message, e.message))
     }
 }
 
@@ -199,7 +201,7 @@ fun handleWebProjectImport(
     try {
         val tempFile = File(context.cacheDir, "web_import_${System.currentTimeMillis()}.zip")
         if (!FileUtils.copyUriToFile(context, uri, tempFile)) {
-            AppToast.error(context, "无法读取文件")
+            AppToast.error(context, Str.get(R.string.failed_to_read_file))
             return
         }
 
@@ -226,22 +228,22 @@ fun handleWebProjectImport(
                 }
                 if (files.isNotEmpty()) {
                     onSuccess(files.keys.toList(), files)
-                    AppLog.d(TAG, "Web项目导入成功，${files.size} 个文件")
+                    AppLog.d(TAG, Str.get(R.string.web_project_imported_files_size_file_2, files.size))
                 } else {
-                    AppToast.warning(context, "Web项目为空")
+                    AppToast.warning(context, Str.get(R.string.web_project_is_empty))
                 }
             } else {
-                AppToast.warning(context, "未找到有效的Web项目")
+                AppToast.warning(context, Str.get(R.string.no_valid_web_project_found))
             }
         } else {
-            AppToast.error(context, "解压ZIP文件失败")
+            AppToast.error(context, Str.get(R.string.failed_to_extract_zip_file))
         }
 
         FileUtils.deleteRecursively(extractDir)
         tempFile.delete()
 
     } catch (e: Exception) {
-        AppLog.e(TAG, "导入Web项目失败", e)
-        AppToast.error(context, "导入失败: ${e.message}")
+        AppLog.e(TAG, Str.get(R.string.failed_to_import_web_project), e)
+        AppToast.error(context, Str.get(R.string.import_failed_e_message, e.message))
     }
 }

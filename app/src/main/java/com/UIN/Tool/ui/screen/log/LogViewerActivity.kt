@@ -1,5 +1,5 @@
-// app/src/main/java/com/UIN/Tool/ui/log/LogViewerActivity.kt
-package com.UIN.Tool.ui.log
+// app/src/main/java/com/UIN/Tool/ui/screen/log/LogViewerActivity.kt
+package com.UIN.Tool.ui.screen.log
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

@@ -1,11 +1,13 @@
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import com.UIN.Tool.core.plugin.PluginEventBus
 import com.UIN.Tool.core.plugin.PluginMessage
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -86,7 +88,7 @@ object PluginBackendManager {
         if (isMessageServiceRunning) return
         isMessageServiceRunning = true
         
-        Logger.i(TAG, "📡 后台消息服务已启动")
+        Logger.i(TAG, Str.get(R.string.backend_message_service_started))
         
         val listener = object : PluginEventBus.PluginMessageListener {
             override fun onMessage(message: PluginMessage) {
@@ -104,7 +106,7 @@ object PluginBackendManager {
         
         startCleanupTask()
         
-        Logger.success(TAG, "✅ 后台消息服务已就绪")
+        Logger.success(TAG, Str.get(R.string.backend_message_service_ready))
     }
 
     // ==================== 定时清理任务 ====================
@@ -133,20 +135,20 @@ object PluginBackendManager {
                 }
             }
             if (removed > 0) {
-                Logger.d(TAG, "🧹 清理 $queueKey 队列: 移除 $removed 条过期消息")
+                Logger.d(TAG, Str.get(R.string.cleaning_queuekey_queue_removed_remo, queueKey, removed))
                 totalRemoved += removed
             }
         }
         
         if (totalRemoved > 0) {
-            Logger.d(TAG, "🧹 总计清理 $totalRemoved 条过期消息")
+            Logger.d(TAG, Str.get(R.string.total_cleaned_totalremoved_expired_m, totalRemoved))
         }
     }
 
     // ==================== 消息处理 ====================
     
     private fun handleIncomingMessage(message: PluginMessage) {
-        Logger.d(TAG, "📨 收到消息: ${message.action} from ${message.sender}")
+        Logger.d(TAG, Str.get(R.string.received_message_message_action_from, message.action, message.sender))
         
         when (message.action) {
             "open_plugin" -> {
@@ -183,16 +185,16 @@ object PluginBackendManager {
                 try {
                     listener(message)
                 } catch (e: Exception) {
-                    Logger.e(TAG, "监听器执行异常", e)
+                    Logger.e(TAG, Str.get(R.string.listener_execution_error), e)
                 }
             }
         }
         
-        Logger.d(TAG, "📦 消息已存储，队列大小: ${getTotalQueueSize()}")
+        Logger.d(TAG, Str.get(R.string.message_stored_queue_size_gettotalqu, getTotalQueueSize()))
     }
 
     private fun handleEvent(eventType: String, data: Map<String, Any>?) {
-        Logger.d(TAG, "📡 收到事件: $eventType")
+        Logger.d(TAG, Str.get(R.string.received_event_eventtype, eventType))
         
         when (eventType) {
             "open_plugin" -> {
@@ -209,7 +211,7 @@ object PluginBackendManager {
     private fun handleOpenPluginCommand(message: PluginMessage) {
         val pluginId = message.data?.get("pluginId") as? String
         if (pluginId != null) {
-            Logger.i(TAG, "🔓 后台命令: 打开插件 $pluginId")
+            Logger.i(TAG, Str.get(R.string.backend_command_open_plugin_pluginid, pluginId))
             openPlugin(pluginId)
             
             PluginEventBus.sendToPlugin(
@@ -218,7 +220,7 @@ object PluginBackendManager {
                 mapOf(
                     "success" to true,
                     "pluginId" to pluginId,
-                    "message" to "已打开插件 $pluginId"
+                    "message" to Str.get(R.string.opened_plugin_pluginid, pluginId)
                 )
             )
         } else {
@@ -227,7 +229,7 @@ object PluginBackendManager {
                 "open_plugin_response",
                 mapOf(
                     "success" to false,
-                    "error" to "缺少 pluginId"
+                    "error" to Str.get(R.string.missing_pluginid)
                 )
             )
         }
@@ -239,7 +241,7 @@ object PluginBackendManager {
         val params = message.data?.get("params") as? Map<String, Any>
         
         if (targetPluginId != null && method != null) {
-            Logger.i(TAG, "📞 后台命令: 调用 $targetPluginId.$method")
+            Logger.i(TAG, Str.get(R.string.backend_command_call_targetpluginid_, targetPluginId, method))
             
             val result = callPluginMethod(targetPluginId, method, params)
             
@@ -259,7 +261,7 @@ object PluginBackendManager {
                 "call_plugin_response",
                 mapOf(
                     "success" to false,
-                    "error" to "缺少 targetPlugin 或 method"
+                    "error" to Str.get(R.string.missing_targetplugin_or_method)
                 )
             )
         }
@@ -289,9 +291,9 @@ object PluginBackendManager {
         try {
             val pluginManager = PluginManager.getInstance(context)
             pluginManager.openPlugin(pluginId, context)
-            Logger.success(TAG, "✅ 已打开插件: $pluginId")
+            Logger.success(TAG, Str.get(R.string.opened_plugin_pluginid_2, pluginId))
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ 打开插件失败: $pluginId", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_open_plugin_pluginid, pluginId), e)
         }
     }
 
@@ -300,7 +302,7 @@ object PluginBackendManager {
             val pluginManager = PluginManager.getInstance(context)
             val instance = pluginManager.getPluginInstance(pluginId)
             if (instance == null) {
-                Logger.w(TAG, "插件实例不存在: $pluginId")
+                Logger.w(TAG, Str.get(R.string.plugin_instance_not_found_pluginid, pluginId))
                 return null
             }
             
@@ -319,11 +321,11 @@ object PluginBackendManager {
             }
             
             instance.onHostEvent("plugin_call_$method", bundle)
-            Logger.d(TAG, "📞 调用 $pluginId.$method 已发送")
+            Logger.d(TAG, Str.get(R.string.call_pluginid_method_sent, pluginId, method))
             "success"
             
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ 调用插件方法失败: $pluginId.$method", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_call_plugin_method_plugini, pluginId, method), e)
             null
         }
     }
@@ -344,7 +346,7 @@ object PluginBackendManager {
 
     fun clearMessages(pluginId: String) {
         messageQueues[pluginId]?.clear()
-        Logger.d(TAG, "🗑️ 已清空消息: $pluginId")
+        Logger.d(TAG, Str.get(R.string.messages_cleared_pluginid, pluginId))
     }
 
     fun getTotalQueueSize(): Int {
@@ -355,7 +357,7 @@ object PluginBackendManager {
 
     fun registerMessageListener(pluginId: String, listener: (PluginMessage) -> Unit) {
         messageListeners.computeIfAbsent(pluginId) { mutableListOf() }.add(listener)
-        Logger.d(TAG, "📡 注册监听器: $pluginId")
+        Logger.d(TAG, Str.get(R.string.registering_listener_pluginid, pluginId))
     }
 
     fun unregisterMessageListener(pluginId: String, listener: (PluginMessage) -> Unit) {
@@ -371,7 +373,7 @@ object PluginBackendManager {
             data = data
         )
         PluginEventBus.postMessage(message)
-        Logger.d(TAG, "📤 发送消息到 $targetPlugin: $action")
+        Logger.d(TAG, Str.get(R.string.sending_message_to_targetplugin_acti, targetPlugin, action))
     }
 
     fun broadcastToAll(action: String, data: Map<String, Any>? = null) {
@@ -383,7 +385,7 @@ object PluginBackendManager {
             data = data
         )
         PluginEventBus.postMessage(message)
-        Logger.d(TAG, "📢 广播消息: $action")
+        Logger.d(TAG, Str.get(R.string.broadcasting_message_action, action))
     }
 
     // ==================== 清理 ====================
@@ -401,7 +403,7 @@ object PluginBackendManager {
         isMessageServiceRunning = false
         messageQueues.clear()
         messageListeners.clear()
-        Logger.i(TAG, "⏹️ 后台消息服务已停止")
+        Logger.i(TAG, Str.get(R.string.backend_message_service_stopped))
     }
 
     // ==================== 核心后端管理方法 ====================
@@ -424,30 +426,30 @@ object PluginBackendManager {
 
     fun startBackend(context: Context, info: PluginInfo): Boolean {
         Logger.d(TAG, "========================================")
-        Logger.d(TAG, "🔍 PluginBackendManager.startBackend() 被调用")
+        Logger.d(TAG, Str.get(R.string.pluginbackendmanager_startbackend_ca))
         Logger.d(TAG, "📦 pluginId: ${info.pluginId}")
         Logger.d(TAG, "🐍 backend: ${info.backend}")
         Logger.d(TAG, "📄 backendEntry: ${info.backendEntry}")
         Logger.d(TAG, "🔌 backendPort: ${info.backendPort}")
-        Logger.d(TAG, "⏰ 时间: ${System.currentTimeMillis()}")
+        Logger.d(TAG, Str.get(R.string.time_system_currenttimemillis, System.currentTimeMillis()))
         
         // 确保消息服务已启动
         if (!isMessageServiceRunning) {
-            Logger.d(TAG, "📡 消息服务未运行，初始化...")
+            Logger.d(TAG, Str.get(R.string.message_service_not_running_initiali))
             init(context)
         }
 
         if (!info.hasBackend()) {
-            Logger.w(TAG, "❌ 插件 ${info.pluginId} 没有配置后端")
+            Logger.w(TAG, Str.get(R.string.plugin_info_pluginid_has_no_backend_, info.pluginId))
             return false
         }
 
         val pluginId = info.pluginId
         synchronized(processLocks.getOrPut(pluginId) { Any() }) {
-            Logger.d(TAG, "🔒 获取锁成功")
+            Logger.d(TAG, Str.get(R.string.lock_acquired))
             
             if (isRunning(pluginId)) {
-                Logger.d(TAG, "✅ 后端已在运行: $pluginId")
+                Logger.d(TAG, Str.get(R.string.backend_already_running_pluginid, pluginId))
                 return true
             }
 
@@ -457,27 +459,27 @@ object PluginBackendManager {
             }
 
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
-            Logger.d(TAG, "📂 插件目录: ${pluginDir.absolutePath}")
-            Logger.d(TAG, "📂 目录是否存在: ${pluginDir.exists()}")
+            Logger.d(TAG, Str.get(R.string.plugin_dir_plugindir_absolutepath, pluginDir.absolutePath))
+            Logger.d(TAG, Str.get(R.string.dir_exists_plugindir_exists, pluginDir.exists()))
             
             if (!pluginDir.exists()) {
-                Logger.e(TAG, "❌ 插件目录不存在: ${pluginDir.absolutePath}")
+                Logger.e(TAG, Str.get(R.string.plugin_dir_not_found_plugindir_absol, pluginDir.absolutePath))
                 return false
             }
 
             val entryPath = info.getBackendEntryPath(pluginDir.absolutePath)
             val entryFile = File(entryPath)
-            Logger.d(TAG, "📄 入口路径: $entryPath")
-            Logger.d(TAG, "📄 文件是否存在: ${entryFile.exists()}")
+            Logger.d(TAG, Str.get(R.string.entry_path_entrypath, entryPath))
+            Logger.d(TAG, Str.get(R.string.file_exists_entryfile_exists, entryFile.exists()))
 
             if (!entryFile.exists() && info.backend.lowercase() != "php") {
-                Logger.e(TAG, "❌ 后端入口文件不存在: $entryPath")
+                Logger.e(TAG, Str.get(R.string.backend_entry_file_not_found_entrypa, entryPath))
                 return false
             }
 
             val port = if (info.backendPort > 0) info.backendPort else findAvailablePort()
             runningPorts[pluginId] = port
-            Logger.d(TAG, "🔌 分配端口: $port")
+            Logger.d(TAG, Str.get(R.string.allocating_port_port, port))
 
             val command: List<String>
             val workDir: File
@@ -490,13 +492,13 @@ object PluginBackendManager {
                 workDir = pluginDir
             } else {
                 val interpreter = getPythonPath(context)
-                Logger.d(TAG, "🔧 使用 Python: $interpreter")
-                Logger.d(TAG, "🔧 是否存在: ${File(interpreter).exists()}")
+                Logger.d(TAG, Str.get(R.string.using_python_interpreter, interpreter))
+                Logger.d(TAG, Str.get(R.string.exists_file_interpreter_exists, File(interpreter).exists()))
                 command = listOf(interpreter, entryFile.absolutePath)
                 workDir = entryFile.parentFile ?: pluginDir
             }
-            Logger.d(TAG, "📝 执行命令: ${command.joinToString(" ")}")
-            Logger.d(TAG, "📂 工作目录: ${workDir.absolutePath}")
+            Logger.d(TAG, Str.get(R.string.executing_command, command.joinToString(" ")))
+            Logger.d(TAG, Str.get(R.string.work_dir_workdir_absolutepath, workDir.absolutePath))
 
             try {
                 val processBuilder = ProcessBuilder(command)
@@ -541,15 +543,15 @@ object PluginBackendManager {
 
                 Logger.d(TAG, "🔧 PATH: ${env["PATH"]}")
                 if (info.useProotRuntime()) {
-                    Logger.d(TAG, "🔧 proot 环境: PREFIX=${env["PREFIX"]} TERMUX__PREFIX=${env["TERMUX__PREFIX"]} TERMUX_APP__PACKAGE_NAME=${env["TERMUX_APP__PACKAGE_NAME"]} HOME=${env["HOME"]} TMPDIR=${env["TMPDIR"]}")
+                    Logger.d(TAG, Str.get(R.string.proot_env_prefix, env["PREFIX"], env["TERMUX__PREFIX"], env["TERMUX_APP__PACKAGE_NAME"], env["HOME"], env["TMPDIR"]))
                 }
 
-                Logger.i(TAG, "🚀 启动进程...")
+                Logger.i(TAG, Str.get(R.string.starting_process))
                 val process = processBuilder.start()
                 runningProcesses[pluginId] = process
                 startTimes[pluginId] = System.currentTimeMillis()
                 processPids[pluginId] = getProcessPid(process)
-                Logger.d(TAG, "✅ 进程已启动, pid: ${processPids[pluginId]}")
+                Logger.d(TAG, Str.get(R.string.process_started_pid_processpids_plug, processPids[pluginId]))
 
                 monitorOutput(pluginId, process, info.useProotRuntime())
 
@@ -560,19 +562,19 @@ object PluginBackendManager {
                 } else {
                     minOf(info.backendTimeout, 30)
                 }
-                Logger.d(TAG, "⏳ 开始健康检查，超时: ${readyTimeout}s")
-                Logger.d(TAG, "📡 健康检查地址: http://127.0.0.1:$port${info.backendHealthCheck}")
+                Logger.d(TAG, Str.get(R.string.starting_health_check_timeout_readyt, readyTimeout))
+                Logger.d(TAG, Str.get(R.string.backend_health_check_url, "http://127.0.0.1:$port${info.backendHealthCheck}"))
                 val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
 
                 if (ready) {
-                    Logger.success(TAG, "✅ 后端启动成功: $pluginId (端口 $port)")
+                    Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, pluginId, port))
                     return true
                 } else {
                     if (process.isAlive) {
-                        Logger.w(TAG, "⚠️ 后端进程运行中但健康检查超时，继续使用")
+                        Logger.w(TAG, Str.get(R.string.backend_running_but_health_check_tim))
                         return true
                     } else {
-                        Logger.e(TAG, "❌ 后端进程已退出")
+                        Logger.e(TAG, Str.get(R.string.backend_process_exited))
                         process.destroy()
                         runningProcesses.remove(pluginId)
                         runningPorts.remove(pluginId)
@@ -581,7 +583,7 @@ object PluginBackendManager {
                 }
 
             } catch (e: Exception) {
-                Logger.e(TAG, "❌ 启动后端异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.backend_start_error_e_message, e.message), e)
                 runningProcesses.remove(pluginId)
                 runningPorts.remove(pluginId)
                 return false
@@ -600,7 +602,7 @@ object PluginBackendManager {
             runningPorts.remove(pluginId)
             startTimes.remove(pluginId)
             processPids.remove(pluginId)
-            Logger.i(TAG, "🛑 停止后端: $pluginId")
+            Logger.i(TAG, Str.get(R.string.stopping_backend_pluginid, pluginId))
         }
     }
 
@@ -616,13 +618,13 @@ object PluginBackendManager {
         callback: (Boolean, String?) -> Unit
     ) {
         if (!isRunning(pluginId)) {
-            callback(false, "后端未运行")
+            callback(false, Str.get(R.string.backend_not_running))
             return
         }
 
         val port = runningPorts[pluginId] ?: 0
         if (port == 0) {
-            callback(false, "端口无效")
+            callback(false, Str.get(R.string.invalid_port))
             return
         }
 
@@ -657,7 +659,7 @@ object PluginBackendManager {
                     callback(false, "HTTP ${response.code}: $responseBody")
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "调用API失败: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.api_call_failed_e_message, e.message), e)
                 callback(false, e.message)
             }
         }.start()
@@ -694,7 +696,7 @@ object PluginBackendManager {
         for (path in termuxPythonPaths) {
             val file = File(path)
             if (file.exists()) {
-                Logger.d(TAG, "✅ 找到 Python: $path")
+                Logger.d(TAG, Str.get(R.string.found_python_path, path))
                 return path
             }
         }
@@ -707,7 +709,7 @@ object PluginBackendManager {
             if (result.isNotEmpty()) {
                 val file = File(result)
                 if (file.exists()) {
-                    Logger.d(TAG, "✅ 通过 which 找到: $result")
+                    Logger.d(TAG, Str.get(R.string.found_via_which_result, result))
                     return result
                 }
             }
@@ -721,13 +723,13 @@ object PluginBackendManager {
             if (result.isNotEmpty()) {
                 val file = File(result)
                 if (file.exists()) {
-                    Logger.d(TAG, "✅ 通过 which python3 找到: $result")
+                    Logger.d(TAG, Str.get(R.string.found_via_which_python3_result, result))
                     return result
                 }
             }
         } catch (_: Exception) { }
 
-        Logger.w(TAG, "⚠️ 未找到 Python，使用默认: python")
+        Logger.w(TAG, Str.get(R.string.python_not_found_using_default_pytho))
         return "python"
     }
 
@@ -755,9 +757,9 @@ object PluginBackendManager {
         Thread {
             try {
                 val exitCode = process.waitFor()
-                Logger.d("Backend[$pluginId]", "进程结束，退出码: $exitCode")
+                Logger.d("Backend[$pluginId]", Str.get(R.string.process_exited_code_exitcode, exitCode))
                 val duration = System.currentTimeMillis() - (startTimes[pluginId] ?: System.currentTimeMillis())
-                Logger.d("Backend[$pluginId]", "运行时长: ${duration}ms")
+                Logger.d("Backend[$pluginId]", Str.get(R.string.runtime_duration_ms, duration))
                 runningProcesses.remove(pluginId)
                 runningPorts.remove(pluginId)
                 startTimes.remove(pluginId)
@@ -772,25 +774,25 @@ object PluginBackendManager {
      */
     private fun startOtherBackend(info: PluginInfo): Boolean {
         val pluginId = info.pluginId
-        Logger.i(TAG, "🔌 other 模式后端：不自动启动进程，等待 pre-command 启动 $pluginId")
+        Logger.i(TAG, Str.get(R.string.other_mode_not_auto_starting_waiting, pluginId))
 
         if (info.backendPort > 0) {
             runningPorts[pluginId] = info.backendPort
             // other 模式 pre-command 可能需等待容器启动，超时放宽到 90s+
             val readyTimeout = maxOf(info.backendTimeout, 90)
-            Logger.d(TAG, "⏳ other 模式轮询端口: ${info.backendPort}, 超时: ${readyTimeout}s")
+            Logger.d(TAG, Str.get(R.string.other_mode_polling_port_info_backend, info.backendPort, readyTimeout))
             val ready = waitForPortOpen(info.backendPort, readyTimeout)
             if (ready) {
-                Logger.success(TAG, "✅ other 模式后端就绪: $pluginId (端口 ${info.backendPort})")
+                Logger.success(TAG, Str.get(R.string.other_mode_backend_ready_pluginid_po, pluginId, info.backendPort))
                 return true
             } else {
-                Logger.w(TAG, "⚠️ other 模式端口未就绪: $pluginId")
+                Logger.w(TAG, Str.get(R.string.other_mode_port_not_ready_pluginid, pluginId))
                 return false
             }
         } else {
             // 无端口插件：pre-command 进程会话存活即运行中
             runningPorts[pluginId] = 0
-            Logger.success(TAG, "✅ other 模式无端口后端已标记运行: $pluginId")
+            Logger.success(TAG, Str.get(R.string.other_mode_port_less_backend_marked_, pluginId))
             return true
         }
     }
@@ -865,7 +867,7 @@ object PluginBackendManager {
         val marker = if (info.useProotRuntime()) "/plugins/${info.pluginId}" else pluginDir.absolutePath
         val lingering = findPidsByCmdline(marker).filter { it != android.os.Process.myPid() }
         if (lingering.isEmpty()) return
-        Logger.w(TAG, "⚠️ 端口 $port 被残留后端占用 (pid: $lingering)，清理后重启")
+        Logger.w(TAG, Str.get(R.string.port_port_held_by_lingering_backend_, port, lingering))
         lingering.forEach { pid ->
             try {
                 android.system.Os.kill(pid, android.system.OsConstants.SIGKILL)
@@ -919,7 +921,7 @@ object PluginBackendManager {
         try {
             // 向整个进程组发送 SIGKILL（负数 pid 表示进程组）
             android.system.Os.kill(-pid, android.system.OsConstants.SIGKILL)
-            Logger.d(TAG, "🛑 已向进程组 $pid 发送 SIGKILL")
+            Logger.d(TAG, Str.get(R.string.sigkill_sent_to_process_group_pid, pid))
         } catch (_: Exception) {
             // 进程组不存在时直接杀单个进程
             try {
@@ -933,7 +935,7 @@ object PluginBackendManager {
         val startTime = System.currentTimeMillis()
         val timeoutMs = timeout * 1000L
 
-        Logger.d(TAG, "⏳ 等待服务就绪: http://127.0.0.1:$port$healthPath (超时: ${timeout}s)")
+        Logger.d(TAG, Str.get(R.string.backend_waiting_for_ready, "http://127.0.0.1:$port$healthPath", timeout))
 
         var attempts = 0
         var lastError = ""
@@ -959,14 +961,14 @@ object PluginBackendManager {
                 val response = httpClient.newCall(request).execute()
                 if (response.isSuccessful) {
                     response.close()
-                    Logger.d(TAG, "✅ 健康检查成功 (尝试 $attempts 次)")
+                    Logger.d(TAG, Str.get(R.string.health_check_passed_after_attempts_a, attempts))
                     return true
                 }
                 response.close()
             } catch (e: Exception) {
                 lastError = e.message ?: "unknown"
                 if (attempts % 5 == 0) {
-                    Logger.d(TAG, "📡 健康检查 $attempts 次: $lastError")
+                    Logger.d(TAG, Str.get(R.string.health_check_attempts_attempt_s_last, attempts, lastError))
                 }
             }
 
@@ -977,7 +979,7 @@ object PluginBackendManager {
             }
         }
 
-        Logger.w(TAG, "❌ 健康检查超时 (尝试 $attempts 次): $lastError")
+        Logger.w(TAG, Str.get(R.string.health_check_timed_out_after_attempt, attempts, lastError))
         return false
     }
 
@@ -998,10 +1000,10 @@ object PluginBackendManager {
     private fun waitForPortOpen(port: Int, timeout: Int): Boolean {
         val startTime = System.currentTimeMillis()
         val timeoutMs = timeout * 1000L
-        Logger.d(TAG, "⏳ 等待端口监听: 127.0.0.1:$port (超时: ${timeout}s)")
+        Logger.d(TAG, Str.get(R.string.waiting_for_port_listen_127_0_0_1_po, port, timeout))
         while (System.currentTimeMillis() - startTime < timeoutMs) {
             if (isPortOpen(port)) {
-                Logger.success(TAG, "✅ 端口 $port 已监听")
+                Logger.success(TAG, Str.get(R.string.port_port_is_listening, port))
                 return true
             }
             try {
@@ -1010,7 +1012,7 @@ object PluginBackendManager {
                 return false
             }
         }
-        Logger.w(TAG, "❌ 端口 $port 监听超时")
+        Logger.w(TAG, Str.get(R.string.port_port_listen_timed_out, port))
         return false
     }
 }

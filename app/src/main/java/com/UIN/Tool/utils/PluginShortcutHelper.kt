@@ -13,6 +13,7 @@ import android.os.Build
 import android.widget.Toast
 import com.UIN.Tool.MainActivity
 import com.UIN.Tool.R
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginManager
@@ -28,7 +29,7 @@ object PluginShortcutHelper {
      */
     fun createShortcut(context: Context, plugin: PluginInfo) {
         if (!isShortcutSupported(context)) {
-            Toast.makeText(context, "当前设备不支持创建快捷方式", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, Str.get(R.string.this_device_does_not_support_shortcu), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -55,7 +56,7 @@ object PluginShortcutHelper {
         val existingShortcuts = shortcutManager.pinnedShortcuts
         for (info in existingShortcuts) {
             if (info.id == "plugin_${plugin.pluginId}") {
-                Toast.makeText(context, "快捷方式已存在", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.shortcut_already_exists), Toast.LENGTH_SHORT).show()
                 return
             }
         }
@@ -70,7 +71,7 @@ object PluginShortcutHelper {
 
         val icon = getPluginIcon(context, plugin)
         if (icon == null) {
-            Toast.makeText(context, "无法获取插件图标", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, Str.get(R.string.could_not_get_plugin_icon), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -83,7 +84,7 @@ object PluginShortcutHelper {
 
         val success = shortcutManager.requestPinShortcut(shortcut, null)
         if (success) {
-            Toast.makeText(context, "快捷方式已创建", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, Str.get(R.string.shortcut_created), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -113,7 +114,7 @@ object PluginShortcutHelper {
         }
 
         context.sendBroadcast(addIntent)
-        Toast.makeText(context, "快捷方式已创建", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, Str.get(R.string.shortcut_created), Toast.LENGTH_SHORT).show()
     }
 
     @SuppressLint("NewApi")
@@ -139,7 +140,7 @@ object PluginShortcutHelper {
                 } else null
             } else null
         } catch (e: Exception) {
-            Logger.e(TAG, "获取插件图标失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_get_plugin_icon), e)
             null
         }
     }
@@ -150,7 +151,7 @@ object PluginShortcutHelper {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val shortcutManager = context.getSystemService(ShortcutManager::class.java)
                 shortcutManager?.removeDynamicShortcuts(listOf("plugin_${plugin.pluginId}"))
-                Toast.makeText(context, "快捷方式已移除", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.shortcut_removed), Toast.LENGTH_SHORT).show()
             } else {
                 val removeIntent = Intent().apply {
                     putExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent(context, MainActivity::class.java))
@@ -158,11 +159,11 @@ object PluginShortcutHelper {
                     action = "com.android.launcher.action.UNINSTALL_SHORTCUT"
                 }
                 context.sendBroadcast(removeIntent)
-                Toast.makeText(context, "快捷方式已移除", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.shortcut_removed), Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "移除快捷方式失败", e)
-            Toast.makeText(context, "移除快捷方式失败", Toast.LENGTH_SHORT).show()
+            Logger.e(TAG, Str.get(R.string.failed_to_remove_shortcut), e)
+            Toast.makeText(context, Str.get(R.string.failed_to_remove_shortcut), Toast.LENGTH_SHORT).show()
         }
     }
 

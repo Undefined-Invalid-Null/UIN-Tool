@@ -1,5 +1,7 @@
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
@@ -8,7 +10,7 @@ import android.content.res.Resources
 import android.os.StatFs
 import android.view.LayoutInflater
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -84,7 +86,7 @@ class PluginContext(
             val oldData = oldPrefs.all
 
             if (oldData.isNotEmpty()) {
-                Logger.i(TAG, "迁移旧数据: ${oldData.size} 条 (插件: $pluginId)")
+                Logger.i(TAG, Str.get(R.string.migrating_old_data_olddata_size_item, oldData.size, pluginId))
                 oldData.forEach { (key, value) ->
                     when (value) {
                         is String -> putString(key, value)
@@ -96,11 +98,11 @@ class PluginContext(
                     }
                 }
                 oldPrefs.edit().clear().apply()
-                Logger.success(TAG, "迁移完成: ${oldData.size} 条记录")
+                Logger.success(TAG, Str.get(R.string.migration_complete_olddata_size_reco, oldData.size))
             }
             isMigrated = true
         } catch (e: Exception) {
-            Logger.e(TAG, "迁移旧数据失败", e)
+            Logger.e(TAG, Str.get(R.string.old_data_migration_failed), e)
             isMigrated = true
         }
     }
@@ -173,7 +175,7 @@ class PluginContext(
         return try {
             if (str.isNotEmpty()) JSONObject(str) else null
         } catch (e: Exception) {
-            Logger.e(TAG, "解析JSON失败: $key", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_parse_json_key, key), e)
             null
         }
     }
@@ -184,7 +186,7 @@ class PluginContext(
 
     fun clearAll() {
         lock.write { prefs.edit().clear().apply() }
-        Logger.d(TAG, "清除所有KV数据")
+        Logger.d(TAG, Str.get(R.string.clearing_all_kv_data))
     }
 
     fun contains(key: String): Boolean = lock.read { prefs.contains(key) }
@@ -202,7 +204,7 @@ class PluginContext(
 
     private fun getSafeFile(fileName: String): File? {
         if (fileName.contains("..") || fileName.contains("/../") || fileName.startsWith("/")) {
-            Logger.w(TAG, "非法的文件路径: $fileName")
+            Logger.w(TAG, Str.get(R.string.invalid_file_path_filename_2, fileName))
             return null
         }
 
@@ -213,11 +215,11 @@ class PluginContext(
             if (file.canonicalPath.startsWith(baseDir.canonicalPath)) {
                 file
             } else {
-                Logger.w(TAG, "路径逃逸: ${file.canonicalPath}")
+                Logger.w(TAG, Str.get(R.string.path_escape_file_canonicalpath, file.canonicalPath))
                 null
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "路径解析失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.path_resolution_failed_e_message, e.message))
             null
         }
     }
@@ -240,16 +242,16 @@ class PluginContext(
         synchronized(fileLock) {
             val file = getSafeFile(fileName) ?: return false
             if (!hasEnoughSpace(content.length.toLong())) {
-                Logger.e(TAG, "磁盘空间不足")
+                Logger.e(TAG, Str.get(R.string.insufficient_disk_space))
                 return false
             }
             return try {
                 file.parentFile?.mkdirs()
                 file.writeText(content)
-                Logger.d(TAG, "写入文件: $fileName, ${content.length} chars")
+                Logger.d(TAG, Str.get(R.string.writing_file_filename_content_length, fileName, content.length))
                 true
             } catch (e: Exception) {
-                Logger.e(TAG, "写入文件失败: $fileName", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_write_file_filename, fileName), e)
                 false
             }
         }
@@ -259,16 +261,16 @@ class PluginContext(
         synchronized(fileLock) {
             val file = getSafeFile(fileName) ?: return false
             if (!hasEnoughSpace(data.size.toLong())) {
-                Logger.e(TAG, "磁盘空间不足")
+                Logger.e(TAG, Str.get(R.string.insufficient_disk_space))
                 return false
             }
             return try {
                 file.parentFile?.mkdirs()
                 file.writeBytes(data)
-                Logger.d(TAG, "写入文件: $fileName, ${data.size} bytes")
+                Logger.d(TAG, Str.get(R.string.writing_file_filename_data_size_byte, fileName, data.size))
                 true
             } catch (e: Exception) {
-                Logger.e(TAG, "写入文件失败: $fileName", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_write_file_filename, fileName), e)
                 false
             }
         }
@@ -281,11 +283,11 @@ class PluginContext(
                 if (file.exists()) {
                     file.readText()
                 } else {
-                    Logger.w(TAG, "文件不存在: $fileName")
+                    Logger.w(TAG, Str.get(R.string.file_not_found_filename, fileName))
                     null
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "读取文件失败: $fileName", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_read_file_filename, fileName), e)
                 null
             }
         }
@@ -301,7 +303,7 @@ class PluginContext(
                     null
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "读取文件失败: $fileName", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_read_file_filename, fileName), e)
                 null
             }
         }
@@ -317,7 +319,7 @@ class PluginContext(
                     true
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "删除文件失败: $fileName", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_delete_file_filename, fileName), e)
                 false
             }
         }
@@ -335,7 +337,7 @@ class PluginContext(
             return try {
                 getPluginDataDir().listFiles()?.map { it.name }?.sorted() ?: emptyList()
             } catch (e: Exception) {
-                Logger.e(TAG, "列出文件失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_list_files), e)
                 emptyList()
             }
         }
@@ -356,9 +358,9 @@ class PluginContext(
         try {
             getPluginCacheDir().deleteRecursively()
             getPluginCacheDir().mkdirs()
-            Logger.d(TAG, "缓存已清理")
+            Logger.d(TAG, Str.get(R.string.cache_cleared))
         } catch (e: Exception) {
-            Logger.e(TAG, "清理缓存失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_clear_cache), e)
         }
     }
 
@@ -367,9 +369,9 @@ class PluginContext(
             clearAll()
             getPluginDataDir().deleteRecursively()
             getPluginCacheDir().deleteRecursively()
-            Logger.d(TAG, "所有数据已删除")
+            Logger.d(TAG, Str.get(R.string.all_data_deleted))
         } catch (e: Exception) {
-            Logger.e(TAG, "删除数据失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_delete_data), e)
         }
     }
 
@@ -428,7 +430,7 @@ class PluginContext(
     fun setPermissionState(state: Int) {
         putInt("permission_state", state)
         putLong("permission_state_timestamp", System.currentTimeMillis())
-        Logger.d(TAG, "权限状态已更新: $state (插件: ${getPluginId()})")
+        Logger.d(TAG, Str.get(R.string.permission_state_updated_state_plugi, state, getPluginId()))
     }
 
     fun shouldShowPermissionDialog(): Boolean {
@@ -437,40 +439,40 @@ class PluginContext(
 
     fun getPermissionStateDescription(): String {
         return when (getPermissionState()) {
-            0 -> "未授权"
-            1 -> "已授权"
-            2 -> "已拒绝"
-            else -> "未知"
+            0 -> Str.get(R.string.not_granted)
+            1 -> Str.get(R.string.granted)
+            2 -> Str.get(R.string.denied)
+            else -> Str.get(R.string.unknown)
         }
     }
 
     fun clearPermissionState() {
         remove("permission_state")
         remove("permission_state_timestamp")
-        Logger.d(TAG, "权限状态已清除 (插件: ${getPluginId()})")
+        Logger.d(TAG, Str.get(R.string.permission_state_cleared_plugin_getp, getPluginId()))
     }
 
     // ==================== 兼容旧方法 ====================
 
-    @Deprecated("使用 getPluginDataDir()", ReplaceWith("getPluginDataDir()"))
+    @Deprecated("Use getPluginDataDir()", ReplaceWith("getPluginDataDir()"))
     override fun getDataDir(): File = getPluginDataDir()
 
-    @Deprecated("使用 getPluginCacheDir()", ReplaceWith("getPluginCacheDir()"))
+    @Deprecated("Use getPluginCacheDir()", ReplaceWith("getPluginCacheDir()"))
     override fun getCacheDir(): File = getPluginCacheDir()
 
-    @Deprecated("使用 deletePluginFile()", ReplaceWith("deletePluginFile(fileName)"))
+    @Deprecated("Use deletePluginFile()", ReplaceWith("deletePluginFile(fileName)"))
     override fun deleteFile(fileName: String): Boolean = deletePluginFile(fileName)
 
-    @Deprecated("使用 listPluginFiles()", ReplaceWith("listPluginFiles()"))
+    @Deprecated("Use listPluginFiles()", ReplaceWith("listPluginFiles()"))
     fun listFiles(): List<String> = listPluginFiles()
 
-    @Deprecated("使用 getPluginFileSize()", ReplaceWith("getPluginFileSize(fileName)"))
+    @Deprecated("Use getPluginFileSize()", ReplaceWith("getPluginFileSize(fileName)"))
     fun getFileSize(fileName: String): Long = getPluginFileSize(fileName)
 
-    @Deprecated("使用 clearPluginCache()", ReplaceWith("clearPluginCache()"))
+    @Deprecated("Use clearPluginCache()", ReplaceWith("clearPluginCache()"))
     fun clearCache() = clearPluginCache()
 
-    @Deprecated("使用 deleteAllPluginData()", ReplaceWith("deleteAllPluginData()"))
+    @Deprecated("Use deleteAllPluginData()", ReplaceWith("deleteAllPluginData()"))
     fun deleteAllData() = deleteAllPluginData()
 
     // ==================== 覆盖 Context 方法 ====================

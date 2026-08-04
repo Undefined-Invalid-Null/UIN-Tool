@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/utils/UIConfig.kt
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import android.content.Context
 import android.graphics.Color
 import com.UIN.Tool.log.Logger
@@ -25,12 +26,12 @@ object UIConfig {
         this.context = context.applicationContext
         loadConfig()
         isInitialized = true
-        Logger.i(TAG, "UIConfig初始化完成")
+        Logger.i(TAG, Str.get(R.string.uiconfig_initialized))
     }
     
     fun getInstance(): UIConfig {
         if (!isInitialized) {
-            throw IllegalStateException("UIConfig未初始化，请先调用init()")
+            throw IllegalStateException(Str.get(R.string.uiconfig_not_initialized_call_init_f))
         }
         return this
     }
@@ -43,7 +44,7 @@ object UIConfig {
             try {
                 config = JSONObject(configJson)
             } catch (e: Exception) {
-                Logger.e(TAG, "解析配置失败，使用默认配置", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_parse_config_using_default), e)
                 config = getDefaultConfig()
             }
         } else {
@@ -61,7 +62,7 @@ object UIConfig {
             putBoolean(KEY_USE_ICON_TINT, useIconTint)
             putString(KEY_CURRENT_THEME, currentTheme)
         }.apply()
-        Logger.d(TAG, "配置已保存")
+        Logger.d(TAG, Str.get(R.string.config_saved))
     }
     
     fun getConfig(): JSONObject = config
@@ -143,7 +144,7 @@ object UIConfig {
                 Color.parseColor("#FFFFFFFF")
             }
         } catch (e: Exception) {
-            Logger.w(TAG, "颜色解析失败: $key, 使用默认颜色")
+            Logger.w(TAG, Str.get(R.string.color_parse_failed_key_using_default, key))
             Color.parseColor("#FFFFFFFF")
         }
     }
@@ -160,10 +161,10 @@ object UIConfig {
             if (theme != null) {
                 theme.put(key, value)
                 saveConfig()
-                Logger.d(TAG, "更新颜色: $key = $value")
+                Logger.d(TAG, Str.get(R.string.updated_color_key_value, key, value))
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "更新颜色失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_update_color), e)
         }
     }
     
@@ -178,10 +179,10 @@ object UIConfig {
             if (shape != null) {
                 shape.put(key, value)
                 saveConfig()
-                Logger.d(TAG, "更新形状: $key = $value")
+                Logger.d(TAG, Str.get(R.string.updated_shape_key_value, key, value))
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "更新形状失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_update_shape), e)
         }
     }
     
@@ -196,10 +197,10 @@ object UIConfig {
             if (size != null) {
                 size.put(key, value)
                 saveConfig()
-                Logger.d(TAG, "更新尺寸: $key = $value")
+                Logger.d(TAG, Str.get(R.string.updated_size_key_value, key, value))
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "更新尺寸失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_update_size), e)
         }
     }
     
@@ -214,10 +215,10 @@ object UIConfig {
             if (exp != null) {
                 exp.put(key, value)
                 saveConfig()
-                Logger.d(TAG, "更新布尔值: $key = $value")
+                Logger.d(TAG, Str.get(R.string.updated_boolean_key_value, key, value))
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "更新布尔值失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_update_boolean), e)
         }
     }
     
@@ -226,7 +227,7 @@ object UIConfig {
         useIconTint = true
         currentTheme = "default"
         saveConfig()
-        Logger.i(TAG, "已重置为默认配置")
+        Logger.i(TAG, Str.get(R.string.reset_to_default_config))
     }
     
     fun isUseIconTint(): Boolean = useIconTint

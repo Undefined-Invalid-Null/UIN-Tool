@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/log/LogViewerScreen.kt
 package com.UIN.Tool.ui.screen.log
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,7 +28,7 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.CrashLogUtils
 import java.io.File
 import java.text.SimpleDateFormat
@@ -57,12 +59,12 @@ fun LogViewerScreen(
             if (crashLogFile.exists()) {
                 val crashLines = crashLogFile.readLines().reversed()
                 if (crashLines.isNotEmpty()) {
-                    logLines = (crashLines + listOf("--- 分隔线 ---") + logLines)
+                    logLines = (crashLines + listOf(Str.get(R.string.separator)) + logLines)
                 }
             }
         } catch (e: Exception) {
-            AppLog.e("LogViewer", "加载日志失败", e)
-            logLines = listOf("加载日志失败: ${e.message}")
+            AppLog.e("LogViewer", Str.get(R.string.failed_to_load_logs), e)
+            logLines = listOf(Str.get(R.string.failed_to_load_log_e_message, e.message))
         }
         isLoading = false
     }
@@ -78,16 +80,16 @@ fun LogViewerScreen(
         try {
             val logFile = File(Constants.LOG_DIR, "uin_tool_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log")
             if (!logFile.exists()) {
-                AppToast.warning(context, "没有日志可导出")
+                AppToast.warning(context, Str.get(R.string.no_logs_to_export))
                 return
             }
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 logFile.inputStream().use { input -> input.copyTo(output) }
             }
-            AppToast.success(context, "日志已导出")
-            AppLog.success("LogViewer", "日志已导出")
+            AppToast.success(context, Str.get(R.string.logs_exported))
+            AppLog.success("LogViewer", Str.get(R.string.logs_exported))
         } catch (e: Exception) {
-            AppToast.error(context, "导出失败: ${e.message}")
+            AppToast.error(context, Str.get(R.string.export_failed_e_message, e.message))
         }
     }
 
@@ -96,7 +98,7 @@ fun LogViewerScreen(
         var count = 0
         logDir.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".log") && it.delete()) count++ }
         loadLogs()
-        AppToast.info(context, "已删除 $count 个日志文件")
+        AppToast.info(context, Str.get(R.string.deleted_count_log_file_s, count))
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -108,7 +110,7 @@ fun LogViewerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("运行日志") },
+                title = { Text(Str.get(R.string.runtime_logs)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
@@ -169,11 +171,11 @@ fun LogViewerScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 UIComponents.BodyText(
-                                    "应用发生异常",
+                                    Str.get(R.string.an_exception_occurred),
                                     color = MaterialTheme.colorScheme.error
                                 )
                                 UIComponents.CaptionText(
-                                    "请查看下方的崩溃日志了解详情",
+                                    Str.get(R.string.please_check_the_crash_log_below_for),
                                     color = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -195,8 +197,8 @@ fun LogViewerScreen(
                     modifier = Modifier.fillMaxWidth().padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    UIComponents.BodyText("共 ${logLines.size} 行")
-                    UIComponents.CaptionText("最新日志在上方")
+                    UIComponents.BodyText(Str.get(R.string.loglines_size_lines_in_total, logLines.size))
+                    UIComponents.CaptionText(Str.get(R.string.latest_logs_at_the_top))
                 }
             }
 
@@ -215,7 +217,7 @@ fun LogViewerScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            UIComponents.TitleText("暂无日志记录")
+                            UIComponents.TitleText(Str.get(R.string.no_log_records_yet))
                         }
                     }
                 }
@@ -257,8 +259,8 @@ fun LogViewerScreen(
 
     if (showClearAllConfirm) {
         UIComponents.ConfirmDialog(
-            title = "确认清空",
-            message = "确定要清空所有历史日志文件吗？",
+            title = Str.get(R.string.confirm_clear),
+            message = Str.get(R.string.clear_all_historical_log_files),
             onConfirm = { clearAllLogs(); showClearAllConfirm = false },
             onDismiss = { showClearAllConfirm = false }
         )

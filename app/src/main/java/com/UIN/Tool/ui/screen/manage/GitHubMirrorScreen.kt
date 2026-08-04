@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/manage/GitHubMirrorScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,7 +25,7 @@ import com.UIN.Tool.domain.model.MirrorItem
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
@@ -54,9 +56,9 @@ fun GitHubMirrorScreen(
                 url = url,
                 isDefault = true,
                 remark = when {
-                    url.contains("fastgit") -> "国内高速镜像"
-                    url.contains("ghproxy") -> "代理加速"
-                    url.contains("moeyy") -> "国内镜像"
+                    url.contains("fastgit") -> Str.get(R.string.fast_domestic_mirror)
+                    url.contains("ghproxy") -> Str.get(R.string.proxy_acceleration)
+                    url.contains("moeyy") -> Str.get(R.string.domestic_mirror)
                     else -> ""
                 }
             )
@@ -73,7 +75,7 @@ fun GitHubMirrorScreen(
                 isLoading = true
                 val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
                 if (content.isNullOrEmpty()) {
-                    showTestResult = "文件为空"
+                    showTestResult = Str.get(R.string.file_is_empty)
                     return@launch
                 }
                 var count = 0
@@ -86,11 +88,11 @@ fun GitHubMirrorScreen(
                         }
                     }
                 }
-                showTestResult = "成功导入 $count 个镜像站"
-                AppLog.success(TAG, "导入 $count 个镜像站")
+                showTestResult = Str.get(R.string.imported_count_mirror_s, count)
+                AppLog.success(TAG, Str.get(R.string.imported_count_mirror_s_2, count))
             } catch (e: Exception) {
-                showTestResult = "导入失败: ${e.message}"
-                AppLog.e(TAG, "导入镜像失败", e)
+                showTestResult = Str.get(R.string.import_failed_e_message, e.message)
+                AppLog.e(TAG, Str.get(R.string.failed_to_import_mirrors), e)
             } finally {
                 isLoading = false
             }
@@ -100,18 +102,18 @@ fun GitHubMirrorScreen(
     fun exportMirrors(uri: Uri) {
         try {
             val content = StringBuilder()
-            content.append("# GitHub 镜像站列表\n# 格式: 名称|URL|备注\n\n")
+            content.append(Str.get(R.string.github_mirror_list_n_format_name_url))
             mirrors.forEach {
                 content.append("${it.name}|${it.url}")
                 if (it.remark.isNotEmpty()) content.append("|${it.remark}")
                 content.append("\n")
             }
             context.contentResolver.openOutputStream(uri)?.write(content.toString().toByteArray())
-            showTestResult = "导出成功"
-            AppLog.success(TAG, "导出镜像站列表")
+            showTestResult = Str.get(R.string.export_successful)
+            AppLog.success(TAG, Str.get(R.string.exported_mirror_list))
         } catch (e: Exception) {
-            showTestResult = "导出失败: ${e.message}"
-            AppLog.e(TAG, "导出镜像失败", e)
+            showTestResult = Str.get(R.string.export_failed_e_message, e.message)
+            AppLog.e(TAG, Str.get(R.string.failed_to_export_mirrors), e)
         }
     }
 
@@ -119,15 +121,15 @@ fun GitHubMirrorScreen(
         scope.launch {
             try {
                 isLoading = true
-                showTestResult = "正在测试镜像站..."
+                showTestResult = Str.get(R.string.testing_mirrors)
                 val tested = mirrorManager.testMirrors(mirrors)
                 mirrors = tested
                 val reachableCount = tested.count { it.reachable == true }
-                showTestResult = "测试完成，$reachableCount/${tested.size} 个可达"
-                AppLog.success(TAG, "测试完成")
+                showTestResult = Str.get(R.string.test_complete_reachablecount_tested_, reachableCount, tested.size)
+                AppLog.success(TAG, Str.get(R.string.test_complete))
             } catch (e: Exception) {
-                showTestResult = "测试失败: ${e.message}"
-                AppLog.e(TAG, "测试镜像失败", e)
+                showTestResult = Str.get(R.string.test_failed_e_message, e.message)
+                AppLog.e(TAG, Str.get(R.string.failed_to_test_mirrors), e)
             } finally {
                 isLoading = false
             }
@@ -155,7 +157,7 @@ fun GitHubMirrorScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("GitHub 加速") },
+                title = { Text(Str.get(R.string.github_acceleration_2)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.Default.ArrowBack,
@@ -182,8 +184,8 @@ fun GitHubMirrorScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        UIComponents.BodyText("CDN 加速")
-                        UIComponents.CaptionText("使用 CDN 代理加速下载")
+                        UIComponents.BodyText(Str.get(R.string.cdn_acceleration))
+                        UIComponents.CaptionText(Str.get(R.string.use_cdn_proxy_to_speed_up_downloads))
                     }
                     UIComponents.ToggleSwitch(
                         checked = useCdn,
@@ -200,13 +202,13 @@ fun GitHubMirrorScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 UIComponents.SecondaryButton(
-                    text = "添加",
+                    text = Str.get(R.string.add),
                     icon = Icons.Default.Add,
                     onClick = { showAddDialog = true },
                     modifier = Modifier.weight(1f)
                 )
                 UIComponents.SecondaryButton(
-                    text = "导入",
+                    text = Str.get(R.string.import_label),
                     icon = Icons.Default.FileUpload,
                     onClick = { importLauncher.launch("text/plain") },
                     modifier = Modifier.weight(1f),
@@ -219,14 +221,14 @@ fun GitHubMirrorScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 UIComponents.SecondaryButton(
-                    text = "导出",
+                    text = Str.get(R.string.export),
                     icon = Icons.Default.FileDownload,
                     onClick = { exportLauncher.launch("mirrors_${System.currentTimeMillis()}.txt") },
                     modifier = Modifier.weight(1f),
                     enabled = !isLoading
                 )
                 UIComponents.SecondaryButton(
-                    text = "测试",
+                    text = Str.get(R.string.test),
                     icon = Icons.Default.Check,
                     onClick = { testAllMirrors() },
                     modifier = Modifier.weight(1f),
@@ -235,7 +237,7 @@ fun GitHubMirrorScreen(
             }
 
             UIComponents.SecondaryButton(
-                text = "重置为默认",
+                text = Str.get(R.string.reset_to_default),
                 icon = Icons.Default.Refresh,
                 onClick = { showResetDialog = true },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
@@ -262,7 +264,7 @@ fun GitHubMirrorScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    UIComponents.BodyText("暂无镜像站")
+                    UIComponents.BodyText(Str.get(R.string.no_mirrors_yet))
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -310,7 +312,7 @@ fun GitHubMirrorScreen(
                                                     Badge(
                                                         containerColor = MaterialTheme.colorScheme.primaryContainer
                                                     ) {
-                                                        Text("默认")
+                                                        Text(Str.get(R.string.default_label))
                                                     }
                                                 }
                                             ) { }
@@ -325,7 +327,7 @@ fun GitHubMirrorScreen(
                                                             MaterialTheme.colorScheme.errorContainer
                                                         }
                                                     ) {
-                                                        Text(if (it) "可达" else "不可达")
+                                                        Text(if (it) Str.get(R.string.reachable) else Str.get(R.string.unreachable))
                                                     }
                                                 }
                                             ) { }
@@ -355,7 +357,7 @@ fun GitHubMirrorScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             UIComponents.PrimaryButton(
-                text = "保存设置",
+                text = Str.get(R.string.save_settings),
                 onClick = {
                     preferenceManager.setEnabledMirrors(enabledMirrors.toList())
                     preferenceManager.setUseCdn(useCdn)
@@ -370,8 +372,8 @@ fun GitHubMirrorScreen(
     // 确认重置对话框
     if (showResetDialog) {
         UIComponents.ConfirmDialog(
-            title = "确认重置",
-            message = "确定要重置为默认镜像站列表吗？",
+            title = Str.get(R.string.confirm_reset),
+            message = Str.get(R.string.reset_to_the_default_mirror_list),
             onConfirm = { loadMirrors(); showResetDialog = false },
             onDismiss = { showResetDialog = false }
         )
@@ -385,14 +387,14 @@ fun GitHubMirrorScreen(
 
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("添加镜像站") },
+            title = { Text(Str.get(R.string.add_mirror)) },
             text = {
                 Column {
                     UIComponents.TextInput(
                         value = name,
                         onValueChange = { name = it },
-                        label = "名称",
-                        placeholder = "如: FastGit",
+                        label = Str.get(R.string.name),
+                        placeholder = Str.get(R.string.e_g_fastgit),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -407,15 +409,15 @@ fun GitHubMirrorScreen(
                     UIComponents.TextInput(
                         value = remark,
                         onValueChange = { remark = it },
-                        label = "备注（可选）",
-                        placeholder = "国内镜像",
+                        label = Str.get(R.string.note_optional),
+                        placeholder = Str.get(R.string.domestic_mirror),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
                 UIComponents.PrimaryButton(
-                    text = "添加",
+                    text = Str.get(R.string.add),
                     onClick = {
                         if (name.isNotEmpty() && url.isNotEmpty()) {
                             mirrors = mirrors + MirrorItem(
@@ -432,7 +434,7 @@ fun GitHubMirrorScreen(
             },
             dismissButton = {
                 UIComponents.TextButton(
-                    text = "取消",
+                    text = Str.get(R.string.cancel),
                     onClick = { showAddDialog = false }
                 )
             }

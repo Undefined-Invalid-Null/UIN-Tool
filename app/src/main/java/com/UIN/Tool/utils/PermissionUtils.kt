@@ -1,5 +1,6 @@
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -129,41 +130,41 @@ object PermissionUtils {
 
     fun getPermissionDisplayName(permission: String): String {
         return when (permission) {
-            "android.permission.READ_EXTERNAL_STORAGE" -> "读取存储"
-            "android.permission.WRITE_EXTERNAL_STORAGE" -> "写入存储"
-            "MANAGE_EXTERNAL_STORAGE" -> "管理所有文件"
-            "android.permission.INTERNET" -> "访问网络"
-            "android.permission.ACCESS_NETWORK_STATE" -> "获取网络状态"
-            "android.permission.ACCESS_WIFI_STATE" -> "获取WiFi状态"
-            "android.permission.CAMERA" -> "相机"
-            "android.permission.RECORD_AUDIO" -> "录音"
-            "android.permission.ACCESS_FINE_LOCATION" -> "精确位置"
-            "android.permission.ACCESS_COARSE_LOCATION" -> "粗略位置"
-            "android.permission.ACCESS_BACKGROUND_LOCATION" -> "后台位置"
-            "android.permission.CALL_PHONE" -> "拨打电话"
-            "android.permission.READ_PHONE_STATE" -> "读取手机状态"
-            "android.permission.SEND_SMS" -> "发送短信"
-            "android.permission.READ_SMS" -> "读取短信"
-            "android.permission.RECEIVE_SMS" -> "接收短信"
-            "android.permission.READ_CONTACTS" -> "读取联系人"
-            "android.permission.WRITE_CONTACTS" -> "写入联系人"
-            "android.permission.READ_CALENDAR" -> "读取日历"
-            "android.permission.WRITE_CALENDAR" -> "写入日历"
-            "SYSTEM_ALERT_WINDOW" -> "悬浮窗"
-            "WRITE_SETTINGS" -> "修改系统设置"
-            "POST_NOTIFICATIONS" -> "通知"
-            "android.permission.VIBRATE" -> "震动"
-            "android.permission.WAKE_LOCK" -> "唤醒锁"
-            "FLASHLIGHT" -> "闪光灯"
-            "android.permission.BLUETOOTH" -> "蓝牙"
-            "android.permission.BLUETOOTH_ADMIN" -> "蓝牙管理"
+            "android.permission.READ_EXTERNAL_STORAGE" -> Str.get(R.string.read_storage)
+            "android.permission.WRITE_EXTERNAL_STORAGE" -> Str.get(R.string.write_storage)
+            "MANAGE_EXTERNAL_STORAGE" -> Str.get(R.string.manage_all_files)
+            "android.permission.INTERNET" -> Str.get(R.string.access_network)
+            "android.permission.ACCESS_NETWORK_STATE" -> Str.get(R.string.get_network_status)
+            "android.permission.ACCESS_WIFI_STATE" -> Str.get(R.string.get_wifi_status)
+            "android.permission.CAMERA" -> Str.get(R.string.camera)
+            "android.permission.RECORD_AUDIO" -> Str.get(R.string.microphone_2)
+            "android.permission.ACCESS_FINE_LOCATION" -> Str.get(R.string.precise_location)
+            "android.permission.ACCESS_COARSE_LOCATION" -> Str.get(R.string.approximate_location)
+            "android.permission.ACCESS_BACKGROUND_LOCATION" -> Str.get(R.string.background_location)
+            "android.permission.CALL_PHONE" -> Str.get(R.string.make_phone_calls)
+            "android.permission.READ_PHONE_STATE" -> Str.get(R.string.read_phone_status)
+            "android.permission.SEND_SMS" -> Str.get(R.string.send_sms)
+            "android.permission.READ_SMS" -> Str.get(R.string.read_sms)
+            "android.permission.RECEIVE_SMS" -> Str.get(R.string.receive_sms)
+            "android.permission.READ_CONTACTS" -> Str.get(R.string.read_contacts)
+            "android.permission.WRITE_CONTACTS" -> Str.get(R.string.write_contacts)
+            "android.permission.READ_CALENDAR" -> Str.get(R.string.read_calendar)
+            "android.permission.WRITE_CALENDAR" -> Str.get(R.string.write_calendar)
+            "SYSTEM_ALERT_WINDOW" -> Str.get(R.string.overlay)
+            "WRITE_SETTINGS" -> Str.get(R.string.modify_system_settings)
+            "POST_NOTIFICATIONS" -> Str.get(R.string.notifications)
+            "android.permission.VIBRATE" -> Str.get(R.string.vibrate)
+            "android.permission.WAKE_LOCK" -> Str.get(R.string.wake_lock)
+            "FLASHLIGHT" -> Str.get(R.string.flashlight)
+            "android.permission.BLUETOOTH" -> Str.get(R.string.bluetooth)
+            "android.permission.BLUETOOTH_ADMIN" -> Str.get(R.string.bluetooth_management)
             "android.permission.NFC" -> "NFC"
-            "ACCESSIBILITY" -> "无障碍权限"
-            "REQUEST_INSTALL_PACKAGES" -> "安装未知应用"
-            "PACKAGE_USAGE_STATS" -> "使用情况访问"
-            "android.permission.KILL_BACKGROUND_PROCESSES" -> "结束后台进程"
-            "android.permission.READ_LOGS" -> "读取日志"
-            "ROOT" -> "Root权限"
+            "ACCESSIBILITY" -> Str.get(R.string.accessibility_permission)
+            "REQUEST_INSTALL_PACKAGES" -> Str.get(R.string.install_unknown_apps)
+            "PACKAGE_USAGE_STATS" -> Str.get(R.string.usage_access)
+            "android.permission.KILL_BACKGROUND_PROCESSES" -> Str.get(R.string.kill_background_processes)
+            "android.permission.READ_LOGS" -> Str.get(R.string.read_logs)
+            "ROOT" -> Str.get(R.string.root_access)
             "SHIZUKU" -> "Shizuku"
             "DHIZUKU" -> "Dhizuku"
             else -> permission

@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/permission/PluginPermissionDetailScreen.kt
 package com.UIN.Tool.ui.screen.permission
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -78,7 +80,7 @@ fun PluginPermissionDetailScreen(
     fun requestAllPermissions() {
         if (plugin == null || isRequesting) return
         isRequesting = true
-        progressMessage = "正在请求权限..."
+        progressMessage = Str.get(R.string.requesting_permissions)
 
         pluginManager.requestPluginPermissionsByGroups(
             plugin.pluginId,
@@ -89,9 +91,9 @@ fun PluginPermissionDetailScreen(
                 isRequesting = false
                 loadPermissions()
                 if (granted) {
-                    progressMessage = "所有权限已授予"
+                    progressMessage = Str.get(R.string.all_permissions_granted)
                 } else {
-                    progressMessage = "部分权限被拒绝"
+                    progressMessage = Str.get(R.string.some_permissions_denied)
                 }
             }
         )
@@ -101,7 +103,7 @@ fun PluginPermissionDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (plugin != null) "${plugin.name} - 权限" else "权限详情")
+                    Text(if (plugin != null) Str.get(R.string.plugin_name_permissions, plugin.name) else Str.get(R.string.permission_details))
                 },
                 navigationIcon = {
                     UIComponents.IconButton(
@@ -134,8 +136,8 @@ fun PluginPermissionDetailScreen(
         ) {
             if (plugin == null) {
                 UIComponents.EmptyState(
-                    title = "插件不存在",
-                    description = "未找到对应的插件信息"
+                    title = Str.get(R.string.plugin_does_not_exist),
+                    description = Str.get(R.string.no_matching_plugin_info_found)
                 )
                 return@Scaffold
             }
@@ -154,19 +156,19 @@ fun PluginPermissionDetailScreen(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "插件: ${plugin.name}",
+                        text = Str.get(R.string.plugin_plugin_name, plugin.name),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "ID: ${plugin.pluginId} | 版本: ${plugin.versionName}",
+                        text = Str.get(R.string.id_plugin_pluginid_version_plugin_ve, plugin.pluginId, plugin.versionName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "声明权限: ${plugin.permissions.size} 项",
+                        text = Str.get(R.string.declared_permissions_plugin_permissi_2, plugin.permissions.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -198,7 +200,7 @@ fun PluginPermissionDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "该插件没有声明任何权限",
+                            text = Str.get(R.string.this_plugin_declares_no_permissions),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -224,13 +226,13 @@ fun PluginPermissionDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "权限状态",
+                            text = Str.get(R.string.permission_status),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "$grantedCount / $totalCount 已授予",
+                            text = Str.get(R.string.grantedcount_totalcount_granted, grantedCount, totalCount),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (grantedCount == totalCount)
@@ -260,8 +262,8 @@ fun PluginPermissionDetailScreen(
                                 .fillMaxWidth()
                                 .padding(12.dp),
                             color = when {
-                                progressMessage.contains("所有权限已授予") -> MaterialTheme.colorScheme.primary
-                                progressMessage.contains("部分权限被拒绝") -> MaterialTheme.colorScheme.error
+                                progressMessage.contains(Str.get(R.string.all_permissions_granted)) -> MaterialTheme.colorScheme.primary
+                                progressMessage.contains(Str.get(R.string.some_permissions_denied)) -> MaterialTheme.colorScheme.error
                                 else -> MaterialTheme.colorScheme.onSurface
                             },
                             style = MaterialTheme.typography.bodySmall
@@ -304,7 +306,7 @@ fun PluginPermissionDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     UIComponents.PrimaryButton(
-                        text = if (allGranted) "所有权限已授予" else "一键授权所有",
+                        text = if (allGranted) Str.get(R.string.all_permissions_granted) else Str.get(R.string.grant_all_2),
                         onClick = { requestAllPermissions() },
                         modifier = Modifier.weight(1f),
                         enabled = !allGranted && !isRequesting,
@@ -312,7 +314,7 @@ fun PluginPermissionDetailScreen(
                     )
 
                     UIComponents.SecondaryButton(
-                        text = "刷新",
+                        text = Str.get(R.string.refresh),
                         icon = Icons.Default.Refresh,
                         onClick = { loadPermissions() },
                         modifier = Modifier.weight(0.4f),
@@ -384,7 +386,7 @@ fun PermissionDetailItem(
                 )
                 if (PluginPermissionManager.isSpecialPermission(permission)) {
                     Text(
-                        text = "特殊权限：需在系统设置中手动开启",
+                        text = Str.get(R.string.special_permissions_enable_manually_),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -397,7 +399,7 @@ fun PermissionDetailItem(
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Text(
-                        text = "已授予",
+                        text = Str.get(R.string.granted_2),
                         style = MaterialTheme.typography.labelMedium,
                         color = Color(0xFF2E7D32),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -405,7 +407,7 @@ fun PermissionDetailItem(
                 }
             } else {
                 UIComponents.PrimaryButton(
-                    text = "授权",
+                    text = Str.get(R.string.grant),
                     onClick = onRequest,
                     modifier = Modifier.height(32.dp)
                 )

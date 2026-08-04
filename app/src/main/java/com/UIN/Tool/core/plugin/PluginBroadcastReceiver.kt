@@ -1,5 +1,7 @@
 package com.UIN.Tool.core.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -50,7 +52,7 @@ object PluginBroadcastReceiver {
         }
         context.registerReceiver(receiver, filter)
         registered = true
-        Logger.d(TAG, "广播接收器已注册")
+        Logger.d(TAG, Str.get(R.string.broadcast_receiver_registered))
     }
     
     fun unregister() {
@@ -58,9 +60,9 @@ object PluginBroadcastReceiver {
         try {
             context.unregisterReceiver(receiver)
             registered = false
-            Logger.d(TAG, "广播接收器已注销")
+            Logger.d(TAG, Str.get(R.string.broadcast_receiver_unregistered))
         } catch (e: Exception) {
-            Logger.e(TAG, "注销广播接收器失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_unregister_broadcast_recei), e)
         }
     }
     

@@ -1,5 +1,6 @@
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ShortcutInfo
@@ -17,7 +18,7 @@ import com.UIN.Tool.data.local.FileManager
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.SecurityUtils
 import dalvik.system.DexClassLoader
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,7 +57,7 @@ class PluginManager private constructor(
         @JvmStatic
         fun setIgnoreSignatureWarning(ignore: Boolean) {
             ignoreSignatureWarning = ignore
-            Logger.i(TAG, "忽略签名验证: $ignore")
+            Logger.i(TAG, Str.get(R.string.signature_verification_ignored_ignor, ignore))
         }
 
         @JvmStatic
@@ -137,9 +138,9 @@ class PluginManager private constructor(
             _installedPluginIds.value = pluginList.map { it.pluginId }.toSet()
             refreshAllPluginShortcuts()
 
-            Logger.i(TAG, "已加载 ${pluginList.size} 个插件")
+            Logger.i(TAG, Str.get(R.string.loaded_pluginlist_size_plugin_s, pluginList.size))
         } catch (e: Exception) {
-            Logger.e(TAG, "刷新插件列表失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_refresh_plugin_list), e)
             _error.value = e.message
         } finally {
             _isLoading.value = false
@@ -163,32 +164,32 @@ class PluginManager private constructor(
 
         return try {
             if (!fileManager.unzipFile(file, tempDir)) {
-                Logger.e(TAG, "解压失败")
+                Logger.e(TAG, Str.get(R.string.extraction_failed))
                 return null
             }
 
             val jsonFile = File(tempDir, Constants.PLUGIN_CONFIG_FILE)
             if (!jsonFile.exists()) {
-                Logger.e(TAG, "缺少 plugin.json")
+                Logger.e(TAG, Str.get(R.string.missing_plugin_json))
                 return null
             }
 
             val jsonContent = jsonFile.readText()
             val info = PluginInfo.fromJson(jsonContent)
             if (info == null || info.pluginId.isEmpty()) {
-                Logger.e(TAG, "plugin.json 格式错误")
+                Logger.e(TAG, Str.get(R.string.invalid_plugin_json))
                 return null
             }
 
             if (info.minHostVersion > android.os.Build.VERSION.SDK_INT) {
-                Logger.e(TAG, "Android 版本过低: ${info.minHostVersion} > ${android.os.Build.VERSION.SDK_INT}")
+                Logger.e(TAG, Str.get(R.string.android_version_too_old_info_minhost, info.minHostVersion, android.os.Build.VERSION.SDK_INT))
                 return null
             }
 
             if (info.uiType == "native") {
                 val dexFile = File(tempDir, Constants.PLUGIN_DEX_FILE)
                 if (!dexFile.exists()) {
-                    Logger.e(TAG, "原生插件缺少 plugin.dex")
+                    Logger.e(TAG, Str.get(R.string.native_plugin_missing_plugin_dex))
                     return null
                 }
             }
@@ -202,10 +203,10 @@ class PluginManager private constructor(
                     dataBackup = File(Constants.TEMP_DIR, "data_backup_${info.pluginId}_${System.currentTimeMillis()}")
                     dataBackup.mkdirs()
                     fileManager.copyDirectory(userDataDir, dataBackup)
-                    Logger.d(TAG, "已备份用户数据: ${userDataDir.absolutePath}")
+                    Logger.d(TAG, Str.get(R.string.user_data_backed_up_userdatadir_abso, userDataDir.absolutePath))
                 }
                 fileManager.deleteRecursively(pluginDir)
-                Logger.i(TAG, "删除旧插件: ${info.pluginId}")
+                Logger.i(TAG, Str.get(R.string.removing_old_plugin_info_pluginid, info.pluginId))
             }
 
             pluginDir.mkdirs()
@@ -215,18 +216,18 @@ class PluginManager private constructor(
                 val userDataDir = File(pluginDir, "data")
                 fileManager.copyDirectory(dataBackup, userDataDir)
                 fileManager.deleteRecursively(dataBackup)
-                Logger.success(TAG, "用户数据已恢复")
+                Logger.success(TAG, Str.get(R.string.user_data_restored))
             }
 
             migratePluginDataVersion(info)
 
             SecurityUtils.savePluginSignature(info.pluginId, file, preferenceManager)
 
-            Logger.success(TAG, "安装成功: ${info.name} (${info.pluginId})")
+            Logger.success(TAG, Str.get(R.string.installed_info_name_info_pluginid, info.name, info.pluginId))
             info
 
         } catch (e: Exception) {
-            Logger.e(TAG, "安装失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.install_failed_e_message, e.message), e)
             null
         } finally {
             fileManager.deleteRecursively(tempDir)
@@ -241,24 +242,24 @@ class PluginManager private constructor(
             val currentVersion = pluginContext.getDataVersion()
             if (currentVersion == 0) {
                 pluginContext.setDataVersion(info.version)
-                Logger.d(TAG, "首次安装，数据版本: ${info.version}")
+                Logger.d(TAG, Str.get(R.string.first_install_data_version_info_vers, info.version))
             } else if (currentVersion < info.version) {
-                Logger.i(TAG, "数据迁移: $currentVersion -> ${info.version}")
+                Logger.i(TAG, Str.get(R.string.data_migration_currentversion_info_v, currentVersion, info.version))
                 pluginContext.setDataVersion(info.version)
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "数据版本检查失败", e)
+            Logger.e(TAG, Str.get(R.string.data_version_check_failed), e)
         }
     }
 
     suspend fun installPlugin(file: File, fileName: String): PluginInfo? {
         Logger.enter(TAG, "installPlugin")
-        Logger.param(TAG, "文件", file.absolutePath)
+        Logger.param(TAG, Str.get(R.string.file), file.absolutePath)
 
         return try {
             if (!SecurityUtils.verifyFileSignature(file, preferenceManager)) {
-                Logger.e(TAG, "插件签名验证失败")
-                _error.value = "插件签名验证失败，文件可能被篡改"
+                Logger.e(TAG, Str.get(R.string.plugin_signature_verification_failed))
+                _error.value = Str.get(R.string.plugin_signature_verification_failed_2)
                 return null
             }
 
@@ -269,12 +270,12 @@ class PluginManager private constructor(
                 refreshPlugins()
                 createPluginDynamicShortcut(info)
                 notifyWidgetsRefresh()
-                Logger.success(TAG, "插件安装成功: ${info.name}")
+                Logger.success(TAG, Str.get(R.string.plugin_installed_info_name, info.name))
             }
 
             info
         } catch (e: Exception) {
-            Logger.e(TAG, "安装插件异常", e)
+            Logger.e(TAG, Str.get(R.string.plugin_install_error), e)
             _error.value = e.message
             null
         } finally {
@@ -284,11 +285,11 @@ class PluginManager private constructor(
 
     private fun checkPluginDependencies(info: PluginInfo) {
         if (info.dependencies.isNotEmpty()) {
-            Logger.i(TAG, "插件 ${info.name} 依赖: ${info.dependencies.joinToString()}")
+            Logger.i(TAG, Str.get(R.string.plugin_info_name_dependencies_info_d, info.name, info.dependencies.joinToString()))
             val installedIds = _installedPluginIds.value
             val missingDeps = info.dependencies.filter { !installedIds.contains(it) }
             if (missingDeps.isNotEmpty()) {
-                Logger.w(TAG, "缺少依赖: ${missingDeps.joinToString()}")
+                Logger.w(TAG, Str.get(R.string.missing_dependencies_missingdeps_joi, missingDeps.joinToString()))
             }
         }
     }
@@ -304,7 +305,7 @@ class PluginManager private constructor(
     suspend fun installPluginFromFile(filePath: String): PluginInfo? {
         val file = File(filePath)
         if (!file.exists()) {
-            Logger.e(TAG, "文件不存在: $filePath")
+            Logger.e(TAG, Str.get(R.string.file_not_found_filepath, filePath))
             return null
         }
         return installPlugin(file, file.name)
@@ -313,7 +314,7 @@ class PluginManager private constructor(
     // ==================== 插件卸载 ====================
 
     suspend fun uninstallPlugin(pluginId: String): Boolean {
-        Logger.action(TAG, "卸载插件", pluginId)
+        Logger.action(TAG, Str.get(R.string.uninstall_plugin), pluginId)
 
         if (isBackendRunning(pluginId)) {
             stopBackend(pluginId)
@@ -326,9 +327,9 @@ class PluginManager private constructor(
             try {
                 val pluginContext = PluginContext(context, pluginDir.absolutePath)
                 pluginContext.deleteAllPluginData()
-                Logger.d(TAG, "已清理插件数据: $pluginId")
+                Logger.d(TAG, Str.get(R.string.plugin_data_cleared_pluginid, pluginId))
             } catch (e: Exception) {
-                Logger.w(TAG, "清理数据失败: ${e.message}")
+                Logger.w(TAG, Str.get(R.string.failed_to_clear_data_e_message, e.message))
             }
 
             val result = fileManager.deleteRecursively(pluginDir)
@@ -342,11 +343,11 @@ class PluginManager private constructor(
                 preferenceManager.removePluginSignature(pluginId)
                 refreshPlugins()
                 notifyWidgetsRefresh()
-                Logger.success(TAG, "插件卸载成功: $pluginId")
+                Logger.success(TAG, Str.get(R.string.plugin_uninstalled_pluginid, pluginId))
             }
             result
         } catch (e: Exception) {
-            Logger.e(TAG, "卸载插件失败", e)
+            Logger.e(TAG, Str.get(R.string.plugin_uninstall_failed), e)
             _error.value = e.message
             false
         }
@@ -366,7 +367,7 @@ class PluginManager private constructor(
 
     suspend fun updatePlugin(pluginId: String, newPluginFile: File): Boolean {
         if (!uninstallPlugin(pluginId)) {
-            Logger.e(TAG, "卸载旧版本失败")
+            Logger.e(TAG, Str.get(R.string.failed_to_uninstall_old_version))
             return false
         }
         val info = installPlugin(newPluginFile, newPluginFile.name)
@@ -383,7 +384,7 @@ class PluginManager private constructor(
     suspend fun exportPlugin(pluginId: String, destFile: File): Boolean {
         val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
         if (!pluginDir.exists()) {
-            Logger.e(TAG, "插件目录不存在")
+            Logger.e(TAG, Str.get(R.string.plugin_dir_not_found))
             return false
         }
         return fileManager.zipDirectory(pluginDir, destFile)
@@ -404,10 +405,10 @@ class PluginManager private constructor(
     // ==================== 插件运行 ====================
 
     fun openPlugin(pluginId: String, context: Context) {
-        Logger.action(TAG, "打开插件", pluginId)
+        Logger.action(TAG, Str.get(R.string.open_plugin), pluginId)
         val info = getPluginInfo(pluginId)
         if (info == null) {
-            Toast.makeText(context, "插件不存在: $pluginId", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, Str.get(R.string.plugin_not_found_pluginid, pluginId), Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -426,7 +427,7 @@ class PluginManager private constructor(
         val info = getPluginInfo(pluginId) ?: return null
 
         if (info.uiType == "web") {
-            Logger.d(TAG, "Web插件由PluginHostActivity处理")
+            Logger.d(TAG, Str.get(R.string.web_plugins_handled_by_pluginhostact))
             return null
         }
 
@@ -437,7 +438,7 @@ class PluginManager private constructor(
                 val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
                 val dexFile = File(pluginDir, Constants.PLUGIN_DEX_FILE)
                 if (!dexFile.exists()) {
-                    Logger.e(TAG, "DEX文件不存在: ${dexFile.absolutePath}")
+                    Logger.e(TAG, Str.get(R.string.dex_file_not_found_dexfile_absolutep, dexFile.absolutePath))
                     return null
                 }
 
@@ -451,7 +452,7 @@ class PluginManager private constructor(
                     context.classLoader
                 )
                 classLoaders[pluginId] = classLoader
-                Logger.success(TAG, "DexClassLoader 创建成功")
+                Logger.success(TAG, Str.get(R.string.dexclassloader_created))
             }
 
             var plugin = pluginInstances[pluginId]?.get()
@@ -459,7 +460,7 @@ class PluginManager private constructor(
                 val clazz = classLoader.loadClass(info.mainClass)
                 plugin = clazz.newInstance() as PluginInterface
                 pluginInstances[pluginId] = WeakReference(plugin)
-                Logger.success(TAG, "插件实例化成功")
+                Logger.success(TAG, Str.get(R.string.plugin_instantiated))
             }
 
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
@@ -468,18 +469,18 @@ class PluginManager private constructor(
             val view = plugin.onCreateView(pluginContext, container, null)
 
             if (view != null) {
-                Logger.success(TAG, "插件视图创建成功")
+                Logger.success(TAG, Str.get(R.string.plugin_view_created))
             } else {
-                Logger.e(TAG, "插件视图创建失败")
+                Logger.e(TAG, Str.get(R.string.plugin_view_creation_failed))
             }
 
             return view
 
         } catch (e: ClassNotFoundException) {
-            Logger.e(TAG, "主类未找到: ${info.mainClass}", e)
+            Logger.e(TAG, Str.get(R.string.main_class_not_found_info_mainclass, info.mainClass), e)
             return null
         } catch (e: Exception) {
-            Logger.e(TAG, "加载原生插件异常", e)
+            Logger.e(TAG, Str.get(R.string.native_plugin_load_error_2), e)
             return null
         } finally {
             Logger.exit(TAG, "getPluginViewSync", System.currentTimeMillis())
@@ -498,7 +499,7 @@ class PluginManager private constructor(
 
     fun getPluginDataContext(pluginId: String): PluginContext? {
         if (!isPluginInstalled(pluginId)) {
-            Logger.w(TAG, "插件未安装: $pluginId")
+            Logger.w(TAG, Str.get(R.string.plugin_not_installed_pluginid, pluginId))
             return null
         }
         val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
@@ -530,12 +531,12 @@ class PluginManager private constructor(
     }
 
     fun getPluginsByCategory(category: String): List<PluginInfo> {
-        return if (category == "全部") _plugins.value else _plugins.value.filter { it.category == category }
+        return if (category == Str.get(R.string.all)) _plugins.value else _plugins.value.filter { it.category == category }
     }
 
     fun getAllCategories(): List<String> {
-        val categories = mutableSetOf("全部", "未分类")
-        _plugins.value.forEach { categories.add(it.category.ifEmpty { "未分类" }) }
+        val categories = mutableSetOf(Str.get(R.string.all), Str.get(R.string.uncategorized))
+        _plugins.value.forEach { categories.add(it.category.ifEmpty { Str.get(R.string.uncategorized) }) }
         return categories.toList()
     }
 
@@ -549,7 +550,7 @@ class PluginManager private constructor(
             refreshPlugins()
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "更新分类失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_update_category), e)
             false
         }
     }
@@ -583,13 +584,13 @@ class PluginManager private constructor(
                         .setIntent(intent)
                         .build()
                     shortcutManager.addDynamicShortcuts(listOf(shortcut))
-                    Logger.success(TAG, "创建动态快捷方式: ${plugin.name}")
+                    Logger.success(TAG, Str.get(R.string.creating_dynamic_shortcut_plugin_nam, plugin.name))
                 }
             } else {
                 createShortcutForOldVersions(plugin)
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "创建快捷方式失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_create_shortcut), e)
         }
     }
 
@@ -618,9 +619,9 @@ class PluginManager private constructor(
                 )
             }
             context.sendBroadcast(addIntent)
-            Logger.success(TAG, "创建旧版快捷方式: ${plugin.name}")
+            Logger.success(TAG, Str.get(R.string.creating_legacy_shortcut_plugin_name, plugin.name))
         } catch (e: Exception) {
-            Logger.e(TAG, "创建旧版快捷方式失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_create_legacy_shortcut), e)
         }
     }
 
@@ -631,7 +632,7 @@ class PluginManager private constructor(
                 shortcutManager?.removeDynamicShortcuts(listOf("plugin_$pluginId"))
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "移除快捷方式失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_remove_shortcut), e)
         }
     }
 
@@ -646,9 +647,9 @@ class PluginManager private constructor(
                     shortcutManager.removeDynamicShortcuts(pluginShortcutIds)
                 }
                 _plugins.value.forEach { createPluginDynamicShortcut(it) }
-                Logger.i(TAG, "刷新动态快捷方式完成")
+                Logger.i(TAG, Str.get(R.string.dynamic_shortcuts_refreshed))
             } catch (e: Exception) {
-                Logger.e(TAG, "刷新快捷方式失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_refresh_shortcuts), e)
             }
         }
     }
@@ -673,7 +674,7 @@ class PluginManager private constructor(
                 }
             }
         } catch (e: Exception) {
-            Logger.e(TAG, "获取插件图标失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_get_plugin_icon), e)
         }
         return null
     }
@@ -686,9 +687,9 @@ class PluginManager private constructor(
             context.sendBroadcast(intent)
             val intent1x1 = Intent("com.UIN.Tool.REFRESH_WIDGET_1x1").setPackage(context.packageName)
             context.sendBroadcast(intent1x1)
-            Logger.i(TAG, "小部件刷新通知已发送")
+            Logger.i(TAG, Str.get(R.string.widget_refresh_notification_sent))
         } catch (e: Exception) {
-            Logger.e(TAG, "通知小部件刷新失败", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_notify_widget_refresh), e)
         }
     }
 
@@ -780,7 +781,7 @@ class PluginManager private constructor(
     fun requestPluginPermissions(pluginId: String, onResult: (Boolean) -> Unit) {
         val activity = context as? android.app.Activity
         if (activity == null) {
-            Logger.e(TAG, "Context 不是 Activity，无法请求权限")
+            Logger.e(TAG, Str.get(R.string.context_is_not_an_activity_cannot_re))
             onResult(false)
             return
         }
@@ -805,7 +806,7 @@ class PluginManager private constructor(
     ) {
         val activity = context as? android.app.Activity
         if (activity == null) {
-            Logger.e(TAG, "Context 不是 Activity，无法请求权限")
+            Logger.e(TAG, Str.get(R.string.context_is_not_an_activity_cannot_re))
             onComplete(false)
             return
         }
@@ -820,20 +821,20 @@ class PluginManager private constructor(
         val special = permissions.filter { PluginPermissionManager.isSpecialPermission(it) }
         
         if (normal.isNotEmpty()) {
-            onProgress?.invoke("普通权限", 0, 2)
+            onProgress?.invoke(Str.get(R.string.normal_permissions), 0, 2)
             val requestCode = 3000 + pluginId.hashCode() % 1000
             PluginPermissionManager.requestPermissions(
                 activity,
                 normal.toTypedArray(),
                 requestCode
             )
-            onProgress?.invoke("普通权限已授予", 1, 2)
+            onProgress?.invoke(Str.get(R.string.normal_permissions_granted), 1, 2)
         }
         
         if (special.isNotEmpty()) {
-            onProgress?.invoke("特殊权限", 1, 2)
+            onProgress?.invoke(Str.get(R.string.special_permissions), 1, 2)
             PluginPermissionManager.openAppSettings(activity)
-            onProgress?.invoke("请手动开启特殊权限", 2, 2)
+            onProgress?.invoke(Str.get(R.string.please_enable_special_permissions_ma), 2, 2)
             onComplete(false)
         } else {
             onComplete(true)
@@ -847,14 +848,14 @@ class PluginManager private constructor(
     fun savePluginPermissionConfig(pluginId: String, permission: String, granted: Boolean) {
         val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
         prefs.edit().putBoolean("perm_$permission", granted).apply()
-        Logger.d(TAG, "保存权限配置: $pluginId -> $permission = $granted")
+        Logger.d(TAG, Str.get(R.string.saving_permission_config_pluginid_pe, pluginId, permission, granted))
     }
 
     fun clearPluginPermissionConfigs(pluginId: String) {
         val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
         val keys = prefs.all.keys.filter { it.startsWith("perm_") }
         keys.forEach { prefs.edit().remove(it).apply() }
-        Logger.d(TAG, "清除权限配置: $pluginId")
+        Logger.d(TAG, Str.get(R.string.clearing_permission_config_pluginid, pluginId))
     }
 
     // ==================== Termux 后端管理 ====================
@@ -882,16 +883,16 @@ class PluginManager private constructor(
 
     fun startBackend(pluginId: String, callback: (Boolean, Int, String?) -> Unit) {
         Logger.d(TAG, "========================================")
-        Logger.d(TAG, "🔍 PluginManager.startBackend() 被调用")
+        Logger.d(TAG, Str.get(R.string.pluginmanager_startbackend_called))
         Logger.d(TAG, "📦 pluginId: $pluginId")
-        Logger.d(TAG, "⏰ 时间: ${System.currentTimeMillis()}")
+        Logger.d(TAG, Str.get(R.string.time_system_currenttimemillis, System.currentTimeMillis()))
         
         val info = getPluginInfo(pluginId)
         Logger.d(TAG, "📌 info == null: ${info == null}")
         
         if (info == null) {
-            Logger.e(TAG, "❌ 插件不存在: $pluginId")
-            callback(false, 0, "插件不存在")
+            Logger.e(TAG, Str.get(R.string.plugin_not_found_pluginid_2, pluginId))
+            callback(false, 0, Str.get(R.string.plugin_does_not_exist))
             return
         }
         
@@ -904,29 +905,29 @@ class PluginManager private constructor(
         Logger.d(TAG, "========================================")
         
         if (!info.hasBackend()) {
-            Logger.w(TAG, "❌ 插件未配置后端")
-            callback(false, 0, "插件未配置后端")
+            Logger.w(TAG, Str.get(R.string.plugin_has_no_backend_configured))
+            callback(false, 0, Str.get(R.string.plugin_has_no_backend_configured_2))
             return
         }
 
-        Logger.i(TAG, "✅ 条件满足，调用 PluginBackendManager.startBackend()")
+        Logger.i(TAG, Str.get(R.string.conditions_met_calling_pluginbackend))
         
         Thread {
             try {
-                Logger.d(TAG, "🔄 调用 PluginBackendManager.startBackend()...")
+                Logger.d(TAG, Str.get(R.string.calling_pluginbackendmanager_startba))
                 val startTime = System.currentTimeMillis()
                 val success = PluginBackendManager.startBackend(context, info)
                 val elapsed = System.currentTimeMillis() - startTime
                 val port = if (success) PluginBackendManager.getPort(pluginId) else 0
-                val error = if (success) null else "启动失败"
+                val error = if (success) null else Str.get(R.string.start_failed)
                 
-                Logger.d(TAG, "📊 启动结果: success=$success, port=$port, error=$error, 耗时=${elapsed}ms")
+                Logger.d(TAG, Str.get(R.string.start_result_success_success_port_po, success, port, error, elapsed))
                 
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     callback(success, port, error)
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, "❌ 启动后端异常: ${e.message}", e)
+                Logger.e(TAG, Str.get(R.string.backend_start_error_e_message, e.message), e)
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     callback(false, 0, e.message)
                 }
@@ -978,11 +979,11 @@ class PluginManager private constructor(
         }
         _plugins.value = emptyList()
         _installedPluginIds.value = emptySet()
-        Logger.i(TAG, "已清理所有插件")
+        Logger.i(TAG, Str.get(R.string.all_plugins_cleaned))
     }
 
     fun refreshWorkFolder() {
-        Logger.i(TAG, "刷新工作目录: ${preferenceManager.getWorkFolder()}")
+        Logger.i(TAG, Str.get(R.string.refreshing_work_dir_preferencemanage, preferenceManager.getWorkFolder()))
         refreshPlugins()
     }
 }

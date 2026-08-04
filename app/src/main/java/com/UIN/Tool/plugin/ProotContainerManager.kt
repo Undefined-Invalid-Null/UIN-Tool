@@ -1,6 +1,8 @@
 // plugin/ProotContainerManager.kt
 package com.UIN.Tool.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.content.res.AssetManager
 import com.UIN.Tool.log.Logger
@@ -69,7 +71,7 @@ object ProotContainerManager {
             context.assets.list("")
                 ?.firstOrNull { it.lowercase().startsWith("alpine") }
         } catch (e: Exception) {
-            Logger.e(TAG, "枚举 assets 失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_enumerate_assets_e_message, e.message), e)
             null
         }
     }
@@ -87,7 +89,7 @@ object ProotContainerManager {
             }
             dest.absolutePath
         } catch (e: Exception) {
-            Logger.e(TAG, "复制离线 Alpine 备份失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.failed_to_copy_offline_alpine_backup, e.message), e)
             null
         }
     }
@@ -117,7 +119,7 @@ object ProotContainerManager {
                 stderr = resultData.stderr.toString()
             )
         } catch (e: Exception) {
-            Logger.e(TAG, "Termux 命令执行失败: ${e.message}", e)
+            Logger.e(TAG, Str.get(R.string.termux_command_failed_e_message, e.message), e)
             ExecResult(-1, "", e.message ?: "")
         }
     }
@@ -136,8 +138,8 @@ object ProotContainerManager {
             whenDone()
             return
         }
-        status?.invoke("正在初始化 Termux 基础环境（首次约需 1-2 分钟，请稍候）...")
-        Logger.i(TAG, "Termux 环境未就绪，开始初始化 bootstrap...")
+        status?.invoke(Str.get(R.string.initializing_termux_base_environment))
+        Logger.i(TAG, Str.get(R.string.termux_not_ready_initializing_bootst))
         com.UIN.Tool.app.TermuxInstaller.setupBootstrapIfNeeded(activity) {
             whenDone()
         }
@@ -155,73 +157,73 @@ object ProotContainerManager {
      */
     fun ensureAlpine(context: Context, status: ((String) -> Unit)? = null, onResult: (Boolean) -> Unit) {
         if (isAlpineInstalled()) {
-            Logger.i(TAG, "Alpine 容器已就绪")
+            Logger.i(TAG, Str.get(R.string.alpine_container_ready))
             onResult(true)
             return
         }
 
-        Logger.i(TAG, "Alpine 容器未安装，开始离线恢复...")
+        Logger.i(TAG, Str.get(R.string.alpine_not_installed_starting_offlin))
         Thread {
             try {
                 // ① 先检查离线安装包是否存在，避免在缺失时仍执行耗时的 proot-distro 安装
                 val assetName = findAlpineAsset(context)
                 if (assetName == null) {
-                    postStatus(status, "未检测到离线安装包（assets/alpine*），请先将其放入 APK 的 assets 目录")
+                    postStatus(status, Str.get(R.string.no_offline_package_found_assets_alpi))
                     postMain(onResult, false)
                     return@Thread
                 }
-                Logger.i(TAG, "检测到 Alpine 离线资源: $assetName")
+                Logger.i(TAG, Str.get(R.string.found_alpine_offline_resource_assetn, assetName))
 
                 // ② 确保 proot-distro 命令可用
                 if (!File(PROOT_DISTRO_BIN).exists()) {
-                    Logger.i(TAG, "proot-distro 未安装，先安装 proot-distro...")
-                    postStatus(status, "正在安装 proot-distro（需联网下载，约需数分钟，请耐心等待）...")
+                    Logger.i(TAG, Str.get(R.string.proot_distro_not_installed_installin))
+                    postStatus(status, Str.get(R.string.installing_proot_distro_requires_net))
                     val install = runInTermuxSync(context, "pkg install proot-distro -y")
                     if (install.exitCode != 0) {
-                        Logger.e(TAG, "安装 proot-distro 失败: ${install.stderr.trim()}")
-                        postStatus(status, "proot-distro 安装失败，请检查网络后重试")
+                        Logger.e(TAG, Str.get(R.string.failed_to_install_proot_distro_insta, install.stderr.trim()))
+                        postStatus(status, Str.get(R.string.proot_distro_install_failed_check_ne))
                         postMain(onResult, false)
                         return@Thread
                     }
                 } else {
-                    Logger.i(TAG, "proot-distro 已安装")
+                    Logger.i(TAG, Str.get(R.string.proot_distro_installed))
                 }
 
                 // ③ 复制离线备份
-                postStatus(status, "正在复制离线安装包...")
+                postStatus(status, Str.get(R.string.copying_offline_package))
                 val assetPath = copyAlpineAsset(context)
                 if (assetPath == null) {
-                    Logger.e(TAG, "Alpine 备份资源不可用")
-                    postStatus(status, "复制离线安装包失败")
+                    Logger.e(TAG, Str.get(R.string.alpine_backup_resource_unavailable))
+                    postStatus(status, Str.get(R.string.failed_to_copy_offline_package))
                     postMain(onResult, false)
                     return@Thread
                 }
 
                 // 若残留不完整的 rootfs，先清理，避免 restore 因目录已存在而失败
                 if (!isAlpineInstalled() && File(ALPINE_ROOTFS_DIR).exists()) {
-                    Logger.w(TAG, "检测到不完整的 Alpine rootfs，先清理...")
+                    Logger.w(TAG, Str.get(R.string.incomplete_alpine_rootfs_found_clean))
                     runInTermuxSync(context, "rm -rf '$ALPINE_ROOTFS_DIR'")
                 }
 
                 // ④ 容器名由备份内容自动识别（备份需为 proot-distro backup alpine 生成）
-                postStatus(status, "正在恢复 Alpine 共享容器（首次解压约需数分钟，请耐心等待）...")
+                postStatus(status, Str.get(R.string.restoring_shared_alpine_container_fi))
                 val cmd = "$PROOT_DISTRO_BIN restore $assetPath"
-                Logger.i(TAG, "执行离线恢复: $cmd")
+                Logger.i(TAG, Str.get(R.string.running_offline_restore_cmd, cmd))
                 val result = runInTermuxSync(context, cmd)
-                Logger.i(TAG, "proot-distro restore 退出码: ${result.exitCode}")
+                Logger.i(TAG, Str.get(R.string.proot_distro_restore_exit_code_resul, result.exitCode))
                 if (result.stdout.isNotBlank()) Logger.d(TAG, "restore stdout: ${result.stdout.trim()}")
                 if (result.stderr.isNotBlank()) Logger.e(TAG, "restore stderr: ${result.stderr.trim()}")
 
                 val success = result.exitCode == 0 && isAlpineInstalled()
                 if (success) {
-                    Logger.success(TAG, "Alpine 容器恢复成功")
+                    Logger.success(TAG, Str.get(R.string.alpine_container_restored))
                 } else {
-                    Logger.e(TAG, "Alpine 容器恢复失败: ${result.stderr.trim()}")
+                    Logger.e(TAG, Str.get(R.string.alpine_container_restore_failed_resu, result.stderr.trim()))
                 }
                 postMain(onResult, success)
             } catch (e: Exception) {
-                Logger.e(TAG, "Alpine 容器恢复异常: ${e.message}", e)
-                postStatus(status, "Alpine 容器恢复异常: ${e.message}")
+                Logger.e(TAG, Str.get(R.string.alpine_container_restore_error_e_mes, e.message), e)
+                postStatus(status, Str.get(R.string.alpine_container_restore_error_e_mes, e.message))
                 postMain(onResult, false)
             }
         }.start()

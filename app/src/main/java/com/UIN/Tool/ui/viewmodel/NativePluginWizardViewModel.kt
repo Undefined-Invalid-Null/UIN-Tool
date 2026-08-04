@@ -1,5 +1,7 @@
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.UIN.Tool.log.Logger
@@ -21,13 +23,13 @@ class NativePluginWizardViewModel : ViewModel() {
     private val _pluginId = MutableStateFlow("com.example.myplugin")
     val pluginId: StateFlow<String> = _pluginId.asStateFlow()
     
-    private val _pluginName = MutableStateFlow("我的原生插件")
+    private val _pluginName = MutableStateFlow(Str.get(R.string.my_native_plugin))
     val pluginName: StateFlow<String> = _pluginName.asStateFlow()
     
-    private val _pluginAuthor = MutableStateFlow("开发者")
+    private val _pluginAuthor = MutableStateFlow(Str.get(R.string.developer_2))
     val pluginAuthor: StateFlow<String> = _pluginAuthor.asStateFlow()
     
-    private val _pluginDescription = MutableStateFlow("这是一个原生插件示例")
+    private val _pluginDescription = MutableStateFlow(Str.get(R.string.this_is_a_native_plugin_example))
     val pluginDescription: StateFlow<String> = _pluginDescription.asStateFlow()
     
     private val _pluginVersion = MutableStateFlow("1")
@@ -103,9 +105,9 @@ class NativePluginWizardViewModel : ViewModel() {
                 _fileContents.value = files
                 _fileList.value = files.keys.toList()
                 
-                Logger.i(TAG, "生成Java代码完成: $javaFilePath")
+                Logger.i(TAG, Str.get(R.string.java_code_generated_javafilepath, javaFilePath))
             } catch (e: Exception) {
-                Logger.e(TAG, "生成Java代码失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_generate_java_code), e)
             }
         }
     }

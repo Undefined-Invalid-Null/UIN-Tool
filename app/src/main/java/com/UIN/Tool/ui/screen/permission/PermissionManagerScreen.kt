@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/permission/PermissionManagerScreen.kt
 package com.UIN.Tool.ui.screen.permission
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.Manifest
 import android.content.Intent
 import android.widget.Toast
@@ -41,32 +43,32 @@ fun PermissionManagerScreen() {
 
     val permissionItems = remember {
         listOf(
-            PermissionItem("存储权限", "MANAGE_EXTERNAL_STORAGE", true),
-            PermissionItem("存储权限", Manifest.permission.READ_EXTERNAL_STORAGE),
-            PermissionItem("存储权限", Manifest.permission.WRITE_EXTERNAL_STORAGE),
-            PermissionItem("网络权限", Manifest.permission.INTERNET),
-            PermissionItem("网络权限", Manifest.permission.ACCESS_NETWORK_STATE),
-            PermissionItem("网络权限", Manifest.permission.ACCESS_WIFI_STATE),
-            PermissionItem("相机权限", Manifest.permission.CAMERA),
-            PermissionItem("麦克风权限", Manifest.permission.RECORD_AUDIO),
-            PermissionItem("位置权限", Manifest.permission.ACCESS_FINE_LOCATION),
-            PermissionItem("位置权限", Manifest.permission.ACCESS_COARSE_LOCATION),
-            PermissionItem("电话权限", Manifest.permission.CALL_PHONE),
-            PermissionItem("电话权限", Manifest.permission.READ_PHONE_STATE),
-            PermissionItem("短信权限", Manifest.permission.SEND_SMS),
-            PermissionItem("短信权限", Manifest.permission.READ_SMS),
-            PermissionItem("短信权限", Manifest.permission.RECEIVE_SMS),
-            PermissionItem("联系人权限", Manifest.permission.READ_CONTACTS),
-            PermissionItem("联系人权限", Manifest.permission.WRITE_CONTACTS),
-            PermissionItem("日历权限", Manifest.permission.READ_CALENDAR),
-            PermissionItem("日历权限", Manifest.permission.WRITE_CALENDAR),
-            PermissionItem("系统权限", "SYSTEM_ALERT_WINDOW", true),
-            PermissionItem("系统权限", "WRITE_SETTINGS", true),
-            PermissionItem("系统权限", "POST_NOTIFICATIONS"),
-            PermissionItem("系统权限", Manifest.permission.VIBRATE),
-            PermissionItem("无障碍权限", "ACCESSIBILITY", true),
-            PermissionItem("高级权限", "REQUEST_INSTALL_PACKAGES", true),
-            PermissionItem("高级权限", "PACKAGE_USAGE_STATS", true)
+            PermissionItem(Str.get(R.string.storage_permission), "MANAGE_EXTERNAL_STORAGE", true),
+            PermissionItem(Str.get(R.string.storage_permission), Manifest.permission.READ_EXTERNAL_STORAGE),
+            PermissionItem(Str.get(R.string.storage_permission), Manifest.permission.WRITE_EXTERNAL_STORAGE),
+            PermissionItem(Str.get(R.string.network_permission), Manifest.permission.INTERNET),
+            PermissionItem(Str.get(R.string.network_permission), Manifest.permission.ACCESS_NETWORK_STATE),
+            PermissionItem(Str.get(R.string.network_permission), Manifest.permission.ACCESS_WIFI_STATE),
+            PermissionItem(Str.get(R.string.camera_permission), Manifest.permission.CAMERA),
+            PermissionItem(Str.get(R.string.microphone_permission), Manifest.permission.RECORD_AUDIO),
+            PermissionItem(Str.get(R.string.location_permission), Manifest.permission.ACCESS_FINE_LOCATION),
+            PermissionItem(Str.get(R.string.location_permission), Manifest.permission.ACCESS_COARSE_LOCATION),
+            PermissionItem(Str.get(R.string.phone_permission), Manifest.permission.CALL_PHONE),
+            PermissionItem(Str.get(R.string.phone_permission), Manifest.permission.READ_PHONE_STATE),
+            PermissionItem(Str.get(R.string.sms_permission), Manifest.permission.SEND_SMS),
+            PermissionItem(Str.get(R.string.sms_permission), Manifest.permission.READ_SMS),
+            PermissionItem(Str.get(R.string.sms_permission), Manifest.permission.RECEIVE_SMS),
+            PermissionItem(Str.get(R.string.contacts_permission), Manifest.permission.READ_CONTACTS),
+            PermissionItem(Str.get(R.string.contacts_permission), Manifest.permission.WRITE_CONTACTS),
+            PermissionItem(Str.get(R.string.calendar_permission), Manifest.permission.READ_CALENDAR),
+            PermissionItem(Str.get(R.string.calendar_permission), Manifest.permission.WRITE_CALENDAR),
+            PermissionItem(Str.get(R.string.system_permission), "SYSTEM_ALERT_WINDOW", true),
+            PermissionItem(Str.get(R.string.system_permission), "WRITE_SETTINGS", true),
+            PermissionItem(Str.get(R.string.system_permission), "POST_NOTIFICATIONS"),
+            PermissionItem(Str.get(R.string.system_permission), Manifest.permission.VIBRATE),
+            PermissionItem(Str.get(R.string.accessibility_permission), "ACCESSIBILITY", true),
+            PermissionItem(Str.get(R.string.advanced_permissions), "REQUEST_INSTALL_PACKAGES", true),
+            PermissionItem(Str.get(R.string.advanced_permissions), "PACKAGE_USAGE_STATS", true)
         )
     }
 
@@ -79,14 +81,14 @@ fun PermissionManagerScreen() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         refreshKey++
-        AppToast.info(context, "权限状态已刷新")
+        AppToast.info(context, Str.get(R.string.permission_status_refreshed))
     }
 
     val settingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
         refreshKey++
-        AppToast.info(context, "权限状态已刷新")
+        AppToast.info(context, Str.get(R.string.permission_status_refreshed))
     }
 
     fun requestPermission(permission: String) {
@@ -125,7 +127,7 @@ fun PermissionManagerScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("权限管理") },
+                title = { Text(Str.get(R.string.permission_management)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.Default.ArrowBack,
@@ -163,7 +165,7 @@ fun PermissionManagerScreen() {
                             try {
                                 context.startActivity(Intent(context, PluginPermissionActivity::class.java))
                             } catch (e: Exception) {
-                                AppToast.warning(context, "插件权限功能开发中")
+                                AppToast.warning(context, Str.get(R.string.plugin_permission_feature_under_deve))
                             }
                         },
                     shape = RoundedCornerShape(12.dp),
@@ -198,13 +200,13 @@ fun PermissionManagerScreen() {
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "插件权限管理",
+                                text = Str.get(R.string.plugin_permission_management),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
-                                text = "管理每个插件声明的权限 →",
+                                text = Str.get(R.string.manage_each_plugin_s_declared_permis),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
@@ -226,9 +228,9 @@ fun PermissionManagerScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    UIComponents.TitleText("应用权限")
+                    UIComponents.TitleText(Str.get(R.string.app_permissions))
                     UIComponents.PrimaryButton(
-                        text = "一键授权",
+                        text = Str.get(R.string.grant_all),
                         onClick = { requestAllPermissions() },
                         modifier = Modifier.height(32.dp)
                     )
@@ -255,18 +257,18 @@ fun PermissionManagerScreen() {
                     ) {
                         Icon(
                             when {
-                                item.category.contains("存储") -> Icons.Default.Folder
-                                item.category.contains("网络") -> Icons.Default.Wifi
-                                item.category.contains("相机") -> Icons.Default.Camera
-                                item.category.contains("麦克风") -> Icons.Default.Mic
-                                item.category.contains("位置") -> Icons.Default.LocationOn
-                                item.category.contains("电话") -> Icons.Default.Phone
-                                item.category.contains("短信") -> Icons.Default.Message
-                                item.category.contains("联系人") -> Icons.Default.People
-                                item.category.contains("日历") -> Icons.Default.DateRange
-                                item.category.contains("系统") -> Icons.Default.Settings
-                                item.category.contains("无障碍") -> Icons.Default.Accessibility
-                                item.category.contains("高级") -> Icons.Default.Security
+                                item.category.contains(Str.get(R.string.storage)) -> Icons.Default.Folder
+                                item.category.contains(Str.get(R.string.network)) -> Icons.Default.Wifi
+                                item.category.contains(Str.get(R.string.camera)) -> Icons.Default.Camera
+                                item.category.contains(Str.get(R.string.microphone)) -> Icons.Default.Mic
+                                item.category.contains(Str.get(R.string.location)) -> Icons.Default.LocationOn
+                                item.category.contains(Str.get(R.string.phone)) -> Icons.Default.Phone
+                                item.category.contains(Str.get(R.string.sms)) -> Icons.Default.Message
+                                item.category.contains(Str.get(R.string.contacts)) -> Icons.Default.People
+                                item.category.contains(Str.get(R.string.calendar)) -> Icons.Default.DateRange
+                                item.category.contains(Str.get(R.string.system)) -> Icons.Default.Settings
+                                item.category.contains(Str.get(R.string.accessibility)) -> Icons.Default.Accessibility
+                                item.category.contains(Str.get(R.string.advanced)) -> Icons.Default.Security
                                 else -> Icons.Default.Security
                             },
                             contentDescription = null,
@@ -296,7 +298,7 @@ fun PermissionManagerScreen() {
 
                         if (item.isSpecial) {
                             Text(
-                                text = "特殊",
+                                text = Str.get(R.string.special),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(end = 8.dp)
@@ -324,7 +326,7 @@ fun PermissionManagerScreen() {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 UIComponents.CaptionText(
-                    "提示：部分权限（如悬浮窗、修改系统设置）需要在系统设置中手动开启"
+                    Str.get(R.string.note_some_permissions_e_g_overlay_wi)
                 )
             }
         }

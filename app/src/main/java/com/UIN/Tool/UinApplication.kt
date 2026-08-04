@@ -1,11 +1,12 @@
 package com.UIN.Tool
 
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.multidex.MultiDex
 import com.UIN.Tool.app.TermuxApplication
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
@@ -42,26 +43,26 @@ class UinApplication : TermuxApplication() {
 
         try {
             ServiceLocator.init(this)
-            Logger.i(TAG, "ServiceLocator 初始化成功")
+            Logger.i(TAG, Str.get(R.string.servicelocator_initialized))
         } catch (e: Exception) {
-            Logger.e(TAG, "ServiceLocator 初始化失败", e)
+            Logger.e(TAG, Str.get(R.string.servicelocator_initialization_failed), e)
         }
 
         try {
             initWorkDirectory()
-            Logger.i(TAG, "工作目录初始化成功")
+            Logger.i(TAG, Str.get(R.string.work_directory_initialized))
         } catch (e: Exception) {
-            Logger.e(TAG, "工作目录初始化失败", e)
+            Logger.e(TAG, Str.get(R.string.work_directory_initialization_failed), e)
         }
 
         try {
             initTextMate()
-            Logger.i(TAG, "✅ TextMate 初始化成功")
+            Logger.i(TAG, Str.get(R.string.textmate_initialized))
         } catch (e: Exception) {
-            Logger.e(TAG, "❌ TextMate 初始化失败", e)
+            Logger.e(TAG, Str.get(R.string.textmate_initialization_failed), e)
         }
 
-        Logger.i(TAG, "UIN Tool 应用启动完成")
+        Logger.i(TAG, Str.get(R.string.uin_tool_app_startup_complete))
     }
 
     private fun initTextMate() {
@@ -88,14 +89,14 @@ class UinApplication : TermuxApplication() {
             
             // 获取 assets/textmate 下的所有子目录
             val languageDirs = assets.list(basePath) ?: run {
-                Logger.w(TAG, "assets/textmate 目录不存在")
+                Logger.w(TAG, Str.get(R.string.assets_textmate_directory_not_found))
                 return
             }
             
             var loadedCount = 0
             var failedCount = 0
             
-            Logger.d(TAG, "发现 ${languageDirs.size} 个目录")
+            Logger.d(TAG, Str.get(R.string.found_languagedirs_size_language_dir, languageDirs.size))
             
             for (langDir in languageDirs) {
                 // 跳过 themes 目录
@@ -104,7 +105,7 @@ class UinApplication : TermuxApplication() {
                 val syntaxesPath = "$basePath/$langDir/syntaxes"
                 val files = assets.list(syntaxesPath)
                 if (files == null || files.isEmpty()) {
-                    Logger.w(TAG, "⚠️ 目录 $langDir/syntaxes 为空")
+                    Logger.w(TAG, Str.get(R.string.directory_langdir_syntaxes_is_empty, langDir))
                     continue
                 }
                 
@@ -118,7 +119,7 @@ class UinApplication : TermuxApplication() {
                 }
                 
                 if (grammarFile == null) {
-                    Logger.w(TAG, "⚠️ 未找到语法文件: $langDir")
+                    Logger.w(TAG, Str.get(R.string.no_grammar_file_found_langdir, langDir))
                     failedCount++
                     continue
                 }
@@ -126,7 +127,7 @@ class UinApplication : TermuxApplication() {
                 val fullPath = "$syntaxesPath/$grammarFile"
                 val scopeName = getScopeNameFromFile(langDir, grammarFile)
                 if (scopeName == null) {
-                    Logger.w(TAG, "⚠️ 无法推断 scope: $langDir/$grammarFile")
+                    Logger.w(TAG, Str.get(R.string.could_not_infer_scope_langdir_gramma, langDir, grammarFile))
                     failedCount++
                     continue
                 }
@@ -149,16 +150,16 @@ class UinApplication : TermuxApplication() {
                     
                     grammarRegistry.loadGrammar(grammarDef)
                     loadedCount++
-                    Logger.d(TAG, "✅ 加载语法: $langDir -> $scopeName ($grammarFile)")
+                    Logger.d(TAG, Str.get(R.string.loaded_grammar_langdir_scopename_gra, langDir, scopeName, grammarFile))
                 } catch (e: Exception) {
-                    Logger.e(TAG, "❌ 加载语法失败: $langDir", e)
+                    Logger.e(TAG, Str.get(R.string.failed_to_load_grammar_langdir, langDir), e)
                     failedCount++
                 }
             }
             
-            Logger.i(TAG, "语法加载完成 - 成功: $loadedCount, 失败: $failedCount")
+            Logger.i(TAG, Str.get(R.string.grammar_load_complete_success_loaded, loadedCount, failedCount))
         } catch (e: Exception) {
-            Logger.e(TAG, "语法加载失败", e)
+            Logger.e(TAG, Str.get(R.string.grammar_load_failed), e)
         }
     }
 
@@ -328,22 +329,22 @@ class UinApplication : TermuxApplication() {
                     
                     themeRegistry.loadTheme(themeModel, false)
                     loadedCount++
-                    Logger.d(TAG, "✅ 主题加载成功: $themeName")
+                    Logger.d(TAG, Str.get(R.string.theme_loaded_themename, themeName))
                 } catch (e: Exception) {
-                    Logger.w(TAG, "⚠️ 主题加载失败: $fileName: ${e.message}")
+                    Logger.w(TAG, Str.get(R.string.theme_load_failed_filename_e_message, fileName, e.message))
                 }
             }
             
             // 设置默认主题
             if (themeRegistry.setTheme("one-dark-pro")) {
-                Logger.i(TAG, "🎨 默认主题: one-dark-pro")
+                Logger.i(TAG, Str.get(R.string.default_theme_one_dark_pro))
             } else {
-                Logger.w(TAG, "设置默认主题失败")
+                Logger.w(TAG, Str.get(R.string.failed_to_set_default_theme))
             }
             
-            Logger.i(TAG, "主题加载完成 - 共 $loadedCount 个主题")
+            Logger.i(TAG, Str.get(R.string.theme_load_complete_loadedcount_them, loadedCount))
         } catch (e: Exception) {
-            Logger.e(TAG, "主题加载失败", e)
+            Logger.e(TAG, Str.get(R.string.theme_load_failed), e)
         }
     }
 
@@ -388,6 +389,6 @@ class UinApplication : TermuxApplication() {
         workDir.setWritable(true, false)
         workDir.setExecutable(true, false)
 
-        Logger.i(TAG, "工作目录已创建: ${workDir.absolutePath}")
+        Logger.i(TAG, Str.get(R.string.work_directory_created_workdir_absol, workDir.absolutePath))
     }
 }

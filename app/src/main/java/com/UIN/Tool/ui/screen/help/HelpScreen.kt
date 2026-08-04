@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/help/HelpScreen.kt
 package com.UIN.Tool.ui.screen.help
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.*
@@ -37,8 +39,8 @@ fun HelpScreen() {
             content = reader.readText()
             reader.close()
         } catch (e: Exception) {
-            AppLog.e("HelpScreen", "加载帮助文档失败", e)
-            content = "加载帮助文档失败: ${e.message}"
+            AppLog.e("HelpScreen", Str.get(R.string.failed_to_load_help_document), e)
+            content = Str.get(R.string.failed_to_load_help_document_e_messa, e.message)
         }
         isLoading = false
     }
@@ -46,7 +48,7 @@ fun HelpScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("使用帮助") },
+                title = { Text(Str.get(R.string.help_2)) },
                 navigationIcon = {
                     UIComponents.IconButton(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
@@ -67,7 +69,7 @@ fun HelpScreen() {
                 .padding(paddingValues)
         ) {
             if (isLoading) {
-                UIComponents.FullScreenLoading("加载帮助文档...")
+                UIComponents.FullScreenLoading(Str.get(R.string.loading_help_document))
             } else {
                 AndroidView(
                     factory = { ctx ->

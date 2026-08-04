@@ -1,4 +1,6 @@
 package com.UIN.Tool.domain.model
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 
 /**
  * GitHub Release信息
@@ -28,7 +30,7 @@ data class ReleaseInfo(
     
     fun getFormattedSize(): String {
         return when {
-            apkSize <= 0 -> "未知"
+            apkSize <= 0 -> Str.get(R.string.unknown)
             apkSize < 1024 -> "${apkSize} B"
             apkSize < 1024 * 1024 -> String.format("%.2f KB", apkSize / 1024.0)
             else -> String.format("%.2f MB", apkSize / (1024.0 * 1024.0))

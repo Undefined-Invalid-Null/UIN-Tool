@@ -1,5 +1,7 @@
 package com.UIN.Tool.ui.viewmodel
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,7 +9,7 @@ import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.data.remote.MirrorManager
 import com.UIN.Tool.domain.model.MirrorItem
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.utils.Constants
+import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,9 +59,9 @@ class MirrorViewModel(
                     isLoading = false
                 )
                 
-                Logger.i(TAG, "加载 ${_mirrors.value.size} 个镜像站")
+                Logger.i(TAG, Str.get(R.string.loading_mirrors_value_size_mirror_s, _mirrors.value.size))
             } catch (e: Exception) {
-                Logger.e(TAG, "加载镜像站失败", e)
+                Logger.e(TAG, Str.get(R.string.failed_to_load_mirrors), e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message
@@ -84,14 +86,14 @@ class MirrorViewModel(
     
     fun addMirror(mirror: MirrorItem) {
         _mirrors.value = _mirrors.value + mirror.copy(isDefault = false)
-        Logger.action(TAG, "添加镜像", mirror.name)
+        Logger.action(TAG, Str.get(R.string.add_mirror_2), mirror.name)
     }
     
     fun deleteMirror(mirror: MirrorItem) {
         if (!mirror.isDefault) {
             _mirrors.value = _mirrors.value - mirror
             _enabledMirrors.value = _enabledMirrors.value - mirror.url
-            Logger.action(TAG, "删除镜像", mirror.name)
+            Logger.action(TAG, Str.get(R.string.delete_mirror), mirror.name)
         }
     }
     
@@ -100,7 +102,7 @@ class MirrorViewModel(
             val defaultMirrors = mirrorManager.getDefaultMirrors()
             _mirrors.value = defaultMirrors
             _enabledMirrors.value = defaultMirrors.take(3).map { it.url }.toSet()
-            Logger.action(TAG, "重置镜像", "恢复默认")
+            Logger.action(TAG, Str.get(R.string.reset_mirrors), Str.get(R.string.restore_defaults))
         }
     }
     
@@ -108,7 +110,7 @@ class MirrorViewModel(
         viewModelScope.launch {
             preferenceManager.setEnabledMirrors(_enabledMirrors.value.toList())
             preferenceManager.setUseCdn(_uiState.value.useCdn)
-            Logger.success(TAG, "镜像设置已保存")
+            Logger.success(TAG, Str.get(R.string.mirror_settings_saved))
         }
     }
     

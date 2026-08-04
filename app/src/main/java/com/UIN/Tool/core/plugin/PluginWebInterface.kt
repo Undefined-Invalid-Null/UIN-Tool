@@ -1,6 +1,8 @@
 // app/src/main/java/com/UIN/Tool/core/plugin/PluginWebInterface.kt
 package com.UIN.Tool.core.plugin
 
+import com.UIN.Tool.R
+import com.UIN.Tool.utils.Str
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -22,13 +24,13 @@ class PluginWebInterface(
     
     @JavascriptInterface
     fun callPlugin(method: String, params: String?) {
-        Logger.i(TAG, "JS 调用插件: $method, 参数: $params")
+        Logger.i(TAG, Str.get(R.string.js_call_plugin_method_params_params, method, params))
         proxy?.onJsCall(method, params)
     }
     
     @JavascriptInterface
     fun callHost(action: String, data: String?) {
-        Logger.i(TAG, "JS 调用宿主: $action, 数据: $data")
+        Logger.i(TAG, Str.get(R.string.js_call_host_action_data_data, action, data))
         val params = data ?: ""
         
         when (action) {
@@ -41,13 +43,13 @@ class PluginWebInterface(
             "copy" -> copyToClipboard(params)
             "openUrl" -> openUrl(params)
             "share" -> share(params)
-            else -> Logger.w(TAG, "未知的宿主调用: $action")
+            else -> Logger.w(TAG, Str.get(R.string.unknown_host_call_action, action))
         }
     }
     
     @JavascriptInterface
     fun sendEvent(eventName: String, data: String?) {
-        Logger.d(TAG, "发送事件: $eventName")
+        Logger.d(TAG, Str.get(R.string.sending_event_eventname, eventName))
         proxy?.sendEvent(eventName, data)
     }
     
@@ -62,9 +64,9 @@ class PluginWebInterface(
     private fun showAlert(message: String) {
         (context as? Activity)?.runOnUiThread {
             android.app.AlertDialog.Builder(context)
-                .setTitle("提示")
+                .setTitle(Str.get(R.string.notice))
                 .setMessage(message)
-                .setPositiveButton("确定", null)
+                .setPositiveButton(Str.get(R.string.ok_2), null)
                 .show()
         }
     }
@@ -72,10 +74,10 @@ class PluginWebInterface(
     private fun showConfirm(message: String) {
         (context as? Activity)?.runOnUiThread {
             android.app.AlertDialog.Builder(context)
-                .setTitle("确认")
+                .setTitle(Str.get(R.string.confirm_2))
                 .setMessage(message)
-                .setPositiveButton("确定") { _, _ -> }
-                .setNegativeButton("取消") { _, _ -> }
+                .setPositiveButton(Str.get(R.string.ok_2)) { _, _ -> }
+                .setNegativeButton(Str.get(R.string.cancel)) { _, _ -> }
                 .show()
         }
     }
@@ -94,48 +96,48 @@ class PluginWebInterface(
             } else {
                 vibrator.vibrate(duration)
             }
-            Logger.i(TAG, "震动: ${duration}ms")
+            Logger.i(TAG, Str.get(R.string.vibration_duration_ms, duration))
         } catch (e: Exception) {
-            Logger.e(TAG, "震动失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.vibration_failed_e_message, e.message))
         }
     }
     
     private fun copyToClipboard(text: String) {
         if (text.isEmpty()) {
-            showToast("内容为空")
+            showToast(Str.get(R.string.content_is_empty))
             return
         }
         try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             val clip = android.content.ClipData.newPlainText("plugin_text", text)
             clipboard.setPrimaryClip(clip)
-            showToast("已复制到剪贴板")
-            Logger.i(TAG, "复制到剪贴板: ${text.take(50)}...")
+            showToast(Str.get(R.string.copied_to_clipboard))
+            Logger.i(TAG, Str.get(R.string.copied_to_clipboard_text_take_50, text.take(50)))
         } catch (e: Exception) {
-            Logger.e(TAG, "复制失败", e)
-            showToast("复制失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.copy_failed), e)
+            showToast(Str.get(R.string.copy_failed_e_message, e.message))
         }
     }
     
     private fun openUrl(url: String) {
         if (url.isEmpty()) {
-            showToast("URL不能为空")
+            showToast(Str.get(R.string.url_must_not_be_empty))
             return
         }
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            Logger.i(TAG, "打开链接: $url")
+            Logger.i(TAG, Str.get(R.string.opening_link_url, url))
         } catch (e: Exception) {
-            showToast("无法打开链接")
-            Logger.e(TAG, "打开链接失败: ${e.message}")
+            showToast(Str.get(R.string.unable_to_open_link))
+            Logger.e(TAG, Str.get(R.string.failed_to_open_link_e_message, e.message))
         }
     }
     
     private fun share(text: String) {
         if (text.isEmpty()) {
-            showToast("内容为空")
+            showToast(Str.get(R.string.content_is_empty))
             return
         }
         try {
@@ -144,11 +146,11 @@ class PluginWebInterface(
                 putExtra(Intent.EXTRA_TEXT, text)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            context.startActivity(Intent.createChooser(intent, "分享"))
-            Logger.i(TAG, "分享: ${text.take(50)}...")
+            context.startActivity(Intent.createChooser(intent, Str.get(R.string.share)))
+            Logger.i(TAG, Str.get(R.string.sharing_text_take_50, text.take(50)))
         } catch (e: Exception) {
-            Logger.e(TAG, "分享失败", e)
-            showToast("分享失败: ${e.message}")
+            Logger.e(TAG, Str.get(R.string.share_failed), e)
+            showToast(Str.get(R.string.share_failed_e_message, e.message))
         }
     }
 }

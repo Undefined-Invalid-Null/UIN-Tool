@@ -1,5 +1,6 @@
 package com.UIN.Tool.utils
 
+import com.UIN.Tool.R
 import android.text.TextUtils
 import java.util.regex.Pattern
 
@@ -43,7 +44,7 @@ object MarkdownRenderer {
         // 添加目录
         if (result.tocItems.isNotEmpty()) {
             html.append("<div class='toc-container'>\n")
-            html.append("    <div class='toc-header' onclick='toggleToc()'>📑 目录 <span class='toc-toggle'>▼</span></div>\n")
+            html.append(Str.get(R.string.div_class_toc_header_onclick_togglet))
             html.append("    <div class='toc-content' id='tocContent'>\n")
             html.append("        <ul class='toc-list'>\n")
             html.append(tocHtml)
@@ -252,7 +253,7 @@ object MarkdownRenderer {
                     navigator.clipboard.writeText(text).then(function() {
                         showCopySuccess(btn);
                     }).catch(function(err) {
-                        console.error('Clipboard API 失败:', err);
+                        console.error('${Str.get(R.string.clipboard_api_failed_js)}', err);
                         fallbackCopy(text, btn);
                     });
                 } else {
@@ -273,20 +274,20 @@ object MarkdownRenderer {
                     document.execCommand('copy');
                     showCopySuccess(btn);
                 } catch(err) {
-                    console.error('复制失败:', err);
-                    btn.textContent = '❌ 失败';
+                    console.error('${Str.get(R.string.copy_failed_js)}', err);
+                    btn.textContent = '${Str.get(R.string.failed_js)}';
                     setTimeout(function() {
-                        btn.textContent = '📋 复制';
+                        btn.textContent = '${Str.get(R.string.copy_js)}';
                     }, 2000);
                 }
                 document.body.removeChild(textarea);
             }
             
             function showCopySuccess(btn) {
-                btn.textContent = '✓ 已复制';
+                btn.textContent = '${Str.get(R.string.copied_js)}';
                 btn.classList.add('copied');
                 setTimeout(function() {
-                    btn.textContent = '📋 复制';
+                    btn.textContent = '${Str.get(R.string.copy_js)}';
                     btn.classList.remove('copied');
                 }, 2000);
             }
@@ -301,7 +302,7 @@ object MarkdownRenderer {
                         wrapper.appendChild(pre);
                         var btn = document.createElement('button');
                         btn.className = 'copy-btn';
-                        btn.textContent = '📋 复制';
+                        btn.textContent = '${Str.get(R.string.copy_js)}';
                         btn.onclick = function() { copyCode(this); };
                         wrapper.appendChild(btn);
                     }
@@ -380,7 +381,7 @@ object MarkdownRenderer {
                     }
                     result.append(">")
                     result.append(escapeHtml(codeBlock.toString()))
-                    result.append("</code></pre><button class='copy-btn' onclick='copyCode(this)'>📋 复制</button></div>\n")
+                    result.append(Str.get(R.string.code_pre_button_class_copy_btn_oncli))
                 }
                 i++
                 continue
@@ -579,7 +580,7 @@ object MarkdownRenderer {
         }
 
         if (inCodeBlock) {
-            result.append("<div class='code-block-wrapper'><pre><code>").append(escapeHtml(codeBlock.toString())).append("</code></pre><button class='copy-btn' onclick='copyCode(this)'>📋 复制</button></div>\n")
+            result.append("<div class='code-block-wrapper'><pre><code>").append(escapeHtml(codeBlock.toString())).append(Str.get(R.string.code_pre_button_class_copy_btn_oncli))
         }
         if (inList) {
             result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
@@ -773,8 +774,8 @@ object MarkdownRenderer {
             </head>
             <body>
                 <div class='card'>
-                    <h1>📄 空文档</h1>
-                    <p>文档内容为空</p>
+                    <h1>${Str.get(R.string.empty_doc_h1)}</h1>
+                    <p>${Str.get(R.string.empty_doc_p)}</p>
                 </div>
             </body>
             </html>
