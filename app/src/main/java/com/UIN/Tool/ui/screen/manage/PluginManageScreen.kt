@@ -1342,7 +1342,7 @@ fun PluginManageItem(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = "Web",
+                                text = Str.get(R.string.web_label),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)

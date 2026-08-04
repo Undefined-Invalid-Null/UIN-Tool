@@ -217,7 +217,7 @@ fun PluginListItem(
                     UIComponents.CaptionText("v${plugin.versionName}")
                     UIComponents.CaptionText(plugin.category)
                     if (plugin.isWebPlugin()) {
-                        UIComponents.CaptionText("Web")
+                        UIComponents.CaptionText(Str.get(R.string.web_label))
                     }
                 }
             }

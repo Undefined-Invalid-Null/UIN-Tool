@@ -2003,6 +2003,7 @@ Released: %3$s
     <string name="web_code_editor" formatted="false">Web Code Editor</string>
     <string name="web_dir" formatted="false">  ✅ web/ dir</string>
     <string name="web_index_html_default" formatted="false">  ✅ web/index.html (default)</string>
+    <string name="web_label" formatted="false">Web</string>
     <string name="web_plugin" formatted="false">Web Plugin</string>
     <string name="web_plugin_author">Author: %1$s&lt;br></string>
     <string name="web_plugin_dev_tips">Web plugin development\n\n• Blank HTML/CSS/JS template files generated\n• Click "Open Code Editor" to modify files\n• You can also import an existing Web project (ZIP)\n• JavaScript can call native features via UINPlugin.callHost()\n• No recompilation needed after modifying HTML/CSS/JS\n\nCurrently generated %1$s files</string>

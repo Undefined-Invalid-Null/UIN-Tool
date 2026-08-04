@@ -1987,6 +1987,7 @@
     <string name="web_code_editor" formatted="false">Web 代码编辑</string>
     <string name="web_dir" formatted="false">  ✅ web/ 目录</string>
     <string name="web_index_html_default" formatted="false">  ✅ web/index.html (默认)</string>
+    <string name="web_label" formatted="false">Web</string>
     <string name="web_plugin" formatted="false">Web插件</string>
     <string name="web_plugin_author">作者: %1$s&lt;br></string>
     <string name="web_plugin_dev_tips">Web 插件开发\n\n• 已生成空白 HTML/CSS/JS 模板文件\n• 点击「打开代码编辑器」修改文件\n• 也可以导入已有的 Web 项目 (ZIP)\n• JavaScript 可通过 UINPlugin.callHost() 调用原生功能\n• 修改 HTML/CSS/JS 后无需重新编译\n\n当前已生成 %1$s 个文件</string>
