@@ -20,7 +20,9 @@ class LogViewerActivity : ComponentActivity() {
 
         setContent {
             UINToolTheme {
-                LogViewerScreen()
+                LogViewerScreen(
+                    onBack = { finish() }
+                )
             }
         }
     }

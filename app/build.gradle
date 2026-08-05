@@ -18,8 +18,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 15
-        versionName "4.5.0"
+        versionCode 16
+        versionName "5.0.0"
 
         multiDexEnabled true
         multiDexKeepProguard file('multidex-config.pro')
@@ -29,7 +29,7 @@ android {
         manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.UIN.Tool"
         manifestPlaceholders.TERMUX_APP_NAME = "UIN Tool"
 
-        resourceConfigurations += ["en", "zh-rCN", "ja"]
+        resourceConfigurations += ["en", "zh-rCN"]
 
         ndk {
             abiFilters += ["arm64-v8a"]

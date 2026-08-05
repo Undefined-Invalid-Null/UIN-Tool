@@ -11,11 +11,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,8 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.data.local.PreferenceManager
@@ -37,17 +39,20 @@ import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
 private const val TAG = "PluginManageScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginManageScreen(
-    navController: NavController = rememberNavController()
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -57,6 +62,9 @@ fun PluginManageScreen(
     var plugins by remember { mutableStateOf<List<PluginInfo>>(emptyList()) }
     var selectedPluginIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    val pullRefreshState = rememberPullToRefreshState()
     var showDeleteDialog by remember { mutableStateOf<PluginInfo?>(null) }
     var showDetailDialog by remember { mutableStateOf<PluginInfo?>(null) }
     var showPermissionDialog by remember { mutableStateOf<PluginInfo?>(null) }
@@ -402,193 +410,218 @@ fun PluginManageScreen(
         AppLog.i(TAG, Str.get(R.string.plugin_management_ui_initialized))
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Scaffold(
+        topBar = {
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.plugin_management),
+                onBack = onBack
+            )
+        }
+    ) { paddingValues ->
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    loadPlugins()
+                    delay(400)
+                    lastRefreshTime = UIComponents.currentTimeString()
+                    isRefreshing = false
+                }
+            },
+            state = pullRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            indicator = {
+                UIComponents.PullRefreshIndicator(
+                    isRefreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
         ) {
-            UIComponents.TitleText(Str.get(R.string.plugin_management))
-            Row {
-                UIComponents.IconButton(
-                    icon = Icons.Default.Refresh,
-                    onClick = { loadPlugins() }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            item {
+                UIComponents.LastUpdatedCaption(
+                    time = lastRefreshTime,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+            item {
+                UIComponents.TextInput(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    placeholder = Str.get(R.string.search_plugins),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    leadingIcon = Icons.Default.Search
+                )
+            }
+
+        if (categories.size > 1) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categories.forEach { category ->
+                        UIComponents.Chip(
+                            label = category,
+                            selected = selectedCategory == category,
+                            onClick = { selectedCategory = category }
+                        )
+                    }
+                }
+            }
+        }
+
+        if (exportProgress.isNotEmpty()) {
+            item {
+                UIComponents.Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = exportProgress,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                UIComponents.PrimaryButton(
+                    text = Str.get(R.string.import_label),
+                    icon = Icons.Default.FileUpload,
+                    onClick = { importLauncher.launch("*/*") },
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                )
+                UIComponents.SecondaryButton(
+                    text = Str.get(R.string.batch),
+                    icon = Icons.Default.Add,
+                    onClick = { batchImportLauncher.launch(arrayOf("*/*")) },
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                )
+                UIComponents.SecondaryButton(
+                    text = Str.get(R.string.plugin_set),
+                    icon = Icons.Default.Archive,
+                    onClick = { importZipLauncher.launch("application/zip") },
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
                 )
             }
         }
 
-        UIComponents.TextInput(
-            value = searchText,
-            onValueChange = { searchText = it },
-            placeholder = Str.get(R.string.search_plugins),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            leadingIcon = Icons.Default.Search
-        )
-
-        if (categories.size > 1) {
+        item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                categories.forEach { category ->
-                    UIComponents.Chip(
-                        label = category,
-                        selected = selectedCategory == category,
-                        onClick = { selectedCategory = category }
-                    )
-                }
+                UIComponents.SecondaryButton(
+                    text = Str.get(R.string.export_selectedpluginids_size, selectedPluginIds.size),
+                    icon = Icons.Default.FileDownload,
+                    onClick = { exportSelectedPlugins() },
+                    modifier = Modifier.weight(1f),
+                    enabled = selectedPluginIds.isNotEmpty() && !isLoading
+                )
+                UIComponents.SecondaryButton(
+                    text = Str.get(R.string.delete),
+                    icon = Icons.Default.Delete,
+                    onClick = {
+                        if (selectedPluginIds.isNotEmpty()) {
+                            val plugin = plugins.find { it.pluginId == selectedPluginIds.first() }
+                            plugin?.let { showDeleteDialog = it }
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = selectedPluginIds.isNotEmpty() && !isLoading
+                )
             }
         }
 
-        if (exportProgress.isNotEmpty()) {
-            UIComponents.Card(
+        item {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = Str.get(R.string.filteredplugins_size_plugin_s_in_tot, filteredPlugins.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = exportProgress,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            UIComponents.PrimaryButton(
-                text = Str.get(R.string.import_label),
-                icon = Icons.Default.FileUpload,
-                onClick = { importLauncher.launch("*/*") },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading
-            )
-            UIComponents.SecondaryButton(
-                text = Str.get(R.string.batch),
-                icon = Icons.Default.Add,
-                onClick = { batchImportLauncher.launch(arrayOf("*/*")) },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading
-            )
-            UIComponents.SecondaryButton(
-                text = Str.get(R.string.plugin_set),
-                icon = Icons.Default.Archive,
-                onClick = { importZipLauncher.launch("application/zip") },
-                modifier = Modifier.weight(1f),
-                enabled = !isLoading
-            )
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            UIComponents.SecondaryButton(
-                text = Str.get(R.string.export_selectedpluginids_size, selectedPluginIds.size),
-                icon = Icons.Default.FileDownload,
-                onClick = { exportSelectedPlugins() },
-                modifier = Modifier.weight(1f),
-                enabled = selectedPluginIds.isNotEmpty() && !isLoading
-            )
-            UIComponents.SecondaryButton(
-                text = Str.get(R.string.delete),
-                icon = Icons.Default.Delete,
-                onClick = {
-                    if (selectedPluginIds.isNotEmpty()) {
-                        val plugin = plugins.find { it.pluginId == selectedPluginIds.first() }
-                        plugin?.let { showDeleteDialog = it }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = selectedPluginIds.isNotEmpty() && !isLoading
-            )
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = Str.get(R.string.filteredplugins_size_plugin_s_in_tot, filteredPlugins.size),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TextButton(
-                    onClick = {
-                        selectedPluginIds = if (selectedPluginIds.size == filteredPlugins.size) {
-                            emptySet()
-                        } else {
-                            filteredPlugins.map { it.pluginId }.toSet()
+                    TextButton(
+                        onClick = {
+                            selectedPluginIds = if (selectedPluginIds.size == filteredPlugins.size) {
+                                emptySet()
+                            } else {
+                                filteredPlugins.map { it.pluginId }.toSet()
+                            }
                         }
+                    ) {
+                        Text(
+                            if (selectedPluginIds.size == filteredPlugins.size) Str.get(R.string.deselect_all_2) else Str.get(R.string.select_all),
+                            fontSize = AppDimens.captionTextSize.sp
+                        )
                     }
-                ) {
-                    Text(
-                        if (selectedPluginIds.size == filteredPlugins.size) Str.get(R.string.deselect_all_2) else Str.get(R.string.select_all),
-                        fontSize = 12.sp
-                    )
-                }
-                if (selectedPluginIds.isNotEmpty()) {
-                    Text(
-                        text = Str.get(R.string.selectedpluginids_size_selected, selectedPluginIds.size),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    if (selectedPluginIds.isNotEmpty()) {
+                        Text(
+                            text = Str.get(R.string.selectedpluginids_size_selected, selectedPluginIds.size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }
 
         when {
-            isLoading && plugins.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = Str.get(R.string.loading_plugins),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            isLoading && plugins.isEmpty() -> item {
+                UIComponents.PluginListSkeleton(
+                    modifier = Modifier.fillParentMaxSize()
+                )
             }
-            filteredPlugins.isEmpty() -> {
+            filteredPlugins.isEmpty() -> item {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillParentMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -619,32 +652,28 @@ fun PluginManageScreen(
                     }
                 }
             }
-            else -> {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredPlugins) { plugin ->
-                        PluginManageItem(
-                            plugin = plugin,
-                            isSelected = selectedPluginIds.contains(plugin.pluginId),
-                            onToggle = {
-                                selectedPluginIds = if (selectedPluginIds.contains(plugin.pluginId)) {
-                                    selectedPluginIds - plugin.pluginId
-                                } else {
-                                    selectedPluginIds + plugin.pluginId
-                                }
-                            },
-                            onOpen = { pluginManager.openPlugin(plugin.pluginId, context) },
-                            onDelete = { showDeleteDialog = plugin },
-                            onDetail = { showDetailDialog = plugin },
-                            onManagePermissions = { showPermissionDialog = plugin },
-                            onViewPermissions = { showPermissionDetail = plugin }
-                        )
-                    }
-                }
+            else -> items(filteredPlugins, key = { it.pluginId }) { plugin ->
+                PluginManageItem(
+                    plugin = plugin,
+                    isSelected = selectedPluginIds.contains(plugin.pluginId),
+                    modifier = Modifier.animateItem(),
+                    onToggle = {
+                        selectedPluginIds = if (selectedPluginIds.contains(plugin.pluginId)) {
+                            selectedPluginIds - plugin.pluginId
+                        } else {
+                            selectedPluginIds + plugin.pluginId
+                        }
+                    },
+                    onOpen = { pluginManager.openPlugin(plugin.pluginId, context) },
+                    onDelete = { showDeleteDialog = plugin },
+                    onDetail = { showDetailDialog = plugin },
+                    onManagePermissions = { showPermissionDialog = plugin },
+                    onViewPermissions = { showPermissionDetail = plugin }
+                )
             }
         }
+    }
+    }
     }
 
     // ==================== 删除确认对话框 ====================
@@ -799,9 +828,12 @@ fun PermissionManagementDialog(
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
                 .heightIn(max = 450.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
@@ -830,7 +862,7 @@ fun PermissionManagementDialog(
                     if (allGranted && permissions.isNotEmpty()) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(4.dp)
+                            shape = RoundedCornerShape(AppDimens.radiusSmall)
                         ) {
                             Text(
                                 Str.get(R.string.granted),
@@ -961,7 +993,7 @@ fun PermissionManagementDialog(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
                             enabled = !isRequesting
                         ) {
                             if (isRequesting) {
@@ -975,7 +1007,7 @@ fun PermissionManagementDialog(
                                 Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
-                            Text(if (isRequesting) Str.get(R.string.requesting) else Str.get(R.string.grant_all_permissions), fontSize = 14.sp)
+                            Text(if (isRequesting) Str.get(R.string.requesting) else Str.get(R.string.grant_all_permissions), fontSize = AppDimens.bodyTextSize.sp)
                         }
                     }
 
@@ -1000,11 +1032,11 @@ fun PermissionManagementDialog(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             ),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                         ) {
                             Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(Str.get(R.string.go_to_system_settings_to_enable_spec), fontSize = 14.sp)
+                            Text(Str.get(R.string.go_to_system_settings_to_enable_spec), fontSize = AppDimens.bodyTextSize.sp)
                         }
                     }
 
@@ -1017,9 +1049,9 @@ fun PermissionManagementDialog(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                     ) {
-                        Text(Str.get(R.string.close), fontSize = 14.sp)
+                        Text(Str.get(R.string.close), fontSize = AppDimens.bodyTextSize.sp)
                     }
                 }
             }
@@ -1099,9 +1131,12 @@ fun PermissionItemCompact(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(AppDimens.cardCornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = if (granted) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.errorContainer
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                if (granted) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.errorContainer
         )
     ) {
         Row(
@@ -1137,7 +1172,7 @@ fun PermissionItemCompact(
             if (granted) {
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(AppDimens.radiusSmall)
                 ) {
                     Text(
                         text = Str.get(R.string.granted_2),
@@ -1154,9 +1189,9 @@ fun PermissionItemCompact(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                 ) {
-                    Text(Str.get(R.string.grant), fontSize = 11.sp)
+                    Text(Str.get(R.string.grant), fontSize = AppDimens.captionTextSize.sp)
                 }
             }
         }
@@ -1169,6 +1204,7 @@ fun PermissionItemCompact(
 fun PluginManageItem(
     plugin: PluginInfo,
     isSelected: Boolean,
+    modifier: Modifier = Modifier,
     onToggle: () -> Unit,
     onOpen: () -> Unit,
     onDelete: () -> Unit,
@@ -1185,15 +1221,12 @@ fun PluginManageItem(
     val hasPermissions = plugin.permissions.isNotEmpty()
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable { onDetail() },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(AppDimens.cardCornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = if (hasMissingPermissions)
-                MaterialTheme.colorScheme.errorContainer
-            else
-                MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -1218,7 +1251,7 @@ fun PluginManageItem(
                     .size(44.dp)
                     .background(
                         MaterialTheme.colorScheme.primaryContainer,
-                        RoundedCornerShape(10.dp)
+                        RoundedCornerShape(AppDimens.radiusMedium)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -1252,7 +1285,7 @@ fun PluginManageItem(
                         if (hasMissingPermissions) {
                             Surface(
                                 color = MaterialTheme.colorScheme.errorContainer,
-                                shape = RoundedCornerShape(4.dp)
+                                shape = RoundedCornerShape(AppDimens.radiusSmall)
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -1276,7 +1309,7 @@ fun PluginManageItem(
                         } else if (permissionSummary.isAllGranted) {
                             Surface(
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(4.dp)
+                                shape = RoundedCornerShape(AppDimens.radiusSmall)
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -1314,7 +1347,7 @@ fun PluginManageItem(
                 ) {
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(4.dp)
+                        shape = RoundedCornerShape(AppDimens.radiusSmall)
                     ) {
                         Text(
                             text = "v${plugin.versionName}",
@@ -1326,7 +1359,7 @@ fun PluginManageItem(
 
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(4.dp)
+                        shape = RoundedCornerShape(AppDimens.radiusSmall)
                     ) {
                         Text(
                             text = plugin.category,
@@ -1339,7 +1372,7 @@ fun PluginManageItem(
                     if (plugin.isWebPlugin()) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(4.dp)
+                            shape = RoundedCornerShape(AppDimens.radiusSmall)
                         ) {
                             Text(
                                 text = Str.get(R.string.web_label),
@@ -1351,7 +1384,7 @@ fun PluginManageItem(
                     } else {
                         Surface(
                             color = MaterialTheme.colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(4.dp)
+                            shape = RoundedCornerShape(AppDimens.radiusSmall)
                         ) {
                             Text(
                                 text = Str.get(R.string.native_label),
@@ -1368,7 +1401,7 @@ fun PluginManageItem(
                                 MaterialTheme.colorScheme.errorContainer
                             else
                                 MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(4.dp)
+                            shape = RoundedCornerShape(AppDimens.radiusSmall)
                         ) {
                             Text(
                                 text = Str.get(R.string.plugin_permissions_size_permission_s, plugin.permissions.size),

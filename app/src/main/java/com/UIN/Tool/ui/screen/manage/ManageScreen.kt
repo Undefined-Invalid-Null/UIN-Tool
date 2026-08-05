@@ -7,8 +7,11 @@ import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -45,6 +49,8 @@ import com.UIN.Tool.utils.formatFileSize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
 private const val TAG = "ManageScreen"
 
@@ -62,7 +68,6 @@ fun ManageScreen(
     checkUpdate: Boolean = false
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val pluginManager = ServiceLocator.getPluginManager()
     val preferenceManager = PreferenceManager(context)
 
@@ -317,10 +322,6 @@ fun ManageScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             UIComponents.TitleText(Str.get(R.string.manage))
-            UIComponents.IconButton(
-                icon = Icons.Default.Refresh,
-                onClick = { /* 刷新插件列表 */ }
-            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -389,8 +390,11 @@ fun ManageScreen(
 
         AlertDialog(
             onDismissRequest = { showDeveloperOptions = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(20.dp),
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
             title = {
                 Text(
                     Str.get(R.string.developer_options),
@@ -455,7 +459,8 @@ fun ManageMenuItemCard(
     item: ManageMenuItem,
     modifier: Modifier = Modifier
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
         animationSpec = spring(
@@ -464,19 +469,26 @@ fun ManageMenuItemCard(
         ),
         label = "card_scale"
     )
+    val cardShape = RoundedCornerShape(AppDimens.cardCornerRadius)
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .height(110.dp)
             .scale(scale)
+            .clip(cardShape)
             .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
                 onClick = item.onClick,
                 onClickLabel = item.title
             ),
-        shape = RoundedCornerShape(16.dp),
+        shape = cardShape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 0.dp
@@ -511,11 +523,11 @@ fun ManageMenuItemCard(
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
                                 )
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(AppDimens.radiusMedium)
                         )
                         .background(
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(AppDimens.radiusMedium)
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -532,7 +544,7 @@ fun ManageMenuItemCard(
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.titleSmall.copy(
-                        fontSize = 13.sp,
+                        fontSize = AppDimens.bodyTextSize.sp,
                         fontWeight = FontWeight.Medium
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
@@ -543,7 +555,7 @@ fun ManageMenuItemCard(
                 Text(
                     text = item.description,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 10.sp
+                        fontSize = AppDimens.captionTextSize.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

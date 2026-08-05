@@ -30,6 +30,8 @@ import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.launch
 import java.io.File
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
 private const val TAG = "BasePluginWizardScreen"
 
@@ -412,10 +414,10 @@ fun BasePluginWizardScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
@@ -613,7 +615,10 @@ fun BasePluginWizardScreen(
     if (showJsonEditor) {
         AlertDialog(
             onDismissRequest = { showJsonEditor = false },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
             title = { Text(Str.get(R.string.edit_plugin_json)) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -625,7 +630,7 @@ fun BasePluginWizardScreen(
                             .height(420.dp),
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            fontSize = 13.sp
+                            fontSize = AppDimens.bodyTextSize.sp
                         )
                     )
                     Spacer(modifier = Modifier.height(8.dp))

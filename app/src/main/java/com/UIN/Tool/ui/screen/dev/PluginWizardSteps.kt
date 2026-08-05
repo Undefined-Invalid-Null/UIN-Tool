@@ -28,6 +28,7 @@ import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.FileUtils
 import com.UIN.Tool.utils.formatFileSize
 import java.io.File
+import com.UIN.Tool.ui.theme.AppDimens
 
 private fun loadBitmapFromFile(path: String): Bitmap? {
     return try {
@@ -301,7 +302,7 @@ fun PluginIconStep(
                 .size(120.dp)
                 .background(
                     MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(16.dp)
+                    RoundedCornerShape(AppDimens.radiusLarge)
                 ),
             contentAlignment = Alignment.Center
         ) {

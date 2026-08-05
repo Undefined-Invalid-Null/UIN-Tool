@@ -4,7 +4,6 @@ package com.UIN.Tool.ui.screen.manage
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.ui.theme.UINToolTheme
 
 class PluginManageActivity : ComponentActivity() {
@@ -13,7 +12,7 @@ class PluginManageActivity : ComponentActivity() {
         setContent {
             UINToolTheme {
                 PluginManageScreen(
-                    navController = rememberNavController()
+                    onBack = { finish() }
                 )
             }
         }

@@ -212,6 +212,8 @@ Bootstrap binaries compiled for &TERMUX_APP_NAME; have hardcoded $PREFIX paths a
     <string name="bootstrap_error_title" formatted="false">Unable to install bootstrap packages</string>
     <string name="bootstrap_error_try_again" formatted="false">Try again</string>
     <string name="bootstrap_installer_body" formatted="false">Installing bootstrap packages...</string>
+    <string name="bottom_nav_selected_color" formatted="false">Bottom Nav Selected Color</string>
+    <string name="bottom_nav_unselected_color" formatted="false">Bottom Nav Unselected Color</string>
     <string name="br_backend_info_getbackenddisplaynam">&lt;br>Backend: %1$s</string>
     <string name="br_includes_documentation" formatted="false">&lt;br>Includes documentation</string>
     <string name="broadcast_receiver_registered" formatted="false">Broadcast receiver registered</string>
@@ -395,6 +397,8 @@ Note: these permissions are only used when your installed plugins need them.</st
     <string name="currentversionname_code_currentversi">%1$s (code: %2$s)</string>
     <string name="custom_backend_plugin_example_other_" formatted="false">Custom backend plugin example (other mode, manual start via pre-command)</string>
     <string name="custom_manual_start" formatted="false">Custom (manual start)</string>
+    <string name="dark_mode" formatted="false">Dark</string>
+    <string name="dark_palette" formatted="false">Dark Colors</string>
     <string name="dark_primary" formatted="false">Dark Primary</string>
     <string name="dark_theme" formatted="false">Dark Theme</string>
     <string name="data_migration_currentversion_info_v">Data migration: %1$s -> %2$s</string>
@@ -735,6 +739,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="first_import_recording_signature_fil">First import, recording signature: %1$s</string>
     <string name="first_install_data_version_info_vers">First install, data version: %1$s</string>
     <string name="flashlight" formatted="false">Flashlight</string>
+    <string name="follow_system" formatted="false">Follow System</string>
     <string name="fonts" formatted="false">Fonts</string>
     <string name="for_checking_network_status" formatted="false">For checking network status</string>
     <string name="for_managing_all_files_in_the_plugin" formatted="false">For managing all files in the plugin directory</string>
@@ -897,6 +902,8 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="launcher_does_not_support_pinning_sh" formatted="false">Launcher does not support pinning shortcuts</string>
     <string name="launching_plugin_wizard_uitype_uityp">Launching plugin wizard: uiType=%1$s, backend=%2$s</string>
     <string name="light" formatted="false">Light</string>
+    <string name="light_mode" formatted="false">Light</string>
+    <string name="light_palette" formatted="false">Light Colors</string>
     <string name="light_primary" formatted="false">Light Primary</string>
     <string name="light_theme" formatted="false">Light Theme</string>
     <string name="lines_editedcontent_lines_size">Lines: %1$s</string>
@@ -1009,6 +1016,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="nav_manage" formatted="false">Manage</string>
     <string name="nav_repo" formatted="false">Repo</string>
     <string name="nav_tools" formatted="false">Tools</string>
+    <string name="navigation_bar_color" formatted="false">Navigation Bar Color</string>
     <string name="navigation_failed" formatted="false">Navigation failed</string>
     <string name="ndescription_plugin_description_n">\nDescription: %1$s\n</string>
     <string name="network" formatted="false">Network</string>
@@ -1119,6 +1127,7 @@ New features, improvements and fixes are ready!</string>
     <string name="packaging_successful_n_outputtpk_abs">Packaging successful!\n%1$s</string>
     <string name="packaging_tpk" formatted="false">Packaging TPK...</string>
     <string name="packing_plugins_size_plugin_s">Packing %1$s plugin(s)...</string>
+    <string name="palette_editing" formatted="false">Color Palette</string>
     <string name="paste" formatted="false">Paste</string>
     <string name="path_escape_file_canonicalpath">Path escape: %1$s</string>
     <string name="path_resolution_failed_e_message">Path resolution failed: %1$s</string>
@@ -1261,6 +1270,7 @@ Dependencies: %1$s
     <string name="plugininfo_is_null_2" formatted="false">   -> pluginInfo is null</string>
     <string name="plugininfo_is_null_cannot_check_back" formatted="false">❌ pluginInfo is null, cannot check backend</string>
     <string name="pluginmanager_startbackend_called" formatted="false">🔍 PluginManager.startBackend() called</string>
+    <string name="plugins" formatted="false">Plugins</string>
     <string name="plugins_declare_their_required_permi" formatted="false">Plugins declare their required permissions in plugin.json</string>
     <string name="pluginshareddata_not_initialized_cal" formatted="false">PluginSharedData not initialized; call init() first</string>
     <string name="port_port_held_by_lingering_backend_">⚠️ Port %1$s held by lingering backend (pid: %2$s), cleaning then restarting</string>
@@ -1332,6 +1342,8 @@ Dependencies: %1$s
     <string name="refresh" formatted="false">Refresh</string>
     <string name="refresh_all_widgets" formatted="false">Refresh All Widgets</string>
     <string name="refresh_broadcast_sent" formatted="false">📤 Refresh broadcast sent</string>
+    <string name="last_update_time">Last updated: %1$s</string>
+
     <string name="refreshing_plugin_list" formatted="false">Refreshing plugin list...</string>
     <string name="refreshing_widget_appwidgetid">Refreshing widget: %1$s</string>
     <string name="refreshing_work_dir_preferencemanage">Refreshing work dir: %1$s</string>
@@ -1553,6 +1565,7 @@ Continue?</string>
     <string name="starting_process" formatted="false">🚀 Starting process...</string>
     <string name="starting_progress_js">Starting </string>
     <string name="starting_sensor_type">Starting sensor: %1$s</string>
+    <string name="status_bar_color" formatted="false">Status Bar Color</string>
     <string name="step1_in_manage_plugins_tap_import_plugi" formatted="false">1. In "Manage" > "Plugins", tap "Import Plugin"</string>
     <string name="step1_long_press_an_empty_area_of_the_ho" formatted="false">1. Long-press an empty area of the home screen\n</string>
     <string name="step1_tap_add_to_home_screen_and_choose_" formatted="false">1. Tap "Add to Home Screen" and choose a location\n</string>
@@ -1711,6 +1724,7 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="theme_load_failed" formatted="false">Theme load failed</string>
     <string name="theme_load_failed_filename_e_message">⚠️ Theme load failed: %1$s: %2$s</string>
     <string name="theme_loaded_themename">✅ Theme loaded: %1$s</string>
+    <string name="theme_mode" formatted="false">Theme Mode</string>
     <string name="then_wait_for_the_terminal_environme" formatted="false">then wait for the terminal environment to initialize (about 30-60 seconds).\n\n</string>
     <string name="this_device_does_not_support_shortcu" formatted="false">This device does not support shortcuts</string>
     <string name="this_feature_requires_android_8_0" formatted="false">This feature requires Android 8.0+</string>

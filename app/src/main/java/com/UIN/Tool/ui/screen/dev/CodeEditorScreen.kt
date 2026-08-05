@@ -46,6 +46,8 @@ import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import org.eclipse.tm4e.core.registry.IThemeSource
 // ui/screen/dev/CodeEditorScreen.kt - 顶部添加导入
 import kotlinx.coroutines.delay
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
 private const val TAG = "CodeEditorScreen"
 private const val DEBUG_TAG = "EditorDebug"
@@ -283,8 +285,13 @@ fun ThemeSelectionDialog(
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
                 .padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+            colors = CardDefaults.cardColors(
+                containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    Color.White
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
@@ -315,7 +322,7 @@ fun ThemeSelectionDialog(
                     )
                     Surface(
                         color = Color(0xFFE8F0FE),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppDimens.radiusMedium)
                     ) {
                         Text(
                             text = currentTheme,
@@ -397,7 +404,7 @@ fun ThemeSelectionDialog(
                         containerColor = Color(0xFFF0F0F0),
                         contentColor = Color(0xFF333333)
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                 ) {
                     Text(Str.get(R.string.close), fontWeight = FontWeight.Medium)
                 }
@@ -419,12 +426,12 @@ fun ThemeChip(
             .clickable { onClick() }
             .padding(vertical = 4.dp),
         color = if (isSelected) Color(0xFF1A3A4A) else Color(0xFFF5F5F5),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(AppDimens.radiusSmall),
         tonalElevation = if (isSelected) 2.dp else 0.dp
     ) {
         Text(
             text = name,
-            fontSize = 11.sp,
+            fontSize = AppDimens.captionTextSize.sp,
             color = if (isSelected) Color.White else Color(0xFF666666),
             modifier = Modifier
                 .fillMaxWidth()
@@ -649,17 +656,17 @@ fun CodeEditorScreen(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
                         Text(Str.get(R.string.finish), fontWeight = FontWeight.Medium)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         }
@@ -912,7 +919,10 @@ fun CodeEditorScreen(
         var newFileContent by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddFileDialog = false },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
             title = { Text(Str.get(R.string.add_new_file)) },
             text = {
                 Column {

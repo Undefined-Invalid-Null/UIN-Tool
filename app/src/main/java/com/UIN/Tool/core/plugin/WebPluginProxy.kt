@@ -55,6 +55,9 @@ class WebPluginProxy(
                 override fun onPageFinished(view: WebView, url: String) {
                     super.onPageFinished(view, url)
                     isWebViewReady = true
+                    if (com.UIN.Tool.utils.UIConfig.isInitialized()) {
+                        view.evaluateJavascript(com.UIN.Tool.utils.UIConfig.getThemeCssInjectionScript(), null)
+                    }
                     Logger.success(TAG, Str.get(R.string.webview_load_complete_plugininfo_nam, pluginInfo.name))
                 }
                 

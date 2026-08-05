@@ -43,14 +43,9 @@ fun DevDocScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(Str.get(R.string.docs_center)) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = { activity?.finish() }
-                    )
-                }
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.docs_center),
+                onBack = { activity?.finish() }
             )
         }
     ) { paddingValues ->

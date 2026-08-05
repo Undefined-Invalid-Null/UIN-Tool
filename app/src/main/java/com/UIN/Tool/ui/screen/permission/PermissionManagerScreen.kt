@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +32,10 @@ import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.PermissionUtils
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val TAG = "PermissionManagerScreen"
 
@@ -38,8 +44,12 @@ private const val TAG = "PermissionManagerScreen"
 fun PermissionManagerScreen() {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
+    val scope = rememberCoroutineScope()
 
     var refreshKey by remember { mutableStateOf(0) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    val pullRefreshState = rememberPullToRefreshState()
 
     val permissionItems = remember {
         listOf(
@@ -126,36 +136,45 @@ fun PermissionManagerScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(Str.get(R.string.permission_management)) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.Default.ArrowBack,
-                        onClick = { activity?.finish() }
-                    )
-                },
-                actions = {
-                    UIComponents.IconButton(
-                        icon = Icons.Default.Refresh,
-                        onClick = { refreshKey++ }
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.permission_management),
+                onBack = { activity?.finish() }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    refreshKey++
+                    AppToast.info(context, Str.get(R.string.permission_status_refreshed))
+                    delay(400)
+                    lastRefreshTime = UIComponents.currentTimeString()
+                    isRefreshing = false
+                }
+            },
+            state = pullRefreshState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(paddingValues),
+            indicator = {
+                UIComponents.PullRefreshIndicator(
+                    isRefreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+            item {
+                UIComponents.LastUpdatedCaption(time = lastRefreshTime)
+            }
             // 插件权限管理入口卡片
             item {
                 Card(
@@ -168,9 +187,12 @@ fun PermissionManagerScreen() {
                                 AppToast.warning(context, Str.get(R.string.plugin_permission_feature_under_deve))
                             }
                         },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = if (AppColors.glassEnabled())
+                            AppColors.glassBackground()
+                        else
+                            MaterialTheme.colorScheme.surface
                     )
                 ) {
                     Row(
@@ -181,7 +203,7 @@ fun PermissionManagerScreen() {
                     ) {
                         Surface(
                             modifier = Modifier.size(48.dp),
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(AppDimens.radiusMedium),
                             color = MaterialTheme.colorScheme.primary
                         ) {
                             Box(
@@ -203,19 +225,19 @@ fun PermissionManagerScreen() {
                                 text = Str.get(R.string.plugin_permission_management),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = Str.get(R.string.manage_each_plugin_s_declared_permis),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
                         Icon(
                             Icons.Default.KeyboardArrowRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -328,6 +350,7 @@ fun PermissionManagerScreen() {
                 UIComponents.CaptionText(
                     Str.get(R.string.note_some_permissions_e_g_overlay_wi)
                 )
+            }
             }
         }
     }

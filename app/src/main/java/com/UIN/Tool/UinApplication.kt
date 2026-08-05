@@ -6,6 +6,7 @@ import androidx.multidex.MultiDex
 import com.UIN.Tool.app.TermuxApplication
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.constants.AppConstants as Constants
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
@@ -40,6 +41,13 @@ class UinApplication : TermuxApplication() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        try {
+            UIConfig.init(this)
+            Logger.i(TAG, Str.get(R.string.uiconfig_initialized))
+        } catch (e: Exception) {
+            Logger.e(TAG, "UIConfig init failed", e)
+        }
 
         try {
             ServiceLocator.init(this)

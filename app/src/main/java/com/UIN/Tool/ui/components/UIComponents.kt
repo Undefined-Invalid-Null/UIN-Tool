@@ -3,20 +3,42 @@ package com.UIN.Tool.ui.components
 
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshState
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -26,7 +48,34 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.isBoldEnabled
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.delay
+
+private fun Modifier.glassSheen(): Modifier = drawBehind {
+    val w = size.width
+    val h = size.height
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = 0.28f), Color.White.copy(alpha = 0f)),
+            radius = w * 0.55f
+        ),
+        radius = w * 0.55f,
+        center = Offset(w * 0.06f, h * 0.04f)
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Color(0xFFD6E4FF).copy(alpha = 0.14f), Color.Transparent),
+            radius = w * 0.5f
+        ),
+        radius = w * 0.5f,
+        center = Offset(w * 0.96f, h * 0.94f)
+    )
+}
 
 object UIComponents {
 
@@ -143,13 +192,53 @@ object UIComponents {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = tint ?: MaterialTheme.colorScheme.onSurface,
+                tint = tint ?: LocalContentColor.current,
                 modifier = Modifier.size(24.dp)
             )
         }
     }
 
     // ==================== 卡片 ====================
+
+    // ==================== 管理页顶部栏 ====================
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun ManageTopAppBar(
+        titleText: String,
+        onBack: (() -> Unit)? = null,
+        actions: @Composable RowScope.() -> Unit = {}
+    ) {
+        val container = MaterialTheme.colorScheme.background
+        val content = MaterialTheme.colorScheme.onBackground
+        TopAppBar(
+            title = {
+                Text(titleText, color = content)
+            },
+            navigationIcon = {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = Str.get(R.string.back),
+                            tint = content
+                        )
+                    }
+                }
+            },
+            actions = {
+                CompositionLocalProvider(LocalContentColor provides content) {
+                    actions()
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = container,
+                titleContentColor = content,
+                navigationIconContentColor = content,
+                actionIconContentColor = content
+            )
+        )
+    }
 
     @Composable
     fun Card(
@@ -161,23 +250,28 @@ object UIComponents {
     ) {
         val finalElevation = elevation ?: AppDimens.cardElevation
         val finalShape = shape ?: RoundedCornerShape(AppDimens.cardCornerRadius)
+        val glass = AppColors.glassEnabled()
+        val container = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
 
         val cardModifier = modifier
             .shadow(finalElevation, finalShape)
             .clip(finalShape)
-            .background(MaterialTheme.colorScheme.surface)
+            .background(container, finalShape)
+            .then(
+                if (glass) Modifier.glassSheen().border(1.dp, AppColors.glassBorder(), finalShape) else Modifier
+            )
 
         val clickableModifier = if (onClick != null) {
             cardModifier.clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
+                indication = LocalIndication.current,
                 onClick = onClick
             )
         } else cardModifier
 
         Surface(
             modifier = clickableModifier,
-            color = MaterialTheme.colorScheme.surface,
+            color = container,
             shape = finalShape,
             shadowElevation = 0.dp
         ) {
@@ -196,12 +290,14 @@ object UIComponents {
         content: @Composable ColumnScope.() -> Unit
     ) {
         val shape = RoundedCornerShape(AppDimens.cardCornerRadius)
+        val glassColor = AppColors.glassBackground()
         Surface(
             modifier = modifier
                 .shadow(AppDimens.cardElevation, shape)
                 .clip(shape)
-                .background(Color.White.copy(alpha = 0.85f)),
-            color = Color.White.copy(alpha = 0.85f),
+                .background(glassColor)
+                .then(if (AppColors.glassEnabled()) Modifier.glassSheen().border(1.dp, AppColors.glassBorder(), shape) else Modifier),
+            color = glassColor,
             shape = shape,
             shadowElevation = 0.dp
         ) {
@@ -314,7 +410,9 @@ object UIComponents {
         modifier: Modifier = Modifier
     ) {
         Card(
-            modifier = modifier.clickable(onClick = onClick),
+            modifier = modifier
+                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                .clickable(onClick = onClick),
             onClick = null
         ) {
             Row(
@@ -384,7 +482,7 @@ object UIComponents {
             text = text,
             style = MaterialTheme.typography.titleLarge.copy(
                 fontSize = AppDimens.titleTextSize.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = if (isBoldEnabled()) FontWeight.Bold else FontWeight.SemiBold
             ),
             color = color ?: MaterialTheme.colorScheme.onSurface,
             modifier = modifier,
@@ -438,7 +536,7 @@ object UIComponents {
             text = text,
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontSize = AppDimens.sectionTitleTextSize.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = if (isBoldEnabled()) FontWeight.SemiBold else FontWeight.Medium
             ),
             color = color ?: MaterialTheme.colorScheme.onSurface,
             modifier = modifier.padding(vertical = AppDimens.spacingSmall)
@@ -527,5 +625,139 @@ object UIComponents {
             icon = icon,
             modifier = modifier
         )
+    }
+
+    /**
+     * 当前时间字符串（HH:mm），用于“上次更新”展示
+     */
+    fun currentTimeString(): String =
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+    /**
+     * “上次更新: HH:mm” 说明文字，显示时淡入、1 秒后淡出
+     */
+    @Composable
+    fun LastUpdatedCaption(time: String?, modifier: Modifier = Modifier) {
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(time) {
+            if (time != null) {
+                visible = true
+                delay(1000)
+                visible = false
+            } else {
+                visible = false
+            }
+        }
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(400)),
+            modifier = modifier
+        ) {
+            CaptionText(text = Str.get(R.string.last_update_time, time ?: ""))
+        }
+    }
+
+    /**
+     * 下拉刷新指示器：使用主题色替换 Material 默认紫色背景
+     */
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun PullRefreshIndicator(
+        isRefreshing: Boolean,
+        state: PullToRefreshState,
+        modifier: Modifier = Modifier
+    ) {
+        PullToRefreshDefaults.Indicator(
+            state = state,
+            isRefreshing = isRefreshing,
+            modifier = modifier,
+            containerColor = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+
+    /**
+     * 骨架屏：插件/仓库列表加载占位，用呼吸闪烁的灰色卡片替代整屏转圈
+     */
+    @Composable
+    fun PluginListSkeleton(
+        itemCount: Int = 5,
+        modifier: Modifier = Modifier
+    ) {
+        val transition = rememberInfiniteTransition(label = "skeleton")
+        val pulse by transition.animateFloat(
+            initialValue = 0.35f,
+            targetValue = 0.75f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(700),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "skeleton_alpha"
+        )
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            repeat(itemCount) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(76.dp),
+                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(AppDimens.radiusMedium))
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.6f)
+                                    .height(14.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+                                    )
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.35f)
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+                                    )
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(AppDimens.radiusMedium))
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = pulse)
+                                )
+                        )
+                    }
+                }
+            }
+        }
     }
 }

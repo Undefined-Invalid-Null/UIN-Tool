@@ -10,22 +10,27 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.data.remote.MirrorManager
 import com.UIN.Tool.domain.model.MirrorItem
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 
@@ -34,7 +39,7 @@ private const val TAG = "GitHubMirrorScreen"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GitHubMirrorScreen(
-    navController: NavController
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -48,6 +53,9 @@ fun GitHubMirrorScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showTestResult by remember { mutableStateOf<String?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    val pullRefreshState = rememberPullToRefreshState()
 
     fun loadMirrors() {
         val defaultMirrors = Constants.DEFAULT_MIRRORS.map { url ->
@@ -156,216 +164,246 @@ fun GitHubMirrorScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(Str.get(R.string.github_acceleration_2)) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.Default.ArrowBack,
-                        onClick = { navController.navigateUp() }
-                    )
-                },
-                actions = {
-                    UIComponents.IconButton(
-                        icon = Icons.Default.Refresh,
-                        onClick = { loadMirrors() }
-                    )
-                }
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.github_acceleration_2),
+                onBack = onBack
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = Str.get(R.string.add)
+                )
+            }
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    loadMirrors()
+                    delay(400)
+                    lastRefreshTime = UIComponents.currentTimeString()
+                    isRefreshing = false
+                }
+            },
+            state = pullRefreshState,
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            indicator = {
+                UIComponents.PullRefreshIndicator(
+                    isRefreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
+        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp).padding(bottom = 72.dp)) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                UIComponents.LastUpdatedCaption(
+                    time = lastRefreshTime,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
             // CDN 开关
-            UIComponents.Card(
-                modifier = Modifier.fillMaxWidth().clickable { useCdn = !useCdn }
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            item {
+                UIComponents.Card(
+                    modifier = Modifier.fillMaxWidth().clickable { useCdn = !useCdn }
                 ) {
-                    Column {
-                        UIComponents.BodyText(Str.get(R.string.cdn_acceleration))
-                        UIComponents.CaptionText(Str.get(R.string.use_cdn_proxy_to_speed_up_downloads))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            UIComponents.BodyText(Str.get(R.string.cdn_acceleration))
+                            UIComponents.CaptionText(Str.get(R.string.use_cdn_proxy_to_speed_up_downloads))
+                        }
+                        UIComponents.ToggleSwitch(
+                            checked = useCdn,
+                            onCheckedChange = { useCdn = it }
+                        )
                     }
-                    UIComponents.ToggleSwitch(
-                        checked = useCdn,
-                        onCheckedChange = { useCdn = it }
+                }
+            }
+            // 操作按钮
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    UIComponents.SecondaryButton(
+                        text = Str.get(R.string.import_label),
+                        icon = Icons.Default.FileUpload,
+                        onClick = { importLauncher.launch("text/plain") },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 操作按钮
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    UIComponents.SecondaryButton(
+                        text = Str.get(R.string.export),
+                        icon = Icons.Default.FileDownload,
+                        onClick = { exportLauncher.launch("mirrors_${System.currentTimeMillis()}.txt") },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
+                    )
+                    UIComponents.SecondaryButton(
+                        text = Str.get(R.string.test),
+                        icon = Icons.Default.Check,
+                        onClick = { testAllMirrors() },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
+                    )
+                }
+            }
+            item {
                 UIComponents.SecondaryButton(
-                    text = Str.get(R.string.add),
-                    icon = Icons.Default.Add,
-                    onClick = { showAddDialog = true },
-                    modifier = Modifier.weight(1f)
-                )
-                UIComponents.SecondaryButton(
-                    text = Str.get(R.string.import_label),
-                    icon = Icons.Default.FileUpload,
-                    onClick = { importLauncher.launch("text/plain") },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isLoading
+                    text = Str.get(R.string.reset_to_default),
+                    icon = Icons.Default.Refresh,
+                    onClick = { showResetDialog = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 )
             }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                UIComponents.SecondaryButton(
-                    text = Str.get(R.string.export),
-                    icon = Icons.Default.FileDownload,
-                    onClick = { exportLauncher.launch("mirrors_${System.currentTimeMillis()}.txt") },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isLoading
-                )
-                UIComponents.SecondaryButton(
-                    text = Str.get(R.string.test),
-                    icon = Icons.Default.Check,
-                    onClick = { testAllMirrors() },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isLoading
-                )
-            }
-
-            UIComponents.SecondaryButton(
-                text = Str.get(R.string.reset_to_default),
-                icon = Icons.Default.Refresh,
-                onClick = { showResetDialog = true },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // 测试结果
             showTestResult?.let { result ->
-                UIComponents.Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                ) {
-                    UIComponents.BodyText(
-                        result,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                    )
+                item {
+                    UIComponents.Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    ) {
+                        UIComponents.BodyText(
+                            result,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        )
+                    }
                 }
             }
 
             if (mirrors.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    UIComponents.BodyText(Str.get(R.string.no_mirrors_yet))
+                item {
+                    Box(
+                        modifier = Modifier.fillParentMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        UIComponents.BodyText(Str.get(R.string.no_mirrors_yet))
+                    }
                 }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(mirrors) { mirror ->
-                        UIComponents.Card(
+                items(mirrors) { mirror ->
+                    UIComponents.Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                enabledMirrors = if (enabledMirrors.contains(mirror.url)) {
+                                    enabledMirrors - mirror.url
+                                } else {
+                                    enabledMirrors + mirror.url
+                                }
+                            }
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = enabledMirrors.contains(mirror.url),
+                                onCheckedChange = {
                                     enabledMirrors = if (enabledMirrors.contains(mirror.url)) {
                                         enabledMirrors - mirror.url
                                     } else {
                                         enabledMirrors + mirror.url
                                     }
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = enabledMirrors.contains(mirror.url),
-                                    onCheckedChange = {
-                                        enabledMirrors = if (enabledMirrors.contains(mirror.url)) {
-                                            enabledMirrors - mirror.url
-                                        } else {
-                                            enabledMirrors + mirror.url
-                                        }
-                                    },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = MaterialTheme.colorScheme.primary,
-                                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        UIComponents.BodyText(mirror.name)
-                                        if (mirror.isDefault) {
-                                            BadgedBox(
-                                                badge = {
-                                                    Badge(
-                                                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                                                    ) {
-                                                        Text(Str.get(R.string.default_label))
-                                                    }
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    UIComponents.BodyText(mirror.name)
+                                    if (mirror.isDefault) {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge(
+                                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                                ) {
+                                                    Text(Str.get(R.string.default_label))
                                                 }
-                                            ) { }
-                                        }
-                                        mirror.reachable?.let {
-                                            BadgedBox(
-                                                badge = {
-                                                    Badge(
-                                                        containerColor = if (it) {
-                                                            MaterialTheme.colorScheme.primaryContainer
-                                                        } else {
-                                                            MaterialTheme.colorScheme.errorContainer
-                                                        }
-                                                    ) {
-                                                        Text(if (it) Str.get(R.string.reachable) else Str.get(R.string.unreachable))
-                                                    }
-                                                }
-                                            ) { }
-                                        }
+                                            }
+                                        ) { }
                                     }
-                                    UIComponents.CaptionText(mirror.url)
-                                    if (mirror.remark.isNotEmpty()) {
-                                        UIComponents.CaptionText(mirror.remark)
+                                    mirror.reachable?.let {
+                                        BadgedBox(
+                                            badge = {
+                                                Badge(
+                                                    containerColor = if (it) {
+                                                        MaterialTheme.colorScheme.primaryContainer
+                                                    } else {
+                                                        MaterialTheme.colorScheme.errorContainer
+                                                    }
+                                                ) {
+                                                    Text(if (it) Str.get(R.string.reachable) else Str.get(R.string.unreachable))
+                                                }
+                                            }
+                                        ) { }
                                     }
                                 }
-                                if (!mirror.isDefault) {
-                                    UIComponents.IconButton(
-                                        icon = Icons.Default.Close,
-                                        onClick = {
-                                            mirrors = mirrors.filter { it.url != mirror.url }
-                                            enabledMirrors = enabledMirrors - mirror.url
-                                        },
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
+                                UIComponents.CaptionText(mirror.url)
+                                if (mirror.remark.isNotEmpty()) {
+                                    UIComponents.CaptionText(mirror.remark)
                                 }
+                            }
+                            if (!mirror.isDefault) {
+                                UIComponents.IconButton(
+                                    icon = Icons.Default.Close,
+                                    onClick = {
+                                        mirrors = mirrors.filter { it.url != mirror.url }
+                                        enabledMirrors = enabledMirrors - mirror.url
+                                    },
+                                    tint = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
+        }
 
             UIComponents.PrimaryButton(
                 text = Str.get(R.string.save_settings),
                 onClick = {
                     preferenceManager.setEnabledMirrors(enabledMirrors.toList())
                     preferenceManager.setUseCdn(useCdn)
-                    navController.navigateUp()
+                    onBack()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading
             )
+        }
         }
     }
 
@@ -387,6 +425,10 @@ fun GitHubMirrorScreen(
 
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(Str.get(R.string.add_mirror)) },
             text = {
                 Column {

@@ -6,6 +6,7 @@ import com.UIN.Tool.utils.Str
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 
 // ==================== 动画常量 - 纯淡入淡出 ====================
@@ -93,13 +95,21 @@ fun UnifiedDialog(
                         modifier = modifier
                             .fillMaxWidth(0.92f)
                             .wrapContentHeight()
+                            .border(
+                                width = 1.dp,
+                                color = AppColors.glassBorder(),
+                                shape = RoundedCornerShape(AppDimens.dialogCornerRadius)
+                            )
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                                 onClick = { /* 阻止点击穿透到背景 */ }
                             ),
                         shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
-                        color = MaterialTheme.colorScheme.surface,
+                        color = if (AppColors.glassEnabled())
+                            AppColors.glassBackground()
+                        else
+                            MaterialTheme.colorScheme.surface,
                         shadowElevation = AppDimens.dialogElevation
                     ) {
                         Column(

@@ -7,9 +7,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,11 +30,17 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "RepoScreen"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RepoScreen() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val repoViewModel: RepoViewModel = viewModel()
     val pluginManager = ServiceLocator.getPluginManager()
+
+    var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    val pullRefreshState = rememberPullToRefreshState()
 
     LaunchedEffect(Unit) {
         repoViewModel.init(context)
@@ -47,67 +57,102 @@ fun RepoScreen() {
     var showDetailDialog by remember { mutableStateOf<RepoPluginInfo?>(null) }
     var searchJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            UIComponents.TitleText(Str.get(R.string.plugin_repository))
-            UIComponents.IconButton(
-                icon = Icons.Default.Refresh,
-                onClick = { repoViewModel.refresh() }
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                repoViewModel.refresh()
+                delay(400)
+                lastRefreshTime = UIComponents.currentTimeString()
+                isRefreshing = false
+            }
+        },
+        state = pullRefreshState,
+        modifier = Modifier.fillMaxSize(),
+        indicator = {
+            UIComponents.PullRefreshIndicator(
+                isRefreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
+    ) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                UIComponents.TitleText(Str.get(R.string.plugin_repository))
+            }
+        }
+        item {
+            UIComponents.LastUpdatedCaption(
+                time = lastRefreshTime,
+                modifier = Modifier.padding(top = 2.dp)
             )
         }
 
-        UIComponents.TextInput(
-            value = searchText,
-            onValueChange = { text ->
-                searchText = text
-                searchJob?.cancel()
-                searchJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                    delay(300)
-                    repoViewModel.searchPlugins(text)
-                }
-            },
-            placeholder = Str.get(R.string.search_plugins),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            leadingIcon = Icons.Default.Search
-        )
+        item {
+            UIComponents.TextInput(
+                value = searchText,
+                onValueChange = { text ->
+                    searchText = text
+                    searchJob?.cancel()
+                    searchJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                        delay(300)
+                        repoViewModel.searchPlugins(text)
+                    }
+                },
+                placeholder = Str.get(R.string.search_plugins),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                leadingIcon = Icons.Default.Search
+            )
+        }
 
         // 下载进度
         if (downloadProgress.isDownloading) {
-            UIComponents.Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        UIComponents.BodyText(Str.get(R.string.downloading_downloadprogress_plugini, downloadProgress.pluginId))
-                        UIComponents.BodyText(
-                            "${downloadProgress.progress}%",
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-                    UIComponents.LinearProgressIndicator(progress = downloadProgress.progress / 100f)
-                    if (downloadProgress.total > 0) {
-                        UIComponents.CaptionText(
-                            "${formatSize(downloadProgress.downloaded)} / ${formatSize(downloadProgress.total)}"
-                        )
+            item {
+                UIComponents.Card(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            UIComponents.BodyText(Str.get(R.string.downloading_downloadprogress_plugini, downloadProgress.pluginId))
+                            UIComponents.BodyText(
+                                "${downloadProgress.progress}%",
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            )
+                        }
+                        UIComponents.LinearProgressIndicator(progress = downloadProgress.progress / 100f)
+                        if (downloadProgress.total > 0) {
+                            UIComponents.CaptionText(
+                                "${formatSize(downloadProgress.downloaded)} / ${formatSize(downloadProgress.total)}"
+                            )
+                        }
                     }
                 }
             }
         }
 
         when {
-            uiState.isLoading && filteredPlugins.isEmpty() -> {
-                UIComponents.FullScreenLoading(Str.get(R.string.loading_plugin_list))
+            uiState.isLoading && filteredPlugins.isEmpty() -> item {
+                UIComponents.PluginListSkeleton(
+                    modifier = Modifier.fillParentMaxSize()
+                )
             }
-            filteredPlugins.isEmpty() -> {
+            filteredPlugins.isEmpty() -> item {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillParentMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -127,22 +172,19 @@ fun RepoScreen() {
                     }
                 }
             }
-            else -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(filteredPlugins) { plugin ->
-                        RepoPluginCard(
-                            plugin = plugin,
-                            isInstalled = installedIds.contains(plugin.pluginId),
-                            isDownloading = downloadProgress.isDownloading && downloadProgress.pluginId == plugin.pluginId,
-                            downloadProgress = downloadProgress.progress,
-                            onInstall = { repoViewModel.downloadAndInstall(plugin) },
-                            onOpen = { pluginManager.openPlugin(plugin.pluginId, context) },
-                            onClick = { showDetailDialog = plugin }
-                        )
-                    }
-                }
+            else -> items(filteredPlugins) { plugin ->
+                RepoPluginCard(
+                    plugin = plugin,
+                    isInstalled = installedIds.contains(plugin.pluginId),
+                    isDownloading = downloadProgress.isDownloading && downloadProgress.pluginId == plugin.pluginId,
+                    downloadProgress = downloadProgress.progress,
+                    onInstall = { repoViewModel.downloadAndInstall(plugin) },
+                    onOpen = { pluginManager.openPlugin(plugin.pluginId, context) },
+                    onClick = { showDetailDialog = plugin }
+                )
             }
         }
+    }
     }
 
     // ==================== 插件详情对话框 ====================

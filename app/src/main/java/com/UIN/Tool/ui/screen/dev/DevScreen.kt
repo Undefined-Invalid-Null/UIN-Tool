@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.app.TermuxActivity
@@ -23,6 +22,7 @@ import com.UIN.Tool.app.activities.SettingsActivity
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -187,17 +187,20 @@ fun DevScreen() {
     if (showCreatePluginDialog) {
         AlertDialog(
             onDismissRequest = { showCreatePluginDialog = false },
-            containerColor = Color.White,
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
             title = {
                 Text(
                     Str.get(R.string.choose_frontend_type),
-                    color = Color(0xFF1A1A1A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
                 Text(
                     Str.get(R.string.choose_the_plugin_frontend_ui_type),
-                    color = Color(0xFF555555)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
@@ -257,7 +260,7 @@ fun DevScreen() {
                         onClick = { showCreatePluginDialog = false },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color(0xFF888888)
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
                         Text(Str.get(R.string.cancel))
@@ -274,17 +277,20 @@ fun DevScreen() {
     if (showBackendDialog) {
         AlertDialog(
             onDismissRequest = { showBackendDialog = false },
-            containerColor = Color.White,
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
             title = {
                 Text(
                     Str.get(R.string.choose_backend_language),
-                    color = Color(0xFF1A1A1A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
                 Text(
                     Str.get(R.string.choose_the_web_plugin_backend_langua),
-                    color = Color(0xFF555555)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
@@ -314,7 +320,7 @@ fun DevScreen() {
                         onClick = { showBackendDialog = false },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color(0xFF888888)
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
                         Text(Str.get(R.string.cancel))

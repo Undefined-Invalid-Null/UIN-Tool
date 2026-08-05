@@ -42,19 +42,9 @@ fun DocViewerScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = { activity?.finish() }
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            UIComponents.ManageTopAppBar(
+                titleText = title,
+                onBack = { activity?.finish() }
             )
         }
     ) { paddingValues ->

@@ -14,7 +14,16 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,10 +32,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,6 +60,7 @@ import com.UIN.Tool.ui.screen.manage.ManageScreen
 import com.UIN.Tool.ui.screen.repo.RepoScreen
 import com.UIN.Tool.ui.screen.tools.ToolsScreen
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.ui.theme.dynamicColor
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.CrashLogUtils
@@ -148,6 +164,15 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+
+            // 配置变更时即时刷新状态栏/导航栏/任务描述颜色
+            LaunchedEffect(Unit) {
+                UIConfig.configVersion.collect {
+                    if (UIConfig.isInitialized()) {
+                        applyTheme(UIConfig.getInstance())
+                    }
+                }
+            }
         }
 
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -249,18 +274,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyTheme(uiConfig: UIConfig) {
+        val dark = uiConfig.shouldUseDarkTheme(uiConfig.isSystemDark())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            window.statusBarColor = uiConfig.getPrimaryDarkColor()
-            window.navigationBarColor = uiConfig.getSurfaceColor()
+            window.statusBarColor = uiConfig.getColorForMode("status_bar", dark)
+            window.navigationBarColor = uiConfig.getColorForMode("navigation_bar", dark)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val taskColor = uiConfig.getColorForMode("primary", dark) or 0xFF000000.toInt()
             setTaskDescription(
                 ActivityManager.TaskDescription(
                     getString(R.string.app_name),
                     null,
-                    uiConfig.getPrimaryColor() or 0xFF000000.toInt()
+                    taskColor
                 )
             )
         }
@@ -446,7 +473,9 @@ class MainActivity : ComponentActivity() {
 
         val uiConfig = UIConfig.getInstance()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            window.statusBarColor = uiConfig.getPrimaryDarkColor()
+            val dark = uiConfig.shouldUseDarkTheme(uiConfig.isSystemDark())
+            window.statusBarColor = uiConfig.getColorForMode("status_bar", dark)
+            window.navigationBarColor = uiConfig.getColorForMode("navigation_bar", dark)
         }
 
         pluginManager.refreshPlugins()
@@ -502,8 +531,8 @@ fun MainContent(
     var selectedTab by remember { mutableStateOf(initialTab) }
 
     val tabs = listOf(
-        Str.get(R.string.developer) to R.drawable.ic_developer_mode,
-        Str.get(R.string.tools) to R.drawable.ic_grid_view,
+        Str.get(R.string.developer) to R.drawable.ic_terminal_prompt,
+        Str.get(R.string.plugins) to R.drawable.ic_grid_view,
         Str.get(R.string.repository) to R.drawable.ic_repo,
         Str.get(R.string.manage) to R.drawable.ic_settings
     )
@@ -529,66 +558,87 @@ fun MainContent(
 
     Scaffold(
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.Transparent,
-                tonalElevation = 0.dp,
+            val selectedColor = dynamicColor("nav_selected", MaterialTheme.colorScheme.primary)
+            val unselectedColor = dynamicColor("nav_unselected", MaterialTheme.colorScheme.onSurfaceVariant)
+            val navSurface = dynamicColor("navigation_bar", MaterialTheme.colorScheme.surface)
+            val navShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            // 自绘底部导航：不透明底色覆盖到底（含手势导航区），顶部细边框裁切进圆角避免突出
+            val navBorder = dynamicColor("divider", MaterialTheme.colorScheme.outlineVariant)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                        clip = false
-                    )
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.95f),
-                                Color.White.copy(alpha = 0.85f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                    )
+                    .background(navSurface)
+                    .clip(navShape)
+                    .background(navSurface, navShape)
+                    .navigationBarsPadding()
                     .height(56.dp)
+                    .drawBehind {
+                        // 顶部 1dp 边框，圆角用与 navShape 完全相同的 24dp 圆弧(addArc)，避免二次贝塞尔与圆角不匹配而在角部突出
+                        val stroke = 1.dp.toPx()
+                        val corner = 24.dp.toPx()
+                        val corner2 = corner * 2
+                        val w = size.width
+                        val borderPath = Path().apply {
+                            moveTo(0f, corner)
+                            addArc(Rect(0f, 0f, corner2, corner2), 180f, 90f)
+                            lineTo(w - corner, 0f)
+                            addArc(Rect(w - corner2, 0f, w, corner2), 270f, 90f)
+                        }
+                        drawPath(borderPath, navBorder, style = Stroke(stroke))
+                    }
             ) {
                 tabs.forEachIndexed { index, (label, icon) ->
                     val isSelected = selectedTab == index
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = { selectedTab = index },
-                        icon = {
-                            Icon(
-                                painter = painterResource(id = icon),
-                                contentDescription = label,
-                                modifier = Modifier.size(24.dp),
-                                tint = if (isSelected) Color(0xFF1A3A4A) else Color(0xFF9AA6B2)
-                            )
-                        },
-                        label = { 
-                            Text(
-                                label,
-                                color = if (isSelected) Color(0xFF1A3A4A) else Color(0xFF9AA6B2),
-                                fontSize = 10.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF1A3A4A),
-                            selectedTextColor = Color(0xFF1A3A4A),
-                            unselectedIconColor = Color(0xFF9AA6B2),
-                            unselectedTextColor = Color(0xFF9AA6B2),
-                            indicatorColor = Color.Transparent
+                    val interactionSource = remember { MutableInteractionSource() }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .semantics { role = Role.Tab }
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = { selectedTab = index }
+                            ),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = icon),
+                            contentDescription = label,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (isSelected) selectedColor else unselectedColor
                         )
-                    )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            label,
+                            color = if (isSelected) selectedColor else unselectedColor,
+                            fontSize = 10.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
                 }
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            when (selectedTab) {
-                0 -> DevScreen()
-                1 -> ToolsScreen()
-                2 -> RepoScreen()
-                3 -> ManageScreen(checkUpdate = checkUpdate)
+            AnimatedContent(
+                targetState = selectedTab,
+                transitionSpec = {
+                    val direction = if (targetState > initialState) 1 else -1
+                    (slideInHorizontally(tween(300)) { it * direction } + fadeIn(tween(300)))
+                        .togetherWith(
+                            slideOutHorizontally(tween(300)) { -it * direction } + fadeOut(tween(300))
+                        )
+                },
+                label = "main_tab_content"
+            ) { tab ->
+                when (tab) {
+                    0 -> DevScreen()
+                    1 -> ToolsScreen()
+                    2 -> RepoScreen()
+                    3 -> ManageScreen(checkUpdate = checkUpdate)
+                }
             }
         }
     }

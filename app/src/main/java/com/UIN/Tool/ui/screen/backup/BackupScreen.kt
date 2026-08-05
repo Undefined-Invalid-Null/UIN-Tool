@@ -7,10 +7,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,10 +31,13 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
 private fun formatFileSize(size: Long): String {
     return when {
@@ -84,6 +91,7 @@ private fun addDirToZip(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackupScreen() {
     val context = LocalContext.current
@@ -92,6 +100,9 @@ fun BackupScreen() {
 
     var backups by remember { mutableStateOf<List<BackupInfo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    val pullRefreshState = rememberPullToRefreshState()
     var progressMessage by remember { mutableStateOf("") }
     var progressValue by remember { mutableStateOf(0f) }
     var showProgress by remember { mutableStateOf(false) }
@@ -504,122 +515,153 @@ fun BackupScreen() {
         loadBackups()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            UIComponents.TitleText(Str.get(R.string.backup_restore))
-
-            if (!isLoading) {
-                UIComponents.IconButton(
-                    icon = Icons.Default.Refresh,
-                    onClick = { loadBackups() }
-                )
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                loadBackups()
+                delay(400)
+                lastRefreshTime = UIComponents.currentTimeString()
+                isRefreshing = false
             }
-        }
-
-        UIComponents.PrimaryButton(
-            text = Str.get(R.string.create_backup),
-            icon = Icons.Default.Backup,
-            onClick = { createBackup() },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            enabled = !isLoading
-        )
-
-        // 备份选项
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+        },
+        state = pullRefreshState,
+        modifier = Modifier.fillMaxSize(),
+        indicator = {
+            UIComponents.PullRefreshIndicator(
+                isRefreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
             )
+        }
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
-            ) {
-                Text(
-                    text = Str.get(R.string.backup_options),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+            item {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(
-                        checked = includeUiConfig,
-                        onCheckedChange = { includeUiConfig = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary,
-                            uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                    Text(Str.get(R.string.include_ui_config), color = MaterialTheme.colorScheme.onSurface)
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = includeSettings,
-                        onCheckedChange = { includeSettings = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary,
-                            uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                    Text(Str.get(R.string.include_app_settings), color = MaterialTheme.colorScheme.onSurface)
+                    UIComponents.TitleText(Str.get(R.string.backup_restore))
                 }
             }
-        }
+            item {
+                UIComponents.LastUpdatedCaption(
+                    time = lastRefreshTime,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
 
-        if (showProgress) {
-            UIComponents.Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                Column(
+            item {
+                UIComponents.PrimaryButton(
+                    text = Str.get(R.string.create_backup),
+                    icon = Icons.Default.Backup,
+                    onClick = { createBackup() },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    enabled = !isLoading
+                )
+            }
+
+            // 备份选项
+            item {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp)
-                ) {
-                    UIComponents.LinearProgressIndicator(progress = progressValue)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    UIComponents.CaptionText(progressMessage)
-                }
-            }
-        }
-
-        if (backups.isEmpty() && !showProgress) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.Backup,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        .padding(vertical = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (AppColors.glassEnabled())
+                            AppColors.glassBackground()
+                        else
+                            MaterialTheme.colorScheme.surface
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    UIComponents.TitleText(Str.get(R.string.no_backup_files_yet))
-                    UIComponents.BodyText(Str.get(R.string.tap_create_backup_to_back_up_your_pl))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = Str.get(R.string.backup_options),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = includeUiConfig,
+                                onCheckedChange = { includeUiConfig = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                            Text(Str.get(R.string.include_ui_config), color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = includeSettings,
+                                onCheckedChange = { includeSettings = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                            Text(Str.get(R.string.include_app_settings), color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
                 }
             }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
+
+            if (showProgress) {
+                item {
+                    UIComponents.Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        ) {
+                            UIComponents.LinearProgressIndicator(progress = progressValue)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            UIComponents.CaptionText(progressMessage)
+                        }
+                    }
+                }
+            }
+
+            if (backups.isEmpty() && !showProgress) {
+                item {
+                    Box(
+                        modifier = Modifier.fillParentMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Backup,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            UIComponents.TitleText(Str.get(R.string.no_backup_files_yet))
+                            UIComponents.BodyText(Str.get(R.string.tap_create_backup_to_back_up_your_pl))
+                        }
+                    }
+                }
+            } else {
                 items(backups) { backup ->
                     BackupItemCardCompact(
                         backup = backup,
@@ -670,7 +712,7 @@ fun BackupItemCardCompact(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(AppDimens.cardCornerRadius),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -691,7 +733,7 @@ fun BackupItemCardCompact(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 13.sp
+                        fontSize = AppDimens.bodyTextSize.sp
                     )
                 )
 
@@ -705,21 +747,21 @@ fun BackupItemCardCompact(
                         text = backup.getFormattedDate(),
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 10.sp
+                            fontSize = AppDimens.captionTextSize.sp
                         )
                     )
                     Text(
                         text = "•",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 10.sp
+                            fontSize = AppDimens.captionTextSize.sp
                         )
                     )
                     Text(
                         text = backup.getFormattedSize(),
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 10.sp
+                            fontSize = AppDimens.captionTextSize.sp
                         )
                     )
                     if (backup.pluginCount > 0) {
@@ -727,14 +769,14 @@ fun BackupItemCardCompact(
                             text = "•",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 10.sp
+                                fontSize = AppDimens.captionTextSize.sp
                             )
                         )
                         Text(
                             text = Str.get(R.string.backup_plugincount, backup.pluginCount),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 10.sp
+                                fontSize = AppDimens.captionTextSize.sp
                             )
                         )
                     }
@@ -753,12 +795,12 @@ fun BackupItemCardCompact(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
                     contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
                     Text(
                         text = Str.get(R.string.restore),
-                        fontSize = 11.sp,
+                        fontSize = AppDimens.captionTextSize.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -772,12 +814,12 @@ fun BackupItemCardCompact(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ),
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
                     contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
                     Text(
                         text = Str.get(R.string.delete),
-                        fontSize = 11.sp,
+                        fontSize = AppDimens.captionTextSize.sp,
                         fontWeight = FontWeight.Medium
                     )
                 }

@@ -6,11 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.utils.UIConfig
 
 class UIConfigActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        UIConfig.init(this)
         
         setContent {
             UINToolTheme {

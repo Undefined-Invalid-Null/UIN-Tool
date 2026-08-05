@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,9 +29,12 @@ import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppToast
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.UIN.Tool.ui.theme.AppDimens
 
 class PluginPermissionDetailActivity : ComponentActivity() {
 
@@ -66,6 +71,9 @@ fun PluginPermissionDetailScreen(
     }
     var isRequesting by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf("") }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    val pullRefreshState = rememberPullToRefreshState()
 
     fun loadPermissions() {
         if (plugin != null) {
@@ -101,202 +109,226 @@ fun PluginPermissionDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(if (plugin != null) Str.get(R.string.plugin_name_permissions, plugin.name) else Str.get(R.string.permission_details))
-                },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = onBack
-                    )
-                },
-                actions = {
-                    if (plugin != null && permissions.isNotEmpty()) {
-                        UIComponents.IconButton(
-                            icon = Icons.Default.Refresh,
-                            onClick = { loadPermissions() }
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            UIComponents.ManageTopAppBar(
+                titleText = if (plugin != null) Str.get(R.string.plugin_name_permissions, plugin.name) else Str.get(R.string.permission_details),
+                onBack = onBack
             )
         }
     ) { paddingValues ->
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    loadPermissions()
+                    delay(400)
+                    lastRefreshTime = UIComponents.currentTimeString()
+                    isRefreshing = false
+                }
+            },
+            state = pullRefreshState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            indicator = {
+                UIComponents.PullRefreshIndicator(
+                    isRefreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            if (plugin == null) {
-                UIComponents.EmptyState(
-                    title = Str.get(R.string.plugin_does_not_exist),
-                    description = Str.get(R.string.no_matching_plugin_info_found)
-                )
-                return@Scaffold
-            }
-
-            // 插件信息 - 移除 📦
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = Str.get(R.string.plugin_plugin_name, plugin.name),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = Str.get(R.string.id_plugin_pluginid_version_plugin_ve, plugin.pluginId, plugin.versionName),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = Str.get(R.string.declared_permissions_plugin_permissi_2, plugin.permissions.size),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                item {
+                    UIComponents.LastUpdatedCaption(
+                        time = lastRefreshTime,
+                        modifier = Modifier.padding(bottom = 4.dp)
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 权限列表
-            if (permissions.isEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            Icons.Default.Security,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = Str.get(R.string.this_plugin_declares_no_permissions),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                if (plugin == null) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            UIComponents.EmptyState(
+                                title = Str.get(R.string.plugin_does_not_exist),
+                                description = Str.get(R.string.no_matching_plugin_info_found)
+                            )
+                        }
                     }
-                }
-            } else {
-                // 统计信息
-                val grantedCount = permissions.values.count { it }
-                val totalCount = permissions.size
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = Str.get(R.string.permission_status),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = Str.get(R.string.grantedcount_totalcount_granted, grantedCount, totalCount),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (grantedCount == totalCount)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.error
-                        )
+                } else {
+                    // 插件信息 - 移除 📦
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (AppColors.glassEnabled())
+                                    AppColors.glassBackground()
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = Str.get(R.string.plugin_plugin_name, plugin.name),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = Str.get(R.string.id_plugin_pluginid_version_plugin_ve, plugin.pluginId, plugin.versionName),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = Str.get(R.string.declared_permissions_plugin_permissi_2, plugin.permissions.size),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 进度消息 - 移除 ✅ 和 ⚠️
-                if (progressMessage.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text(
-                            text = progressMessage,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            color = when {
-                                progressMessage.contains(Str.get(R.string.all_permissions_granted)) -> MaterialTheme.colorScheme.primary
-                                progressMessage.contains(Str.get(R.string.some_permissions_denied)) -> MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.onSurface
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 权限列表
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(permissions.entries.toList()) { (permission, granted) ->
-                        PermissionDetailItem(
-                            permission = permission,
-                            granted = granted,
-                            onRequest = {
-                                if (!granted && !isRequesting) {
-                                    pluginManager.requestPluginPermissions(
-                                        plugin.pluginId
-                                    ) { _ ->
-                                        loadPermissions()
-                                    }
+                    // 权限列表
+                    if (permissions.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (AppColors.glassEnabled())
+                                    AppColors.glassBackground()
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.Security,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = Str.get(R.string.this_plugin_declares_no_permissions),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
-                        )
+                        }
+                    } else {
+                        // 统计信息
+                        item {
+                            val grantedCount = permissions.values.count { it }
+                            val totalCount = permissions.size
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (AppColors.glassEnabled())
+                                    AppColors.glassBackground()
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = Str.get(R.string.permission_status),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = Str.get(R.string.grantedcount_totalcount_granted, grantedCount, totalCount),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (grantedCount == totalCount)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+
+                        // 进度消息 - 移除 ✅ 和 ⚠️
+                        if (progressMessage.isNotEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (AppColors.glassEnabled())
+                                    AppColors.glassBackground()
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Text(
+                                        text = progressMessage,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        color = when {
+                                            progressMessage.contains(Str.get(R.string.all_permissions_granted)) -> MaterialTheme.colorScheme.primary
+                                            progressMessage.contains(Str.get(R.string.some_permissions_denied)) -> MaterialTheme.colorScheme.error
+                                            else -> MaterialTheme.colorScheme.onSurface
+                                        },
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+
+                        // 权限列表
+                        items(permissions.entries.toList()) { (permission, granted) ->
+                            PermissionDetailItem(
+                                permission = permission,
+                                granted = granted,
+                                onRequest = {
+                                    if (!granted && !isRequesting) {
+                                        pluginManager.requestPluginPermissions(
+                                            plugin.pluginId
+                                        ) { _ ->
+                                            loadPermissions()
+                                        }
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // 操作按钮 - 移除 ✅
             if (permissions.isNotEmpty()) {
@@ -323,6 +355,7 @@ fun PluginPermissionDetailScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -334,12 +367,15 @@ fun PermissionDetailItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(AppDimens.cardCornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = if (granted)
-                MaterialTheme.colorScheme.surface
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
             else
-                MaterialTheme.colorScheme.surfaceVariant
+                if (granted)
+                    MaterialTheme.colorScheme.surface
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -351,7 +387,7 @@ fun PermissionDetailItem(
         ) {
             Surface(
                 modifier = Modifier.size(36.dp),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(AppDimens.radiusLarge),
                 color = if (granted) Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
             ) {
                 Box(
@@ -396,7 +432,7 @@ fun PermissionDetailItem(
             if (granted) {
                 Surface(
                     color = Color(0xFFE8F5E9),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(AppDimens.radiusXXLarge)
                 ) {
                     Text(
                         text = Str.get(R.string.granted_2),

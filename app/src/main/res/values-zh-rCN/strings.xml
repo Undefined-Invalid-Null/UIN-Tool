@@ -206,6 +206,8 @@
     <string name="bootstrap_error_title" formatted="false">无法安装启动包</string>
     <string name="bootstrap_error_try_again" formatted="false">重试</string>
     <string name="bootstrap_installer_body" formatted="false">正在安装启动包…</string>
+    <string name="bottom_nav_selected_color" formatted="false">底部导航选中颜色</string>
+    <string name="bottom_nav_unselected_color" formatted="false">底部导航未选中颜色</string>
     <string name="br_backend_info_getbackenddisplaynam">&lt;br>后端: %1$s</string>
     <string name="br_includes_documentation" formatted="false">&lt;br>包含说明文档</string>
     <string name="broadcast_receiver_registered" formatted="false">广播接收器已注册</string>
@@ -389,6 +391,8 @@
     <string name="currentversionname_code_currentversi">%1$s (代码: %2$s)</string>
     <string name="custom_backend_plugin_example_other_" formatted="false">自定义后端插件示例（other 模式，pre-command 手动启动）</string>
     <string name="custom_manual_start" formatted="false">自定义（手动启动）</string>
+    <string name="dark_mode" formatted="false">深色</string>
+    <string name="dark_palette" formatted="false">深色配色</string>
     <string name="dark_primary" formatted="false">深色主题色</string>
     <string name="dark_theme" formatted="false">深色主题</string>
     <string name="data_migration_currentversion_info_v">数据迁移: %1$s -> %2$s</string>
@@ -724,6 +728,7 @@
     <string name="first_import_recording_signature_fil">首次导入，记录签名: %1$s</string>
     <string name="first_install_data_version_info_vers">首次安装，数据版本: %1$s</string>
     <string name="flashlight" formatted="false">闪光灯</string>
+    <string name="follow_system" formatted="false">跟随系统</string>
     <string name="fonts" formatted="false">字体</string>
     <string name="for_checking_network_status" formatted="false">用于检查网络状态</string>
     <string name="for_managing_all_files_in_the_plugin" formatted="false">用于管理插件目录的所有文件</string>
@@ -886,6 +891,8 @@
     <string name="launcher_does_not_support_pinning_sh" formatted="false">启动器不支持固定快捷方式</string>
     <string name="launching_plugin_wizard_uitype_uityp">启动插件向导: uiType=%1$s, backend=%2$s</string>
     <string name="light" formatted="false">光线</string>
+    <string name="light_mode" formatted="false">浅色</string>
+    <string name="light_palette" formatted="false">浅色配色</string>
     <string name="light_primary" formatted="false">浅色主题色</string>
     <string name="light_theme" formatted="false">浅色主题</string>
     <string name="lines_editedcontent_lines_size">行数: %1$s</string>
@@ -998,6 +1005,7 @@
     <string name="nav_manage" formatted="false">管理</string>
     <string name="nav_repo" formatted="false">仓库</string>
     <string name="nav_tools" formatted="false">工具</string>
+    <string name="navigation_bar_color" formatted="false">系统导航栏颜色</string>
     <string name="navigation_failed" formatted="false">导航失败</string>
     <string name="ndescription_plugin_description_n">\n描述: %1$s\n</string>
     <string name="network" formatted="false">网络</string>
@@ -1108,6 +1116,7 @@
     <string name="packaging_successful_n_outputtpk_abs">✅ 打包成功!\n%1$s</string>
     <string name="packaging_tpk" formatted="false">开始打包 TPK...</string>
     <string name="packing_plugins_size_plugin_s">正在打包 %1$s 个插件...</string>
+    <string name="palette_editing" formatted="false">配色方案</string>
     <string name="paste" formatted="false">粘贴</string>
     <string name="path_escape_file_canonicalpath">路径逃逸: %1$s</string>
     <string name="path_resolution_failed_e_message">路径解析失败: %1$s</string>
@@ -1250,6 +1259,7 @@
     <string name="plugininfo_is_null_2" formatted="false">   -> pluginInfo 为 null</string>
     <string name="plugininfo_is_null_cannot_check_back" formatted="false">❌ pluginInfo 为 null，无法检查后端</string>
     <string name="pluginmanager_startbackend_called" formatted="false">🔍 PluginManager.startBackend() 被调用</string>
+    <string name="plugins" formatted="false">插件</string>
     <string name="plugins_declare_their_required_permi" formatted="false">插件在 plugin.json 中声明所需权限</string>
     <string name="pluginshareddata_not_initialized_cal" formatted="false">PluginSharedData 未初始化，请先调用 init()</string>
     <string name="port_port_held_by_lingering_backend_">⚠️ 端口 %1$s 被残留后端占用 (pid: %2$s)，清理后重启</string>
@@ -1321,6 +1331,7 @@
     <string name="refresh" formatted="false">刷新</string>
     <string name="refresh_all_widgets" formatted="false">刷新所有小部件</string>
     <string name="refresh_broadcast_sent" formatted="false">📤 刷新广播已发送</string>
+    <string name="last_update_time">上次更新: %1$s</string>
     <string name="refreshing_plugin_list" formatted="false">刷新插件列表...</string>
     <string name="refreshing_widget_appwidgetid">刷新小部件: %1$s</string>
     <string name="refreshing_work_dir_preferencemanage">刷新工作目录: %1$s</string>
@@ -1540,6 +1551,7 @@
     <string name="starting_process" formatted="false">🚀 启动进程...</string>
     <string name="starting_progress_js">启动中 </string>
     <string name="starting_sensor_type">启动传感器: %1$s</string>
+    <string name="status_bar_color" formatted="false">状态栏颜色</string>
     <string name="step1_in_manage_plugins_tap_import_plugi" formatted="false">1. 在「管理」「插件管理」中选择「导入插件」</string>
     <string name="step1_long_press_an_empty_area_of_the_ho" formatted="false">1. 长按桌面空白处\n</string>
     <string name="step1_tap_add_to_home_screen_and_choose_" formatted="false">1. 点击「添加到桌面」按钮，系统会提示选择放置位置\n</string>
@@ -1695,6 +1707,7 @@
     <string name="theme_load_failed" formatted="false">主题加载失败</string>
     <string name="theme_load_failed_filename_e_message">⚠️ 主题加载失败: %1$s: %2$s</string>
     <string name="theme_loaded_themename">✅ 主题加载成功: %1$s</string>
+    <string name="theme_mode" formatted="false">主题模式</string>
     <string name="then_wait_for_the_terminal_environme" formatted="false">等待终端环境初始化完成（约 30-60 秒）。\n\n</string>
     <string name="this_device_does_not_support_shortcu" formatted="false">当前设备不支持创建快捷方式</string>
     <string name="this_feature_requires_android_8_0" formatted="false">Android 8.0+ 才支持此功能</string>

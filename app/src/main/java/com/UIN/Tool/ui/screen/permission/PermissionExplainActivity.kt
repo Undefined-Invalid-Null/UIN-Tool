@@ -4,7 +4,6 @@ package com.UIN.Tool.ui.screen.permission
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.ui.theme.UINToolTheme
 
 class PermissionExplainActivity : ComponentActivity() {
@@ -13,7 +12,7 @@ class PermissionExplainActivity : ComponentActivity() {
         setContent {
             UINToolTheme {
                 PermissionExplainScreen(
-                    navController = rememberNavController()
+                    onBack = { finish() }
                 )
             }
         }

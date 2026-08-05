@@ -4,9 +4,13 @@ package com.UIN.Tool.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.MaterialTheme
+import com.UIN.Tool.utils.UIConfig
 
 /**
  * 统一颜色管理器
+ *
+ * 语义色（success/warning/info/文本/玻璃效果等）从 UIConfig 动态读取，
+ * 随主题切换与保存自动刷新；未配置时回退到默认值。
  */
 object AppColors {
 
@@ -85,7 +89,7 @@ object AppColors {
     // ==================== 语义颜色 ====================
     
     @Composable
-    fun success(): Color = Color(0xFF4CAF50)
+    fun success(): Color = dynamicColor("success", Color(0xFF4CAF50))
     
     @Composable
     fun successContainer(): Color = Color(0xFFE8F5E9)
@@ -94,7 +98,7 @@ object AppColors {
     fun onSuccessContainer(): Color = Color(0xFF1B5E20)
     
     @Composable
-    fun warning(): Color = Color(0xFFFF9800)
+    fun warning(): Color = dynamicColor("warning", Color(0xFFFF9800))
     
     @Composable
     fun warningContainer(): Color = Color(0xFFFFF3E0)
@@ -103,7 +107,7 @@ object AppColors {
     fun onWarningContainer(): Color = Color(0xFFE65100)
     
     @Composable
-    fun info(): Color = Color(0xFF2196F3)
+    fun info(): Color = dynamicColor("info", Color(0xFF2196F3))
     
     @Composable
     fun infoContainer(): Color = Color(0xFFE3F2FD)
@@ -120,10 +124,10 @@ object AppColors {
     fun textSecondary(): Color = onSurfaceVariant()
     
     @Composable
-    fun textHint(): Color = onSurface().copy(alpha = 0.38f)
+    fun textHint(): Color = dynamicColor("text_hint", onSurface().copy(alpha = 0.38f))
     
     @Composable
-    fun textDisabled(): Color = onSurface().copy(alpha = 0.38f)
+    fun textDisabled(): Color = dynamicColor("disabled", onSurface().copy(alpha = 0.38f))
     
     @Composable
     fun textInverse(): Color = inverseOnSurface()
@@ -140,8 +144,15 @@ object AppColors {
     fun shadow(): Color = Color.Black.copy(alpha = 0.1f)
     
     @Composable
-    fun glassBackground(): Color = surface().copy(alpha = 0.85f)
+    fun glassEnabled(): Boolean = UIConfig.isInitialized() && UIConfig.isGlassEffectEnabled()
     
     @Composable
-    fun glassBorder(): Color = Color.White.copy(alpha = 0.2f)
+    fun glassBackground(): Color = if (glassEnabled()) {
+        dynamicColor("glass_background", surface().copy(alpha = 0.85f))
+    } else {
+        surface()
+    }
+    
+    @Composable
+    fun glassBorder(): Color = if (glassEnabled()) Color.White.copy(alpha = 0.35f) else Color.Transparent
 }

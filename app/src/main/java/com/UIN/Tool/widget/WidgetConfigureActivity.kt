@@ -30,6 +30,8 @@ import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
 private const val TAG = "WidgetConfigureActivity"
 
@@ -173,9 +175,12 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFF0F4F8)
+                                containerColor = if (AppColors.glassEnabled())
+                                    AppColors.glassBackground()
+                                else
+                                    Color(0xFFF0F4F8)
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(AppDimens.cardCornerRadius)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -250,7 +255,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                     containerColor = Color.White,
                                     contentColor = Color(0xFF1A3A4A)
                                 ),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                             ) {
                                 Text(Str.get(R.string.add_shortcut))
                             }
@@ -597,7 +602,7 @@ fun WidgetPluginSelectorWhite(
                 modifier = Modifier
                     .fillMaxWidth()
                     .menuAnchor()
-                    .background(Color.White, RoundedCornerShape(8.dp)),
+                    .background(Color.White, RoundedCornerShape(AppDimens.inputCornerRadius)),
                 trailingIcon = {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 },
@@ -608,7 +613,7 @@ fun WidgetPluginSelectorWhite(
                     unfocusedContainerColor = Color.White,
                     cursorColor = Color(0xFF1A3A4A)
                 ),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(AppDimens.inputCornerRadius)
             )
             ExposedDropdownMenu(
                 expanded = expanded,

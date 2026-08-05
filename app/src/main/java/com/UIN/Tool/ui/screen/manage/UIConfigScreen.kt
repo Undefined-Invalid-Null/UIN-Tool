@@ -7,19 +7,21 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +38,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
 private const val TAG = "UIConfigScreen"
 
@@ -52,6 +56,7 @@ private fun safeParseColor(colorString: String): Color {
 }
 
 private data class ConfigState(
+    val themeMode: String,
     val primaryColor: String,
     val primaryDarkColor: String,
     val primaryLightColor: String,
@@ -70,6 +75,32 @@ private data class ConfigState(
     val dividerColor: String,
     val glassBackgroundColor: String,
     val disabledColor: String,
+    val statusBarColor: String,
+    val navigationBarColor: String,
+    val navSelectedColor: String,
+    val navUnselectedColor: String,
+    val primaryColorDark: String,
+    val primaryDarkColorDark: String,
+    val primaryLightColorDark: String,
+    val accentColorDark: String,
+    val successColorDark: String,
+    val warningColorDark: String,
+    val errorColorDark: String,
+    val infoColorDark: String,
+    val textPrimaryColorDark: String,
+    val textSecondaryColorDark: String,
+    val textHintColorDark: String,
+    val textPrimaryInverseColorDark: String,
+    val backgroundColorDark: String,
+    val surfaceColorDark: String,
+    val surfaceVariantColorDark: String,
+    val dividerColorDark: String,
+    val glassBackgroundColorDark: String,
+    val disabledColorDark: String,
+    val statusBarColorDark: String,
+    val navigationBarColorDark: String,
+    val navSelectedColorDark: String,
+    val navUnselectedColorDark: String,
     val cornerRadiusSmall: Float,
     val cornerRadiusMedium: Float,
     val cornerRadiusLarge: Float,
@@ -102,6 +133,7 @@ private data class ConfigState(
 private fun loadConfigFromUIConfig(): ConfigState {
     val uiConfig = UIConfig.getInstance()
     return ConfigState(
+        themeMode = uiConfig.getThemeMode(),
         primaryColor = uiConfig.getColorString("primary"),
         primaryDarkColor = uiConfig.getColorString("primary_dark"),
         primaryLightColor = uiConfig.getColorString("primary_light"),
@@ -120,6 +152,32 @@ private fun loadConfigFromUIConfig(): ConfigState {
         dividerColor = uiConfig.getColorString("divider"),
         glassBackgroundColor = uiConfig.getColorString("glass_background"),
         disabledColor = uiConfig.getColorString("disabled"),
+        statusBarColor = uiConfig.getColorString("status_bar"),
+        navigationBarColor = uiConfig.getColorString("navigation_bar"),
+        navSelectedColor = uiConfig.getColorString("nav_selected"),
+        navUnselectedColor = uiConfig.getColorString("nav_unselected"),
+        primaryColorDark = uiConfig.getColorStringDark("primary"),
+        primaryDarkColorDark = uiConfig.getColorStringDark("primary_dark"),
+        primaryLightColorDark = uiConfig.getColorStringDark("primary_light"),
+        accentColorDark = uiConfig.getColorStringDark("accent"),
+        successColorDark = uiConfig.getColorStringDark("success"),
+        warningColorDark = uiConfig.getColorStringDark("warning"),
+        errorColorDark = uiConfig.getColorStringDark("error"),
+        infoColorDark = uiConfig.getColorStringDark("info"),
+        textPrimaryColorDark = uiConfig.getColorStringDark("text_primary"),
+        textSecondaryColorDark = uiConfig.getColorStringDark("text_secondary"),
+        textHintColorDark = uiConfig.getColorStringDark("text_hint"),
+        textPrimaryInverseColorDark = uiConfig.getColorStringDark("text_primary_inverse"),
+        backgroundColorDark = uiConfig.getColorStringDark("background"),
+        surfaceColorDark = uiConfig.getColorStringDark("surface"),
+        surfaceVariantColorDark = uiConfig.getColorStringDark("surface_variant"),
+        dividerColorDark = uiConfig.getColorStringDark("divider"),
+        glassBackgroundColorDark = uiConfig.getColorStringDark("glass_background"),
+        disabledColorDark = uiConfig.getColorStringDark("disabled"),
+        statusBarColorDark = uiConfig.getColorStringDark("status_bar"),
+        navigationBarColorDark = uiConfig.getColorStringDark("navigation_bar"),
+        navSelectedColorDark = uiConfig.getColorStringDark("nav_selected"),
+        navUnselectedColorDark = uiConfig.getColorStringDark("nav_unselected"),
         cornerRadiusSmall = uiConfig.getShape("cornerRadiusSmall"),
         cornerRadiusMedium = uiConfig.getShape("cornerRadiusMedium"),
         cornerRadiusLarge = uiConfig.getShape("cornerRadiusLarge"),
@@ -173,6 +231,35 @@ private fun saveConfigToUIConfig(config: ConfigState) {
     uiConfig.updateColor("divider", config.dividerColor)
     uiConfig.updateColor("glass_background", config.glassBackgroundColor)
     uiConfig.updateColor("disabled", config.disabledColor)
+    uiConfig.updateColor("status_bar", config.statusBarColor)
+    uiConfig.updateColor("navigation_bar", config.navigationBarColor)
+    uiConfig.updateColor("nav_selected", config.navSelectedColor)
+    uiConfig.updateColor("nav_unselected", config.navUnselectedColor)
+
+    uiConfig.updateColorDark("primary", config.primaryColorDark)
+    uiConfig.updateColorDark("primary_dark", config.primaryDarkColorDark)
+    uiConfig.updateColorDark("primary_light", config.primaryLightColorDark)
+    uiConfig.updateColorDark("accent", config.accentColorDark)
+    uiConfig.updateColorDark("success", config.successColorDark)
+    uiConfig.updateColorDark("warning", config.warningColorDark)
+    uiConfig.updateColorDark("error", config.errorColorDark)
+    uiConfig.updateColorDark("info", config.infoColorDark)
+    uiConfig.updateColorDark("text_primary", config.textPrimaryColorDark)
+    uiConfig.updateColorDark("text_secondary", config.textSecondaryColorDark)
+    uiConfig.updateColorDark("text_hint", config.textHintColorDark)
+    uiConfig.updateColorDark("text_primary_inverse", config.textPrimaryInverseColorDark)
+    uiConfig.updateColorDark("background", config.backgroundColorDark)
+    uiConfig.updateColorDark("surface", config.surfaceColorDark)
+    uiConfig.updateColorDark("surface_variant", config.surfaceVariantColorDark)
+    uiConfig.updateColorDark("divider", config.dividerColorDark)
+    uiConfig.updateColorDark("glass_background", config.glassBackgroundColorDark)
+    uiConfig.updateColorDark("disabled", config.disabledColorDark)
+    uiConfig.updateColorDark("status_bar", config.statusBarColorDark)
+    uiConfig.updateColorDark("navigation_bar", config.navigationBarColorDark)
+    uiConfig.updateColorDark("nav_selected", config.navSelectedColorDark)
+    uiConfig.updateColorDark("nav_unselected", config.navUnselectedColorDark)
+
+    uiConfig.setThemeMode(config.themeMode)
 
     uiConfig.updateShape("cornerRadiusSmall", config.cornerRadiusSmall.toInt())
     uiConfig.updateShape("cornerRadiusMedium", config.cornerRadiusMedium.toInt())
@@ -219,6 +306,8 @@ fun UIConfigScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val cardElevation = if (AppColors.glassEnabled()) 0.dp else 1.dp
+
     var configState by remember { mutableStateOf(loadConfigFromUIConfig()) }
     var isSaving by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
@@ -226,7 +315,6 @@ fun UIConfigScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
-
     LaunchedEffect(Unit) {
         AppLog.i(TAG, Str.get(R.string.loading_config_from_uiconfig))
         configState = loadConfigFromUIConfig()
@@ -270,6 +358,66 @@ fun UIConfigScreen(
         AppLog.success(TAG, Str.get(R.string.config_reset))
     }
 
+    fun paletteColorValue(key: String): String {
+        val dark = key.startsWith("dark:")
+        val baseKey = key.substringAfter(':')
+        return when (baseKey) {
+            "primary" -> if (dark) configState.primaryColorDark else configState.primaryColor
+            "primary_dark" -> if (dark) configState.primaryDarkColorDark else configState.primaryDarkColor
+            "primary_light" -> if (dark) configState.primaryLightColorDark else configState.primaryLightColor
+            "accent" -> if (dark) configState.accentColorDark else configState.accentColor
+            "success" -> if (dark) configState.successColorDark else configState.successColor
+            "warning" -> if (dark) configState.warningColorDark else configState.warningColor
+            "error" -> if (dark) configState.errorColorDark else configState.errorColor
+            "info" -> if (dark) configState.infoColorDark else configState.infoColor
+            "text_primary" -> if (dark) configState.textPrimaryColorDark else configState.textPrimaryColor
+            "text_secondary" -> if (dark) configState.textSecondaryColorDark else configState.textSecondaryColor
+            "text_hint" -> if (dark) configState.textHintColorDark else configState.textHintColor
+            "text_primary_inverse" -> if (dark) configState.textPrimaryInverseColorDark else configState.textPrimaryInverseColor
+            "background" -> if (dark) configState.backgroundColorDark else configState.backgroundColor
+            "surface" -> if (dark) configState.surfaceColorDark else configState.surfaceColor
+            "surface_variant" -> if (dark) configState.surfaceVariantColorDark else configState.surfaceVariantColor
+            "divider" -> if (dark) configState.dividerColorDark else configState.dividerColor
+            "glass_background" -> if (dark) configState.glassBackgroundColorDark else configState.glassBackgroundColor
+            "disabled" -> if (dark) configState.disabledColorDark else configState.disabledColor
+            "status_bar" -> if (dark) configState.statusBarColorDark else configState.statusBarColor
+            "navigation_bar" -> if (dark) configState.navigationBarColorDark else configState.navigationBarColor
+            "nav_selected" -> if (dark) configState.navSelectedColorDark else configState.navSelectedColor
+            "nav_unselected" -> if (dark) configState.navUnselectedColorDark else configState.navUnselectedColor
+            else -> "#FFFFFFFF"
+        }
+    }
+
+    fun updatePaletteColor(key: String, value: String) {
+        val dark = key.startsWith("dark:")
+        val baseKey = key.substringAfter(':')
+        configState = when (baseKey) {
+            "primary" -> if (dark) configState.copy(primaryColorDark = value) else configState.copy(primaryColor = value)
+            "primary_dark" -> if (dark) configState.copy(primaryDarkColorDark = value) else configState.copy(primaryDarkColor = value)
+            "primary_light" -> if (dark) configState.copy(primaryLightColorDark = value) else configState.copy(primaryLightColor = value)
+            "accent" -> if (dark) configState.copy(accentColorDark = value) else configState.copy(accentColor = value)
+            "success" -> if (dark) configState.copy(successColorDark = value) else configState.copy(successColor = value)
+            "warning" -> if (dark) configState.copy(warningColorDark = value) else configState.copy(warningColor = value)
+            "error" -> if (dark) configState.copy(errorColorDark = value) else configState.copy(errorColor = value)
+            "info" -> if (dark) configState.copy(infoColorDark = value) else configState.copy(infoColor = value)
+            "text_primary" -> if (dark) configState.copy(textPrimaryColorDark = value) else configState.copy(textPrimaryColor = value)
+            "text_secondary" -> if (dark) configState.copy(textSecondaryColorDark = value) else configState.copy(textSecondaryColor = value)
+            "text_hint" -> if (dark) configState.copy(textHintColorDark = value) else configState.copy(textHintColor = value)
+            "text_primary_inverse" -> if (dark) configState.copy(textPrimaryInverseColorDark = value) else configState.copy(textPrimaryInverseColor = value)
+            "background" -> if (dark) configState.copy(backgroundColorDark = value) else configState.copy(backgroundColor = value)
+            "surface" -> if (dark) configState.copy(surfaceColorDark = value) else configState.copy(surfaceColor = value)
+            "surface_variant" -> if (dark) configState.copy(surfaceVariantColorDark = value) else configState.copy(surfaceVariantColor = value)
+            "divider" -> if (dark) configState.copy(dividerColorDark = value) else configState.copy(dividerColor = value)
+            "glass_background" -> if (dark) configState.copy(glassBackgroundColorDark = value) else configState.copy(glassBackgroundColor = value)
+            "disabled" -> if (dark) configState.copy(disabledColorDark = value) else configState.copy(disabledColor = value)
+            "status_bar" -> if (dark) configState.copy(statusBarColorDark = value) else configState.copy(statusBarColor = value)
+            "navigation_bar" -> if (dark) configState.copy(navigationBarColorDark = value) else configState.copy(navigationBarColor = value)
+            "nav_selected" -> if (dark) configState.copy(navSelectedColorDark = value) else configState.copy(navSelectedColor = value)
+            "nav_unselected" -> if (dark) configState.copy(navUnselectedColorDark = value) else configState.copy(navUnselectedColor = value)
+            else -> configState
+        }
+    }
+
     fun importConfig(uri: Uri) {
         try {
             AppLog.i(TAG, Str.get(R.string.start_importing_ui_config))
@@ -304,9 +452,49 @@ fun UIConfigScreen(
                             "divider" -> uiConfig.updateColor("divider", value)
                             "glass_background" -> uiConfig.updateColor("glass_background", value)
                             "disabled" -> uiConfig.updateColor("disabled", value)
+                            "status_bar" -> uiConfig.updateColor("status_bar", value)
+                            "navigation_bar" -> uiConfig.updateColor("navigation_bar", value)
+                            "nav_selected" -> uiConfig.updateColor("nav_selected", value)
+                            "nav_unselected" -> uiConfig.updateColor("nav_unselected", value)
                         }
                     }
                 }
+
+                val themeDark = obj.optJSONObject("theme_dark")
+                if (themeDark != null) {
+                    val darkKeys = themeDark.keys()
+                    while (darkKeys.hasNext()) {
+                        val key = darkKeys.next()
+                        val value = themeDark.getString(key)
+                        when (key) {
+                            "primary" -> uiConfig.updateColorDark("primary", value)
+                            "primary_dark" -> uiConfig.updateColorDark("primary_dark", value)
+                            "primary_light" -> uiConfig.updateColorDark("primary_light", value)
+                            "accent" -> uiConfig.updateColorDark("accent", value)
+                            "success" -> uiConfig.updateColorDark("success", value)
+                            "warning" -> uiConfig.updateColorDark("warning", value)
+                            "error" -> uiConfig.updateColorDark("error", value)
+                            "info" -> uiConfig.updateColorDark("info", value)
+                            "text_primary" -> uiConfig.updateColorDark("text_primary", value)
+                            "text_secondary" -> uiConfig.updateColorDark("text_secondary", value)
+                            "text_hint" -> uiConfig.updateColorDark("text_hint", value)
+                            "text_primary_inverse" -> uiConfig.updateColorDark("text_primary_inverse", value)
+                            "background" -> uiConfig.updateColorDark("background", value)
+                            "surface" -> uiConfig.updateColorDark("surface", value)
+                            "surface_variant" -> uiConfig.updateColorDark("surface_variant", value)
+                            "divider" -> uiConfig.updateColorDark("divider", value)
+                            "glass_background" -> uiConfig.updateColorDark("glass_background", value)
+                            "disabled" -> uiConfig.updateColorDark("disabled", value)
+                            "status_bar" -> uiConfig.updateColorDark("status_bar", value)
+                            "navigation_bar" -> uiConfig.updateColorDark("navigation_bar", value)
+                            "nav_selected" -> uiConfig.updateColorDark("nav_selected", value)
+                            "nav_unselected" -> uiConfig.updateColorDark("nav_unselected", value)
+                        }
+                    }
+                }
+
+                val importedThemeMode = obj.optString("theme_mode", UIConfig.THEME_MODE_SYSTEM)
+                uiConfig.setThemeMode(importedThemeMode)
 
                 val shape = obj.optJSONObject("shape")
                 if (shape != null) {
@@ -394,14 +582,9 @@ fun UIConfigScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(Str.get(R.string.ui_customization)) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = onBack
-                    )
-                },
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.ui_customization),
+                onBack = onBack,
                 actions = {
                     UIComponents.IconButton(
                         icon = Icons.Default.Save,
@@ -419,13 +602,7 @@ fun UIConfigScreen(
                         icon = Icons.Default.Restore,
                         onClick = { showResetDialog = true }
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
     ) { paddingValues ->
@@ -433,11 +610,20 @@ fun UIConfigScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(
+                    if (AppColors.glassEnabled())
+                        AppColors.glassBackground()
+                    else
+                        MaterialTheme.colorScheme.background
+                )
         ) {
             // 标签页
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface,
                 edgePadding = 0.dp
             ) {
                 listOf(Str.get(R.string.colors), Str.get(R.string.shapes), Str.get(R.string.sizes), Str.get(R.string.fonts), Str.get(R.string.effects)).forEachIndexed { index, title ->
@@ -468,6 +654,54 @@ fun UIConfigScreen(
             ) {
                 when (selectedTab) {
                     0 -> {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
+                                    Text(
+                                        Str.get(R.string.theme_mode),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        listOf(
+                                            UIConfig.THEME_MODE_SYSTEM to Str.get(R.string.follow_system),
+                                            UIConfig.THEME_MODE_LIGHT to Str.get(R.string.light_mode),
+                                            UIConfig.THEME_MODE_DARK to Str.get(R.string.dark_mode)
+                                        ).forEach { (mode, label) ->
+                                            FilterChip(
+                                                selected = configState.themeMode == mode,
+                                                onClick = { configState = configState.copy(themeMode = mode) },
+                                                label = { Text(label) },
+                                                modifier = Modifier.weight(1f),
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    containerColor = MaterialTheme.colorScheme.surface,
+                                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         val colorKeys = listOf(
                             "primary" to Str.get(R.string.primary_color),
                             "primary_dark" to Str.get(R.string.dark_primary),
@@ -486,72 +720,75 @@ fun UIConfigScreen(
                             "surface_variant" to Str.get(R.string.surface_variant_color),
                             "divider" to Str.get(R.string.divider_color),
                             "glass_background" to Str.get(R.string.glass_background_color),
-                            "disabled" to Str.get(R.string.disabled_color)
+                            "disabled" to Str.get(R.string.disabled_color),
+                            "status_bar" to Str.get(R.string.status_bar_color),
+                            "navigation_bar" to Str.get(R.string.navigation_bar_color),
+                            "nav_selected" to Str.get(R.string.bottom_nav_selected_color),
+                            "nav_unselected" to Str.get(R.string.bottom_nav_unselected_color)
                         )
 
-                        items(colorKeys) { (key, displayName) ->
-                            val colorValue = when (key) {
-                                "primary" -> configState.primaryColor
-                                "primary_dark" -> configState.primaryDarkColor
-                                "primary_light" -> configState.primaryLightColor
-                                "accent" -> configState.accentColor
-                                "success" -> configState.successColor
-                                "warning" -> configState.warningColor
-                                "error" -> configState.errorColor
-                                "info" -> configState.infoColor
-                                "text_primary" -> configState.textPrimaryColor
-                                "text_secondary" -> configState.textSecondaryColor
-                                "text_hint" -> configState.textHintColor
-                                "text_primary_inverse" -> configState.textPrimaryInverseColor
-                                "background" -> configState.backgroundColor
-                                "surface" -> configState.surfaceColor
-                                "surface_variant" -> configState.surfaceVariantColor
-                                "divider" -> configState.dividerColor
-                                "glass_background" -> configState.glassBackgroundColor
-                                "disabled" -> configState.disabledColor
-                                else -> "#FFFFFFFF"
+                        listOf(
+                            "light" to Str.get(R.string.light_palette),
+                            "dark" to Str.get(R.string.dark_palette)
+                        ).forEach { (prefix, sectionLabel) ->
+                            item(key = "section_$prefix") {
+                                Text(
+                                    sectionLabel,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                )
                             }
 
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedColorKey = key
-                                        showColorPicker = true
-                                    },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                            ) {
-                                Row(
+                            items(colorKeys, key = { "$prefix:${it.first}" }) { (key, displayName) ->
+                                val prefixedKey = "$prefix:$key"
+                                val colorValue = paletteColorValue(prefixedKey)
+
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                        .clickable {
+                                            selectedColorKey = prefixedKey
+                                            showColorPicker = true
+                                        },
+                                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                                 ) {
-                                    Text(
-                                        displayName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         Text(
-                                            colorValue,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(end = 8.dp)
+                                            displayName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Box(
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .background(
-                                                    safeParseColor(colorValue),
-                                                    RoundedCornerShape(4.dp)
-                                                )
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                colorValue,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(end = 8.dp)
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .background(
+                                                        safeParseColor(colorValue),
+                                                        RoundedCornerShape(AppDimens.radiusSmall)
+                                                    )
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -585,11 +822,14 @@ fun UIConfigScreen(
 
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -688,11 +928,14 @@ fun UIConfigScreen(
 
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -749,11 +992,14 @@ fun UIConfigScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -793,11 +1039,14 @@ fun UIConfigScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -837,11 +1086,14 @@ fun UIConfigScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -881,11 +1133,14 @@ fun UIConfigScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -925,11 +1180,14 @@ fun UIConfigScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -948,7 +1206,8 @@ fun UIConfigScreen(
                                         onCheckedChange = { configState = configState.copy(enableBold = it) },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                            uncheckedTrackColor = Color.White
                                         )
                                     )
                                 }
@@ -960,11 +1219,14 @@ fun UIConfigScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -983,7 +1245,8 @@ fun UIConfigScreen(
                                         onCheckedChange = { configState = configState.copy(enableGlassEffect = it) },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                            uncheckedTrackColor = Color.White
                                         )
                                     )
                                 }
@@ -993,11 +1256,14 @@ fun UIConfigScreen(
                         item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                    containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1016,7 +1282,8 @@ fun UIConfigScreen(
                                         onCheckedChange = { configState = configState.copy(enableRipple = it) },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                            uncheckedTrackColor = Color.White
                                         )
                                     )
                                 }
@@ -1024,20 +1291,36 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (configState.enableGlassEffect)
-                                        Color.White.copy(alpha = 0.9f)
-                                    else
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = if (configState.enableGlassEffect) 4.dp else 1.dp)
+                            val previewGlass = configState.enableGlassEffect
+                            val previewShape = RoundedCornerShape(AppDimens.cardCornerRadius)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(previewShape)
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFF6A5AE0),
+                                                Color(0xFF00C6AE),
+                                                Color(0xFFFFB36B)
+                                            )
+                                        )
+                                    )
+                                    .padding(14.dp)
                             ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .clip(previewShape)
+                                        .then(
+                                            if (previewGlass) {
+                                                Modifier
+                                                    .background(safeParseColor(paletteColorValue("glass_background")))
+                                                    .border(1.dp, Color.White.copy(alpha = 0.35f), previewShape)
+                                            } else {
+                                                Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                                            }
+                                        )
                                         .padding(16.dp)
                                 ) {
                                     Text(
@@ -1047,7 +1330,7 @@ fun UIConfigScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        if (configState.enableGlassEffect) Str.get(R.string.this_is_a_glass_effect_card) else Str.get(R.string.glass_effect_disabled),
+                                        if (previewGlass) Str.get(R.string.this_is_a_glass_effect_card) else Str.get(R.string.glass_effect_disabled),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1078,7 +1361,7 @@ fun UIConfigScreen(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
                         enabled = !isSaving
                     ) {
                         if (isSaving) {
@@ -1096,7 +1379,7 @@ fun UIConfigScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(if (isSaving) Str.get(R.string.saving) else Str.get(R.string.save_config), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(if (isSaving) Str.get(R.string.saving) else Str.get(R.string.save_config), fontSize = AppDimens.bodyTextSize.sp, fontWeight = FontWeight.Medium)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -1105,30 +1388,11 @@ fun UIConfigScreen(
     }
 
     // ==================== 颜色选择对话框 ====================
-    if (showColorPicker && selectedColorKey != null) {
+    val pickerKey = selectedColorKey
+    if (showColorPicker && pickerKey != null) {
         var colorValue by remember { mutableStateOf("") }
-        LaunchedEffect(selectedColorKey) {
-            colorValue = when (selectedColorKey) {
-                "primary" -> configState.primaryColor
-                "primary_dark" -> configState.primaryDarkColor
-                "primary_light" -> configState.primaryLightColor
-                "accent" -> configState.accentColor
-                "success" -> configState.successColor
-                "warning" -> configState.warningColor
-                "error" -> configState.errorColor
-                "info" -> configState.infoColor
-                "text_primary" -> configState.textPrimaryColor
-                "text_secondary" -> configState.textSecondaryColor
-                "text_hint" -> configState.textHintColor
-                "text_primary_inverse" -> configState.textPrimaryInverseColor
-                "background" -> configState.backgroundColor
-                "surface" -> configState.surfaceColor
-                "surface_variant" -> configState.surfaceVariantColor
-                "divider" -> configState.dividerColor
-                "glass_background" -> configState.glassBackgroundColor
-                "disabled" -> configState.disabledColor
-                else -> "#FFFFFFFF"
-            }
+        LaunchedEffect(pickerKey) {
+            colorValue = paletteColorValue(pickerKey)
         }
 
         val initialColor = safeParseColor(colorValue)
@@ -1141,26 +1405,7 @@ fun UIConfigScreen(
                     (selectedColor.green * 255).toInt(),
                     (selectedColor.blue * 255).toInt()
                 )
-                when (selectedColorKey) {
-                    "primary" -> configState = configState.copy(primaryColor = newColor)
-                    "primary_dark" -> configState = configState.copy(primaryDarkColor = newColor)
-                    "primary_light" -> configState = configState.copy(primaryLightColor = newColor)
-                    "accent" -> configState = configState.copy(accentColor = newColor)
-                    "success" -> configState = configState.copy(successColor = newColor)
-                    "warning" -> configState = configState.copy(warningColor = newColor)
-                    "error" -> configState = configState.copy(errorColor = newColor)
-                    "info" -> configState = configState.copy(infoColor = newColor)
-                    "text_primary" -> configState = configState.copy(textPrimaryColor = newColor)
-                    "text_secondary" -> configState = configState.copy(textSecondaryColor = newColor)
-                    "text_hint" -> configState = configState.copy(textHintColor = newColor)
-                    "text_primary_inverse" -> configState = configState.copy(textPrimaryInverseColor = newColor)
-                    "background" -> configState = configState.copy(backgroundColor = newColor)
-                    "surface" -> configState = configState.copy(surfaceColor = newColor)
-                    "surface_variant" -> configState = configState.copy(surfaceVariantColor = newColor)
-                    "divider" -> configState = configState.copy(dividerColor = newColor)
-                    "glass_background" -> configState = configState.copy(glassBackgroundColor = newColor)
-                    "disabled" -> configState = configState.copy(disabledColor = newColor)
-                }
+                updatePaletteColor(pickerKey, newColor)
                 showColorPicker = false
             },
             onDismiss = {

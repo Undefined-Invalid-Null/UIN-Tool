@@ -32,6 +32,27 @@
         
         <!-- ===== 字体 ===== -->
         <item name="android:fontFamily">sans-serif</item>
+        
+        <!-- ===== 窗口切换动画 ===== -->
+        <item name="android:windowAnimationStyle">@style/Theme.UIN.Tool.WindowAnimation</item>
+    </style>
+
+    <!-- ============================================================
+         窗口切换动画（水平滑动 + 淡入淡出，类似底部导航切换）
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.WindowAnimation" parent="android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
+        <item name="android:taskOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:taskOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:taskCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:taskCloseExitAnimation">@anim/slide_out_right</item>
+        <item name="android:taskToFrontEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:taskToFrontExitAnimation">@anim/slide_out_left</item>
+        <item name="android:taskToBackEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:taskToBackExitAnimation">@anim/slide_out_right</item>
     </style>
 
     <!-- ============================================================
@@ -54,7 +75,7 @@
          启动主题 (Splash)
          ============================================================ -->
     <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">@color/splash_background</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowTranslucentStatus">true</item>

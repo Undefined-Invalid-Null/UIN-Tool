@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -118,25 +117,9 @@ fun WidgetConfigScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        Str.get(R.string.widget),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = Str.get(R.string.back),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.widget),
+                onBack = onBack
             )
         }
     ) { paddingValues ->
@@ -154,9 +137,12 @@ fun WidgetConfigScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = if (AppColors.glassEnabled())
+                            AppColors.glassBackground()
+                        else
+                            MaterialTheme.colorScheme.surface
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
@@ -177,7 +163,7 @@ fun WidgetConfigScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = Str.get(R.string.shortcut),
-                                fontSize = 18.sp,
+                                fontSize = AppDimens.sectionTitleTextSize.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -187,7 +173,7 @@ fun WidgetConfigScreen(
 
                         Text(
                             text = Str.get(R.string.a_1x1_shortcut_that_opens_a_plugin_w),
-                            fontSize = 14.sp,
+                            fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp
                         )
@@ -198,7 +184,7 @@ fun WidgetConfigScreen(
                             text = Str.get(R.string.takes_little_home_screen_space_great) +
                                    Str.get(R.string.open_with_one_tap_no_need_to_enter_t) +
                                    Str.get(R.string.place_several_each_pointing_to_a_dif),
-                            fontSize = 13.sp,
+                            fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
                         )
@@ -214,7 +200,7 @@ fun WidgetConfigScreen(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                         ) {
                             Icon(
                                 Icons.Default.Add,
@@ -222,7 +208,7 @@ fun WidgetConfigScreen(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(Str.get(R.string.add_to_home_screen), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text(Str.get(R.string.add_to_home_screen), fontSize = AppDimens.bodyTextSize.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -234,9 +220,12 @@ fun WidgetConfigScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = if (AppColors.glassEnabled())
+                            AppColors.glassBackground()
+                        else
+                            MaterialTheme.colorScheme.surface
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
@@ -257,7 +246,7 @@ fun WidgetConfigScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = Str.get(R.string.widget_3x3_widget),
-                                fontSize = 18.sp,
+                                fontSize = AppDimens.sectionTitleTextSize.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -267,7 +256,7 @@ fun WidgetConfigScreen(
 
                         Text(
                             text = Str.get(R.string.a_3x3_widget_showing_multiple_plugin),
-                            fontSize = 14.sp,
+                            fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp
                         )
@@ -278,7 +267,7 @@ fun WidgetConfigScreen(
                             text = Str.get(R.string.shows_3_plugins_at_once_for_quick_sw) +
                                    Str.get(R.string.auto_rotates_to_show_plugin_status_n) +
                                    Str.get(R.string.tap_a_plugin_card_to_open_it_directl),
-                            fontSize = 13.sp,
+                            fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
                         )
@@ -294,7 +283,7 @@ fun WidgetConfigScreen(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                         ) {
                             Icon(
                                 Icons.Default.Add,
@@ -302,7 +291,7 @@ fun WidgetConfigScreen(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(Str.get(R.string.add_to_home_screen), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Text(Str.get(R.string.add_to_home_screen), fontSize = AppDimens.bodyTextSize.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -314,9 +303,12 @@ fun WidgetConfigScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = if (AppColors.glassEnabled())
+                            AppColors.glassBackground()
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
@@ -338,7 +330,7 @@ fun WidgetConfigScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = Str.get(R.string.how_to_use),
-                                fontSize = 14.sp,
+                                fontSize = AppDimens.bodyTextSize.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -348,7 +340,7 @@ fun WidgetConfigScreen(
                                    Str.get(R.string.step2_drag_the_widget_to_reposition_it_n) +
                                    Str.get(R.string.step3_long_press_the_widget_to_resize_or) +
                                    Str.get(R.string.step4_a_shortcut_opens_the_plugin_direct),
-                            fontSize = 13.sp,
+                            fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp
                         )

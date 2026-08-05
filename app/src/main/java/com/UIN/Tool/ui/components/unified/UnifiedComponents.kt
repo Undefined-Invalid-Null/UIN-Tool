@@ -3,7 +3,9 @@ package com.UIN.Tool.ui.components.unified
 
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 
 enum class ButtonVariant {
@@ -179,22 +182,29 @@ fun UnifiedCard(
     elevation: Dp = AppDimens.cardElevation,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val finalModifier = if (onClick != null) {
-        modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = onClick
+    val finalModifier = modifier
+        .clip(shape)
+        .border(1.dp, AppColors.glassBorder(), shape)
+        .then(
+            if (onClick != null) {
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = LocalIndication.current,
+                    onClick = onClick
+                )
+            } else {
+                Modifier
+            }
         )
-    } else {
-        modifier
-    }
-    
+
+    val glass = AppColors.glassEnabled()
+
     when (variant) {
         CardVariant.Elevated -> {
             Card(
                 modifier = finalModifier,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = elevation),
                 shape = shape
@@ -211,7 +221,7 @@ fun UnifiedCard(
             Card(
                 modifier = finalModifier,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 shape = shape
@@ -244,8 +254,7 @@ fun UnifiedCard(
         CardVariant.Glass -> {
             Surface(
                 modifier = finalModifier
-                    .clip(shape)
-                    .background(Color.White.copy(alpha = 0.85f)),
+                    .background(AppColors.glassBackground()),
                 color = Color.Transparent,
                 shape = shape,
                 shadowElevation = 0.dp

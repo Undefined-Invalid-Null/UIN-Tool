@@ -13,29 +13,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.UIN.Tool.ui.components.UIComponents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PermissionExplainScreen(
-    navController: NavController
+    onBack: () -> Unit
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(Str.get(R.string.permission_description)) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.Default.ArrowBack,
-                        onClick = { navController.navigateUp() }
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.permission_description),
+                onBack = onBack
             )
         }
     ) { paddingValues ->

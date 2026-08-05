@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-4.5.0-blue)
-![Build](https://img.shields.io/badge/build-15-green)
+![Version](https://img.shields.io/badge/version-5.0.0-blue)
+![Build](https://img.shields.io/badge/build-16-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -21,7 +21,6 @@ UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框
 - **现代化**：基于 Jetpack Compose 构建，Material 3 设计语言
 - **强大**：内置 Termux 终端环境，支持 Python/Node.js/PHP 后端
 - **持久化**：插件数据独立存储，更新时自动保留用户数据
-- **容器化**：支持 Proot 共享 Alpine 容器运行时，后端与宿主机环境隔离
 
 ---
 
@@ -59,13 +58,13 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v4.5.0 (Build 15)
+### 当前版本：v5.0.0 (Build 16)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 4.5.0 |
-| 版本代码 | 15 |
-| 更新日期 | 2026年8月3日 |
+| 版本号 | 5.0.0 |
+| 版本代码 | 16 |
+| 更新日期 | 2026年8月5日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
@@ -73,30 +72,64 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ### 版本历史
 
+#### v5.0.0 (Build 16) - 🌐 全量国际化 + 动态主题引擎 + UI 全面优化
+
+**🌐 全量国际化（i18n）：**
+- 全应用硬编码中文文案迁移至 string 资源：默认英文（en）+ 完整简体中文（zh-rCN），移除日文资源
+- 覆盖 2600+ 字符串键，涉及全部屏幕（主界面、插件管理、权限、仓库、日志、备份、镜像、文档/帮助、开发向导、代码编辑器、桌面小部件等）
+- 修复资源键兼容性问题：数字开头键、Java 保留字键、撇号转义（aapt2 flatten）、缺失 Activity 标签等
+
+**🎨 动态主题引擎：**
+- 新增 JSON 动态主题引擎：`UINToolTheme` 读取 UIConfig 配色即时生效，支持深色模式联动
+- 插件 WebView 注入 `--uin-*` CSS 变量，主题色随应用同步
+- 圆角半径、字号全部改为配置驱动，覆盖所有页面
+- 管理底部导航栏与系统状态栏颜色跟随主题，修复紫色主题残留
+
+**🧭 底部导航重构：**
+- 底部导航改为自绘（Row + clickable(indication=null)），规避 material3 NavigationBar / LocalIndication 版本差异
+- 顶部细边框沿圆角收口绘制，指示图标改为终端提示符 `>_`
+- 标签页切换加入水平滑动 + 淡入过渡动画（AnimatedContent）
+
+**🔄 下拉刷新统一：**
+- 移除全部页面右上角刷新图标，统一改为 Material 3 PullToRefreshBox 下拉刷新
+- 空列表状态同样支持下拉；指示器使用主题色并固定居中
+- 8 个刷新页显示"上次更新时间"，时间淡入并在 1 秒后自动淡出
+
+**✨ UI 优化与交互：**
+- 插件列表增删动画（animateItem + key）；仓库/插件管理加载改骨架屏
+- 镜像管理"加镜像"改为右下角 FAB；Toast 统一改为 Material Snackbar（全局宿主 + 生命周期感知）
+- 玻璃特效落地到全部卡片与弹窗（UI 个性化开关控制）
+- 全局 Activity 切换平滑淡入淡出；窗口切换水平滑动
+- 管理页顶部栏统一为 `ManageTopAppBar`，颜色跟随主题与页面背景
+
+**🛠️ 其他优化：**
+- 深浅色配色板可同时编辑混用，应用启动即加载主题
+- 开屏恢复透明背景图标、加快启动（700ms 淡入缩放动画）
+- 修复管理页返回/保存按钮点击无效、镜像弹窗紫色背景等问题
+
 #### v4.5.0 (Build 15) - 🐧 Proot 容器运行时 + 自定义后端
 
 **🐧 Proot 容器运行时（`backendRuntime: "proot"`）：**
-- 插件后端可在**共享 Alpine 容器**中运行，与宿主机环境隔离
+- 插件后端可在共享 Alpine 容器中运行，与宿主机环境隔离
 - 首次使用时自动初始化 Termux 环境，并通过 `proot-distro restore` 从 `assets/alpine.tar.xz` 离线恢复 Alpine 容器（备份内置预装 Python 环境）
-- 容器内可直接使用 `apk add` 安装依赖，不污染宿主 Termux 环境
-- 后端端口映射：容器内 `127.0.0.1:PORT` 与宿主机互通，无需额外网络配置
-- 插件目录自动绑定到容器内 `/plugins/<pluginId>`，入口文件在容器中直接可见
+- 容器内可使用 `apk add` 安装依赖，不污染宿主 Termux 环境
+- 插件目录自动绑定到容器内 `/plugins/<pluginId>`，容器内 `127.0.0.1:PORT` 与宿主互通
+- 环境流水线：Termux 就绪 → Alpine 就绪 → 启动前命令 → 启动后端
 
 **⚡ 启动前命令（`backendPreCommand`）：**
-- 插件可配置一条启动前命令，在 Termux 终端中执行（如安装依赖、初始化数据）
-- 弹窗三选项：「现在运行」「稍后」「取消」，支持选择
-- 命令执行成功（exit 0）一次后永久跳过（`pre_cmd_done` 标记）
-- 执行失败时提示并允许重试
+- 首次打开时弹窗选择：「现在运行」「稍后」「取消」
+- 命令在 Termux 终端中执行，成功（exit 0）一次后永久跳过（`pre_cmd_done`）
+- 执行失败时回到插件页并提示退出码与错误信息
 
 **🔧 自定义后端模式（`backend: "other"`）：**
 - 宿主不自动启动后端进程，由启动前命令在终端中自行启动服务
-- 通过 TCP 端口轮询判定后端就绪，兼容无端口插件
-- 适合「容器内长驻服务」「手动启动」等特殊场景
+- TCP 端口轮询（200ms）判定就绪，超时放宽至 90s+ 兼容容器冷启动
+- 支持无端口插件（`backendPort: 0`）
 
 **🚀 后端连接提速：**
-- 全部 OkHttpClient 增加 `.proxy(Proxy.NO_PROXY)`，避免系统代理劫持 loopback 流量
-- `waitForReady` 健康检查改为 200ms TCP 端口探测 + HTTP 轮询，去掉 1s 硬编码延迟
-- 停止后端时按进程组 `SIGKILL`，确保子进程一并退出
+- 三处 OkHttpClient 增加 `.proxy(Proxy.NO_PROXY)`，避免系统代理劫持 loopback 流量
+- `waitForReady` 改为 200ms TCP 探测 + HTTP 轮询，去掉 1s 硬编码延迟
+- 停止后端时按进程组 `SIGKILL`，确保 proot 子进程一并退出
 
 **🐛 其他修复：**
 - 修复引导页（Onboarding）闪烁与跳过后再弹出的问题：去除 SplashActivity 双重导航路径，统一由 Compose 驱动，并修复权限弹窗首帧闪现
@@ -107,7 +140,7 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 - 支持 CUI + 后端 / CUI + Proot 组合模式
 
 **🧰 模板导出重构 + 开发工具优化：**
-- 插件模板导出改为从 `assets/test_plugins/` 导出 7 个打包好的插件（cuitest / othertest / termux / allapi / storage / NativeTestPlugin / web_plugin_template），自动生成 `README.txt`
+- 插件模板导出改为从 `assets/test_plugins/` 导出 7 个打包好的插件（cuitest / othertest / termux / allapi / storage / NativeTestPlugin / web_plugin_template），自动生成 `README.txt` 说明
 - 清理 assets 中原有零散插件模板，统一由内置打包插件接管
 - 修复「导出中...」一直卡住的问题（导出后台线程化），Toast 显示线程安全化
 - 创建插件按钮改为纯主题色，移除渐变色
@@ -115,7 +148,26 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 **⚙️ 构建优化：**
 - 精简 `proguard-rules.pro`，仅保留可能被 R8 删除的重要代码（空壳插件宿主占位实现、`@JavascriptInterface` 方法、插件 JSON 模型），缩小 release 包体积
 
-#### v4.4.0 (Build 13) - 🎉 持久化存储 + 权限系统完善
+#### v4.4.4 (Build 14) - 🎉 插件弹窗系统统一 + 交互修复
+
+**🎉 重大更新：插件弹窗系统统一**
+
+**插件弹窗系统统一：**
+- 插件弹窗全部改用应用内置的 Compose 统一对话框组件（UnifiedDialog / UnifiedConfirmDialog / UnifiedInfoDialog）
+- 移除旧的 UnifiedViewDialog 自定义弹窗
+- JS alert / confirm / 确认对话框 / 输入对话框 / 特殊权限弹窗统一走同一套弹窗组件
+
+**弹窗排队机制：**
+- 多个弹窗请求按顺序排队显示，不再互相覆盖
+- 上一个弹窗关闭后自动展示下一个
+- 新增回调式弹窗 API：showConfirmDialog(title, message, callbackId)、showPromptDialog(title, hint, callbackId)
+
+**交互修复：**
+- 修复插件页面无法滚动/点击的问题：对话框覆盖层默认隐藏，仅在弹窗显示时显示
+- 修复确认对话框不显示的问题
+- 修复截图功能无法保存的问题（改用视图绘制方式捕获画面）
+
+#### v4.4.0 (2026年7月28日) - 🎉 持久化存储 + 权限系统完善
 
 **🎉 重大更新：插件数据持久化存储**
 

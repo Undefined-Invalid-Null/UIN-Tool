@@ -47,19 +47,9 @@ fun HelpScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(Str.get(R.string.help_2)) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = { activity?.finish() }
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.help_2),
+                onBack = { activity?.finish() }
             )
         }
     ) { paddingValues ->

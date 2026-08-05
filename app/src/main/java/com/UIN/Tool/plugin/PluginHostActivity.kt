@@ -945,6 +945,9 @@ class PluginHostActivity : AppCompatActivity() {
                     super.onPageFinished(view, url)
                     Logger.success(TAG, Str.get(R.string.webview_load_complete_url, url))
                     injectJSInterface()
+                    if (com.UIN.Tool.utils.UIConfig.isInitialized()) {
+                        view?.evaluateJavascript(com.UIN.Tool.utils.UIConfig.getThemeCssInjectionScript(), null)
+                    }
                     Handler(Looper.getMainLooper()).postDelayed({
                         if (isBackendReady) {
                             sendBackendReadyToWebView(backendPort)

@@ -22,6 +22,7 @@
         <item name="colorOnError">@color/text_inverse</item>
         <item name="colorAccent">@color/primary</item>
         <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowAnimationStyle">@style/Theme.UIN.Tool.WindowAnimation</item>
     </style>
 
     <!-- ============================================================
@@ -36,6 +37,17 @@
     <style name="Theme.TermuxApp.DayNight.NoActionBar" parent="Theme.UIN.Tool">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- ============================================================
+         夜间启动主题（深灰色背景，非纯黑）
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
     </style>
 
     <!-- TermuxActivity 夜间主题 -->

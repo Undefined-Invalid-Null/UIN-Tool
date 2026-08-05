@@ -3,8 +3,11 @@ package com.UIN.Tool.utils
 
 import com.UIN.Tool.R
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import com.UIN.Tool.log.Logger
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
 
 object UIConfig {
@@ -14,12 +17,22 @@ object UIConfig {
     private const val KEY_CONFIG = "config_json"
     private const val KEY_USE_ICON_TINT = "use_icon_tint"
     private const val KEY_CURRENT_THEME = "current_theme"
+    private const val KEY_THEME_MODE = "theme_mode"
+    
+    const val THEME_MODE_SYSTEM = "system"
+    const val THEME_MODE_LIGHT = "light"
+    const val THEME_MODE_DARK = "dark"
     
     private lateinit var context: Context
     internal var config: JSONObject = JSONObject()
     private var useIconTint: Boolean = true
     private var currentTheme: String = "default"
+    private var themeMode: String = THEME_MODE_SYSTEM
     private var isInitialized = false
+    
+    // 配置版本号：每次保存自增，供 Compose 主题观察以触发重组
+    private val _configVersion = MutableStateFlow(0)
+    val configVersion: StateFlow<Int> = _configVersion
     
     fun init(context: Context) {
         if (isInitialized) return
@@ -35,6 +48,8 @@ object UIConfig {
         }
         return this
     }
+
+    fun isInitialized(): Boolean = isInitialized
     
     private fun loadConfig() {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -51,8 +66,34 @@ object UIConfig {
             config = getDefaultConfig()
         }
         
+        ensureDefaultSections()
+        
         useIconTint = prefs.getBoolean(KEY_USE_ICON_TINT, true)
         currentTheme = prefs.getString(KEY_CURRENT_THEME, "default") ?: "default"
+        themeMode = prefs.getString(KEY_THEME_MODE, THEME_MODE_SYSTEM) ?: THEME_MODE_SYSTEM
+    }
+
+    /**
+     * 为旧版本配置补齐缺失的区块（如 theme_dark），保证升级后深色模式仍有默认配色。
+     */
+    private fun ensureDefaultSections() {
+        val def = getDefaultConfig()
+        val sections = listOf("theme", "theme_dark", "shape", "size", "font", "experimental")
+        for (section in sections) {
+            val current = config.optJSONObject(section)
+            val defaultSection = def.optJSONObject(section) ?: continue
+            if (current == null) {
+                config.put(section, defaultSection)
+            } else {
+                val keys = defaultSection.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    if (!current.has(key)) {
+                        current.put(key, defaultSection.get(key))
+                    }
+                }
+            }
+        }
     }
     
     fun saveConfig() {
@@ -61,7 +102,9 @@ object UIConfig {
             putString(KEY_CONFIG, config.toString())
             putBoolean(KEY_USE_ICON_TINT, useIconTint)
             putString(KEY_CURRENT_THEME, currentTheme)
+            putString(KEY_THEME_MODE, themeMode)
         }.apply()
+        _configVersion.value += 1
         Logger.d(TAG, Str.get(R.string.config_saved))
     }
     
@@ -89,6 +132,34 @@ object UIConfig {
                     put("divider", "#FFE0E4E8")
                     put("glass_background", "#E6FFFFFF")
                     put("disabled", "#FFBDBDBD")
+                    put("status_bar", "#FF0F2838")
+                    put("navigation_bar", "#FFFFFFFF")
+                    put("nav_selected", "#FF1A3A4A")
+                    put("nav_unselected", "#FF9AA6B2")
+                })
+                put("theme_dark", JSONObject().apply {
+                    put("primary", "#FF8B949E")
+                    put("primary_dark", "#FF4A4A4A")
+                    put("primary_light", "#FFE6E6E6")
+                    put("accent", "#FF8B949E")
+                    put("success", "#FF66BB6A")
+                    put("warning", "#FFFFB74D")
+                    put("error", "#FFFF6E6E")
+                    put("info", "#FF26C6DA")
+                    put("text_primary", "#FFE8E8E8")
+                    put("text_secondary", "#FFA8A8A8")
+                    put("text_hint", "#FF6E6E6E")
+                    put("text_primary_inverse", "#FF1A1A1A")
+                    put("background", "#FF2A2A2A")
+                    put("surface", "#FF363636")
+                    put("surface_variant", "#FF3F3F3F")
+                    put("divider", "#FF484848")
+                    put("glass_background", "#E62A2A2A")
+                    put("disabled", "#FF666666")
+                    put("status_bar", "#FF1F1F1F")
+                    put("navigation_bar", "#FF2A2A2A")
+                    put("nav_selected", "#FF8B949E")
+                    put("nav_unselected", "#FF7A7A7A")
                 })
                 put("shape", JSONObject().apply {
                     put("cornerRadiusSmall", 8)
@@ -155,9 +226,57 @@ object UIConfig {
         return if (value.isNotEmpty()) value else "#FFFFFFFF"
     }
     
+    fun getColorStringDark(key: String): String {
+        val theme = config.optJSONObject("theme_dark")
+        val value = theme?.optString(key, "#FFFFFFFF") ?: "#FFFFFFFF"
+        return if (value.isNotEmpty()) value else "#FFFFFFFF"
+    }
+    
+    /**
+     * 根据当前是否深色模式读取对应配色区的颜色字符串。
+     */
+    fun getColorStringForMode(key: String, dark: Boolean): String {
+        return if (dark) getColorStringDark(key) else getColorString(key)
+    }
+    
+    /**
+     * 根据是否深色模式读取对应配色区的 ARGB 颜色值。
+     */
+    fun getColorForMode(key: String, dark: Boolean): Int {
+        return if (dark) getColorDark(key) else getColor(key)
+    }
+    
+    fun getColorDark(key: String): Int {
+        return try {
+            val theme = config.optJSONObject("theme_dark")
+            val colorStr = theme?.optString(key, "#FFFFFFFF") ?: "#FFFFFFFF"
+            if (colorStr.isNotEmpty() && colorStr.startsWith("#") && colorStr.length >= 7) {
+                Color.parseColor(colorStr)
+            } else {
+                Color.parseColor("#FFFFFFFF")
+            }
+        } catch (e: Exception) {
+            Logger.w(TAG, Str.get(R.string.color_parse_failed_key_using_default, key))
+            Color.parseColor("#FFFFFFFF")
+        }
+    }
+    
     fun updateColor(key: String, value: String) {
         try {
             val theme = config.optJSONObject("theme")
+            if (theme != null) {
+                theme.put(key, value)
+                saveConfig()
+                Logger.d(TAG, Str.get(R.string.updated_color_key_value, key, value))
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, Str.get(R.string.failed_to_update_color), e)
+        }
+    }
+    
+    fun updateColorDark(key: String, value: String) {
+        try {
+            val theme = config.optJSONObject("theme_dark")
             if (theme != null) {
                 theme.put(key, value)
                 saveConfig()
@@ -226,6 +345,7 @@ object UIConfig {
         config = getDefaultConfig()
         useIconTint = true
         currentTheme = "default"
+        themeMode = THEME_MODE_SYSTEM
         saveConfig()
         Logger.i(TAG, Str.get(R.string.reset_to_default_config))
     }
@@ -242,6 +362,33 @@ object UIConfig {
     fun setCurrentTheme(theme: String) {
         currentTheme = theme
         saveConfig()
+    }
+    
+    fun getThemeMode(): String = themeMode
+    
+    fun setThemeMode(mode: String) {
+        if (mode != THEME_MODE_SYSTEM && mode != THEME_MODE_LIGHT && mode != THEME_MODE_DARK) {
+            themeMode = THEME_MODE_SYSTEM
+        } else {
+            themeMode = mode
+        }
+        saveConfig()
+    }
+    
+    fun isSystemDark(): Boolean {
+        val uiMode = context.resources.configuration.uiMode
+        return (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    }
+    
+    /**
+     * 根据主题模式与系统深色状态，解析实际是否使用深色主题。
+     */
+    fun shouldUseDarkTheme(systemDark: Boolean = isSystemDark()): Boolean {
+        return when (themeMode) {
+            THEME_MODE_DARK -> true
+            THEME_MODE_LIGHT -> false
+            else -> systemDark
+        }
     }
     
     fun isGlassEffectEnabled(): Boolean = getBoolean("enableGlassEffect", true)
@@ -269,6 +416,86 @@ object UIConfig {
     fun getDividerColor(): Int = getColor("divider")
     fun getGlassBackgroundColor(): Int = getColor("glass_background")
     fun getDisabledColor(): Int = getColor("disabled")
+
+    // ==================== 深色配色便捷方法 ====================
+
+    fun getDarkPrimaryColor(): Int = getColorDark("primary")
+    fun getDarkPrimaryDarkColor(): Int = getColorDark("primary_dark")
+    fun getDarkPrimaryLightColor(): Int = getColorDark("primary_light")
+    fun getDarkAccentColor(): Int = getColorDark("accent")
+    fun getDarkSurfaceColor(): Int = getColorDark("surface")
+    fun getDarkBackgroundColor(): Int = getColorDark("background")
+
+    // ==================== WebView 主题 CSS 注入 ====================
+
+    /**
+     * 生成 Web 插件可用的主题 CSS 变量（--uin-*），
+     * 供插件网页通过 var(--uin-primary) 等使用当前主题配色。
+     */
+    fun getThemeCssVariables(): String {
+        val dark = shouldUseDarkTheme(isSystemDark())
+        fun color(key: String): String = hexColor(getColorStringForMode(key, dark))
+        return buildString {
+            append(":root{")
+            append("--uin-primary:#").append(color("primary")).append(';')
+            append("--uin-primary-dark:#").append(color("primary_dark")).append(';')
+            append("--uin-primary-light:#").append(color("primary_light")).append(';')
+            append("--uin-accent:#").append(color("accent")).append(';')
+            append("--uin-success:#").append(color("success")).append(';')
+            append("--uin-warning:#").append(color("warning")).append(';')
+            append("--uin-error:#").append(color("error")).append(';')
+            append("--uin-info:#").append(color("info")).append(';')
+            append("--uin-text-primary:#").append(color("text_primary")).append(';')
+            append("--uin-text-secondary:#").append(color("text_secondary")).append(';')
+            append("--uin-text-hint:#").append(color("text_hint")).append(';')
+            append("--uin-background:#").append(color("background")).append(';')
+            append("--uin-surface:#").append(color("surface")).append(';')
+            append("--uin-surface-variant:#").append(color("surface_variant")).append(';')
+            append("--uin-divider:#").append(color("divider")).append(';')
+            append("--uin-glass-background:#").append(color("glass_background")).append(';')
+            append("--uin-disabled:#").append(color("disabled")).append(';')
+            append("--uin-button-radius:").append(getShape("buttonCornerRadius").toInt()).append("px;")
+            append("--uin-card-radius:").append(getShape("cardCornerRadius").toInt()).append("px;")
+            append("--uin-input-radius:").append(getShape("inputCornerRadius").toInt()).append("px;")
+            append('}')
+        }
+    }
+
+    /**
+     * 生成将主题 CSS 注入到 WebView 页面的 JS 脚本。
+     * 通过 document 注入 <style> 并更新 :root 变量。
+     */
+    fun getThemeCssInjectionScript(): String {
+        val css = getThemeCssVariables().replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
+        return """
+            (function() {
+                var css = '$css';
+                var styleId = 'uin-theme-style';
+                var el = document.getElementById(styleId);
+                if (!el) {
+                    el = document.createElement('style');
+                    el.id = styleId;
+                    document.head.appendChild(el);
+                }
+                el.textContent = css;
+                if (window.__uinThemeApplied) {
+                    window.__uinThemeApplied();
+                }
+            })();
+        """.trimIndent()
+    }
+
+    private fun hexColor(colorStr: String): String {
+        return try {
+            if (colorStr.startsWith("#") && colorStr.length >= 7) {
+                colorStr.substring(colorStr.length - 6).uppercase()
+            } else {
+                "FFFFFFFF"
+            }
+        } catch (e: Exception) {
+            "FFFFFFFF"
+        }
+    }
     
     // ==================== 形状便捷方法 ====================
     

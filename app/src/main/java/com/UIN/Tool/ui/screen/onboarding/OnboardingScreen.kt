@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import com.UIN.Tool.ui.theme.AppDimens
 
 data class OnboardingItem(
     val title: String,
@@ -108,7 +109,7 @@ fun OnboardingScreen(
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(RoundedCornerShape(AppDimens.radiusXXLarge))
                                 .background(
                                     colorScheme.primaryContainer.copy(alpha = 0.2f)
                                 ),
@@ -148,7 +149,7 @@ fun OnboardingScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 4.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                             colors = CardDefaults.cardColors(
                                 containerColor = Color(0xFFE3F2FD)  // 淡蓝色
                             )
@@ -201,7 +202,7 @@ fun OnboardingScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 4.dp),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                             colors = CardDefaults.cardColors(
                                 containerColor = Color(0xFFFFF3E0)  // 淡橙色
                             )
@@ -258,7 +259,7 @@ fun OnboardingScreen(
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(AppDimens.radiusXXLarge))
                             .background(
                                 colorScheme.primaryContainer.copy(alpha = 0.15f)
                             ),

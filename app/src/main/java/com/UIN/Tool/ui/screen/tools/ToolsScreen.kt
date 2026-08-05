@@ -25,6 +25,7 @@ import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.PluginShortcutHelper
 import kotlinx.coroutines.launch
+import com.UIN.Tool.ui.theme.AppDimens
 
 private const val TAG = "ToolsScreen"
 
@@ -63,7 +64,7 @@ fun ToolsScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UIComponents.TitleText(Str.get(R.string.toolbox))
+            UIComponents.TitleText(Str.get(R.string.plugins))
             Row {
                 UIComponents.IconButton(
                     icon = if (isSearching) Icons.Default.Close else Icons.Default.Search,
@@ -194,7 +195,7 @@ fun PluginListItem(
                     .size(48.dp)
                     .background(
                         MaterialTheme.colorScheme.primaryContainer,
-                        RoundedCornerShape(8.dp)
+                        RoundedCornerShape(AppDimens.radiusSmall)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -249,7 +250,7 @@ fun PluginGridItem(
                     .size(56.dp)
                     .background(
                         MaterialTheme.colorScheme.primaryContainer,
-                        RoundedCornerShape(12.dp)
+                        RoundedCornerShape(AppDimens.radiusMedium)
                     ),
                 contentAlignment = Alignment.Center
             ) {

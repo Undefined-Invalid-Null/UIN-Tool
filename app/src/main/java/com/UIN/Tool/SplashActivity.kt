@@ -16,6 +16,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import android.graphics.drawable.ColorDrawable
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,7 +32,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,13 +56,16 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.screen.onboarding.OnboardingActivity
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.MarkdownRenderer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 
-private const val SPLASH_DELAY = 1500L
+private const val SPLASH_DELAY = 700L
 private const val UPDATE_CHECK_TIMEOUT = 5000L
 
 class SplashActivity : ComponentActivity() {
@@ -109,6 +117,22 @@ class SplashActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 开屏窗口背景跟随应用主题模式（而非系统），避免首帧白屏/灰屏闪一下
+        if (UIConfig.isInitialized()) {
+            val uiConfig = UIConfig.getInstance()
+            val dark = uiConfig.shouldUseDarkTheme()
+            try {
+                val colorString = if (dark) {
+                    uiConfig.getColorStringDark("background")
+                } else {
+                    uiConfig.getColorString("background")
+                }
+                window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.parseColor(colorString)))
+            } catch (e: Exception) {
+                AppLog.e(TAG, "set splash window background failed", e)
+            }
+        }
 
         preferenceManager = ServiceLocator.getPreferenceManager()
         isFirstLaunch = preferenceManager.isFirstLaunch()
@@ -341,7 +365,6 @@ fun SplashScreenWithUpdate(
     val colorScheme = MaterialTheme.colorScheme
 
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var isChecking by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<ReleaseInfo?>(null) }
     var isForceUpdate by remember { mutableStateOf(false) }
     var showDownloadProgress by remember { mutableStateOf(false) }
@@ -350,14 +373,12 @@ fun SplashScreenWithUpdate(
     LaunchedEffect(hasStoragePermission, isFirstLaunch) {
         if (hasStoragePermission && isFirstLaunch) {
             delay(SPLASH_DELAY)
-            isChecking = true
 
             val updateChecker = UpdateChecker(context, preferenceManager)
             var isCompleted = false
 
             Handler(Looper.getMainLooper()).postDelayed({
                 if (!isCompleted) {
-                    isChecking = false
                     AppLog.w("SplashScreen", Str.get(R.string.update_check_timed_out_update_check_, UPDATE_CHECK_TIMEOUT))
                     onNavigate()
                 }
@@ -371,7 +392,6 @@ fun SplashScreenWithUpdate(
                 override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
                     if (isCompleted) return
                     isCompleted = true
-                    isChecking = false
 
                     if (hasNewer && releases.isNotEmpty()) {
                         val latest = releases.first()
@@ -393,7 +413,6 @@ fun SplashScreenWithUpdate(
                 override fun onCheckFailed(error: String) {
                     if (isCompleted) return
                     isCompleted = true
-                    isChecking = false
                     AppLog.e("SplashScreen", Str.get(R.string.update_check_failed_error_2, error))
                     onNavigate()
                 }
@@ -401,7 +420,6 @@ fun SplashScreenWithUpdate(
                 override fun onNoUpdate(currentVersion: String) {
                     if (isCompleted) return
                     isCompleted = true
-                    isChecking = false
                     AppLog.i("SplashScreen", Str.get(R.string.you_are_on_the_latest_version_curren, currentVersion))
                     onNavigate()
                 }
@@ -439,20 +457,34 @@ fun SplashScreenWithUpdate(
         return
     }
 
-    // ==================== 启动画面 ====================
+    // ==================== 启动画面（适配深色模式，深色用深灰色背景） ====================
+    val iconAlpha = remember { Animatable(0f) }
+    val iconScale = remember { Animatable(0.7f) }
+    LaunchedEffect(Unit) {
+        launch { iconScale.animateTo(1f, tween(durationMillis = 450)) }
+        iconAlpha.animateTo(1f, tween(durationMillis = 450))
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                painter = painterResource(id = R.drawable.ic_splash_foreground),
                 contentDescription = "App Icon",
-                modifier = Modifier.size(120.dp)
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                modifier = Modifier
+                    .size(120.dp)
+                    .graphicsLayer {
+                        alpha = iconAlpha.value
+                        scaleX = iconScale.value
+                        scaleY = iconScale.value
+                    }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -462,7 +494,7 @@ fun SplashScreenWithUpdate(
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A3A4A)
+                    color = MaterialTheme.colorScheme.primary
                 )
             )
 
@@ -471,30 +503,8 @@ fun SplashScreenWithUpdate(
             Text(
                 text = Str.get(R.string.version_constants_app_version_build_, Constants.APP_VERSION, Constants.APP_VERSION_CODE),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF9AA6B2)
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
-
-            if (isChecking && isFirstLaunch) {
-                Spacer(modifier = Modifier.height(24.dp))
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = Color(0xFF1A3A4A),
-                    strokeWidth = 3.dp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = Str.get(R.string.checking_for_updates),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF9AA6B2)
-                )
-            } else if (!isFirstLaunch && hasStoragePermission) {
-                Spacer(modifier = Modifier.height(24.dp))
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = Color(0xFF1A3A4A),
-                    strokeWidth = 3.dp
-                )
-            }
         }
 
         if (showUpdateDialog && updateInfo != null) {
@@ -560,9 +570,9 @@ fun PermissionExplainDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(24.dp)),
+                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
             colors = CardDefaults.cardColors(
-                containerColor = colorScheme.surface
+                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
@@ -615,7 +625,7 @@ fun PermissionExplainDialog(
                         .fillMaxWidth()
                         .background(
                             colorScheme.surfaceVariant,
-                            RoundedCornerShape(12.dp)
+                            RoundedCornerShape(AppDimens.radiusMedium)
                         )
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -666,7 +676,7 @@ fun PermissionExplainDialog(
                             containerColor = colorScheme.surfaceVariant,
                             contentColor = colorScheme.onSurfaceVariant
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
@@ -686,7 +696,7 @@ fun PermissionExplainDialog(
                             containerColor = colorScheme.primary,
                             contentColor = colorScheme.onPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
@@ -723,9 +733,9 @@ fun PermissionDeniedDialog(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(24.dp)),
+                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
             colors = CardDefaults.cardColors(
-                containerColor = colorScheme.surface
+                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
@@ -788,7 +798,7 @@ fun PermissionDeniedDialog(
                         .fillMaxWidth()
                         .background(
                             colorScheme.surfaceVariant,
-                            RoundedCornerShape(10.dp)
+                            RoundedCornerShape(AppDimens.radiusMedium)
                         )
                         .padding(12.dp)
                 ) {
@@ -828,7 +838,7 @@ fun PermissionDeniedDialog(
                             containerColor = colorScheme.surfaceVariant,
                             contentColor = colorScheme.onSurfaceVariant
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
@@ -848,7 +858,7 @@ fun PermissionDeniedDialog(
                             containerColor = colorScheme.primary,
                             contentColor = colorScheme.onPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
@@ -913,9 +923,9 @@ fun UpdateDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp)),
+                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
             colors = CardDefaults.cardColors(
-                containerColor = colorScheme.surface
+                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
@@ -1066,7 +1076,7 @@ fun UpdateDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 80.dp, max = 250.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(AppDimens.radiusSmall))
                             .background(colorScheme.surfaceVariant)
                     )
                 }
@@ -1086,7 +1096,7 @@ fun UpdateDialog(
                             containerColor = colorScheme.primary,
                             contentColor = colorScheme.onPrimary
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Download,
@@ -1110,7 +1120,7 @@ fun UpdateDialog(
                                 containerColor = colorScheme.surfaceVariant,
                                 contentColor = colorScheme.onSurfaceVariant
                             ),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Language,
@@ -1131,7 +1141,7 @@ fun UpdateDialog(
                                     containerColor = Color(0xFFFFEBEE),
                                     contentColor = Color(0xFFD32F2F)
                                 ),
-                                shape = RoundedCornerShape(10.dp)
+                                shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
@@ -1169,9 +1179,9 @@ fun DownloadProgressDialog(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(20.dp)),
+                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
             colors = CardDefaults.cardColors(
-                containerColor = colorScheme.surface
+                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
@@ -1206,7 +1216,7 @@ fun DownloadProgressDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
+                        .clip(RoundedCornerShape(AppDimens.radiusSmall)),
                     color = colorScheme.primary,
                     trackColor = colorScheme.surfaceVariant
                 )
@@ -1231,7 +1241,7 @@ fun DownloadProgressDialog(
                         containerColor = colorScheme.surfaceVariant,
                         contentColor = colorScheme.onSurfaceVariant
                     ),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Close,

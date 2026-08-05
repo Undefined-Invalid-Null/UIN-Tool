@@ -9,11 +9,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,8 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.AppLog
@@ -33,16 +34,22 @@ import com.UIN.Tool.utils.CrashLogUtils
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogViewerScreen(
-    navController: NavController = rememberNavController()
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var logLines by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    val pullRefreshState = rememberPullToRefreshState()
 
     var showCrashMessage by remember { mutableStateOf(CrashLogUtils.shouldNavigateToLogs(context)) }
 
@@ -109,19 +116,10 @@ fun LogViewerScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(Str.get(R.string.runtime_logs)) },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        onClick = { navController.navigateUp() }
-                    )
-                },
+            UIComponents.ManageTopAppBar(
+                titleText = Str.get(R.string.runtime_logs),
+                onBack = onBack,
                 actions = {
-                    UIComponents.IconButton(
-                        icon = Icons.Default.Refresh,
-                        onClick = { loadLogs() }
-                    )
                     UIComponents.IconButton(
                         icon = Icons.Default.DeleteSweep,
                         onClick = { showClearAllConfirm = true }
@@ -133,80 +131,116 @@ fun LogViewerScreen(
                             exportLauncher.launch("UIN_Tool_Log_$timestamp.txt")
                         }
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    loadLogs()
+                    delay(400)
+                    lastRefreshTime = UIComponents.currentTimeString()
+                    isRefreshing = false
+                }
+            },
+            state = pullRefreshState,
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            indicator = {
+                UIComponents.PullRefreshIndicator(
+                    isRefreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
+        ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            item {
+                UIComponents.LastUpdatedCaption(
+                    time = lastRefreshTime,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)
+                )
+            }
             // 崩溃提示 - 使用 Material Icon 替换 ⚠️
             if (showCrashMessage) {
-                UIComponents.Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                ) {
-                    Row(
+                item {
+                    UIComponents.Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 8.dp)
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Outlined.Warning,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Warning,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    UIComponents.BodyText(
+                                        Str.get(R.string.an_exception_occurred),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    UIComponents.CaptionText(
+                                        Str.get(R.string.please_check_the_crash_log_below_for),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                            UIComponents.IconButton(
+                                icon = Icons.Default.Close,
+                                onClick = { showCrashMessage = false },
                                 tint = MaterialTheme.colorScheme.error
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                UIComponents.BodyText(
-                                    Str.get(R.string.an_exception_occurred),
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                UIComponents.CaptionText(
-                                    Str.get(R.string.please_check_the_crash_log_below_for),
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
                         }
-                        UIComponents.IconButton(
-                            icon = Icons.Default.Close,
-                            onClick = { showCrashMessage = false },
-                            tint = MaterialTheme.colorScheme.error
-                        )
                     }
                 }
             }
 
             // 统计信息
-            UIComponents.Card(
-                modifier = Modifier.fillMaxWidth().padding(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+            item {
+                UIComponents.Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                 ) {
-                    UIComponents.BodyText(Str.get(R.string.loglines_size_lines_in_total, logLines.size))
-                    UIComponents.CaptionText(Str.get(R.string.latest_logs_at_the_top))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        UIComponents.BodyText(Str.get(R.string.loglines_size_lines_in_total, logLines.size))
+                        UIComponents.CaptionText(Str.get(R.string.latest_logs_at_the_top))
+                    }
                 }
             }
 
             when {
-                isLoading -> UIComponents.FullScreenLoading()
-                logLines.isEmpty() -> {
+                isLoading -> item {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillParentMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        UIComponents.FullScreenLoading()
+                    }
+                }
+                logLines.isEmpty() -> item {
+                    Box(
+                        modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -221,39 +255,34 @@ fun LogViewerScreen(
                         }
                     }
                 }
-                else -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(logLines) { line ->
-                        val color = when {
-                            line.contains("[ERROR]") || line.contains("[E]") -> MaterialTheme.colorScheme.error
-                            line.contains("[WARN]") || line.contains("[W]") -> MaterialTheme.colorScheme.tertiary
-                            line.contains("[SUCCESS]") || line.contains("[✓]") -> MaterialTheme.colorScheme.primary
-                            line.contains("==================") -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.onSurface
-                        }
-                        val isHeader = line.contains("==================")
-                        UIComponents.Card(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                line,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = if (isHeader) 12.sp else 11.sp,
-                                    fontWeight = if (isHeader) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
-                                ),
-                                color = color,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(6.dp)
-                            )
-                        }
+                else -> items(logLines) { line ->
+                    val color = when {
+                        line.contains("[ERROR]") || line.contains("[E]") -> MaterialTheme.colorScheme.error
+                        line.contains("[WARN]") || line.contains("[W]") -> MaterialTheme.colorScheme.tertiary
+                        line.contains("[SUCCESS]") || line.contains("[✓]") -> MaterialTheme.colorScheme.primary
+                        line.contains("==================") -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                    val isHeader = line.contains("==================")
+                    UIComponents.Card(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = if (isHeader) 12.sp else 11.sp,
+                                fontWeight = if (isHeader) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                            ),
+                            color = color,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(6.dp)
+                        )
                     }
                 }
             }
+        }
         }
     }
 
