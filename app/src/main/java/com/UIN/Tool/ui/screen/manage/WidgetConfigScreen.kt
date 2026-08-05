@@ -181,9 +181,7 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = Str.get(R.string.takes_little_home_screen_space_great) +
-                                   Str.get(R.string.open_with_one_tap_no_need_to_enter_t) +
-                                   Str.get(R.string.place_several_each_pointing_to_a_dif),
+                            text = Str.get(R.string.widget_1x1_desc),
                             fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
@@ -264,9 +262,7 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = Str.get(R.string.shows_3_plugins_at_once_for_quick_sw) +
-                                   Str.get(R.string.auto_rotates_to_show_plugin_status_n) +
-                                   Str.get(R.string.tap_a_plugin_card_to_open_it_directl),
+                            text = Str.get(R.string.widget_3x3_desc),
                             fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp
@@ -336,10 +332,7 @@ fun WidgetConfigScreen(
                             )
                         }
                         Text(
-                            text = Str.get(R.string.step1_tap_add_to_home_screen_and_choose_) +
-                                   Str.get(R.string.step2_drag_the_widget_to_reposition_it_n) +
-                                   Str.get(R.string.step3_long_press_the_widget_to_resize_or) +
-                                   Str.get(R.string.step4_a_shortcut_opens_the_plugin_direct),
+                            text = Str.get(R.string.widget_add_steps),
                             fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp

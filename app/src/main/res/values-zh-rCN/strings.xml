@@ -93,7 +93,6 @@
     <string name="alpine_not_installed_starting_offlin" formatted="false">Alpine 容器未安装，开始离线恢复...</string>
     <string name="alpine_ready_processing_pre_command" formatted="false">✅ Alpine 容器就绪，处理 pre-command...</string>
     <string name="an_exception_occurred" formatted="false">应用发生异常</string>
-    <string name="and_share_your_plugins_with_more_peo" formatted="false">也欢迎分享你的插件给更多人。\n\n</string>
     <string name="android_version" formatted="false">Android版本</string>
     <string name="android_version_too_old_info_minhost">Android 版本过低: %1$s > %2$s</string>
     <string name="api_call_failed_e_message">调用API失败: %1$s</string>
@@ -116,7 +115,6 @@
     <string name="author" formatted="false">作者</string>
     <string name="author_plugin_author">作者: %1$s</string>
     <string name="author_plugin_author_n">作者: %1$s\n</string>
-    <string name="auto_rotates_to_show_plugin_status_n" formatted="false">• 自动轮播展示插件状态\n</string>
     <string name="back" formatted="false">返回</string>
     <string name="back_up_and_restore_plugin_config" formatted="false">备份恢复插件配置</string>
     <string name="back_up_and_restore_plugin_data" formatted="false">备份和恢复插件数据</string>
@@ -183,7 +181,6 @@
     <string name="batch_import_failed" formatted="false">批量导入失败</string>
     <string name="batch_import_failed_e_message">批量导入失败: %1$s</string>
     <string name="batch_storage_failed" formatted="false">批量存储失败</string>
-    <string name="before_first_use_open_the_dev_page_a" formatted="false">⚠️ 首次使用前，请先打开「开发」页面点击「打开终端」，\n</string>
     <string name="binary_backend_instructions">选择编译好的二进制可执行文件作为后端
 
 • 该文件将作为插件后端启动
@@ -482,7 +479,6 @@
     <string name="downloading_release_versionname_prog_2">正在下载 %1$s... %2$s%% (%3$s/%4$s)</string>
     <string name="downloading_uin_tool_versionname">正在下载 UIN Tool %1$s</string>
     <string name="downloading_update" formatted="false">正在下载更新</string>
-    <string name="due_to_a_package_name_change_pkg_can" formatted="false">⚠️ 由于包名变更，终端内暂时无法使用 pkg 安装软件包，\n</string>
     <string name="dynamic_shortcuts_refreshed" formatted="false">刷新动态快捷方式完成</string>
     <string name="e_g_apk_add_python3_pip_install_r_re" formatted="false">如：apk add python3 &amp;&amp; pip install -r requirements.txt</string>
     <string name="e_g_fastgit" formatted="false">如: FastGit</string>
@@ -817,8 +813,6 @@
     <string name="how_to_add_a_home_screen_widget" formatted="false">如何添加桌面小部件</string>
     <string name="how_to_use" formatted="false">使用说明</string>
     <string name="humidity" formatted="false">湿度</string>
-    <string name="i_have_always_wanted_a_truly_free_to" formatted="false">一直以来，我都希望能在手机上有一个真正自由的工具平台，\n</string>
-    <string name="i_hope_you_can_create_something_of_y" formatted="false">希望你能用它创造出属于你自己的东西，\n</string>
     <string name="icon_preview" formatted="false">图标预览</string>
     <string name="id_plugin_pluginid_version_plugin_ve">ID: %1$s | 版本: %2$s</string>
     <string name="ignore" formatted="false">忽略</string>
@@ -871,7 +865,6 @@
     <string name="invalid_port" formatted="false">端口无效</string>
     <string name="invalid_url_e_message">URL格式错误: %1$s</string>
     <string name="isbackendready_is_true" formatted="false">   -> isBackendReady 为 true</string>
-    <string name="it_is_just_a_framework_the_real_soul" formatted="false">它只是一个框架，真正的灵魂在于你 —— 每一位使用者。\n\n</string>
     <string name="java_code_generated_javafilepath">生成Java代码完成: %1$s</string>
     <string name="js_call_action_data">JS调用: %1$s -> %2$s</string>
     <string name="js_call_host_action_data_data">JS 调用宿主: %1$s, 数据: %2$s</string>
@@ -1075,7 +1068,6 @@
 新功能、优化和修复已就绪！</string>
     <string name="one_tap_import_export_plugins_n_supp" formatted="false">• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理</string>
     <string name="one_tap_import_export_plugins_n_supp_2" formatted="false">• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理\n• 备份恢复所有数据</string>
-    <string name="one_that_can_be_extended_anytime_to_" formatted="false">可以按自己的需求随时扩展功能，而不是等开发者更新。\n\n</string>
     <string name="onnewintent_called" formatted="false">🔍 onNewIntent() 被调用</string>
     <string name="onnewintent_launched_from_desktop_ic" formatted="false">onNewIntent: 从桌面图标启动，关闭所有插件页面</string>
     <string name="onnewintent_opening_plugin_from_shor">onNewIntent: 从快捷方式打开插件: %1$s</string>
@@ -1085,7 +1077,6 @@
     <string name="open_terminal" formatted="false">打开终端</string>
     <string name="open_terminal_settings" formatted="false">打开终端设置</string>
     <string name="open_widget_config" formatted="false">打开小部件配置</string>
-    <string name="open_with_one_tap_no_need_to_enter_t" formatted="false">• 点击即开，无需进入应用\n</string>
     <string name="opened_from_manage_page_loading_defa" formatted="false">从管理页面打开，加载默认配置</string>
     <string name="opened_plugin_pluginid">已打开插件 %1$s</string>
     <string name="opened_plugin_pluginid_2">✅ 已打开插件: %1$s</string>
@@ -1152,7 +1143,6 @@
     <string name="phone" formatted="false">电话</string>
     <string name="phone_permission" formatted="false">电话权限</string>
     <string name="ping_failed" formatted="false">ping 失败</string>
-    <string name="place_several_each_pointing_to_a_dif" formatted="false">• 可放置多个，每个指向不同插件</string>
     <string name="place_the_shortcut_on_your_home_scre" formatted="false">请在桌面放置快捷方式</string>
     <string name="place_the_widget_on_your_home_screen" formatted="false">请在桌面放置小部件</string>
     <string name="please_check_the_crash_log_below_for" formatted="false">请查看下方的崩溃日志了解详情</string>
@@ -1496,7 +1486,6 @@
     <string name="showing_next_plugin_dialog_plugindia">🖼 显示下一个插件弹窗: %1$s</string>
     <string name="showing_permission_request_dialog" formatted="false">显示权限请求对话框</string>
     <string name="shown_on_first_launch_to_explain_the" formatted="false">首次打开时显示，用于说明插件功能</string>
-    <string name="shows_3_plugins_at_once_for_quick_sw" formatted="false">• 同时显示 3 个插件，方便快速切换\n</string>
     <string name="sigkill_sent_to_process_group_pid">🛑 已向进程组 %1$s 发送 SIGKILL</string>
     <string name="signature_verification_and_debug_set" formatted="false">签名验证调试设置</string>
     <string name="signature_verification_enabled" formatted="false">已启用签名验证</string>
@@ -1553,22 +1542,9 @@
     <string name="starting_sensor_type">启动传感器: %1$s</string>
     <string name="status_bar_color" formatted="false">状态栏颜色</string>
     <string name="step1_in_manage_plugins_tap_import_plugi" formatted="false">1. 在「管理」「插件管理」中选择「导入插件」</string>
-    <string name="step1_long_press_an_empty_area_of_the_ho" formatted="false">1. 长按桌面空白处\n</string>
-    <string name="step1_tap_add_to_home_screen_and_choose_" formatted="false">1. 点击「添加到桌面」按钮，系统会提示选择放置位置\n</string>
-    <string name="step1_tap_create_plugin_to_choose_a_type" formatted="false">1. 点击「创建插件」选择类型\n</string>
-    <string name="step2_choose_widgets_or_add_tools_n" formatted="false">2. 选择「小部件」或「添加工具」\n</string>
-    <string name="step2_drag_the_widget_to_reposition_it_n" formatted="false">2. 在桌面拖动小部件可调整位置\n</string>
-    <string name="step2_fill_in_basic_plugin_info_n" formatted="false">2. 填写插件基本信息\n</string>
     <string name="step2_select_a_tpk_file" formatted="false">2. 选择 .tpk 文件</string>
-    <string name="step3_find_uin_tool_n" formatted="false">3. 找到「UIN Tool」\n</string>
-    <string name="step3_long_press_the_widget_to_resize_or" formatted="false">3. 长按小部件可调整大小或移除\n</string>
     <string name="step3_the_plugin_will_be_installed_into_" formatted="false">3. 插件将自动安装到 UIN Tool 中</string>
-    <string name="step3_write_code_or_pick_a_binary_file_n" formatted="false">3. 编写代码或选择二进制文件\n</string>
-    <string name="step4_a_shortcut_opens_the_plugin_direct" formatted="false">4. 快捷方式点击后直接打开插件，无需进入应用</string>
-    <string name="step4_export_a_tpk_file_n" formatted="false">4. 导出 TPK 文件\n</string>
-    <string name="step4_long_press_and_drag_it_to_the_home" formatted="false">4. 长按拖拽到桌面即可</string>
     <string name="step4_run_installed_plugins_on_the_tools" formatted="false">4. 在「工具」页面可以运行已安装的插件</string>
-    <string name="step5_import_and_run_it_in_manage_plugin" formatted="false">5. 在「管理」「插件管理」中导入运行</string>
     <string name="stopping_backend_pluginid">🛑 停止后端: %1$s</string>
     <string name="stopping_sensor" formatted="false">停止传感器</string>
     <string name="storage" formatted="false">存储</string>
@@ -1623,8 +1599,6 @@
     <string name="system" formatted="false">系统</string>
     <string name="system_permission" formatted="false">系统权限</string>
     <string name="tag_tag_n">标签: %1$s\n</string>
-    <string name="takes_little_home_screen_space_great" formatted="false">• 占用桌面空间小，适合常用插件\n</string>
-    <string name="tap_a_plugin_card_to_open_it_directl" formatted="false">• 点击插件卡片直接进入对应功能</string>
     <string name="tap_create_backup_to_back_up_your_pl" formatted="false">点击「创建备份」来备份您的插件</string>
     <string name="tap_download_update_to_start_downloa" formatted="false">点击「下载更新」开始下载</string>
     <string name="tap_the_cancel_button" formatted="false">点击取消按钮</string>
@@ -1708,7 +1682,6 @@
     <string name="theme_load_failed_filename_e_message">⚠️ 主题加载失败: %1$s: %2$s</string>
     <string name="theme_loaded_themename">✅ 主题加载成功: %1$s</string>
     <string name="theme_mode" formatted="false">主题模式</string>
-    <string name="then_wait_for_the_terminal_environme" formatted="false">等待终端环境初始化完成（约 30-60 秒）。\n\n</string>
     <string name="this_device_does_not_support_shortcu" formatted="false">当前设备不支持创建快捷方式</string>
     <string name="this_feature_requires_android_8_0" formatted="false">Android 8.0+ 才支持此功能</string>
     <string name="this_is_a_glass_effect_card" formatted="false">这是一个玻璃效果卡片</string>
@@ -1720,7 +1693,6 @@
     <string name="this_plugin_declares_no_permissions" formatted="false">该插件没有声明任何权限</string>
     <string name="this_plugin_declares_no_permissions_2" formatted="false">该插件没有声明权限</string>
     <string name="this_requires_android_8_0_long_press" formatted="false">Android 8.0+ 才支持此功能，请长按桌面手动添加</string>
-    <string name="this_will_be_fixed_in_a_future_versi" formatted="false">此问题将在后续版本中修复（可能选择构建部分软件包供下载）。\n\n</string>
     <string name="time_1x1_bound_plugin_info_name">[%1$s] ✅ 1x1绑定插件: %2$s</string>
     <string name="time_1x1_widget_updated">[%1$s] ✅ 1x1小部件更新完成</string>
     <string name="time_all_slots_set">[%1$s] ✅ 所有插槽设置完成</string>
@@ -1842,7 +1814,6 @@
     <string name="title_share_transcript_with" formatted="false">发送记录到：</string>
     <string name="title_ui_config" formatted="false">UI 个性化</string>
     <string name="title_widget_1x1_config" formatted="false">配置快捷方式</string>
-    <string name="to_install_packages_please_report_it" formatted="false">💡 如需安装软件包，请在 Termux 社区反馈。</string>
     <string name="toast_copy_success" formatted="false">已复制到剪贴板</string>
     <string name="toast_delete_failed" formatted="false">删除失败</string>
     <string name="toast_delete_success" formatted="false">删除成功</string>
@@ -1901,7 +1872,6 @@
     <string name="uin_community" formatted="false">UIN 社区</string>
     <string name="uin_tool_app_startup_complete" formatted="false">UIN Tool 应用启动完成</string>
     <string name="uin_tool_is_a_powerful_plugin_platfo" formatted="false">UIN Tool 是一个强大的插件化工具平台\n\n支持原生 Java 插件和 Web 插件\n内置 Termux 终端环境</string>
-    <string name="uin_tool_is_my_answer_to_that_idea_n" formatted="false">UIN Tool 就是我对这个想法的回答，\n</string>
     <string name="uin_tool_needs_access_to_all_files_t" formatted="false">UIN Tool 需要管理所有文件的权限，以便导入/导出插件。\n\n请点击「授权」并允许权限。</string>
     <string name="uin_tool_needs_storage_permission_fo" formatted="false">UIN Tool 需要存储权限来正常运行以下功能：</string>
     <string name="uin_tool_needs_the_following_permiss" formatted="false">UIN Tool 需要以下权限来正常使用各项功能：</string>
@@ -2082,4 +2052,11 @@
     <string name="you_denied_storage_permission_some_f" formatted="false">您拒绝了存储权限，部分功能将无法正常使用。</string>
     <string name="your_launcher_doesn_t_support_pinnin" formatted="false">当前启动器不支持固定小部件，请长按桌面手动添加</string>
     <string name="your_launcher_doesn_t_support_pinnin_2" formatted="false">当前启动器不支持固定快捷方式，请长按桌面手动添加</string>
+    <string name="onboarding_author_words" formatted="false">一直以来，我都希望能在手机上有一个真正自由的工具平台，\n可以按自己的需求随时扩展功能，而不是等开发者更新。\n\nUIN Tool 就是我对这个想法的回答，\n它只是一个框架，真正的灵魂在于你 —— 每一位使用者。\n\n希望你能用它创造出属于你自己的东西，\n也欢迎分享你的插件给更多人。\n\n— UIN Team</string>
+    <string name="onboarding_terminal_notice" formatted="false">由于包名变更，终端内暂时无法使用 pkg 安装软件包，\n此问题可能会在后续版本中修复（选择构建部分软件包供下载）</string>
+    <string name="dev_create_plugin_steps" formatted="false">1. 点击「创建插件」选择类型\n2. 填写插件基本信息\n3. 编写代码或选择二进制文件\n4. 导出 TPK 文件\n5. 在「管理」「插件管理」中导入运行</string>
+    <string name="widget_1x1_desc" formatted="false">• 占用桌面空间小，适合常用插件\n• 点击即开，无需进入应用\n• 可放置多个，每个指向不同插件</string>
+    <string name="widget_3x3_desc" formatted="false">• 同时显示 3 个插件，方便快速切换\n• 自动轮播展示插件状态\n• 点击插件卡片直接进入对应功能</string>
+    <string name="widget_add_steps" formatted="false">1. 点击「添加到桌面」按钮，系统会提示选择放置位置\n2. 在桌面拖动小部件可调整位置\n3. 长按小部件可调整大小或移除\n4. 快捷方式点击后直接打开插件，无需进入应用</string>
+    <string name="widget_config_steps" formatted="false">1. 长按桌面空白处\n2. 选择「小部件」或「添加工具」\n3. 找到「UIN Tool」\n4. 长按拖拽到桌面即可</string>
 </resources>

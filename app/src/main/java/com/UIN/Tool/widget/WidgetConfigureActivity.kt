@@ -207,10 +207,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 }
                                 
                                 Text(
-                                    text = Str.get(R.string.step1_long_press_an_empty_area_of_the_ho) +
-                                           Str.get(R.string.step2_choose_widgets_or_add_tools_n) +
-                                           Str.get(R.string.step3_find_uin_tool_n) +
-                                           Str.get(R.string.step4_long_press_and_drag_it_to_the_home),
+                                    text = Str.get(R.string.widget_config_steps),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF444444),
                                     lineHeight = 22.sp,

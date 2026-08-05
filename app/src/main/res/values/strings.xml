@@ -93,7 +93,6 @@
     <string name="alpine_not_installed_starting_offlin" formatted="false">Alpine not installed, starting offline restore...</string>
     <string name="alpine_ready_processing_pre_command" formatted="false">✅ Alpine ready, processing pre-command...</string>
     <string name="an_exception_occurred" formatted="false">An exception occurred</string>
-    <string name="and_share_your_plugins_with_more_peo" formatted="false">and share your plugins with more people.\n\n</string>
     <string name="android_version" formatted="false">Android version</string>
     <string name="android_version_too_old_info_minhost">Android version too old: %1$s > %2$s</string>
     <string name="api_call_failed_e_message">API call failed: %1$s</string>
@@ -116,7 +115,6 @@
     <string name="author" formatted="false">Author</string>
     <string name="author_plugin_author">Author: %1$s</string>
     <string name="author_plugin_author_n">Author: %1$s\n</string>
-    <string name="auto_rotates_to_show_plugin_status_n" formatted="false">Auto-rotates to show plugin status\n</string>
     <string name="back" formatted="false">Back</string>
     <string name="back_up_and_restore_plugin_config" formatted="false">Back up and restore plugin config</string>
     <string name="back_up_and_restore_plugin_data" formatted="false">Back up and restore plugin data</string>
@@ -185,7 +183,6 @@ Size: %s</string>
     <string name="batch_import_failed" formatted="false">Batch import failed</string>
     <string name="batch_import_failed_e_message">Batch import failed: %1$s</string>
     <string name="batch_storage_failed" formatted="false">Batch storage failed</string>
-    <string name="before_first_use_open_the_dev_page_a" formatted="false">⚠️ Before first use, open the "Dev" page and tap "Open Terminal",\n</string>
     <string name="binary_backend_instructions">Choose a compiled binary executable as the backend
 
 • It will be launched as the plugin backend
@@ -492,7 +489,6 @@ Plugin data will be cleared and cannot be recovered.</string>
     <string name="downloading_release_versionname_prog_2">Downloading %1$s... %2$s%% (%3$s/%4$s)</string>
     <string name="downloading_uin_tool_versionname">Downloading UIN Tool %1$s</string>
     <string name="downloading_update" formatted="false">Downloading update</string>
-    <string name="due_to_a_package_name_change_pkg_can" formatted="false">⚠️ Due to a package name change, pkg cannot install packages in the terminal yet,\n</string>
     <string name="dynamic_shortcuts_refreshed" formatted="false">Dynamic shortcuts refreshed</string>
     <string name="e_g_apk_add_python3_pip_install_r_re" formatted="false">e.g. apk add python3 &amp;&amp; pip install -r requirements.txt</string>
     <string name="e_g_fastgit" formatted="false">e.g. FastGit</string>
@@ -828,8 +824,6 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="how_to_add_a_home_screen_widget" formatted="false">How to add a home screen widget</string>
     <string name="how_to_use" formatted="false">How to Use</string>
     <string name="humidity" formatted="false">Humidity</string>
-    <string name="i_have_always_wanted_a_truly_free_to" formatted="false">I have always wanted a truly free tool platform on my phone,\n</string>
-    <string name="i_hope_you_can_create_something_of_y" formatted="false">I hope you can create something of your own with it,\n</string>
     <string name="icon_preview" formatted="false">Icon Preview</string>
     <string name="id_plugin_pluginid_version_plugin_ve">ID: %1$s | Version: %2$s</string>
     <string name="ignore" formatted="false">Ignore</string>
@@ -882,7 +876,6 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="invalid_port" formatted="false">Invalid port</string>
     <string name="invalid_url_e_message">Invalid URL: %1$s</string>
     <string name="isbackendready_is_true" formatted="false">   -> isBackendReady is true</string>
-    <string name="it_is_just_a_framework_the_real_soul" formatted="false">it is just a framework; the real soul is you — every user.\n\n</string>
     <string name="java_code_generated_javafilepath">Java code generated: %1$s</string>
     <string name="js_call_action_data">JS call: %1$s -> %2$s</string>
     <string name="js_call_host_action_data_data">JS call host: %1$s, data: %2$s</string>
@@ -1086,7 +1079,6 @@ Note: only used for plugin downloads and updates.</string>
 New features, improvements and fixes are ready!</string>
     <string name="one_tap_import_export_plugins_n_supp" formatted="false">• One-tap import/export plugins\n• Supports TPK and ZIP formats\n• Plugin category management</string>
     <string name="one_tap_import_export_plugins_n_supp_2" formatted="false">• One-tap import/export plugins\n• Supports TPK and ZIP formats\n• Plugin category management\n• Backup and restore all data</string>
-    <string name="one_that_can_be_extended_anytime_to_" formatted="false">one that can be extended anytime to fit your needs, instead of waiting for developer updates.\n\n</string>
     <string name="onnewintent_called" formatted="false">🔍 onNewIntent() called</string>
     <string name="onnewintent_launched_from_desktop_ic" formatted="false">onNewIntent: launched from desktop icon, closing all plugin pages</string>
     <string name="onnewintent_opening_plugin_from_shor">onNewIntent: opening plugin from shortcut: %1$s</string>
@@ -1096,7 +1088,6 @@ New features, improvements and fixes are ready!</string>
     <string name="open_terminal" formatted="false">Open Terminal</string>
     <string name="open_terminal_settings" formatted="false">Open terminal settings</string>
     <string name="open_widget_config" formatted="false">Open widget config</string>
-    <string name="open_with_one_tap_no_need_to_enter_t" formatted="false">Open with one tap, no need to enter the app\n</string>
     <string name="opened_from_manage_page_loading_defa" formatted="false">Opened from Manage page, loading default config</string>
     <string name="opened_plugin_pluginid">Opened plugin %1$s</string>
     <string name="opened_plugin_pluginid_2">✅ Opened plugin: %1$s</string>
@@ -1163,7 +1154,6 @@ New features, improvements and fixes are ready!</string>
     <string name="phone" formatted="false">Phone</string>
     <string name="phone_permission" formatted="false">Phone Permission</string>
     <string name="ping_failed" formatted="false">ping failed</string>
-    <string name="place_several_each_pointing_to_a_dif" formatted="false">Place several, each pointing to a different plugin</string>
     <string name="place_the_shortcut_on_your_home_scre" formatted="false">Place the shortcut on your home screen</string>
     <string name="place_the_widget_on_your_home_screen" formatted="false">Place the widget on your home screen</string>
     <string name="please_check_the_crash_log_below_for" formatted="false">Please check the crash log below for details</string>
@@ -1510,7 +1500,6 @@ Continue?</string>
     <string name="showing_next_plugin_dialog_plugindia">🖼 Showing next plugin dialog: %1$s</string>
     <string name="showing_permission_request_dialog" formatted="false">Showing permission request dialog</string>
     <string name="shown_on_first_launch_to_explain_the" formatted="false">Shown on first launch to explain the plugin</string>
-    <string name="shows_3_plugins_at_once_for_quick_sw" formatted="false">Shows 3 plugins at once for quick switching\n</string>
     <string name="sigkill_sent_to_process_group_pid">🛑 SIGKILL sent to process group %1$s</string>
     <string name="signature_verification_and_debug_set" formatted="false">Signature verification and debug settings</string>
     <string name="signature_verification_enabled" formatted="false">Signature verification enabled</string>
@@ -1567,22 +1556,9 @@ Continue?</string>
     <string name="starting_sensor_type">Starting sensor: %1$s</string>
     <string name="status_bar_color" formatted="false">Status Bar Color</string>
     <string name="step1_in_manage_plugins_tap_import_plugi" formatted="false">1. In "Manage" > "Plugins", tap "Import Plugin"</string>
-    <string name="step1_long_press_an_empty_area_of_the_ho" formatted="false">1. Long-press an empty area of the home screen\n</string>
-    <string name="step1_tap_add_to_home_screen_and_choose_" formatted="false">1. Tap "Add to Home Screen" and choose a location\n</string>
-    <string name="step1_tap_create_plugin_to_choose_a_type" formatted="false">1. Tap "Create Plugin" to choose a type\n</string>
-    <string name="step2_choose_widgets_or_add_tools_n" formatted="false">2. Choose "Widgets" or "Add tools"\n</string>
-    <string name="step2_drag_the_widget_to_reposition_it_n" formatted="false">2. Drag the widget to reposition it\n</string>
-    <string name="step2_fill_in_basic_plugin_info_n" formatted="false">2. Fill in basic plugin info\n</string>
     <string name="step2_select_a_tpk_file" formatted="false">2. Select a .tpk file</string>
-    <string name="step3_find_uin_tool_n" formatted="false">3. Find "UIN Tool"\n</string>
-    <string name="step3_long_press_the_widget_to_resize_or" formatted="false">3. Long-press the widget to resize or remove it\n</string>
     <string name="step3_the_plugin_will_be_installed_into_" formatted="false">3. The plugin will be installed into UIN Tool automatically</string>
-    <string name="step3_write_code_or_pick_a_binary_file_n" formatted="false">3. Write code or pick a binary file\n</string>
-    <string name="step4_a_shortcut_opens_the_plugin_direct" formatted="false">4. A shortcut opens the plugin directly without entering the app</string>
-    <string name="step4_export_a_tpk_file_n" formatted="false">4. Export a TPK file\n</string>
-    <string name="step4_long_press_and_drag_it_to_the_home" formatted="false">4. Long-press and drag it to the home screen</string>
     <string name="step4_run_installed_plugins_on_the_tools" formatted="false">4. Run installed plugins on the "Tools" page</string>
-    <string name="step5_import_and_run_it_in_manage_plugin" formatted="false">5. Import and run it in "Manage" > "Plugins"</string>
     <string name="stopping_backend_pluginid">🛑 Stopping backend: %1$s</string>
     <string name="stopping_sensor" formatted="false">Stopping sensor</string>
     <string name="storage" formatted="false">Storage</string>
@@ -1637,8 +1613,6 @@ Note: we never read your personal files; we only touch files under the UIN_Tool 
     <string name="system" formatted="false">System</string>
     <string name="system_permission" formatted="false">System Permission</string>
     <string name="tag_tag_n">Tag: %1$s\n</string>
-    <string name="takes_little_home_screen_space_great" formatted="false">Takes little home screen space, great for frequently used plugins\n</string>
-    <string name="tap_a_plugin_card_to_open_it_directl" formatted="false">Tap a plugin card to open it directly</string>
     <string name="tap_create_backup_to_back_up_your_pl" formatted="false">Tap "Create Backup" to back up your plugins</string>
     <string name="tap_download_update_to_start_downloa" formatted="false">Tap "Download Update" to start downloading</string>
     <string name="tap_the_cancel_button" formatted="false">Tap the cancel button</string>
@@ -1725,7 +1699,6 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="theme_load_failed_filename_e_message">⚠️ Theme load failed: %1$s: %2$s</string>
     <string name="theme_loaded_themename">✅ Theme loaded: %1$s</string>
     <string name="theme_mode" formatted="false">Theme Mode</string>
-    <string name="then_wait_for_the_terminal_environme" formatted="false">then wait for the terminal environment to initialize (about 30-60 seconds).\n\n</string>
     <string name="this_device_does_not_support_shortcu" formatted="false">This device does not support shortcuts</string>
     <string name="this_feature_requires_android_8_0" formatted="false">This feature requires Android 8.0+</string>
     <string name="this_is_a_glass_effect_card" formatted="false">This is a glass effect card</string>
@@ -1737,7 +1710,6 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="this_plugin_declares_no_permissions" formatted="false">This plugin declares no permissions</string>
     <string name="this_plugin_declares_no_permissions_2" formatted="false">This plugin declares no permissions</string>
     <string name="this_requires_android_8_0_long_press" formatted="false">This requires Android 8.0+; long-press the home screen to add manually</string>
-    <string name="this_will_be_fixed_in_a_future_versi" formatted="false">this will be fixed in a future version (we may build some packages for download).\n\n</string>
     <string name="time_1x1_bound_plugin_info_name">[%1$s] ✅ 1x1 bound plugin: %2$s</string>
     <string name="time_1x1_widget_updated">[%1$s] ✅ 1x1 widget updated</string>
     <string name="time_all_slots_set">[%1$s] ✅ All slots set</string>
@@ -1859,7 +1831,6 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="title_share_transcript_with" formatted="false">Send transcript to:</string>
     <string name="title_ui_config" formatted="false">UI Customization</string>
     <string name="title_widget_1x1_config" formatted="false">Configure shortcut</string>
-    <string name="to_install_packages_please_report_it" formatted="false">💡 To install packages, please report it to the Termux community.</string>
     <string name="toast_copy_success" formatted="false">Copied to clipboard</string>
     <string name="toast_delete_failed" formatted="false">Delete failed</string>
     <string name="toast_delete_success" formatted="false">Deleted</string>
@@ -1918,7 +1889,6 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="uin_community" formatted="false">UIN Community</string>
     <string name="uin_tool_app_startup_complete" formatted="false">UIN Tool app startup complete</string>
     <string name="uin_tool_is_a_powerful_plugin_platfo" formatted="false">UIN Tool is a powerful plugin platform\n\nSupports native Java and Web plugins\nBuilt-in Termux terminal environment</string>
-    <string name="uin_tool_is_my_answer_to_that_idea_n" formatted="false">UIN Tool is my answer to that idea,\n</string>
     <string name="uin_tool_needs_access_to_all_files_t" formatted="false">UIN Tool needs access to all files to import/export plugins.\n\nTap "Allow" and grant the permission.</string>
     <string name="uin_tool_needs_storage_permission_fo" formatted="false">UIN Tool needs storage permission for the following features:</string>
     <string name="uin_tool_needs_the_following_permiss" formatted="false">UIN Tool needs the following permissions to function properly:</string>
@@ -2100,4 +2070,11 @@ Please import plugins in the app first</string>
     <string name="you_denied_storage_permission_some_f" formatted="false">You denied storage permission; some features will not work.</string>
     <string name="your_launcher_doesn_t_support_pinnin" formatted="false">Your launcher doesn\'t support pinning widgets; long-press the home screen to add them manually</string>
     <string name="your_launcher_doesn_t_support_pinnin_2" formatted="false">Your launcher doesn\'t support pinning shortcuts; long-press the home screen to add them manually</string>
+    <string name="onboarding_author_words" formatted="false">I have always wanted a truly free tool platform on my phone,\none that can be extended anytime to fit your needs, instead of waiting for developer updates.\n\nUIN Tool is my answer to that idea,\nit is just a framework; the real soul is you — every user.\n\nI hope you can create something of your own with it,\nand share your plugins with more people.\n\n— UIN Team</string>
+    <string name="onboarding_terminal_notice" formatted="false">Due to a package name change, pkg cannot install packages in the terminal yet,\nthis issue may be fixed in a future version (we may build some packages for download)</string>
+    <string name="dev_create_plugin_steps" formatted="false">1. Tap "Create Plugin" to choose a type\n2. Fill in basic plugin info\n3. Write code or pick a binary file\n4. Export a TPK file\n5. Import and run it in "Manage" > "Plugins"</string>
+    <string name="widget_1x1_desc" formatted="false">Takes little home screen space, great for frequently used plugins\nOpen with one tap, no need to enter the app\nPlace several, each pointing to a different plugin</string>
+    <string name="widget_3x3_desc" formatted="false">Shows 3 plugins at once for quick switching\nAuto-rotates to show plugin status\nTap a plugin card to open it directly</string>
+    <string name="widget_add_steps" formatted="false">1. Tap "Add to Home Screen" and choose a location\n2. Drag the widget to reposition it\n3. Long-press the widget to resize or remove it\n4. A shortcut opens the plugin directly without entering the app</string>
+    <string name="widget_config_steps" formatted="false">1. Long-press an empty area of the home screen\n2. Choose "Widgets" or "Add tools"\n3. Find "UIN Tool"\n4. Long-press and drag it to the home screen</string>
 </resources>

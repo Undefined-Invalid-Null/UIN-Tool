@@ -47,7 +47,7 @@ fun OnboardingScreen(
 
     val items = if (isVersionUpdate) {
         listOf(
-            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "4.5.0"), Icons.Outlined.SystemUpdate),
+            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "5.0.0"), Icons.Outlined.SystemUpdate),
             OnboardingItem(Str.get(R.string.plugin_management), Str.get(R.string.one_tap_import_export_plugins_n_supp), Icons.Outlined.Folder),
             OnboardingItem(Str.get(R.string.plugin_development), Str.get(R.string.visual_plugin_creation_wizard_n_buil), Icons.Outlined.DeveloperMode),
             OnboardingItem(Str.get(R.string.get_started), Str.get(R.string.now_explore_the_new_features_of_uin_), Icons.Outlined.RocketLaunch)
@@ -137,14 +137,14 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "v${versionName ?: "4.5.0"}",
+                            text = "v${versionName ?: "5.0.0"}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // ✅ 作者的话卡片 - 淡蓝色背景
+                        // ✅ 作者的话 + 终端环境提示卡片
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -180,38 +180,18 @@ fun OnboardingScreen(
                                 }
 
                                 Text(
-                                    text = Str.get(R.string.i_have_always_wanted_a_truly_free_to) +
-                                           Str.get(R.string.one_that_can_be_extended_anytime_to_) +
-                                           Str.get(R.string.uin_tool_is_my_answer_to_that_idea_n) +
-                                           Str.get(R.string.it_is_just_a_framework_the_real_soul) +
-                                           Str.get(R.string.i_hope_you_can_create_something_of_y) +
-                                           Str.get(R.string.and_share_your_plugins_with_more_peo) +
-                                           "— UIN Team",
+                                    text = Str.get(R.string.onboarding_author_words),
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = Color(0xFF0D47A1)
                                     ),
                                     lineHeight = 20.sp
                                 )
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 12.dp),
+                                    color = Color(0xFF1565C0).copy(alpha = 0.15f)
+                                )
 
-                        // ✅ 终端环境提示卡片
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 4.dp),
-                            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFFFF3E0)  // 淡橙色
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp)
-                            ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(bottom = 6.dp)
@@ -233,11 +213,7 @@ fun OnboardingScreen(
                                 }
 
                                 Text(
-                                    text = Str.get(R.string.before_first_use_open_the_dev_page_a) +
-                                           Str.get(R.string.then_wait_for_the_terminal_environme) +
-                                           Str.get(R.string.due_to_a_package_name_change_pkg_can) +
-                                           Str.get(R.string.this_will_be_fixed_in_a_future_versi) +
-                                           Str.get(R.string.to_install_packages_please_report_it),
+                                    text = Str.get(R.string.onboarding_terminal_notice),
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = Color(0xFFBF360C)
                                     ),

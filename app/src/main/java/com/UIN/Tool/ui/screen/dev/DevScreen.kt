@@ -154,11 +154,7 @@ fun DevScreen() {
         ) {
             UIComponents.SectionTitle(Str.get(R.string.quick_start))
             Text(
-                text = Str.get(R.string.step1_tap_create_plugin_to_choose_a_type) +
-                        Str.get(R.string.step2_fill_in_basic_plugin_info_n) +
-                        Str.get(R.string.step3_write_code_or_pick_a_binary_file_n) +
-                        Str.get(R.string.step4_export_a_tpk_file_n) +
-                        Str.get(R.string.step5_import_and_run_it_in_manage_plugin),
+                text = Str.get(R.string.dev_create_plugin_steps),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
