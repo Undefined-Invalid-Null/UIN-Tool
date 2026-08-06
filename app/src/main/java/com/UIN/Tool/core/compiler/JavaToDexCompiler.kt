@@ -130,7 +130,9 @@ class JavaToDexCompiler(
             Logger.d(TAG, Str.get(R.string.packaging_tpk))
 
             java.util.zip.ZipOutputStream(java.io.FileOutputStream(outputTpk)).use { zos ->
-                
+                // 顶层特殊文件（已在下方显式处理，遍历整棵树时跳过，避免重复条目）
+                val explicitTopEntries = setOf("plugin.json", "icon.png", "README.md")
+
                 // 1. 添加 plugin.json
                 val jsonFile = File(projectDir, "plugin.json")
                 if (jsonFile.exists()) {
@@ -147,50 +149,45 @@ class JavaToDexCompiler(
                     Logger.d(TAG, "  ✅ icon.png (${iconFile.length()} bytes)")
                 }
 
-                // 3. 根据 UI 类型处理
-                if (uiType == "web" || uiType == "cui") {
-                    if (uiType == "web") {
-                        val webDir = File(projectDir, "web")
-                        if (webDir.exists() && webDir.isDirectory) {
-                            addDirToZip(zos, webDir, "web/")
-                            Logger.d(TAG, Str.get(R.string.web_dir))
-                        } else {
-                            zos.putNextEntry(java.util.zip.ZipEntry("web/index.html"))
-                            zos.write(getDefaultWebHtml().toByteArray())
-                            zos.closeEntry()
-                            Logger.d(TAG, Str.get(R.string.web_index_html_default))
-                        }
-                    }
-                    if (uiType == "cui") {
-                        val scriptsDir = File(projectDir, "scripts")
-                        if (scriptsDir.exists() && scriptsDir.isDirectory) {
-                            addDirToZip(zos, scriptsDir, "scripts/")
-                            Logger.d(TAG, Str.get(R.string.scripts_dir))
-                        }
-                    }
-                } else {
-                    // 原生插件：添加占位 DEX
-                    zos.putNextEntry(java.util.zip.ZipEntry("plugin.dex"))
-                    zos.write("// 原生插件编译功能暂时禁用".toByteArray())
-                    zos.closeEntry()
-                    Logger.w(TAG, Str.get(R.string.plugin_dex_placeholder))
-
-                    // 打包 src 目录
-                    val srcDir = File(projectDir, "src")
-                    if (srcDir.exists()) {
-                        addDirToZip(zos, srcDir, "src/")
-                        Logger.d(TAG, Str.get(R.string.src_dir))
-                    }
-
-                    // 打包 res 目录
-                    val resDir = File(projectDir, "res")
-                    if (resDir.exists() && resDir.listFiles()?.isNotEmpty() == true) {
-                        addDirToZip(zos, resDir, "res/")
-                        Logger.d(TAG, Str.get(R.string.res_dir))
+                // 3. 原生插件：优先打包项目内已有的真实 plugin.dex；否则补充占位 DEX
+                //    （占位实现，正式编译需 PC 端生成真实 DEX）
+                if (uiType != "web" && uiType != "cui") {
+                    val realDex = File(projectDir, "plugin.dex")
+                    // DEX 文件以 0x64 0x65 0x78 0x0A（"dex\n"）开头为真实 DEX，占位文本则视为无效
+                    val isRealDex = realDex.exists() && realDex.isFile && realDex.length() > 8 &&
+                        runCatching {
+                            val magic = ByteArray(8)
+                            val n = realDex.inputStream().use { it.read(magic) }
+                            n == 8 && magic[0] == 0x64.toByte() && magic[1] == 0x65.toByte() &&
+                                magic[2] == 0x78.toByte() && magic[3] == 0x0A.toByte()
+                        }.getOrDefault(false)
+                    if (isRealDex) {
+                        addFileToZip(zos, realDex, "plugin.dex")
+                        Logger.d(TAG, "  ✅ plugin.dex (real, ${realDex.length()} bytes)")
+                    } else {
+                        zos.putNextEntry(java.util.zip.ZipEntry("plugin.dex"))
+                        zos.write("// 原生插件编译功能暂时禁用".toByteArray())
+                        zos.closeEntry()
+                        Logger.w(TAG, Str.get(R.string.plugin_dex_placeholder))
                     }
                 }
 
-                // 4. 添加 README.md
+                // 4. 打包项目内全部内容（web/、scripts/、scripts/backend/、res/、src/、任意资源等）
+                //    若 Web 插件缺少 web/index.html，则写入默认页面兜底
+                if (uiType == "web") {
+                    val webIndex = File(projectDir, "web/index.html")
+                    if (!webIndex.exists()) {
+                        val webDir = File(projectDir, "web")
+                        webDir.mkdirs()
+                        File(webDir, "index.html").writeText(getDefaultWebHtml())
+                        Logger.d(TAG, Str.get(R.string.web_index_html_default))
+                    }
+                }
+
+                addTreeToZip(zos, projectDir, "", explicitTopEntries)
+                Logger.d(TAG, Str.get(R.string.all_project_content_packaged))
+
+                // 5. 添加 README.md（显式追加，保证始终存在）
                 val readmeFile = File(projectDir, "README.md")
                 if (readmeFile.exists()) {
                     addFileToZip(zos, readmeFile, "README.md")
@@ -251,6 +248,40 @@ class JavaToDexCompiler(
                 zos.putNextEntry(java.util.zip.ZipEntry("$entryName/"))
                 zos.closeEntry()
                 addDirToZip(zos, file, "$entryName/")
+            } else {
+                addFileToZip(zos, file, entryName)
+            }
+        }
+    }
+
+    /**
+     * 递归打包整个项目目录的所有内容（不遗漏任何子目录 / 文件）。
+     *
+     * 跳过隐藏文件（.xxx）与打包输出物（.tpk），并排除已显式处理的顶层条目。
+     *
+     * @param zos 目标 zip 输出流
+     * @param dir 当前目录
+     * @param basePath 当前目录在 zip 内的前缀（"" 表示顶层，其余以 "/" 结尾）
+     * @param excludeTop 顶层需排除的文件名集合
+     */
+    private fun addTreeToZip(
+        zos: java.util.zip.ZipOutputStream,
+        dir: File,
+        basePath: String,
+        excludeTop: Set<String> = emptySet()
+    ) {
+        if (!dir.exists() || !dir.isDirectory) return
+
+        dir.listFiles()?.sortedBy { it.name }?.forEach { file ->
+            val name = file.name
+            if (name.startsWith(".")) return@forEach
+            if (basePath.isEmpty() && (name in excludeTop || name.endsWith(".tpk"))) return@forEach
+
+            val entryName = basePath + name
+            if (file.isDirectory) {
+                zos.putNextEntry(java.util.zip.ZipEntry("$entryName/"))
+                zos.closeEntry()
+                addTreeToZip(zos, file, "$entryName/", excludeTop)
             } else {
                 addFileToZip(zos, file, entryName)
             }

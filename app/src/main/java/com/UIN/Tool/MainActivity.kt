@@ -39,6 +39,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -48,12 +49,16 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.UIN.Tool.R
 import com.UIN.Tool.core.di.ServiceLocator
+import com.UIN.Tool.core.update.UpdateChecker
+import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
+import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.domain.repository.IConfigRepository
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginHostActivity
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.UpdateDialog
 import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.dev.DevScreen
 import com.UIN.Tool.ui.screen.manage.ManageScreen
@@ -62,10 +67,12 @@ import com.UIN.Tool.ui.screen.tools.ToolsScreen
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.ui.theme.dynamicColor
 import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.CrashLogUtils
 import com.UIN.Tool.utils.UIConfig
 import java.io.File
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
 
@@ -520,6 +527,8 @@ class MainActivity : ComponentActivity() {
 
 // ==================== MainContent ====================
 
+private const val MAIN_CONTENT_TAG = "MainContent"
+
 @Composable
 fun MainContent(
     initialTab: Int = 1,
@@ -541,6 +550,116 @@ fun MainContent(
         if (checkUpdate) {
             selectedTab = 3
         }
+    }
+
+    // ==================== 静默更新检测（每天一次） ====================
+    val context = LocalContext.current
+    val preferenceManager = ServiceLocator.getPreferenceManager()
+    var silentUpdate by remember { mutableStateOf<ReleaseInfo?>(null) }
+    var silentForce by remember { mutableStateOf(false) }
+    var silentProgress by remember { mutableStateOf(false) }
+    var silentProgressPct by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        try {
+            // 仅当今天尚未静默检测过才执行，避免重复弹窗
+            val today = LocalDate.now().toEpochDay()
+            if (preferenceManager.getLastUpdateCheckDay() == today) return@LaunchedEffect
+            preferenceManager.setLastUpdateCheckDay(today)
+
+            val checker = UpdateChecker(context, preferenceManager)
+            checker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
+                override fun onCheckStart() {}
+
+                override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
+                    if (!hasNewer || releases.isEmpty()) return
+                    val latest = releases.first()
+                    if (!forceUpdate && latest.versionName == preferenceManager.getIgnoredVersion()) return
+                    preferenceManager.setLastChangelog(latest.releaseNotes ?: "")
+                    silentUpdate = latest
+                    silentForce = forceUpdate
+                }
+
+                override fun onCheckFailed(error: String) {}
+
+                override fun onNoUpdate(currentVersion: String) {}
+            })
+            checker.checkUpdate()
+        } catch (e: Exception) {
+            AppLog.e(MAIN_CONTENT_TAG, Str.get(R.string.update_check_failed), e)
+        }
+    }
+
+    // 静默检测到新版本时显示更新弹窗
+    val silentTarget = silentUpdate
+    if (silentTarget != null) {
+        UpdateDialog(
+            releaseInfo = silentTarget,
+            forceUpdate = silentForce,
+            onDismiss = { if (!silentForce) silentUpdate = null },
+            onDownload = {
+                silentUpdate = null
+                silentProgress = true
+                val downloader = UpdateDownloader(context)
+                downloader.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
+                    override fun onStart() {}
+
+                    override fun onProgress(progress: Int, downloaded: Long, total: Long) {
+                        silentProgressPct = progress
+                    }
+
+                    override fun onSuccess(file: java.io.File) {
+                        silentProgress = false
+                        downloader.installApk(file)
+                    }
+
+                    override fun onFailed(error: String) {
+                        silentProgress = false
+                        AppToast.error(context, Str.get(R.string.download_failed_error, error))
+                    }
+                })
+                downloader.startDownload(silentTarget.downloadUrl, silentTarget.versionName)
+            },
+            onManualDownload = {
+                silentUpdate = null
+                try {
+                    val url = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/${silentTarget.tagName}"
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (e: Exception) {
+                    AppLog.e(MAIN_CONTENT_TAG, Str.get(R.string.failed_to_open_browser), e)
+                }
+            },
+            onIgnore = {
+                preferenceManager.setIgnoredVersion(silentTarget.versionName)
+                silentUpdate = null
+            }
+        )
+    }
+
+    // 静默下载进度提示
+    if (silentProgress) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text(Str.get(R.string.downloading_update)) },
+            text = {
+                Column {
+                    LinearProgressIndicator(
+                        progress = { silentProgressPct / 100f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${silentProgressPct}%",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { silentProgress = false }) {
+                    Text(Str.get(R.string.cancel))
+                }
+            }
+        )
     }
 
     // ✅ 退出对话框 - 使用 UIComponents.ConfirmDialog

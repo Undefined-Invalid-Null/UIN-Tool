@@ -14,13 +14,15 @@ class OnboardingActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         val isVersionUpdate = intent.getBooleanExtra("is_version_update", false)
-        val versionName = intent.getStringExtra("version_name") ?: "5.1.0"
+        val versionName = intent.getStringExtra("version_name") ?: "5.2.0"
+        val releaseNotes = intent.getStringExtra("release_notes") ?: ""
         
         setContent {
             UINToolTheme {
                 OnboardingScreen(
                     isVersionUpdate = isVersionUpdate,
                     versionName = versionName,
+                    releaseNotes = releaseNotes,
                     onNavigateToMain = {
                         // ✅ 只有用户点击按钮才跳转
                         startActivity(Intent(this, MainActivity::class.java))

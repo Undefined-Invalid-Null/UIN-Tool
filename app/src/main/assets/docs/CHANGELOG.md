@@ -12,6 +12,55 @@
 
 ---
 
+## [5.2.0] - 2026-08-06
+
+### 📦 打包逻辑完善（打包所有内容）
+
+- `JavaToDexCompiler.packageTpk` 重写：不再按类型只挑目录打包，改为递归整包项目目录（`web/`、`scripts/`、`scripts/backend/server.py`、`start.sh`、`res/`、`src/` 及任意资源全部打入 TPK），跳过隐藏文件与 `.tpk` 输出物，避免重复条目
+- 显式添加 `plugin.json`、`icon.png`、`README.md`、原生占位/真实 `plugin.dex`（会优先识别真实 DEX 的 `dex\n` magic）
+- Web 插件无 `web/index.html` 时仍写入默认页兜底
+
+### 🔄 更新逻辑完善
+
+- 静默更新（每天一次）：新增 `KEY_LAST_UPDATE_CHECK`（epoch day）与 `get/setLastUpdateCheckDay`、`get/setLastChangelog`，`MainContent` 顶部 `LaunchedEffect` 每天只触发一次后台检查，有新版本且未被忽略时弹出更新框
+- 新增共享组件 `ui/components/UpdateContent.kt`（`ReleaseChangelog` Markdown 渲染 + `UpdateDialog` 弹窗 + `UpdateContent` 主体），Splash 开屏与管理页「检查更新」共用同一 UI
+- 管理页「检查更新」卡片由纯文本 ConfirmDialog（只显示前 200 字、无 Markdown）改为完整 Markdown 的 `UpdateDialog`
+- 版本更新引导页：`isVersionUpdate` 且有变更日志时使用全屏 Markdown 页面（`VersionUpdateScreen`），与弹窗共用 `ReleaseChangelog` 渲染
+
+### 🚀 内置 Termux 装 Alpine 提速
+
+- `ProotContainerManager.ensureAlpine()` 删除联网的 `pkg install proot-distro -y`（首装变慢的主要原因），现在只做存在性检查；首次只剩 `proot-distro restore`（解压约 19MB rootfs）一次性开销
+- 若确实发现 proot-distro 缺失，只在日志/状态提示，restore 以清晰报错结束，不再静默联网
+
+### 🧩 开发向导完善
+
+- 打包完成不再自动退出：底部按钮打包前显示「Package」(打包)，成功后变为「Finish」(完成)，点击才退出
+- 创建插件配置页补齐所有字段（最低宿主版本、API 级别、分类、更新地址、依赖项），新增权限多选（37 个权限 chip）
+- `plugin.json` 编辑弹窗使用新 `JsonSyntaxHighlighter`（`VisualTransformation`）实现 JSON 语法高亮
+- 配置字段右侧的信息图标改为统一总览：各字段旁的说明图标已移除，仅保留标题行右侧的总览按钮（弹窗完整介绍所有字段）
+
+### 🖥️ 代码编辑器
+
+- 文件树 `FileTreeItem` 改用 `combinedClickable`：长按弹出锚定菜单（查看属性 / 重命名）
+- 属性弹窗显示文件名、类型、行数、字符数；重命名弹窗校验（非空、不重复），跨 `files`/`contents`/`currentFile` 同步重命名并提示成功/失败
+
+### 🧾 插件管理页
+
+- 点击插件卡片打开新的滚动详情对话框（`PluginDetailDialog`）：
+  - **plugin.json 字段**：ID、版本、最低宿主版本、API 级别、名称、作者、描述、分类、界面类型、入口、主类、更新地址、插件说明、依赖、权限、启动命令
+  - **文件结构**：插件目录内文件树（目录/文件带大小）
+  - **plugin.json 原文**：从磁盘读取并格式化（失败回退 `PluginInfo.toJson()`）
+  - 底部显示插件总大小与文件数，可直接运行插件
+
+### ⚙️ 后端设置整理
+
+- 「后端运行设置」从弹窗改为完整页面（`BackendSettingsActivity` + `BackendSettingsScreen`，带返回栏）：实现/环境/容器/空闲回收设置
+- 实体 Termux 下新增「初始化命令」卡片，右上角复制图标一键复制；命令逻辑抽到 `BackendConfig.buildRealTermuxSetupCode()`，与插件运行引导共用同一实现
+- 管理页卡片排序：插件管理 → 权限 → 开发工具 → 文档 → 备份 → UI 个性化 → 后端设置 → GitHub 加速 → 小组件 → 检查更新
+- 开发页移除后端运行设置入口与旧 `BackendSettingsDialog.kt`
+
+---
+
 ## [5.1.0] - 2026-08-06
 
 ### ⚙️ 后端运行架构重构（核心）
@@ -551,9 +600,9 @@ v4.0.0 是一次重大重构，升级前请注意：
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.1.0 |
+| 文档版本 | 5.2.0 |
 | 最后更新 | 2026年8月6日 |
-| 对应应用版本 | v5.1.0 (Build 17) |
+| 对应应用版本 | v5.2.0 (Build 18) |
 
 ---
 

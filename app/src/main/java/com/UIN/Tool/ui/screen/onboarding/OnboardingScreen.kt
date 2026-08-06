@@ -3,6 +3,7 @@ package com.UIN.Tool.ui.screen.onboarding
 
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import com.UIN.Tool.ui.components.ReleaseChangelog
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,14 +41,25 @@ data class OnboardingItem(
 fun OnboardingScreen(
     onNavigateToMain: () -> Unit,
     isVersionUpdate: Boolean = false,
-    versionName: String? = null
+    versionName: String? = null,
+    releaseNotes: String? = null
 ) {
+    // 版本更新提示：优先以全屏方式展示 Markdown 变更日志（与「检查更新」弹窗共用渲染）
+    if (isVersionUpdate && !releaseNotes.isNullOrBlank()) {
+        VersionUpdateScreen(
+            versionName = versionName ?: "5.2.0",
+            releaseNotes = releaseNotes,
+            onNavigateToMain = onNavigateToMain
+        )
+        return
+    }
+
     val scope = rememberCoroutineScope()
     val colorScheme = MaterialTheme.colorScheme
 
     val items = if (isVersionUpdate) {
         listOf(
-            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "5.1.0"), Icons.Outlined.SystemUpdate),
+            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "5.2.0"), Icons.Outlined.SystemUpdate),
             OnboardingItem(Str.get(R.string.plugin_management), Str.get(R.string.one_tap_import_export_plugins_n_supp), Icons.Outlined.Folder),
             OnboardingItem(Str.get(R.string.plugin_development), Str.get(R.string.visual_plugin_creation_wizard_n_buil), Icons.Outlined.DeveloperMode),
             OnboardingItem(Str.get(R.string.get_started), Str.get(R.string.now_explore_the_new_features_of_uin_), Icons.Outlined.RocketLaunch)
@@ -137,7 +149,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "v${versionName ?: "5.1.0"}",
+                            text = "v${versionName ?: "5.2.0"}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant
                         )
@@ -319,6 +331,115 @@ fun OnboardingScreen(
         ) {
             Text(
                 text = if (pagerState.currentPage == items.size - 1) Str.get(R.string.start_exploring) else Str.get(R.string.next),
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+    }
+}
+
+// ==================== 版本更新全屏页（Markdown 变更日志，与更新弹窗共用渲染） ====================
+
+@Composable
+fun VersionUpdateScreen(
+    versionName: String,
+    releaseNotes: String,
+    onNavigateToMain: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorScheme.background)
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 24.dp, bottom = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(AppDimens.radiusXXLarge))
+                    .background(colorScheme.primaryContainer.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.SystemUpdate,
+                    contentDescription = null,
+                    modifier = Modifier.size(36.dp),
+                    tint = colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = Str.get(R.string.version_update),
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onBackground
+                ),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = Str.get(R.string.onboarding_version_updated, versionName),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Description,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = Str.get(R.string.changelog),
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onSurface
+                    )
+                )
+            }
+        }
+
+        ReleaseChangelog(
+            markdown = releaseNotes,
+            modifier = Modifier.weight(1f),
+            minHeight = 120,
+            maxHeight = Int.MAX_VALUE
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = onNavigateToMain,
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(48.dp)
+                .align(Alignment.CenterHorizontally),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorScheme.primary,
+                contentColor = colorScheme.onPrimary
+            ),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text(
+                text = Str.get(R.string.start_exploring),
                 style = MaterialTheme.typography.titleMedium
             )
         }

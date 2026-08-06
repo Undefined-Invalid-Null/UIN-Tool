@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-5.1.0-blue)
-![Build](https://img.shields.io/badge/build-17-green)
+![Version](https://img.shields.io/badge/version-5.2.0-blue)
+![Build](https://img.shields.io/badge/build-18-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -58,12 +58,12 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v5.1.0 (Build 17)
+### 当前版本：v5.2.0 (Build 18)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 5.1.0 |
-| 版本代码 | 17 |
+| 版本号 | 5.2.0 |
+| 版本代码 | 18 |
 | 更新日期 | 2026年8月6日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
@@ -71,6 +71,29 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 | 架构 | arm64-v8a |
 
 ### 版本历史
+
+#### v5.2.0 (Build 18) - 📦 打包与更新完善 + 开发向导/编辑器/插件详情增强
+
+**📦 打包逻辑完善（打包所有内容）：**
+- `packageTpk` 重写：递归整包项目目录（`web/`、`scripts/`、`scripts/backend/server.py`、`start.sh`、`res/`、`src/` 及任意资源全部打入 TPK），显式添加 `plugin.json`、`icon.png`、`README.md`、原生占位/真实 `plugin.dex`；跳过隐藏文件与 `.tpk` 输出物；Web 无 `index.html` 时写入默认页兜底
+
+**🔄 更新逻辑完善：**
+- 每天一次的静默更新检查（`KEY_LAST_UPDATE_CHECK`），新版本且未被忽略时弹出更新框；新增共享 `UpdateContent.kt` 组件（`ReleaseChangelog` Markdown 渲染 + `UpdateDialog`），Splash 开屏与管理页「检查更新」共用；`VersionUpdateScreen` 全屏 Markdown 版本更新页
+
+**🚀 内置 Termux 装 Alpine 提速：**
+- `ensureAlpine()` 删除联网的 `pkg install proot-distro -y`（首装变慢主因），只做存在性检查，首次仅剩 rootfs 解压一次性开销
+
+**🧩 开发向导完善：**
+- 打包完成不自动退出（按钮 Package → Finish）；配置页补齐全部字段 + 权限多选（37 权限）；`plugin.json` 编辑 JSON 语法高亮；字段旁信息图标移除、仅保留标题行总览按钮
+
+**🖥️ 代码编辑器：**
+- 文件树长按菜单（查看属性 / 重命名），属性弹窗与重命名校验
+
+**🧾 插件管理页：**
+- 点击插件打开滚动详情对话框：plugin.json 字段 + 文件结构树 + 插件大小/文件数 + plugin.json 原文 + 运行按钮
+
+**⚙️ 后端设置整理：**
+- 「后端运行设置」改为完整页面；实体 Termux 初始化命令卡片一键复制（`BackendConfig.buildRealTermuxSetupCode()` 共用）；管理页卡片重排；开发页移除后端设置入口与旧对话框
 
 #### v5.1.0 (Build 17) - ⚙️ 后端运行架构重构 + 开发工具整合
 

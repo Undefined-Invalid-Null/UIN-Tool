@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +55,9 @@ fun BasePluginWizardScreen(
     // 编辑 JSON 对话框状态
     var showJsonEditor by remember { mutableStateOf(false) }
     var jsonDraft by remember { mutableStateOf("") }
+
+    // 配置页字段总览说明对话框
+    var showStepOverview by remember { mutableStateOf(false) }
     
     val hasBackend = backendType.isNotEmpty()
     
@@ -121,18 +125,20 @@ fun BasePluginWizardScreen(
                 put("pluginId", viewModel.pluginId.value)
                 put("version", viewModel.pluginVersion.value.toIntOrNull() ?: 1)
                 put("versionName", viewModel.pluginVersionName.value)
-                put("minHostVersion", 1)
+                put("minHostVersion", viewModel.minHostVersion.value.toIntOrNull() ?: 1)
                 put("name", viewModel.pluginName.value)
                 put("author", viewModel.pluginAuthor.value)
                 put("description", viewModel.pluginDescription.value)
                 put("icon", "icon.png")
                 put("mainClass", if (uiType == "native") viewModel.mainClass.value else "")
-                put("apiLevel", 21)
+                put("apiLevel", viewModel.apiLevel.value.toIntOrNull() ?: 21)
                 put("uiType", uiType)
                 put("entry", if (uiType == "web") viewModel.entryPath.value else "")
-                put("permissions", "")
-                put("dependencies", "")
+                put("permissions", viewModel.permissions.value.joinToString(","))
+                put("dependencies", viewModel.dependencies.value.split(",").map { it.trim() }.filter { it.isNotEmpty() }.joinToString(","))
                 put("notice", viewModel.pluginNotice.value)
+                put("category", viewModel.category.value)
+                put("updateUrl", viewModel.updateUrl.value)
                 if (uiType == "web" && backendType.isNotEmpty()) {
                     put("backend", "other")
                     put("backendStartCommand", viewModel.backendStartCommand.value.trim().ifBlank { "sh scripts/start.sh" })
@@ -164,6 +170,14 @@ fun BasePluginWizardScreen(
             viewModel.mainClass.value = json.optString("mainClass", viewModel.mainClass.value)
             viewModel.entryPath.value = json.optString("entry", viewModel.entryPath.value)
             viewModel.pluginNotice.value = json.optString("notice", viewModel.pluginNotice.value)
+            viewModel.minHostVersion.value = json.optInt("minHostVersion", viewModel.minHostVersion.value.toIntOrNull() ?: 1).toString()
+            viewModel.apiLevel.value = json.optInt("apiLevel", viewModel.apiLevel.value.toIntOrNull() ?: 21).toString()
+            viewModel.category.value = json.optString("category", viewModel.category.value)
+            viewModel.updateUrl.value = json.optString("updateUrl", viewModel.updateUrl.value)
+            viewModel.dependencies.value = json.optString("dependencies", viewModel.dependencies.value)
+            val parsedPermissions = json.optString("permissions", "")
+                .split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            viewModel.permissions.value = parsedPermissions.ifEmpty { viewModel.permissions.value }
             viewModel.backendRuntime.value = json.optString("backendRuntime", viewModel.backendRuntime.value)
             viewModel.backendPreCommand.value = json.optString("backendPreCommand", viewModel.backendPreCommand.value)
             viewModel.backendStartCommand.value = json.optString("backendStartCommand", viewModel.backendStartCommand.value)
@@ -240,7 +254,6 @@ fun BasePluginWizardScreen(
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
                         AppToast.success(context, Str.get(R.string.compile_and_package_successful_n_out, outputTpk.absolutePath))
-                        onFinish()
                     }
 
                     compiler.setOnErrorListener { error ->
@@ -280,7 +293,6 @@ fun BasePluginWizardScreen(
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
                         AppToast.success(context, Str.get(R.string.packaging_successful_n_outputtpk_abs, outputTpk.absolutePath))
-                        onFinish()
                     }
 
                     compiler.setOnErrorListener { error ->
@@ -460,10 +472,17 @@ fun BasePluginWizardScreen(
                             modifier = Modifier.weight(1f)
                         )
                     } else {
+                        val packaged = viewModel.tpkFile.value?.exists() == true
                         UIComponents.PrimaryButton(
-                            text = if (viewModel.isCompiling.value) Str.get(R.string.working) else Str.get(R.string.finish),
+                            text = when {
+                                viewModel.isCompiling.value -> Str.get(R.string.working)
+                                packaged -> Str.get(R.string.finish)
+                                else -> Str.get(R.string.package_label)
+                            },
                             onClick = {
-                                if (validateCurrentStep()) {
+                                if (packaged) {
+                                    onFinish()
+                                } else if (validateCurrentStep()) {
                                     startCompileAndPackage()
                                 }
                             },
@@ -510,10 +529,32 @@ fun BasePluginWizardScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            UIComponents.BodyText(
-                getStepDesc(),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
+            if (currentStep == 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    UIComponents.BodyText(
+                        getStepDesc(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    UIComponents.IconButton(
+                        icon = Icons.Default.Info,
+                        onClick = { showStepOverview = true },
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        contentDescription = Str.get(R.string.view_field_overview)
+                    )
+                }
+            } else {
+                UIComponents.BodyText(
+                    getStepDesc(),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -548,7 +589,19 @@ fun BasePluginWizardScreen(
                         backendPreCommand = viewModel.backendPreCommand.value,
                         onBackendPreCommandChange = { viewModel.backendPreCommand.value = it },
                         backendStartCommand = viewModel.backendStartCommand.value,
-                        onBackendStartCommandChange = { viewModel.backendStartCommand.value = it }
+                        onBackendStartCommandChange = { viewModel.backendStartCommand.value = it },
+                        permissions = viewModel.permissions.value,
+                        onPermissionsChange = { viewModel.permissions.value = it },
+                        dependencies = viewModel.dependencies.value,
+                        onDependenciesChange = { viewModel.dependencies.value = it },
+                        minHostVersion = viewModel.minHostVersion.value,
+                        onMinHostVersionChange = { viewModel.minHostVersion.value = it },
+                        apiLevel = viewModel.apiLevel.value,
+                        onApiLevelChange = { viewModel.apiLevel.value = it },
+                        category = viewModel.category.value,
+                        onCategoryChange = { viewModel.category.value = it },
+                        updateUrl = viewModel.updateUrl.value,
+                        onUpdateUrlChange = { viewModel.updateUrl.value = it }
                     )
                     1 -> PluginIconStep(
                         iconPath = viewModel.iconPath.value,
@@ -619,9 +672,18 @@ fun BasePluginWizardScreen(
     }
 
     // ============================================================
-    // 编辑 plugin.json 对话框
+    // 编辑 plugin.json 对话框（JSON 语法高亮）
     // ============================================================
     if (showJsonEditor) {
+        val scheme = MaterialTheme.colorScheme
+        val highlighter = remember(jsonDraft) {
+            JsonSyntaxHighlighter(
+                keyColor = scheme.primary,
+                stringColor = scheme.tertiary,
+                numberColor = scheme.secondary,
+                literalColor = scheme.error
+            )
+        }
         AlertDialog(
             onDismissRequest = { showJsonEditor = false },
             containerColor = if (AppColors.glassEnabled())
@@ -637,6 +699,7 @@ fun BasePluginWizardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(420.dp),
+                        visualTransformation = highlighter,
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             fontSize = AppDimens.bodyTextSize.sp
@@ -662,6 +725,35 @@ fun BasePluginWizardScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showJsonEditor = false }) { Text(Str.get(R.string.cancel)) }
+            }
+        )
+    }
+
+    if (showStepOverview) {
+        AlertDialog(
+            onDismissRequest = { showStepOverview = false },
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
+            title = { Text(Str.get(R.string.fill_in_the_plugin_basic_configurati)) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        Str.get(R.string.plugin_basic_info_overview),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showStepOverview = false }) {
+                    Text(Str.get(R.string.ok_2))
+                }
             }
         )
     }

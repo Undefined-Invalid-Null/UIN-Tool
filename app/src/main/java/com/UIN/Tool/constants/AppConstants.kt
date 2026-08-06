@@ -15,8 +15,8 @@ object AppConstants {
 
     // ==================== 应用信息 ====================
     const val APP_NAME = "UIN_Tool"
-    const val APP_VERSION = "5.1.0"
-    const val APP_VERSION_CODE = 17
+    const val APP_VERSION = "5.2.0"
+    const val APP_VERSION_CODE = 18
 
     // ==================== 目录路径 ====================
     val WORK_DIR = File(Environment.getExternalStorageDirectory(), APP_NAME).absolutePath
@@ -52,6 +52,8 @@ object AppConstants {
     const val KEY_LAST_VERSION = "last_version"
     const val KEY_IGNORE_VERSION = "ignore_version"
     const val KEY_FORCE_UPDATE_IGNORE = "force_update_ignore"
+    const val KEY_LAST_CHANGELOG = "last_changelog"
+    const val KEY_LAST_UPDATE_CHECK = "last_update_check_day"
     const val KEY_ENABLED_MIRRORS = "enabled_mirrors"
     const val KEY_USE_CDN = "use_cdn"
     const val KEY_CURRENT_THEME = "current_theme"

@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# {{PLUGIN_NAME}} 二进制后端启动脚本
+# 由 UIN Tool 用 sh -lc 执行：依赖检测 + 启动后端
+# 宿主已注入环境变量：PORT（动态端口）、PLUGIN_ID、PLUGIN_DIR、WORK_DIR
+set -e
+
+cd "$(dirname "$0")"
+
+# ---- 启动用户选择的二进制文件（打包时复制到 backend/myapp） ----
+if [ ! -f "../backend/myapp" ]; then
+    echo "[start.sh] binary not found: backend/myapp"
+    exit 1
+fi
+
+chmod +x "../backend/myapp" 2>/dev/null || true
+
+echo "[start.sh] starting binary backend on 127.0.0.1:${PORT:-8000}"
+exec ../backend/myapp

@@ -337,6 +337,13 @@
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/title_github_mirror" />
 
+        <!-- ==================== 后端运行设置 ==================== -->
+        <activity
+            android:name=".ui.screen.manage.BackendSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/backend_runtime_settings" />
+
         <!-- ==================== 帮助 ==================== -->
         <activity
             android:name=".ui.screen.help.HelpActivity"

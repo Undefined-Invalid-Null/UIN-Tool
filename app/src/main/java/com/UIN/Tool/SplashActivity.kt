@@ -12,9 +12,6 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
 import android.graphics.drawable.ColorDrawable
 import androidx.activity.ComponentActivity
@@ -43,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.UIN.Tool.R
@@ -53,12 +49,12 @@ import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.ui.components.UpdateDialog
 import com.UIN.Tool.ui.screen.onboarding.OnboardingActivity
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.constants.AppConstants as Constants
-import com.UIN.Tool.utils.MarkdownRenderer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -320,6 +316,7 @@ class SplashActivity : ComponentActivity() {
                 Intent(this, OnboardingActivity::class.java).apply {
                     putExtra("is_version_update", isVersionUpdated)
                     putExtra("version_name", currentVersion)
+                    putExtra("release_notes", preferenceManager.getLastChangelog())
                 }
             } else {
                 Intent(this, MainActivity::class.java)
@@ -401,6 +398,9 @@ fun SplashScreenWithUpdate(
                             onNavigate()
                             return
                         }
+
+                        // 持久化最新变更日志，供开屏（onboarding）展示 Markdown 更新说明
+                        preferenceManager.setLastChangelog(latest.releaseNotes ?: "")
 
                         updateInfo = latest
                         isForceUpdate = forceUpdate
@@ -898,266 +898,7 @@ fun PermissionItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: 
     }
 }
 
-// ==================== 更新对话框 ====================
-
-@Composable
-fun UpdateDialog(
-    releaseInfo: ReleaseInfo,
-    forceUpdate: Boolean,
-    onDismiss: () -> Unit,
-    onDownload: () -> Unit,
-    onManualDownload: () -> Unit,
-    onIgnore: () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val context = LocalContext.current
-    
-    Dialog(
-        onDismissRequest = { if (!forceUpdate) onDismiss() },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
-        )
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
-            colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (forceUpdate) Icons.Outlined.Warning else Icons.Outlined.SystemUpdate,
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = if (forceUpdate) Color(0xFFD32F2F) else colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = if (forceUpdate) Str.get(R.string.mandatory_update) else Str.get(R.string.new_version_found),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (forceUpdate) Color(0xFFD32F2F) else colorScheme.onSurface
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = Str.get(R.string.version_releaseinfo_versionname, releaseInfo.versionName),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colorScheme.onSurface
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = Str.get(R.string.version_code_releaseinfo_versioncode, releaseInfo.versionCode),
-                        fontSize = 12.sp,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = Str.get(R.string.size_releaseinfo_getformattedsize, releaseInfo.getFormattedSize()),
-                        fontSize = 12.sp,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = Str.get(R.string.released_releaseinfo_getformatteddat, releaseInfo.getFormattedDate()),
-                        fontSize = 12.sp,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (!releaseInfo.releaseNotes.isNullOrEmpty()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Description,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = Str.get(R.string.changelog),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colorScheme.onSurface
-                        )
-                    }
-
-                    AndroidView(
-                        factory = { ctx ->
-                            WebView(ctx).apply {
-                                settings.apply {
-                                    javaScriptEnabled = true
-                                    domStorageEnabled = true
-                                    loadWithOverviewMode = true
-                                    useWideViewPort = true
-                                    setSupportZoom(true)
-                                    builtInZoomControls = true
-                                    displayZoomControls = false
-                                    defaultTextEncodingName = "UTF-8"
-                                    cacheMode = WebSettings.LOAD_NO_CACHE
-                                }
-
-                                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                                    setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                                }
-
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        super.onPageFinished(view, url)
-                                        AppLog.d("UpdateDialog", Str.get(R.string.webview_load_complete))
-                                    }
-                                }
-
-                                val html = MarkdownRenderer.toHtml(releaseInfo.releaseNotes ?: "")
-
-                                val styledHtml = """
-                                    <html>
-                                    <head>
-                                        <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes'>
-                                        <style>
-                                            body {
-                                                padding: 8px;
-                                                margin: 0;
-                                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                                                font-size: 13px;
-                                                color: #333;
-                                                line-height: 1.6;
-                                                background: transparent;
-                                            }
-                                            h1 { font-size: 18px; margin: 8px 0; }
-                                            h2 { font-size: 16px; margin: 6px 0; }
-                                            h3 { font-size: 14px; margin: 4px 0; }
-                                            p { margin: 4px 0; }
-                                            ul, ol { margin: 4px 0; padding-left: 20px; }
-                                            li { margin: 2px 0; }
-                                            code { background: #f4f4f4; padding: 2px 4px; border-radius: 4px; font-size: 12px; }
-                                            pre { background: #2d2d2d; padding: 8px; border-radius: 8px; overflow-x: auto; }
-                                            pre code { background: transparent; color: #f8f8f2; }
-                                            blockquote { margin: 8px 0; padding: 4px 12px; border-left: 3px solid #37474F; background: #f5f5f5; }
-                                            a { color: #37474F; text-decoration: none; }
-                                            table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12px; }
-                                            th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
-                                            th { background: #f0f0f0; }
-                                            img { max-width: 100%; height: auto; border-radius: 4px; }
-                                        </style>
-                                    </head>
-                                    <body>
-                                        $html
-                                    </body>
-                                    </html>
-                                """.trimIndent()
-
-                                loadDataWithBaseURL("file:///android_asset/", styledHtml, "text/html", "UTF-8", null)
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 80.dp, max = 250.dp)
-                            .clip(RoundedCornerShape(AppDimens.radiusSmall))
-                            .background(colorScheme.surfaceVariant)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = onDownload,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.primary,
-                            contentColor = colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(Str.get(R.string.download_update), fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = onManualDownload,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(40.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorScheme.surfaceVariant,
-                                contentColor = colorScheme.onSurfaceVariant
-                            ),
-                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Language,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(Str.get(R.string.manual_download), fontSize = 13.sp)
-                        }
-
-                        if (!forceUpdate) {
-                            Button(
-                                onClick = onIgnore,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(40.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFFFEBEE),
-                                    contentColor = Color(0xFFD32F2F)
-                                ),
-                                shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Close,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(Str.get(R.string.not_now), fontSize = 13.sp)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+// ==================== 更新对话框（已移至 ui/components/UpdateContent.kt） ====================
 
 // ==================== 下载进度对话框 ====================
 

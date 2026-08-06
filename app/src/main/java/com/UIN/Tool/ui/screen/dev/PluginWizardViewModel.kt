@@ -40,6 +40,14 @@ class PluginWizardViewModel(
     // ==================== 插件说明 ====================
     var pluginNotice = mutableStateOf("")
 
+    // ==================== 扩展配置 ====================
+    var permissions = mutableStateOf<List<String>>(emptyList())
+    var dependencies = mutableStateOf("")
+    var minHostVersion = mutableStateOf("1")
+    var apiLevel = mutableStateOf("21")
+    var category = mutableStateOf("")
+    var updateUrl = mutableStateOf("")
+
     // ==================== 文件管理 ====================
     var fileList = mutableStateOf<List<String>>(emptyList())
     var fileContents = mutableStateOf<Map<String, String>>(emptyMap())
@@ -59,8 +67,9 @@ class PluginWizardViewModel(
     var projectDir = mutableStateOf<File?>(null)
 
     init {
+        // 二进制后端：前端入口固定为 web/index.html；二进制由打包阶段复制到 backend/myapp
         if (uiType == "web" && backendType == "binary") {
-            entryPath.value = "backend/myapp"
+            entryPath.value = "web/index.html"
         }
         initDefaultFiles()
     }
@@ -73,7 +82,7 @@ class PluginWizardViewModel(
                 generateCuiFiles()
             } else {
                 generateWebTemplates()
-                if (backendType.isNotEmpty() && backendType != "binary") {
+                if (backendType.isNotEmpty()) {
                     generateBackendFiles()
                 }
             }
@@ -178,6 +187,22 @@ class PluginWizardViewModel(
             "PLUGIN_AUTHOR" to pluginAuthor.value
         )
 
+        // 二进制后端：启动脚本直接运行用户选择的二进制 backend/myapp
+        if (backendType == "binary") {
+            val startScript = TemplateUtils.generateBinaryBackendStartScript(context, vars)
+            files["scripts/start.sh"] = startScript
+            if ("scripts/start.sh" !in fileNames) fileNames.add("scripts/start.sh")
+
+            entryPath.value = "web/index.html"
+            if (backendStartCommand.value.isBlank()) {
+                backendStartCommand.value = "sh scripts/start.sh"
+            }
+
+            fileList.value = fileNames
+            fileContents.value = files
+            return
+        }
+
         // 新式后端：生成启动脚本 + 后端服务示例（不再按语言生成）
         val startScript = TemplateUtils.generateBackendStartScript(context, vars)
         val serverScript = TemplateUtils.generateBackendServer(context, vars)
@@ -250,18 +275,20 @@ class PluginWizardViewModel(
             put("pluginId", pluginId.value)
             put("version", pluginVersion.value.toIntOrNull() ?: 1)
             put("versionName", pluginVersionName.value)
-            put("minHostVersion", 1)
+            put("minHostVersion", minHostVersion.value.toIntOrNull() ?: 1)
             put("name", pluginName.value)
             put("author", pluginAuthor.value)
             put("description", pluginDescription.value)
             put("icon", "icon.png")
             put("mainClass", if (uiType == "native") mainClass.value else "")
-            put("apiLevel", 21)
+            put("apiLevel", apiLevel.value.toIntOrNull() ?: 21)
             put("uiType", uiType)
             put("entry", if (uiType == "web") entryPath.value else "")
-            put("permissions", "")
-            put("dependencies", "")
+            put("permissions", permissions.value.joinToString(","))
+            put("dependencies", dependencies.value.split(",").map { it.trim() }.filter { it.isNotEmpty() }.joinToString(","))
             put("notice", pluginNotice.value)
+            put("category", category.value)
+            put("updateUrl", updateUrl.value)
 
             if (uiType == "web" && backendType.isNotEmpty()) {
                 // 新式后端：统一 other 模式 + 必填启动命令，运行环境由用户在软件内全局设定

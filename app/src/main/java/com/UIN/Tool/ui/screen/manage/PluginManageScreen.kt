@@ -41,6 +41,7 @@ import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -700,17 +701,10 @@ fun PluginManageScreen(
         )
     }
 
-    // ==================== 插件详情对话框（包含说明，无 emoji） ====================
+    // ==================== 插件详情对话框（plugin.json 字段 + 文件结构 + 大小） ====================
     if (showDetailDialog != null) {
-        UIComponents.ConfirmDialog(
-            title = showDetailDialog!!.name,
-            message = buildDetailMessage(showDetailDialog!!),
-            confirmText = Str.get(R.string.run),
-            dismissText = Str.get(R.string.close),
-            onConfirm = {
-                ServiceLocator.getPluginManager().openPlugin(showDetailDialog!!.pluginId, context)
-                showDetailDialog = null
-            },
+        PluginDetailDialog(
+            plugin = showDetailDialog!!,
             onDismiss = { showDetailDialog = null }
         )
     }
@@ -756,37 +750,6 @@ private fun addPluginDirToZip(
                 zos.closeEntry()
             } catch (e: Exception) {
                 AppLog.e("PluginManage", Str.get(R.string.failed_to_add_file_to_zip_file_name, file.name), e)
-            }
-        }
-    }
-}
-
-// ============================================================
-// buildDetailMessage 包含 notice 字段（无 emoji）
-// ============================================================
-
-private fun buildDetailMessage(plugin: PluginInfo): String {
-    return buildString {
-        append("ID: ${plugin.pluginId}\n")
-        append(Str.get(R.string.version_plugin_versionname_plugin_ve, plugin.versionName, plugin.version))
-        append(Str.get(R.string.plugin_author, plugin.author.ifEmpty { Str.get(R.string.unknown) }))
-        append(Str.get(R.string.category_plugin_category_n, plugin.category))
-        if (plugin.description.isNotEmpty()) {
-            append(Str.get(R.string.ndescription_plugin_description_n, plugin.description))
-        }
-        // 显示插件说明（如果存在）
-        if (plugin.hasNotice()) {
-            append(Str.get(R.string.nnotice_n_plugin_notice_n, plugin.notice))
-        }
-        if (plugin.dependencies.isNotEmpty()) {
-            append(Str.get(R.string.plugin_dependencies, plugin.dependencies.joinToString(", ")))
-        }
-        if (plugin.permissions.isNotEmpty()) {
-            val pluginManager = ServiceLocator.getPluginManager()
-            val summary = pluginManager.getPluginPermissionSummary(plugin.pluginId)
-            append(Str.get(R.string.npermissions_summary_granted_summary, summary.granted, summary.total))
-            if (!summary.isAllGranted) {
-                append(Str.get(R.string.summary_denied_permission_s_not_gran, summary.denied))
             }
         }
     }
@@ -1450,5 +1413,344 @@ fun PluginManageItem(
                 )
             }
         }
+    }
+}
+
+// ==================== 插件详情对话框（plugin.json 字段 + 文件结构 + 大小） ====================
+
+@Composable
+fun PluginDetailDialog(
+    plugin: PluginInfo,
+    onDismiss: () -> Unit
+) {
+    val pluginManager = ServiceLocator.getPluginManager()
+    val context = LocalContext.current
+    val pluginDir = pluginManager.getPluginDirFile(plugin.pluginId)
+
+    // plugin.json 原文（格式化）
+    val rawJson = remember(plugin.pluginId) {
+        val jsonFile = File(pluginDir, Constants.PLUGIN_CONFIG_FILE)
+        if (jsonFile.exists()) {
+            try {
+                JSONObject(jsonFile.readText()).toString(2)
+            } catch (e: Exception) {
+                jsonFile.readText()
+            }
+        } else {
+            try {
+                JSONObject(plugin.toJson()).toString(2)
+            } catch (e: Exception) {
+                plugin.toJson()
+            }
+        }
+    }
+
+    // 插件目录统计
+    val dirSize = remember(plugin.pluginId) { calculateDirSize(pluginDir) }
+    val fileCount = remember(plugin.pluginId) { countDirFiles(pluginDir) }
+    val fileTree = remember(plugin.pluginId) { buildFileTree(pluginDir) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .heightIn(max = 620.dp),
+            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+            colors = CardDefaults.cardColors(
+                containerColor = if (AppColors.glassEnabled())
+                    AppColors.glassBackground()
+                else
+                    MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                // ==================== 头部 ====================
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Extension,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        Str.get(R.string.plugin_details),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                }
+
+                Text(
+                    text = "${plugin.name}  (${plugin.pluginId})",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        SectionHeader(
+                            Str.get(R.string.plugin_config_fields),
+                            MaterialTheme.colorScheme.primary
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.plugin_id), plugin.pluginId
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.version_code), plugin.version.toString()
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.version_name), plugin.versionName
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.min_host_version), plugin.minHostVersion.toString()
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.api_level), plugin.apiLevel.toString()
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.plugin_name), plugin.name
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.author), plugin.author
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.description), plugin.description
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.category), plugin.category
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.ui_type), plugin.uiType
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.entry_file), plugin.entry
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.main_class), plugin.mainClass
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.update_url), plugin.updateUrl
+                        )
+                        DetailKeyValue(
+                            Str.get(R.string.plugin_notice_optional), plugin.notice
+                        )
+                        if (plugin.dependencies.isNotEmpty()) {
+                            DetailKeyValue(
+                                Str.get(R.string.dependencies),
+                                plugin.dependencies.joinToString(", ")
+                            )
+                        }
+                        if (plugin.permissions.isNotEmpty()) {
+                            DetailKeyValue(
+                                Str.get(R.string.permissions),
+                                plugin.permissions.joinToString("\n")
+                            )
+                        }
+                        if (plugin.backendStartCommand.isNotEmpty()) {
+                            DetailKeyValue(
+                                Str.get(R.string.start_command_required),
+                                plugin.backendStartCommand
+                            )
+                        }
+                    }
+
+                    item {
+                        SectionHeader(
+                            Str.get(R.string.plugin_file_structure),
+                            MaterialTheme.colorScheme.secondary
+                        )
+                        Text(
+                            text = fileTree.ifEmpty { Str.get(R.string.plugin_details_dir_not_found) },
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    item {
+                        SectionHeader(
+                            Str.get(R.string.plugin_json_raw),
+                            MaterialTheme.colorScheme.tertiary
+                        )
+                        Text(
+                            text = rawJson,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ==================== 大小与统计 ====================
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(AppDimens.radiusMedium)
+                    ) {
+                        Text(
+                            text = Str.get(R.string.plugin_size),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Text(
+                        text = formatFileSize(dirSize),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = RoundedCornerShape(AppDimens.radiusMedium)
+                    ) {
+                        Text(
+                            text = Str.get(R.string.plugin_file_count, fileCount),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        ServiceLocator.getPluginManager().openPlugin(plugin.pluginId, context)
+                        onDismiss()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(Str.get(R.string.run), fontSize = AppDimens.bodyTextSize.sp)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(Str.get(R.string.close), fontSize = AppDimens.bodyTextSize.sp)
+                }
+            }
+        }
+    }
+}
+
+// ==================== 详情对话框内部组件 ====================
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    color: androidx.compose.ui.graphics.Color
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall.copy(
+            fontWeight = FontWeight.Bold,
+            color = color
+        ),
+        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+    )
+}
+
+@Composable
+private fun DetailKeyValue(
+    label: String,
+    value: String
+) {
+    if (value.isBlank()) return
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(140.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+// ==================== 插件目录统计辅助函数 ====================
+
+private fun calculateDirSize(dir: File?): Long {
+    if (dir == null || !dir.exists()) return 0
+    return dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+}
+
+private fun countDirFiles(dir: File?): Int {
+    if (dir == null || !dir.exists()) return 0
+    return dir.walkTopDown().filter { it.isFile }.count()
+}
+
+private fun buildFileTree(dir: File?): String {
+    if (dir == null || !dir.exists()) return ""
+    val sb = StringBuilder()
+    dir.listFiles()?.sortedBy { if (it.isDirectory) 0 else 1 }?.forEach { file ->
+        appendFileTree(sb, file, "")
+    }
+    return sb.toString().trim()
+}
+
+private fun appendFileTree(sb: StringBuilder, file: File, indent: String) {
+    if (file.name.startsWith(".")) return
+    sb.append(indent)
+        .append(if (file.isDirectory) "[+] " else "    ")
+        .append(file.name)
+    if (file.isDirectory) {
+        sb.append("/\n")
+        val childIndent = indent + "    "
+        file.listFiles()?.sortedBy { if (it.isDirectory) 0 else 1 }?.forEach { child ->
+            appendFileTree(sb, child, childIndent)
+        }
+    } else {
+        sb.append("  (").append(formatFileSize(file.length())).append(")\n")
     }
 }

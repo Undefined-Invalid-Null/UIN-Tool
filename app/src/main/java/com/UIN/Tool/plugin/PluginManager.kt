@@ -186,6 +186,11 @@ class PluginManager private constructor(
                 return null
             }
 
+            if (info.apiLevel > android.os.Build.VERSION.SDK_INT) {
+                Logger.e(TAG, Str.get(R.string.android_api_level_too_low_info_apil, info.apiLevel, android.os.Build.VERSION.SDK_INT))
+                return null
+            }
+
             if (info.uiType == "native") {
                 val dexFile = File(tempDir, Constants.PLUGIN_DEX_FILE)
                 if (!dexFile.exists()) {

@@ -43,6 +43,11 @@ object TemplateUtils {
         return renderTemplate(loadTemplate(context, "backend/start.sh.tmpl"), variables)
     }
 
+    /** 生成二进制后端启动脚本 scripts/start.sh（启动打包的 backend/myapp，读 $PORT） */
+    fun generateBinaryBackendStartScript(context: Context, variables: Map<String, String>): String {
+        return renderTemplate(loadTemplate(context, "backend/start_binary.sh.tmpl"), variables)
+    }
+
     /** 生成后端服务示例 scripts/backend/server.py（读 $PORT + /health） */
     fun generateBackendServer(context: Context, variables: Map<String, String>): String {
         return renderTemplate(loadTemplate(context, "backend/server.py.tmpl"), variables)

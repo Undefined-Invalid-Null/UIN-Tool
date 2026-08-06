@@ -95,6 +95,7 @@
     <string name="an_exception_occurred" formatted="false">An exception occurred</string>
     <string name="android_version" formatted="false">Android version</string>
     <string name="android_version_too_old_info_minhost">Android version too old: %1$s > %2$s</string>
+    <string name="android_api_level_too_low_info_apil">Plugin requires Android API level %1$s, current device is %2$s</string>
     <string name="api_call_failed_e_message">API call failed: %1$s</string>
     <string name="apk_file_not_found_file_absolutepath">APK file not found: %1$s</string>
     <string name="app_exit" formatted="false">App exit</string>
@@ -762,8 +763,23 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="file_not_found_filename">File not found: %1$s</string>
     <string name="file_not_found_filepath">File not found: %1$s</string>
     <string name="file_selected" formatted="false">File selected</string>
+    <string name="file_type" formatted="false">File Type</string>
+    <string name="file_lines" formatted="false">Lines</string>
+    <string name="characters" formatted="false">Characters</string>
+    <string name="file_properties" formatted="false">File Properties</string>
+    <string name="view_properties" formatted="false">View Properties</string>
+    <string name="rename" formatted="false">Rename</string>
+    <string name="rename_file" formatted="false">Rename File</string>
+    <string name="renamed_successfully" formatted="false">Renamed successfully</string>
+    <string name="rename_failed_name_invalid_or_exists" formatted="false">Rename failed: name is empty or already exists</string>
+    <string name="renaming_file_oldname_newname">Renaming file: %1$s -> %2$s</string>
+    <string name="no_permission_selected" formatted="false">No permission selected, tap to choose</string>
+    <string name="permissions_more_count"> +%1$d more</string>
+    <string name="select_permissions" formatted="false">Select Permissions</string>
     <string name="filename_signature_verification_fail">%1$s (signature verification failed)</string>
     <string name="fill_in_the_plugin_basic_configurati" formatted="false">Fill in the plugin basic configuration</string>
+    <string name="view_field_overview" formatted="false">View field overview</string>
+    <string name="plugin_basic_info_overview" formatted="false">Here is a brief introduction to each field:\n\n• Plugin ID: unique identifier, in reversed domain format, e.g. com.example.myplugin, immutable after creation.\n• Plugin Name: display name, e.g. My Plugin.\n• Author: developer name.\n• Description: brief functionality description.\n• Version Code / Version Name: integer code and readable version for updates.\n• Main Class: entry point class for native plugins, must include the package.\n• Entry File: the script/class loaded at startup.\n• Plugin Notice: description shown in the plugin list.\n• Permissions: permissions the plugin declares, shown to the user before enabling.\n• Dependencies: comma-separated plugin IDs this plugin relies on.\n• Min Host Version / API Level: minimum host version and Android API level required.\n• Category: plugin category.\n• Update URL: remote address for plugin update checks.</string>
     <string name="filteredplugins_size_plugin_s_in_tot">%1$s plugin(s) in total</string>
     <string name="finish" formatted="false">Finish</string>
     <string name="first_import_recording_signature_fil">First import, recording signature: %1$s</string>
@@ -1250,6 +1266,14 @@ Dependencies: %1$s
     <string name="plugin_load_failed_h3">Plugin failed to load</string>
     <string name="plugin_manage_installed" formatted="false">Installed plugins</string>
     <string name="plugin_management" formatted="false">Plugin Management</string>
+    <string name="plugin_details" formatted="false">Plugin Details</string>
+    <string name="plugin_config_fields" formatted="false">plugin.json Fields</string>
+    <string name="plugin_file_structure" formatted="false">File Structure</string>
+    <string name="plugin_size" formatted="false">Plugin Size</string>
+    <string name="plugin_file_count" formatted="false">%1$s files</string>
+    <string name="plugin_json_raw" formatted="false">plugin.json Content</string>
+    <string name="plugin_details_dir_not_found" formatted="false">Plugin directory not found</string>
+    <string name="ui_type" formatted="false">UI Type</string>
     <string name="plugin_management_desc" formatted="false">Import, export and uninstall plugins</string>
     <string name="plugin_management_feature_under_deve" formatted="false">Plugin management feature under development</string>
     <string name="plugin_management_ui_initialized" formatted="false">Plugin management UI initialized</string>
@@ -1568,6 +1592,35 @@ Continue?</string>
     <string name="start_command_required" formatted="false">Start Command (required)</string>
     <string name="start_command_runs_in_sh_lc_to_s" formatted="false">The host executes this with sh -lc, with $PORT, $PLUGIN_ID and $WORK_DIR injected. Run dependency checks + backend start here, e.g. "sh scripts/start.sh". Runtime (built-in/real Termux, Termux/proot) is set globally in the Dev page.</string>
     <string name="start_command_run_in_terminal_when_t" formatted="false">Start command (run in terminal when the plugin opens)</string>
+    <string name="start_command_info" formatted="false">Required for web+backend plugins. The host executes this command with sh -lc to start the backend. Runtime (built-in / real Termux, Termux / proot) is set globally in the backend runtime settings.</string>
+    <string name="cui_start_command_info" formatted="false">The command executed in a fullscreen terminal when the CUI plugin opens.</string>
+    <string name="plugin_id_info" formatted="false">A unique identifier in reverse-domain format (e.g. com.example.myplugin). Used to distinguish this plugin and cannot be changed after installation.</string>
+    <string name="plugin_name_info" formatted="false">The display name of the plugin shown in the tools list.</string>
+    <string name="plugin_author_info" formatted="false">The name or account of the plugin author.</string>
+    <string name="plugin_description_info" formatted="false">A short description of what the plugin does, shown on the plugin details page.</string>
+    <string name="version_code_info" formatted="false">A numeric version for internal comparison. Must be an integer, increase it on each release.</string>
+    <string name="version_name_info" formatted="false">A human-readable version string, e.g. 1.0.0.</string>
+    <string name="main_class_info" formatted="false">The fully-qualified class name (package + class) that implements the plugin entry point, e.g. com.example.MainPlugin.</string>
+    <string name="entry_file_info" formatted="false">The HTML entry file relative to the plugin root, usually web/index.html.</string>
+    <string name="plugin_notice_info" formatted="false">A notice shown to the user the first time the plugin is launched, to explain how to use it.</string>
+    <string name="permissions" formatted="false">Permissions</string>
+    <string name="permissions_info" formatted="false">Permissions the plugin needs at runtime. Only select the minimum necessary. When the plugin runs for the first time, the system asks the user to grant them.</string>
+    <string name="permissions_selected_count">%1$d/%2$d selected</string>
+    <string name="dependencies" formatted="false">Dependencies</string>
+    <string name="dependencies_info" formatted="false">Comma-separated list of plugin IDs this plugin depends on.</string>
+    <string name="comma_separated_plugin_ids" formatted="false">e.g. com.example.lib1,com.example.lib2</string>
+    <string name="min_host_version" formatted="false">Min Host Version</string>
+    <string name="min_host_version_info" formatted="false">The minimum UIN Tool host version required to run this plugin.</string>
+    <string name="api_level" formatted="false">API Level</string>
+    <string name="api_level_info" formatted="false">The minimum Android API level required by this plugin (default 21).</string>
+    <string name="category" formatted="false">Category</string>
+    <string name="category_info" formatted="false">The category this plugin belongs to, shown in the tools list.</string>
+    <string name="update_url" formatted="false">Update URL</string>
+    <string name="update_url_info" formatted="false">Optional. URL used to check for plugin updates.</string>
+    <string name="backend_init_command" formatted="false">Initialization Command</string>
+    <string name="backend_init_command_desc" formatted="false">Run these commands once in Termux to configure it, so UIN Tool can start plugin backends.</string>
+    <string name="copy_command" formatted="false">Copy command</string>
+    <string name="backend_runtime_settings_open_failed" formatted="false">Failed to open backend runtime settings</string>
     <string name="start_creating_backup" formatted="false">========== Start creating backup ==========</string>
     <string name="start_download" formatted="false">Start Download</string>
     <string name="start_exploring" formatted="false">Start Exploring</string>
@@ -2022,6 +2075,7 @@ Released: %3$s
     <string name="web_code_editor" formatted="false">Web Code Editor</string>
     <string name="web_dir" formatted="false">  ✅ web/ dir</string>
     <string name="web_index_html_default" formatted="false">  ✅ web/index.html (default)</string>
+    <string name="all_project_content_packaged" formatted="false">  ✅ Packaged all project content (web/, scripts/, backend/, res/, etc.)</string>
     <string name="web_label" formatted="false">Web</string>
     <string name="web_plugin" formatted="false">Web Plugin</string>
     <string name="web_plugin_author">Author: %1$s&lt;br></string>

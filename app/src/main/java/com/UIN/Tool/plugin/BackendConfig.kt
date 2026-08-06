@@ -88,6 +88,23 @@ object BackendConfig {
         else getEnvironment(context) == ENV_PROOT
     }
 
+    /**
+     * 组装可在实体 Termux 里直接粘贴执行的一行初始化命令。
+     * 开发页/后端运行设置页与 PluginHostActivity 引导共用同一实现。
+     */
+    fun buildRealTermuxSetupCode(context: Context): String {
+        val prootPart = if (getEnvironment(context) == ENV_PROOT)
+            "proot-distro install ${getContainer(context)}"
+        else ""
+        return buildString {
+            append("mkdir -p ~/.termux; ")
+            append("grep -q '^allow-external-apps=true' ~/.termux/termux.properties 2>/dev/null || echo 'allow-external-apps=true' >> ~/.termux/termux.properties; ")
+            append("termux-setup-storage; ")
+            append("termux-reload-settings 2>/dev/null || true")
+            if (prootPart.isNotEmpty()) append("; $prootPart")
+        }.trimEnd()
+    }
+
     // ==================== 空闲回收 ====================
 
     fun getIdleTimeoutMinutes(context: Context): Int =

@@ -7,8 +7,10 @@ import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import android.view.ViewGroup
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -34,6 +36,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.SelectionChangeEvent
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
@@ -443,6 +446,7 @@ fun ThemeChip(
 }
 
 // ==================== 文件树项 ====================
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FileTreeItem(
     fileName: String,
@@ -450,51 +454,87 @@ fun FileTreeItem(
     isSelected: Boolean,
     hasChanges: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRename: () -> Unit,
+    onProperties: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-            )
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = fileName,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (hasChanges) {
-            Icon(
-                Icons.Default.Circle,
-                contentDescription = null,
-                modifier = Modifier.size(6.dp),
-                tint = MaterialTheme.colorScheme.tertiary
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-        }
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.size(20.dp)
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { showMenu = true }
+                )
+                .background(
+                    if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                )
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.Close,
-                contentDescription = Str.get(R.string.delete),
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = fileName,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (hasChanges) {
+                Icon(
+                    Icons.Default.Circle,
+                    contentDescription = null,
+                    modifier = Modifier.size(6.dp),
+                    tint = MaterialTheme.colorScheme.tertiary
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(20.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = Str.get(R.string.delete),
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // 长按菜单：查看属性 / 重命名
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(Str.get(R.string.view_properties)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Info, contentDescription = null)
+                },
+                onClick = {
+                    showMenu = false
+                    onProperties()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(Str.get(R.string.rename)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Edit, contentDescription = null)
+                },
+                onClick = {
+                    showMenu = false
+                    onRename()
+                }
             )
         }
     }
@@ -529,6 +569,8 @@ fun CodeEditorScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showAddFileDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
+    var renameTarget by remember { mutableStateOf<String?>(null) }
+    var propertiesTarget by remember { mutableStateOf<String?>(null) }
 
     var sidebarWidth by remember { mutableStateOf(180.dp) }
     var isSidebarVisible by remember { mutableStateOf(true) }
@@ -543,28 +585,42 @@ fun CodeEditorScreen(
 
     // ============================================================
     // ✅ 修复：切换文件时，使用 LaunchedEffect 确保应用高亮
+    //    通过轮询等待编辑器创建完成，替代固定延时，
+    //    避免在慢设备或首帧未挂载时错过初始化导致不高亮。
     // ============================================================
     LaunchedEffect(currentFile, currentTheme) {
         AppLog.d(DEBUG_TAG, "LaunchedEffect: currentFile=$currentFile, theme=$currentTheme")
-        // 延迟执行，确保编辑器已创建
-        delay(100)
-        
-        editorInstance?.let { editor ->
+        // 轮询等待编辑器实例创建完成（最长约 2s）
+        var editor = editorInstance
+        var attempts = 0
+        while (editor == null && attempts < 40) {
+            delay(50)
+            editor = editorInstance
+            attempts++
+        }
+
+        editor?.let { e ->
             val newContent = contents[currentFile] ?: ""
             AppLog.d(DEBUG_TAG, Str.get(R.string.updating_editor_file_currentfile_con, currentFile, newContent.length))
-            
+
             // ✅ 先设置语言和主题
-            setEditorLanguage(editor, currentFile)
-            applyTheme(editor, currentTheme)
-            
+            setEditorLanguage(e, currentFile)
+            applyTheme(e, currentTheme)
+
             // ✅ 最后再 setText：触发一次完整的重新分析，且不会被后续操作中断
             //    （setText 内部会调用 AnalyzeManager.reset() 重新全量高亮）
-            editor.setText(newContent)
+            e.setText(newContent)
+            // ✅ 强制刷新绘制，确保高亮结果立即呈现
+            e.invalidate()
+            // ✅ 首次打开时编辑器尚未完成布局（宽度为 0），异步高亮分析会跳过；
+            //    布局完成后通过 post 强制执行一次重新分析，保证首帧就有高亮
+            e.post {
+                e.rerunAnalysis()
+                e.invalidate()
+            }
+
             editedContent = newContent
             hasChanges = false
-            
-            // ✅ 强制刷新
-            editor.invalidate()
             isEditorReady = true
             AppLog.d(DEBUG_TAG, Str.get(R.string.editor_updated_language_and_theme_ap))
         } ?: run {
@@ -611,6 +667,26 @@ fun CodeEditorScreen(
             editedContent = contents[currentFile] ?: ""
         }
         AppLog.d(DEBUG_TAG, Str.get(R.string.deleting_file_filename, fileName))
+    }
+
+    fun renameFile(oldName: String, newName: String): Boolean {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty() || trimmed == oldName) return false
+        if (files.contains(trimmed)) return false
+
+        val newFiles = files.map { if (it == oldName) trimmed else it }.toMutableList()
+        files = newFiles
+
+        val newContents = contents.toMutableMap()
+        contents[oldName]?.let { newContents[trimmed] = it }
+        newContents.remove(oldName)
+        contents = newContents
+
+        if (currentFile == oldName) {
+            currentFile = trimmed
+        }
+        AppLog.d(DEBUG_TAG, Str.get(R.string.renaming_file_oldname_newname, oldName, trimmed))
+        return true
     }
 
     var isDragging by remember { mutableStateOf(false) }
@@ -721,7 +797,9 @@ fun CodeEditorScreen(
                                         saveCurrentFile()
                                         currentFile = file
                                     },
-                                    onDelete = { showDeleteConfirm = file }
+                                    onDelete = { showDeleteConfirm = file },
+                                    onRename = { renameTarget = file },
+                                    onProperties = { propertiesTarget = file }
                                 )
                             }
                         }
@@ -837,7 +915,16 @@ fun CodeEditorScreen(
                             val initialContent = contents[currentFile] ?: ""
                             setText(initialContent)
                             AppLog.d(DEBUG_TAG, Str.get(R.string.initial_editor_text_length_initialco, initialContent.length))
-                            
+
+                            // ✅ 强制刷新，确保初始高亮立即呈现
+                            invalidate()
+                            // ✅ 首次布局完成后强制重新分析（此时宽度才就绪），
+                            //    否则首帧只有纯文本、没有高亮
+                            post {
+                                rerunAnalysis()
+                                invalidate()
+                            }
+
                             // 内容变更监听
                             subscribeEvent(ContentChangeEvent::class.java) { event, _ ->
                                 val actionName = when (event.action) {
@@ -976,6 +1063,101 @@ fun CodeEditorScreen(
             },
             onDismiss = { showDeleteConfirm = null },
             isDestructive = true
+        )
+    }
+
+    // ==================== 重命名对话框 ====================
+    val renameOld = renameTarget
+    if (renameOld != null) {
+        var newFileName by remember(renameOld) { mutableStateOf(renameOld) }
+        AlertDialog(
+            onDismissRequest = { renameTarget = null },
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
+            title = { Text(Str.get(R.string.rename_file)) },
+            text = {
+                UIComponents.TextInput(
+                    value = newFileName,
+                    onValueChange = { newFileName = it },
+                    label = Str.get(R.string.file_name),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                UIComponents.PrimaryButton(
+                    text = Str.get(R.string.ok_2),
+                    onClick = {
+                        if (renameFile(renameOld, newFileName)) {
+                            renameTarget = null
+                            AppToast.success(context, Str.get(R.string.renamed_successfully))
+                        } else {
+                            AppToast.warning(context, Str.get(R.string.rename_failed_name_invalid_or_exists))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            dismissButton = {
+                UIComponents.TextButton(
+                    text = Str.get(R.string.cancel),
+                    onClick = { renameTarget = null }
+                )
+            }
+        )
+    }
+
+    // ==================== 文件属性对话框 ====================
+    val propFile = propertiesTarget
+    if (propFile != null) {
+        val content = contents[propFile] ?: ""
+        val lineCount = if (content.isEmpty()) 0 else content.lines().size
+        AlertDialog(
+            onDismissRequest = { propertiesTarget = null },
+            containerColor = if (AppColors.glassEnabled())
+                AppColors.glassBackground()
+            else
+                MaterialTheme.colorScheme.surface,
+            title = { Text(Str.get(R.string.file_properties)) },
+            text = {
+                Column {
+                    FilePropertyRow(Str.get(R.string.file_name), propFile)
+                    FilePropertyRow(Str.get(R.string.file_type), propFile.substringAfterLast('.', ""))
+                    FilePropertyRow(Str.get(R.string.file_lines), lineCount.toString())
+                    FilePropertyRow(Str.get(R.string.characters), content.length.toString())
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { propertiesTarget = null }) {
+                    Text(Str.get(R.string.ok_2))
+                }
+            }
+        )
+    }
+}
+
+/** 文件属性行：名称 + 值 */
+@Composable
+private fun FilePropertyRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(80.dp)
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

@@ -423,7 +423,7 @@ class PluginHostActivity : AppCompatActivity() {
                 }
                 return@Thread
             }
-            val code = buildRealTermuxSetupCode()
+            val code = BackendConfig.buildRealTermuxSetupCode(this)
             copyTextToClipboard(code)
             runOnUiThread {
                 showPluginInfoDialog(
@@ -443,20 +443,6 @@ class PluginHostActivity : AppCompatActivity() {
             )
         } catch (_: Exception) {
         }
-    }
-
-    /** 组装可在 Termux 里直接粘贴执行的一行配置命令。 */
-    private fun buildRealTermuxSetupCode(): String {
-        val prootPart = if (BackendConfig.getEnvironment(this@PluginHostActivity) == BackendConfig.ENV_PROOT)
-            "pkg install proot-distro -y && proot-distro install ${BackendConfig.getContainer(this@PluginHostActivity)}"
-        else ""
-        return buildString {
-            append("mkdir -p ~/.termux; ")
-            append("grep -q '^allow-external-apps=true' ~/.termux/termux.properties 2>/dev/null || echo 'allow-external-apps=true' >> ~/.termux/termux.properties; ")
-            append("termux-setup-storage; ")
-            append("termux-reload-settings 2>/dev/null || true")
-            if (prootPart.isNotEmpty()) append("; $prootPart")
-        }.trimEnd()
     }
 
     private fun copyTextToClipboard(text: String) {

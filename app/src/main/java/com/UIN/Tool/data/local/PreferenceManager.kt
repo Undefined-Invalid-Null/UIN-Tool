@@ -77,6 +77,26 @@ class PreferenceManager(private val context: Context) {
         prefs.edit().putString(Constants.KEY_FORCE_UPDATE_IGNORE, tag).apply()
     }
 
+    // ==================== 更新辅助 ====================
+
+    /** 最近一次检测到的新版本变更日志（Markdown），供开屏页展示。 */
+    fun getLastChangelog(): String {
+        return prefs.getString(Constants.KEY_LAST_CHANGELOG, "") ?: ""
+    }
+
+    fun setLastChangelog(notes: String) {
+        prefs.edit().putString(Constants.KEY_LAST_CHANGELOG, notes).apply()
+    }
+
+    /** 最近一次静默更新检测所在的天（epoch day = 距今天数）。无记录返回 -1。 */
+    fun getLastUpdateCheckDay(): Long {
+        return prefs.getLong(Constants.KEY_LAST_UPDATE_CHECK, -1L)
+    }
+
+    fun setLastUpdateCheckDay(epochDay: Long) {
+        prefs.edit().putLong(Constants.KEY_LAST_UPDATE_CHECK, epochDay).apply()
+    }
+
     // ==================== 崩溃相关 ====================
 
     fun hasJustCrashed(): Boolean {

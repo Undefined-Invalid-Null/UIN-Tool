@@ -4,8 +4,8 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.1.0 |
-| 对应应用版本 | v5.1.0 (Build 17) |
+| 文档版本 | 5.2.0 |
+| 对应应用版本 | v5.2.0 (Build 18) |
 | 最后更新 | 2026年8月6日 |
 
 ---
@@ -39,6 +39,11 @@
 ### 五、Web 插件开发（带后端）
 - [5.1 概述](#51-概述)
 - [5.2 后端运行设置（全局）](#52-后端运行设置全局)
+  - [5.2.1 后端实现](#521-后端实现)
+  - [5.2.2 后端环境（仅实体 Termux）](#522-后端环境仅实体-termux)
+  - [5.2.3 空闲自动回收](#523-空闲自动回收)
+  - [5.2.4 实体 Termux 初始化命令](#524-实体-termux-初始化命令)
+  - [5.2.5 运行环境如何被使用](#525-运行环境如何被使用)
 - [5.3 启动命令与后端文件](#53-启动命令与后端文件)
 - [5.4 plugin.json 配置](#54-pluginjson-配置)
 - [5.5 前端与后端通信](#55-前端与后端通信)
@@ -139,7 +144,7 @@
    - **纯 WebView**：仅 HTML/CSS/JS，无后端
    - **WebView + 后端**：HTML/CSS/JS + 后端服务
    - **CUI 终端**：全屏终端中运行脚本（v4.5.0 新增）
-5. 如选择「WebView + 后端」，向导中填写**后端启动命令**（默认 `sh scripts/start.sh`），后端运行环境在「开发」页或「管理」页的「后端运行设置」中全局配置（内置 Termux / 实体 Termux）
+5. 如选择「WebView + 后端」，向导中填写**后端启动命令**（默认 `sh scripts/start.sh`），后端运行环境在「管理」页的「后端运行设置」中全局配置（内置 Termux / 实体 Termux）
 6. 按照向导完成配置
 
 ### 1.2 配置插件信息
@@ -173,7 +178,7 @@
 **带后端的 Web 插件**
 - 向导生成 `scripts/start.sh`（启动命令）与 `scripts/backend/server.py`（后端服务，内置 http.server）
 - 无需额外编译
-- ⚠️ 当前打包器对 Web 插件只打包 `web/` 目录，不打包 `scripts/`：生成后需手动把 `scripts/` 后端文件放入插件安装目录（`/storage/emulated/0/UIN_Tool/plugins/{pluginId}/scripts/backend/`），否则后端启动命令找不到入口文件
+- v5.2.0 起打包器**递归整包项目目录**：`web/`、`scripts/`、`scripts/backend/server.py`、`start.sh` 及任意资源全部打入 TPK，无需再手动放置后端文件
 
 ### 1.5 导入运行
 
@@ -579,17 +584,62 @@ Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统�
 
 ### 5.2 后端运行设置（全局）
 
-在「开发」页（插件工具卡片）或「管理」页（「后端运行设置」菜单项）点击「**后端运行设置**」可全局配置所有后端插件的运行环境，持久化于 `uin_backend_prefs`：
+在「管理」页点击「**后端运行设置**」进入独立设置页面，可**全局配置所有后端插件的运行环境**，持久化于 `uin_backend_prefs`，对所有 Web + 后端 / CUI 插件生效。
+
+> ⚠️ v5.2.0 起「后端运行设置」已从弹窗改为**独立页面**（`BackendSettingsActivity`），仅存在于管理页；开发页不再提供入口。
+
+#### 5.2.1 后端实现
 
 | 设置项 | 选项 | 说明 |
 |------|------|------|
-| 运行实现 | 内置 Termux（默认） | 使用应用内置的精简 Termux，强制走 Proot 共享 Alpine 容器（`alpine`） |
-| | 实体 Termux | 通过 `com.termux` 的 `RUN_COMMAND` 拉起外部 Termux |
-| 环境（仅实体 Termux） | Termux 原生 | 直接在 Termux 环境中运行 |
-| | Proot 容器 | 在 Proot 容器中运行，容器名可配置（默认 `alpine`） |
-| 空闲回收超时 | 3 / 5 / 10 / 15 分钟 | 后端空闲超过该时长自动停止（默认 5 分钟） |
+| **后端实现** | **内置 Termux**（默认） | 使用应用**内置的精简版 Termux**（无需安装任何东西），强制通过 **Proot 共享 Alpine 容器**（固定容器名 `alpine`）运行插件后端，实现环境隔离 |
+| | **实体 Termux** | 调用外部安装的 **Termux**（`com.termux`）的 `RUN_COMMAND` 服务运行插件后端，适合需要原生 Termux 生态（pip/npm/apk 等）的场景 |
 
-> 使用实体 Termux 需要满足：安装 Termux、在 `.termux/termux.properties` 设置 `allow-external-apps=true`、执行 `termux-setup-storage` 并授予 `com.termux.permission.RUN_COMMAND`。启动失败时宿主会自动探测并给出对应引导。
+- **内置 Termux**：首装无需联网，Alpine rootfs 从应用 assets 离线恢复（约 19MB，一次性解压）；首次安装耗时不涉及网络
+- **实体 Termux**：需要设备已安装 Termux，并完成一次初始化（见 5.2.4 初始化命令），否则启动失败会弹出引导
+
+#### 5.2.2 后端环境（仅实体 Termux）
+
+| 设置项 | 选项 | 说明 |
+|------|------|------|
+| **后端环境** | **Termux 本机** | 直接在 Termux 原生环境中运行启动命令 |
+| | **Proot 容器** | 在 Proot 容器中运行（如 `alpine`、`ubuntu` 等），容器名可配置，需先在 Termux 中用 `proot-distro install <容器名>` 安装 |
+
+- 选择 Proot 容器时需填写**容器名**（默认 `alpine`）；可用 `proot-distro list` 查看已安装容器
+- 内置 Termux **强制**走 Proot Alpine 容器，此设置项不适用
+
+#### 5.2.3 空闲自动回收
+
+| 设置项 | 选项 | 说明 |
+|------|------|------|
+| **空闲回收超时** | 3 / 5 / 10 / 15 分钟（默认 5） | 后端空闲超过该时长自动停止，节省资源；活动请求会刷新计时 |
+
+- 停止时优先调用约定的 HTTP `/stop` 端点优雅退出（推荐在启动脚本里实现，见 5.6）
+- 实体 Termux 的进程宿主无法直接杀死，优雅退出**依赖** `/stop` 接口，因此后端脚本务必实现它
+
+#### 5.2.4 实体 Termux 初始化命令
+
+选择实体 Termux 时，设置页面底部会显示「**初始化命令**」卡片，点击右上角复制图标可一键复制（命令由 `BackendConfig.buildRealTermuxSetupCode()` 统一生成，与插件运行时的引导提示共用同一实现）：
+
+```sh
+mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.properties 2>/dev/null || echo 'allow-external-apps=true' >> ~/.termux/termux.properties; termux-setup-storage; termux-reload-settings 2>/dev/null || true
+```
+
+该命令会依次完成：
+1. 在 `~/.termux/termux.properties` 写入 `allow-external-apps=true`（允许外部应用通过 `RUN_COMMAND` 拉起 Termux）
+2. 执行 `termux-setup-storage` 授权存储访问
+3. `termux-reload-settings` 重载配置
+> 启动失败时宿主会自动探测缺失项并给出对应引导（`allow-external-apps`、`termux-setup-storage`、`proot-distro install`、`RUN_COMMAND` 权限）。
+
+#### 5.2.5 运行环境如何被使用
+
+插件打开后，宿主按全局设置选择执行路径：
+
+- **内置 Termux**：`proot-distro login alpine --bind <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`，插件目录以只读绑定挂载进容器
+- **实体 Termux + Termux 本机**：`/bin/bash -lc "<启动命令>"`（工作目录 = 插件目录）
+- **实体 Termux + Proot 容器**：`proot-distro login <容器名> --bind <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`
+
+三种路径都会通过 `sh -lc` 注入 `$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR` 环境变量，插件无需感知运行环境。
 
 ### 5.3 启动命令与后端文件
 
@@ -1732,7 +1782,7 @@ plugin.tpk
     └── script.js    # 可选
 ```
 
-> ⚠️ **当前打包器对 Web 插件只打包 `web/` 目录**（不存在时自动生成默认 `index.html`），**不会打包 `scripts/` 后端文件**。后端文件需在生成后手动放入插件安装目录（`/storage/emulated/0/UIN_Tool/plugins/{pluginId}/scripts/backend/`），否则后端入口缺失无法启动。
+> ✅ **v5.2.0 起打包器递归整包项目目录**：`web/`、`scripts/`、`scripts/backend/server.py`、`start.sh`、`res/`、`src/` 及任意资源全部打入 TPK（跳过隐藏文件与 `.tpk` 输出物）。Web 插件不存在 `web/index.html` 时自动生成默认页兜底。
 >
 > ℹ️ Web 插件的 `entry` 必须指向 HTML 页面（`web/index.html`）。v5.1.0 起向导创建「WebView + 后端」插件时已正确生成 `entry: "web/index.html"`，无需手动修改（旧版本向导曾误写为后端脚本路径，升级后生成的新插件不再有此问题）。
 
@@ -1746,7 +1796,7 @@ plugin.tpk
     └── script.py    # 终端启动脚本
 ```
 
-> 打包规则（`packageTpk`）：原生插件打包 `plugin.json` + `icon.png` + `plugin.dex`（占位）+ `src/` + `res/`；Web 插件打包 `plugin.json` + `icon.png` + `web/`（**不含 scripts/**）；CUI 插件打包 `plugin.json` + `icon.png` + `scripts/`。若项目目录存在 `README.md` 也会一并打包。
+> 打包规则（`packageTpk`，v5.2.0 起）：递归整包项目目录——显式添加 `plugin.json`、`icon.png`、`README.md`、原生占位/真实 `plugin.dex`（优先识别真实 DEX 的 `dex\n` magic），再递归打入 `web/`、`scripts/`、`res/`、`src/` 等全部目录；跳过隐藏文件与 `.tpk` 输出物，避免重复条目。Web 插件无 `web/index.html` 时自动写入默认页兜底。
 
 ### 12.3 plugin.json 完整字段
 
@@ -1815,7 +1865,7 @@ plugin.tpk
 
 #### 12.3.3 后端配置字段
 
-> v5.1.0 起后端统一为「启动命令」模式（`backendStartCommand`），旧式按语言启动字段（`backendPort`/`backendEntry`/`backendBinary`/`backendPreCommand` 等）不再用于新式流程，插件加载时由 `migrateLegacyBackend()` 自动转换为 `backendStartCommand`。运行环境在「开发」/「管理」页的「后端运行设置」中全局配置。
+> v5.1.0 起后端统一为「启动命令」模式（`backendStartCommand`），旧式按语言启动字段（`backendPort`/`backendEntry`/`backendBinary`/`backendPreCommand` 等）不再用于新式流程，插件加载时由 `migrateLegacyBackend()` 自动转换为 `backendStartCommand`。运行环境在「管理」页的「后端运行设置」中全局配置。
 
 | 字段 | 类型 | 默认值 | 必填 | 详细说明 |
 |------|------|--------|------|----------|
@@ -2185,8 +2235,8 @@ Q15: 导出模板一直显示「导出中...」？
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.1.0 |
-| 对应应用版本 | v5.1.0 (Build 17) |
+| 文档版本 | 5.2.0 |
+| 对应应用版本 | v5.2.0 (Build 18) |
 | 最后更新 | 2026年8月6日 |
 
 ---

@@ -174,17 +174,12 @@ object ProotContainerManager {
                 }
                 Logger.i(TAG, Str.get(R.string.found_alpine_offline_resource_assetn, assetName))
 
-                // ② 确保 proot-distro 命令可用
+                // ② proot-distro 默认已随内置 Termux 预装：只做存在性检查，
+                //    不再执行 `pkg install proot-distro -y`（联网安装是首装变慢的主要原因）。
+                //    若缺失，仅提示后继续（restore 步骤会以清晰错误结束）。
                 if (!File(PROOT_DISTRO_BIN).exists()) {
-                    Logger.i(TAG, Str.get(R.string.proot_distro_not_installed_installin))
-                    postStatus(status, Str.get(R.string.installing_proot_distro_requires_net))
-                    val install = runInTermuxSync(context, "pkg install proot-distro -y")
-                    if (install.exitCode != 0) {
-                        Logger.e(TAG, Str.get(R.string.failed_to_install_proot_distro_insta, install.stderr.trim()))
-                        postStatus(status, Str.get(R.string.proot_distro_install_failed_check_ne))
-                        postMain(onResult, false)
-                        return@Thread
-                    }
+                    Logger.w(TAG, Str.get(R.string.proot_distro_not_installed_installin))
+                    postStatus(status, Str.get(R.string.proot_distro_not_installed_installin))
                 } else {
                     Logger.i(TAG, Str.get(R.string.proot_distro_installed))
                 }

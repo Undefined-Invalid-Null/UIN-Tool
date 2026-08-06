@@ -95,6 +95,7 @@
     <string name="an_exception_occurred" formatted="false">应用发生异常</string>
     <string name="android_version" formatted="false">Android版本</string>
     <string name="android_version_too_old_info_minhost">Android 版本过低: %1$s > %2$s</string>
+    <string name="android_api_level_too_low_info_apil">插件需要 Android API 级别 %1$s，当前设备为 %2$s</string>
     <string name="api_call_failed_e_message">调用API失败: %1$s</string>
     <string name="apk_file_not_found_file_absolutepath">APK文件不存在: %1$s</string>
     <string name="app_exit" formatted="false">应用退出</string>
@@ -751,8 +752,23 @@
     <string name="file_not_found_filename">文件不存在: %1$s</string>
     <string name="file_not_found_filepath">文件不存在: %1$s</string>
     <string name="file_selected" formatted="false">已选择文件</string>
+    <string name="file_type" formatted="false">文件类型</string>
+    <string name="file_lines" formatted="false">行数</string>
+    <string name="characters" formatted="false">字符数</string>
+    <string name="file_properties" formatted="false">文件属性</string>
+    <string name="view_properties" formatted="false">查看属性</string>
+    <string name="rename" formatted="false">重命名</string>
+    <string name="rename_file" formatted="false">重命名文件</string>
+    <string name="renamed_successfully" formatted="false">重命名成功</string>
+    <string name="rename_failed_name_invalid_or_exists" formatted="false">重命名失败：名称为空或已存在</string>
+    <string name="renaming_file_oldname_newname">重命名文件: %1$s -> %2$s</string>
+    <string name="no_permission_selected" formatted="false">未选择权限，点击选择</string>
+    <string name="permissions_more_count"> +%1$d 项</string>
+    <string name="select_permissions" formatted="false">选择权限</string>
     <string name="filename_signature_verification_fail">%1$s (签名验证失败)</string>
     <string name="fill_in_the_plugin_basic_configurati" formatted="false">填写插件的基本配置信息</string>
+    <string name="view_field_overview" formatted="false">查看字段总览</string>
+    <string name="plugin_basic_info_overview" formatted="false">以下是各字段的简要介绍：\n\n• 插件ID：唯一标识，反向域名格式，如 com.example.myplugin，创建后不可更改。\n• 插件名称：显示名称，如 我的插件。\n• 作者：开发者名称。\n• 描述：功能简介。\n• 版本号 / 版本名：更新用的整数版本号和可读版本名。\n• 主类：原生插件入口类，需包含包名。\n• 入口文件：启动时加载的脚本或类。\n• 插件说明：插件列表中展示的说明文字。\n• 权限：插件声明的权限，启用前会向用户展示。\n• 依赖：所依赖的其他插件ID，用逗号分隔。\n• 最低宿主版本 / API 级别：所需的最低宿主版本与 Android API 级别。\n• 分类：插件分类。\n• 更新地址：插件更新检查的远程地址。</string>
     <string name="filteredplugins_size_plugin_s_in_tot">共 %1$s 个插件</string>
     <string name="finish" formatted="false">完成</string>
     <string name="first_import_recording_signature_fil">首次导入，记录签名: %1$s</string>
@@ -1239,6 +1255,14 @@
     <string name="plugin_load_failed_h3">插件加载失败</string>
     <string name="plugin_manage_installed" formatted="false">已安装插件</string>
     <string name="plugin_management" formatted="false">插件管理</string>
+    <string name="plugin_details" formatted="false">插件详情</string>
+    <string name="plugin_config_fields" formatted="false">plugin.json 字段</string>
+    <string name="plugin_file_structure" formatted="false">文件结构</string>
+    <string name="plugin_size" formatted="false">插件大小</string>
+    <string name="plugin_file_count" formatted="false">%1$s 个文件</string>
+    <string name="plugin_json_raw" formatted="false">plugin.json 内容</string>
+    <string name="plugin_details_dir_not_found" formatted="false">未找到插件目录</string>
+    <string name="ui_type" formatted="false">界面类型</string>
     <string name="plugin_management_desc" formatted="false">导入、导出、卸载插件</string>
     <string name="plugin_management_feature_under_deve" formatted="false">插件管理功能开发中</string>
     <string name="plugin_management_ui_initialized" formatted="false">插件管理界面初始化完成</string>
@@ -1554,6 +1578,35 @@
     <string name="start_command_required" formatted="false">启动命令（必需）</string>
     <string name="start_command_runs_in_sh_lc_to_s" formatted="false">宿主会用 sh -lc 执行该命令，并注入 $PORT、$PLUGIN_ID、$WORK_DIR 环境变量。这里做依赖检测并启动后端，例如 "sh scripts/start.sh"。运行环境（内置/实体 Termux、Termux/proot）在开发页全局设定。</string>
     <string name="start_command_run_in_terminal_when_t" formatted="false">启动命令（插件打开时在终端中执行）</string>
+    <string name="start_command_info" formatted="false">web+后端 插件必填。宿主会用 sh -lc 执行该命令以启动后端。运行环境（内置/实体 Termux、Termux/proot）在后端运行设置中全局设定。</string>
+    <string name="cui_start_command_info" formatted="false">CUI 插件打开时，在全屏终端中执行的命令。</string>
+    <string name="plugin_id_info" formatted="false">插件唯一标识，采用反域名格式（如 com.example.myplugin）。用于区分不同插件，安装后不可更改。</string>
+    <string name="plugin_name_info" formatted="false">插件在工具列表中显示的名称。</string>
+    <string name="plugin_author_info" formatted="false">插件作者的名字或账号。</string>
+    <string name="plugin_description_info" formatted="false">对插件功能的简要描述，展示在插件详情页。</string>
+    <string name="version_code_info" formatted="false">用于内部比较的数值版本号，必须为整数，每次发布请递增。</string>
+    <string name="version_name_info" formatted="false">给人看的版本号，如 1.0.0。</string>
+    <string name="main_class_info" formatted="false">插件入口类的完整类名（包名+类名），如 com.example.MainPlugin。</string>
+    <string name="entry_file_info" formatted="false">相对插件根目录的 HTML 入口文件，通常是 web/index.html。</string>
+    <string name="plugin_notice_info" formatted="false">插件首次启动时向用户展示的说明，用于解释用法。</string>
+    <string name="permissions" formatted="false">权限</string>
+    <string name="permissions_info" formatted="false">插件运行所需的权限。只选择最必要的最小权限。插件首次运行时系统会提示用户授权。</string>
+    <string name="permissions_selected_count">已选 %1$d/%2$d</string>
+    <string name="dependencies" formatted="false">依赖项</string>
+    <string name="dependencies_info" formatted="false">本插件依赖的其他插件 ID，多个用逗号分隔。</string>
+    <string name="comma_separated_plugin_ids" formatted="false">如 com.example.lib1,com.example.lib2</string>
+    <string name="min_host_version" formatted="false">最低宿主版本</string>
+    <string name="min_host_version_info" formatted="false">运行该插件所需的最低 UIN Tool 宿主版本。</string>
+    <string name="api_level" formatted="false">API 级别</string>
+    <string name="api_level_info" formatted="false">插件所需的最低 Android API 级别（默认 21）。</string>
+    <string name="category" formatted="false">分类</string>
+    <string name="category_info" formatted="false">插件所属分类，显示在工具列表中。</string>
+    <string name="update_url" formatted="false">更新地址</string>
+    <string name="update_url_info" formatted="false">可选，用于检查插件更新的 URL。</string>
+    <string name="backend_init_command" formatted="false">初始化命令</string>
+    <string name="backend_init_command_desc" formatted="false">在 Termux 中运行一次以下命令完成配置，UIN Tool 才能启动插件后端。</string>
+    <string name="copy_command" formatted="false">复制命令</string>
+    <string name="backend_runtime_settings_open_failed" formatted="false">打开后端运行设置失败</string>
     <string name="start_creating_backup" formatted="false">========== 开始创建备份 ==========</string>
     <string name="start_download" formatted="false">开始下载</string>
     <string name="start_exploring" formatted="false">开始体验</string>
@@ -2005,6 +2058,7 @@
     <string name="web_code_editor" formatted="false">Web 代码编辑</string>
     <string name="web_dir" formatted="false">  ✅ web/ 目录</string>
     <string name="web_index_html_default" formatted="false">  ✅ web/index.html (默认)</string>
+    <string name="all_project_content_packaged" formatted="false">  ✅ 已打包项目全部内容（web/、scripts/、backend/、res/ 等）</string>
     <string name="web_label" formatted="false">Web</string>
     <string name="web_plugin" formatted="false">Web插件</string>
     <string name="web_plugin_author">作者: %1$s&lt;br></string>

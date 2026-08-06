@@ -44,7 +44,6 @@ fun DevScreen() {
     var showCreatePluginDialog by remember { mutableStateOf(false) }
     var selectedUiType by remember { mutableStateOf("") }
     var isWebViewOnly by remember { mutableStateOf(false) }
-    var showBackendSettings by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -141,13 +140,6 @@ fun DevScreen() {
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            )
-
-            UIComponents.SecondaryButton(
-                text = Str.get(R.string.backend_runtime_settings),
-                icon = Icons.Default.Storage,
-                onClick = { showBackendSettings = true },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
             )
         }
@@ -271,15 +263,6 @@ fun DevScreen() {
                 }
             },
             dismissButton = null
-        )
-    }
-
-    // ============================================================
-    // 后端运行设置（全局，影响所有后端插件）
-    // ============================================================
-    if (showBackendSettings) {
-        BackendSettingsDialog(
-            onDismiss = { showBackendSettings = false }
         )
     }
 }

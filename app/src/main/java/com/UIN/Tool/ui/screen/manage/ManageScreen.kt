@@ -37,7 +37,7 @@ import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.ui.screen.dev.BackendSettingsDialog
+import com.UIN.Tool.ui.components.UpdateDialog
 import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.backup.BackupManagerActivity
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
@@ -70,18 +70,15 @@ fun ManageScreen(
     val preferenceManager = PreferenceManager(context)
 
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var updateMessage by remember { mutableStateOf("") }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var updateChecker by remember { mutableStateOf<UpdateChecker?>(null) }
     var updateDownloader by remember { mutableStateOf<UpdateDownloader?>(null) }
     var showProgressDialog by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf("") }
-    var showBackendSettings by remember { mutableStateOf(false) }
     var downloadTarget by remember { mutableStateOf<ReleaseInfo?>(null) }
 
     var hasCheckedUpdate by remember { mutableStateOf(false) }
     var hasNewVersion by remember { mutableStateOf(false) }
-    var shouldShowUpdateDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         updateChecker = UpdateChecker(context, preferenceManager)
@@ -91,8 +88,6 @@ fun ManageScreen(
     fun performCheckUpdate(showNoUpdateToast: Boolean = false) {
         if (isCheckingUpdate) return
         isCheckingUpdate = true
-        updateMessage = Str.get(R.string.checking_for_updates)
-
         updateChecker?.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
             override fun onCheckStart() {}
 
@@ -106,21 +101,11 @@ fun ManageScreen(
 
                 if (hasNewer && releases.isNotEmpty()) {
                     hasNewVersion = true
-                    shouldShowUpdateDialog = true
                     val latest = releases.first()
-                    updateMessage = Str.get(
-                        R.string.update_dialog_new_version,
-                        latest.versionName,
-                        latest.getFormattedSize(),
-                        latest.getFormattedDate(),
-                        if (forceUpdate) Str.get(R.string.this_is_a_mandatory_update_you_must_) else Str.get(R.string.tap_download_update_to_start_downloa),
-                        (latest.releaseNotes?.take(200) ?: "") + if ((latest.releaseNotes?.length ?: 0) > 200) "..." else ""
-                    )
                     downloadTarget = latest
                     showUpdateDialog = true
                 } else {
                     hasNewVersion = false
-                    shouldShowUpdateDialog = false
                     if (showNoUpdateToast) {
                         // ✅ 移除 Emoji
                         AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio))
@@ -131,6 +116,9 @@ fun ManageScreen(
             override fun onCheckFailed(error: String) {
                 isCheckingUpdate = false
                 hasCheckedUpdate = true
+                hasNewVersion = false
+                downloadTarget = null
+                showUpdateDialog = false
                 if (showNoUpdateToast) {
                     AppToast.error(context, Str.get(R.string.update_check_failed_error, error))
                 }
@@ -140,7 +128,8 @@ fun ManageScreen(
                 isCheckingUpdate = false
                 hasCheckedUpdate = true
                 hasNewVersion = false
-                shouldShowUpdateDialog = false
+                downloadTarget = null
+                showUpdateDialog = false
                 if (showNoUpdateToast) {
                     // ✅ 移除 Emoji
                     AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio_2, currentVersion))
@@ -176,8 +165,7 @@ fun ManageScreen(
 
             override fun onFailed(error: String) {
                 showProgressDialog = false
-                updateMessage = Str.get(R.string.download_failed_error, error)
-                showUpdateDialog = true
+                AppToast.error(context, Str.get(R.string.download_failed_error, error))
             }
         })
 
@@ -221,18 +209,6 @@ fun ManageScreen(
             }
         },
         ManageMenuItem(
-            id = "docs",
-            title = Str.get(R.string.docs_center),
-            icon = Icons.Default.Info,
-            description = Str.get(R.string.help_and_development_docs)
-        ) {
-            try {
-                context.startActivity(Intent(context, DocBrowserActivity::class.java))
-            } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.docs_center_feature_under_developmen))
-            }
-        },
-        ManageMenuItem(
             id = "dev_tools",
             title = Str.get(R.string.dev_tools),
             icon = Icons.Default.DeveloperMode,
@@ -242,6 +218,18 @@ fun ManageScreen(
                 context.startActivity(Intent(context, DevToolsActivity::class.java))
             } catch (e: Exception) {
                 AppToast.warning(context, Str.get(R.string.dev_tools_feature_under_developmen))
+            }
+        },
+        ManageMenuItem(
+            id = "docs",
+            title = Str.get(R.string.docs_center),
+            icon = Icons.Default.Info,
+            description = Str.get(R.string.help_and_development_docs)
+        ) {
+            try {
+                context.startActivity(Intent(context, DocBrowserActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.docs_center_feature_under_developmen))
             }
         },
         ManageMenuItem(
@@ -271,6 +259,30 @@ fun ManageScreen(
             }
         },
         ManageMenuItem(
+            id = "backend_settings",
+            title = Str.get(R.string.backend_runtime_settings),
+            icon = Icons.Default.Storage,
+            description = Str.get(R.string.backend_runtime_settings_desc)
+        ) {
+            try {
+                context.startActivity(Intent(context, BackendSettingsActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.backend_runtime_settings_open_failed))
+            }
+        },
+        ManageMenuItem(
+            id = "github_mirror",
+            title = Str.get(R.string.github_acceleration),
+            icon = Icons.Default.Settings,
+            description = Str.get(R.string.configure_mirror_acceleration)
+        ) {
+            try {
+                context.startActivity(Intent(context, GitHubMirrorActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.github_acceleration_feature_under_de))
+            }
+        },
+        ManageMenuItem(
             id = "widget_config",
             title = Str.get(R.string.widget_configuration),
             icon = Icons.Default.Widgets,
@@ -290,26 +302,6 @@ fun ManageScreen(
             description = Str.get(R.string.check_latest_github_version)
         ) {
             performCheckUpdate(showNoUpdateToast = true)
-        },
-        ManageMenuItem(
-            id = "github_mirror",
-            title = Str.get(R.string.github_acceleration),
-            icon = Icons.Default.Settings,
-            description = Str.get(R.string.configure_mirror_acceleration)
-        ) {
-            try {
-                context.startActivity(Intent(context, GitHubMirrorActivity::class.java))
-            } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.github_acceleration_feature_under_de))
-            }
-        },
-        ManageMenuItem(
-            id = "backend_settings",
-            title = Str.get(R.string.backend_runtime_settings),
-            icon = Icons.Default.Storage,
-            description = Str.get(R.string.backend_runtime_settings_desc)
-        ) {
-            showBackendSettings = true
         }
     )
 
@@ -349,25 +341,39 @@ fun ManageScreen(
         }
     }
 
-    // ==================== 更新对话框 ====================
-    if (showUpdateDialog && shouldShowUpdateDialog) {
-        UIComponents.ConfirmDialog(
-            title = if (isCheckingUpdate) Str.get(R.string.check_for_updates) else Str.get(R.string.update_info),
-            message = updateMessage,
-            confirmText = if (!isCheckingUpdate && downloadTarget != null) Str.get(R.string.download_update) else Str.get(R.string.ok_2),
-            dismissText = if (!isCheckingUpdate && downloadTarget == null) Str.get(R.string.close) else Str.get(R.string.cancel),
-            onConfirm = {
-                if (downloadTarget != null) {
-                    startDownload(downloadTarget!!)
-                }
-                showUpdateDialog = false
-                shouldShowUpdateDialog = false
-            },
+    // ==================== 更新对话框（与开屏共用的 Markdown 弹窗） ====================
+    val updateTarget = downloadTarget
+    if (showUpdateDialog && updateTarget != null) {
+        UpdateDialog(
+            releaseInfo = updateTarget,
+            forceUpdate = updateTarget.forceUpdate,
             onDismiss = {
-                if (!isCheckingUpdate) {
+                if (!updateTarget.forceUpdate) {
                     showUpdateDialog = false
-                    shouldShowUpdateDialog = false
+                    downloadTarget = null
                 }
+            },
+            onDownload = {
+                showUpdateDialog = false
+                startDownload(updateTarget)
+            },
+            onManualDownload = {
+                showUpdateDialog = false
+                downloadTarget = null
+                try {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/${updateTarget.tagName}")
+                    )
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    AppToast.error(context, Str.get(R.string.failed_to_open_browser))
+                }
+            },
+            onIgnore = {
+                showUpdateDialog = false
+                downloadTarget = null
+                preferenceManager.setIgnoredVersion(updateTarget.versionName)
             }
         )
     }
@@ -381,11 +387,6 @@ fun ManageScreen(
                 updateDownloader?.cancelDownload()
             }
         )
-    }
-
-    // ==================== 后端运行设置对话框 ====================
-    if (showBackendSettings) {
-        BackendSettingsDialog(onDismiss = { showBackendSettings = false })
     }
 }
 
