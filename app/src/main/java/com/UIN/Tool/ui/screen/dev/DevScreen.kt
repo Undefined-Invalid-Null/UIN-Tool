@@ -43,9 +43,8 @@ fun DevScreen() {
     // 创建插件对话框状态
     var showCreatePluginDialog by remember { mutableStateOf(false) }
     var selectedUiType by remember { mutableStateOf("") }
-    var showBackendDialog by remember { mutableStateOf(false) }
-    var selectedBackend by remember { mutableStateOf("") }
     var isWebViewOnly by remember { mutableStateOf(false) }
+    var showBackendSettings by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -144,6 +143,13 @@ fun DevScreen() {
                 },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
             )
+
+            UIComponents.SecondaryButton(
+                text = Str.get(R.string.backend_runtime_settings),
+                icon = Icons.Default.Storage,
+                onClick = { showBackendSettings = true },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+            )
         }
 
         // ============================================================
@@ -235,7 +241,8 @@ fun DevScreen() {
                             selectedUiType = "web"
                             isWebViewOnly = false
                             showCreatePluginDialog = false
-                            showBackendDialog = true
+                            // 新式后端：统一走启动脚本模式（启动命令在向导里填写）
+                            navigateToWizard(context, "web", "other")
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -268,62 +275,11 @@ fun DevScreen() {
     }
 
     // ============================================================
-    // 后端选择对话框（白色背景）
+    // 后端运行设置（全局，影响所有后端插件）
     // ============================================================
-    if (showBackendDialog) {
-        AlertDialog(
-            onDismissRequest = { showBackendDialog = false },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
-            title = {
-                Text(
-                    Str.get(R.string.choose_backend_language),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            text = {
-                Text(
-                    Str.get(R.string.choose_the_web_plugin_backend_langua),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            confirmButton = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val backends = listOf(
-                        "python" to "Python",
-                        "node" to "Node.js",
-                        "php" to "PHP",
-                        "binary" to Str.get(R.string.binary_file),
-                        "other" to Str.get(R.string.custom_manual_start)
-                    )
-                    backends.forEach { (key, label) ->
-                        UIComponents.PrimaryButton(
-                            text = label,
-                            onClick = {
-                                selectedBackend = key
-                                showBackendDialog = false
-                                navigateToWizard(context, "web", key)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    TextButton(
-                        onClick = { showBackendDialog = false },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Text(Str.get(R.string.cancel))
-                    }
-                }
-            },
-            dismissButton = null
+    if (showBackendSettings) {
+        BackendSettingsDialog(
+            onDismiss = { showBackendSettings = false }
         )
     }
 }

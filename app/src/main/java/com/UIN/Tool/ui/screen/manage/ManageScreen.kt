@@ -32,14 +32,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.core.update.UpdateChecker
 import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
-import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.ui.screen.log.LogViewerActivity
+import com.UIN.Tool.ui.screen.dev.BackendSettingsDialog
+import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.backup.BackupManagerActivity
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
 import com.UIN.Tool.ui.screen.permission.PermissionManagerActivity
@@ -68,7 +67,6 @@ fun ManageScreen(
     checkUpdate: Boolean = false
 ) {
     val context = LocalContext.current
-    val pluginManager = ServiceLocator.getPluginManager()
     val preferenceManager = PreferenceManager(context)
 
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -78,7 +76,7 @@ fun ManageScreen(
     var updateDownloader by remember { mutableStateOf<UpdateDownloader?>(null) }
     var showProgressDialog by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf("") }
-    var showDeveloperOptions by remember { mutableStateOf(false) }
+    var showBackendSettings by remember { mutableStateOf(false) }
     var downloadTarget by remember { mutableStateOf<ReleaseInfo?>(null) }
 
     var hasCheckedUpdate by remember { mutableStateOf(false) }
@@ -235,12 +233,16 @@ fun ManageScreen(
             }
         },
         ManageMenuItem(
-            id = "logs",
-            title = Str.get(R.string.runtime_logs),
-            icon = Icons.Default.BugReport,
-            description = Str.get(R.string.view_export_and_clear_logs)
+            id = "dev_tools",
+            title = Str.get(R.string.dev_tools),
+            icon = Icons.Default.DeveloperMode,
+            description = Str.get(R.string.dev_tools_desc)
         ) {
-            context.startActivity(Intent(context, LogViewerActivity::class.java))
+            try {
+                context.startActivity(Intent(context, DevToolsActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.dev_tools_feature_under_developmen))
+            }
         },
         ManageMenuItem(
             id = "backup",
@@ -302,12 +304,12 @@ fun ManageScreen(
             }
         },
         ManageMenuItem(
-            id = "developer",
-            title = Str.get(R.string.developer_options),
-            icon = Icons.Default.DeveloperMode,
-            description = Str.get(R.string.signature_verification_and_debug_set)
+            id = "backend_settings",
+            title = Str.get(R.string.backend_runtime_settings),
+            icon = Icons.Default.Storage,
+            description = Str.get(R.string.backend_runtime_settings_desc)
         ) {
-            showDeveloperOptions = true
+            showBackendSettings = true
         }
     )
 
@@ -381,76 +383,9 @@ fun ManageScreen(
         )
     }
 
-    // ==================== 开发者选项对话框 ====================
-    // ✅ 使用 AlertDialog 保持原有 UI
-    if (showDeveloperOptions) {
-        var ignoreSignature by remember {
-            mutableStateOf(PluginManager.isIgnoreSignatureWarning())
-        }
-
-        AlertDialog(
-            onDismissRequest = { showDeveloperOptions = false },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
-            title = {
-                Text(
-                    Str.get(R.string.developer_options),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            },
-            text = {
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Checkbox(
-                            checked = ignoreSignature,
-                            onCheckedChange = { ignoreSignature = it },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.primary,
-                                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
-                        Text(
-                            text = Str.get(R.string.ignore_signature_verification_dev_on),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = Str.get(R.string.when_enabled_unsigned_plugins_can_be),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            },
-            confirmButton = {
-                UIComponents.PrimaryButton(
-                    text = Str.get(R.string.save),
-                    onClick = {
-                        PluginManager.setIgnoreSignatureWarning(ignoreSignature)
-                        // ✅ 移除 Emoji
-                        AppToast.info(
-                            context,
-                            if (ignoreSignature) Str.get(R.string.signature_verification_ignored) else Str.get(R.string.signature_verification_enabled)
-                        )
-                        showDeveloperOptions = false
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            dismissButton = {
-                UIComponents.TextButton(
-                    text = Str.get(R.string.cancel),
-                    onClick = { showDeveloperOptions = false }
-                )
-            }
-        )
+    // ==================== 后端运行设置对话框 ====================
+    if (showBackendSettings) {
+        BackendSettingsDialog(onDismiss = { showBackendSettings = false })
     }
 }
 

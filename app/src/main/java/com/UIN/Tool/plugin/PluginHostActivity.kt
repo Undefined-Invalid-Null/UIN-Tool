@@ -3,12 +3,13 @@ package com.UIN.Tool.plugin
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.app.Activity
-import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -24,10 +25,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import com.UIN.Tool.app.RunCommandService
+import com.UIN.Tool.app.TermuxActivity
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.shared.termux.TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE
+import com.UIN.Tool.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_SERVICE
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
@@ -53,14 +56,6 @@ class PluginHostActivity : AppCompatActivity() {
         private const val BACKEND_START_TIMEOUT = 15000L
         private const val BACKEND_START_TIMEOUT_PROOT = 90000L
         private const val REQUEST_CODE_PERMISSIONS = 1001
-
-        // ===== 启动前命令（pre-command）相关 =====
-        const val KEY_PRE_CMD_DONE = "pre_cmd_done"
-        const val EXTRA_PRE_COMMAND_FINISHED = "pre_command_finished"
-        const val EXTRA_PRE_COMMAND_SUCCESS = "pre_command_success"
-        const val EXTRA_PRE_COMMAND_EXIT_CODE = "pre_command_exit_code"
-        const val EXTRA_PRE_COMMAND_ERRMSG = "pre_command_errmsg"
-        private const val PRE_COMMAND_REQUEST_CODE = 0x5043
     }
 
     private lateinit var container: FrameLayout
@@ -201,12 +196,12 @@ class PluginHostActivity : AppCompatActivity() {
         isBackendStarting = true
         setupBackendTimeout()
 
-        if (info.useProotRuntime() || info.isOtherBackend()) {
-            // proot 容器运行时 / other 模式：走环境流水线
+        if (BackendConfig.isBuiltin(this)) {
+            // 内置 Termux（强制 proot Alpine 容器）：走环境流水线（确保 bootstrap + alpine）
             Logger.i(TAG, Str.get(R.string.going_through_proot_other_environmen))
             runEnvironmentPipeline()
         } else {
-            // 常规 termux 运行时：直接启动后端
+            // 实体 Termux：直接启动后端（allow-external-apps 探测与配置引导在失败回调里处理）
             Logger.i(TAG, Str.get(R.string.going_through_normal_backend_start))
             startBackendInternal()
         }
@@ -225,6 +220,7 @@ class PluginHostActivity : AppCompatActivity() {
                 sendBackendReadyToWebView(port)
             } else {
                 Logger.e(TAG, Str.get(R.string.backend_start_failed_error, error))
+                maybeShowRealTermuxGuidance()
             }
         }
     }
@@ -234,7 +230,7 @@ class PluginHostActivity : AppCompatActivity() {
     // ============================================================
 
     /**
-     * ① Termux 基础环境 → ② Alpine 共享容器 → ③ pre-command → ④ 启动后端
+     * ① Termux 基础环境 → ② Alpine 共享容器 → ③ 启动后端
      */
     private fun runEnvironmentPipeline() {
         val info = pluginInfo ?: return
@@ -254,77 +250,14 @@ class PluginHostActivity : AppCompatActivity() {
                     return@ensureAlpine
                 }
                 Logger.success(TAG, Str.get(R.string.alpine_ready_processing_pre_command))
-                handlePreCommand()
+                startBackendAfterEnv()
             }
         }
-    }
-
-    private fun handlePreCommand() {
-        val info = pluginInfo ?: return
-        val preCmd = info.backendPreCommand.trim()
-        Logger.i(TAG, "🔍 handlePreCommand(), preCmd='$preCmd', done=${isPreCommandDone()}")
-
-        if (preCmd.isEmpty() || isPreCommandDone()) {
-            Logger.success(TAG, Str.get(R.string.no_pre_command_needed_starting_backe))
-            startBackendAfterEnv()
-            return
-        }
-
-        // 进入交互式询问/终端，先收起环境进度弹窗
-        dismissEnvProgress()
-
-        enqueuePluginDialog(
-            PluginDialogRequest.PreCommand(
-                name = info.name,
-                command = preCmd,
-                onRunNow = { runPreCommand() },
-                onLater = { onPreCommandLater() },
-                onCancel = { onPreCommandCancelled() }
-            )
-        )
-    }
-
-    private fun onPreCommandLater() {
-        // 「稍后」：本次不执行 pre-command，也不标记 done；下次打开会再次询问
-        if (pluginInfo?.isOtherBackend() == true) {
-            // other 模式后端由 pre-command 启动，未执行则端口不会就绪
-            isBackendStarting = false
-            Toast.makeText(this, Str.get(R.string.deferred_backend_not_started_needs_p), Toast.LENGTH_LONG).show()
-        } else {
-            startBackendAfterEnv()
-        }
-    }
-
-    private fun onPreCommandCancelled() {
-        // 「取消」：不执行 pre-command，也不自动启动后端
-        isBackendStarting = false
-        Logger.e(TAG, Str.get(R.string.user_cancelled_pre_command_backend_n))
-    }
-
-    private fun isPreCommandDone(): Boolean {
-        val prefs = getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$currentPluginId", MODE_PRIVATE)
-        return prefs.getBoolean(KEY_PRE_CMD_DONE, false)
-    }
-
-    private fun markPreCommandDone() {
-        getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$currentPluginId", MODE_PRIVATE)
-            .edit().putBoolean(KEY_PRE_CMD_DONE, true).apply()
-        Logger.success(TAG, Str.get(R.string.pre_command_marked_done))
     }
 
     private fun startBackendAfterEnv() {
         Logger.i(TAG, "🔍 startBackendAfterEnv()")
-        val info = pluginInfo
-        if (info?.isOtherBackend() == true) {
-            showEnvProgress(if (info.backendPort > 0) Str.get(R.string.waiting_for_backend_port_up_to_90s) else Str.get(R.string.waiting_for_the_pre_command_session_))
-        } else {
-            val prootMsg = if (ProotContainerManager.isAlpineInstalled()) {
-                Str.get(R.string.starting_container_backend_please_wa)
-            } else {
-                Str.get(R.string.starting_container_backend_first_run)
-            }
-            showEnvProgress(if (info?.useProotRuntime() == true) prootMsg else Str.get(R.string.starting_backend_service))
-        }
+        showEnvProgress(Str.get(R.string.starting_backend_service))
         pluginManager.startBackend(currentPluginId) { success, port, error ->
             isBackendStarting = false
             dismissEnvProgress()
@@ -335,86 +268,8 @@ class PluginHostActivity : AppCompatActivity() {
                 sendBackendReadyToWebView(port)
             } else {
                 Toast.makeText(this, Str.get(R.string.backend_start_failed_error_unknown_e, error ?: Str.get(R.string.unknown_error)), Toast.LENGTH_LONG).show()
+                maybeShowRealTermuxGuidance()
             }
-        }
-    }
-
-    /**
-     * 在 Termux 终端会话中执行 pre-command（bash -lc "<command>"）。
-     *
-     * @param withResult 是否通过 PendingIntent 接收会话结束结果。
-     *                   other 模式 pre-command 为长驻服务启动命令，会话不会退出，故不传结果。
-     */
-    private fun runPreCommand() {
-        val info = pluginInfo ?: return
-        val preCmd = info.backendPreCommand.trim()
-        Logger.i(TAG, "🔍 runPreCommand(), withResult=${!info.isOtherBackend()}")
-
-        if (preCmd.isEmpty()) {
-            startBackendAfterEnv()
-            return
-        }
-
-        // 启动终端会话，先收起环境进度弹窗
-        dismissEnvProgress()
-
-        try {
-            val intent = Intent(RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND).apply {
-                setClass(this@PluginHostActivity, RunCommandService::class.java)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, ProotContainerManager.BASH)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, arrayOf("-lc", preCmd))
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, File(Constants.PLUGIN_DIR, info.pluginId).absolutePath)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, Str.get(R.string.pre_command))
-                // 后台执行（APP_SHELL），不弹终端、不用悬浮窗；CUI 插件不走此路径
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_BACKGROUND, true)
-            }
-
-            if (!info.isOtherBackend()) {
-                val pi = PendingIntent.getBroadcast(
-                    this,
-                    PRE_COMMAND_REQUEST_CODE,
-                    Intent(this, PreCommandResultReceiver::class.java)
-                        .setAction(PreCommandResultReceiver.ACTION)
-                        .putExtra(EXTRA_PLUGIN_ID, info.pluginId),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                intent.putExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT, pi)
-                Logger.i(TAG, Str.get(R.string.pendingintent_result_callback_attach))
-            }
-
-            startService(intent)
-            Toast.makeText(this, Str.get(R.string.pre_command_executed_in_terminal), Toast.LENGTH_SHORT).show()
-
-            if (info.isOtherBackend()) {
-                // other 模式：pre-command 即后端服务，会话不退出，改为轮询端口就绪
-                Logger.i(TAG, Str.get(R.string.other_mode_polling_port_readiness))
-                startBackendAfterEnv()
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_start_terminal_e_message_2, e.message), e)
-            dismissEnvProgress()
-            Toast.makeText(this, Str.get(R.string.failed_to_start_terminal_e_message, e.message), Toast.LENGTH_LONG).show()
-            isBackendStarting = false
-        }
-    }
-
-    /**
-     * pre-command 会话结束后刷新后端状态（由 PreCommandResultReceiver 唤起）。
-     */
-    private fun refreshBackendStateAfterPreCommand() {
-        Logger.i(TAG, "🔍 refreshBackendStateAfterPreCommand()")
-        if (isBackendReady) return
-        val port = PluginBackendManager.getPort(currentPluginId)
-        if (PluginBackendManager.isRunning(currentPluginId)) {
-            backendPort = port
-            isBackendReady = true
-            isBackendStarting = false
-            Logger.success(TAG, Str.get(R.string.backend_already_running_port_port, port))
-            sendBackendReadyToWebView(port)
-        } else {
-            Logger.i(TAG, Str.get(R.string.backend_not_running_restarting))
-            startBackendAfterEnv()
         }
     }
 
@@ -427,22 +282,6 @@ class PluginHostActivity : AppCompatActivity() {
         if (!pluginId.isNullOrEmpty() && pluginId != currentPluginId) {
             currentPluginId = pluginId
             pluginInfo = pluginManager.getPluginInfo(pluginId)
-        }
-
-        if (intent.getBooleanExtra(EXTRA_PRE_COMMAND_FINISHED, false)) {
-            val success = intent.getBooleanExtra(EXTRA_PRE_COMMAND_SUCCESS, false)
-            if (success) {
-                markPreCommandDone()
-                refreshBackendStateAfterPreCommand()
-            } else {
-                val exitCode = intent.getIntExtra(EXTRA_PRE_COMMAND_EXIT_CODE, -1)
-                val errmsg = intent.getStringExtra(EXTRA_PRE_COMMAND_ERRMSG) ?: ""
-                Logger.e(TAG, Str.get(R.string.pre_command_failed_exitcode_exitcode, exitCode, errmsg))
-                showPluginInfoDialog(
-                    Str.get(R.string.pre_command_execution_failed),
-                    Str.get(R.string.exit_code_exitcode_if_errmsg_isnotem, exitCode, if (errmsg.isNotEmpty()) "\n\n$errmsg" else "")
-                )
-            }
         }
     }
 
@@ -463,11 +302,7 @@ class PluginHostActivity : AppCompatActivity() {
         }
         backendTimeoutHandler?.postDelayed(
             backendTimeoutRunnable!!,
-            if (pluginInfo?.useProotRuntime() == true || pluginInfo?.isOtherBackend() == true) {
-                BACKEND_START_TIMEOUT_PROOT
-            } else {
-                BACKEND_START_TIMEOUT
-            }
+            BACKEND_START_TIMEOUT_PROOT
         )
     }
 
@@ -557,19 +392,79 @@ class PluginHostActivity : AppCompatActivity() {
             val onConfirm: (String) -> Unit,
             val onDismiss: () -> Unit
         ) : PluginDialogRequest
-
-        data class PreCommand(
-            val name: String,
-            val command: String,
-            val onRunNow: () -> Unit,
-            val onLater: () -> Unit,
-            val onCancel: () -> Unit
-        ) : PluginDialogRequest
     }
 
     fun showPluginInfoDialog(title: String, message: String, onDismiss: (() -> Unit)? = null) {
         Logger.d(TAG, "📩 showPluginInfoDialog: $title")
         enqueuePluginDialog(PluginDialogRequest.Info(title, message, onDismiss))
+    }
+
+    // ============================================================
+    // 实体 Termux 引导（allow-external-apps / bootstrap / 存储授权）
+    // ============================================================
+
+    /**
+     * 后端启动失败时检测实体 Termux 是否未就绪；若是，弹出可复制的配置引导。
+     */
+    private fun maybeShowRealTermuxGuidance() {
+        if (!BackendConfig.isRealTermux(this)) return
+        Thread {
+            val probe = RealTermuxRuntime.probe(this)
+            if (probe.ok) return@Thread
+            if (probe.requiresRunCommandPermission) {
+                // 本应用未获得 com.termux.permission.RUN_COMMAND：
+                // 打开本应用 App Info 权限页并弹窗说明。
+                runOnUiThread {
+                    openAppDetailsSettings()
+                    showPluginInfoDialog(
+                        Str.get(R.string.real_termux_not_ready),
+                        Str.get(R.string.real_termux_run_command_permission_grant_guide)
+                    )
+                }
+                return@Thread
+            }
+            val code = buildRealTermuxSetupCode()
+            copyTextToClipboard(code)
+            runOnUiThread {
+                showPluginInfoDialog(
+                    Str.get(R.string.real_termux_not_ready),
+                    probe.error + "\n\n" +
+                        Str.get(R.string.setup_code_copied_to_clipboard) + "\n\n" + code
+                )
+            }
+        }.start()
+    }
+
+    /** 打开本应用 App Info 页面（权限入口）。 */
+    private fun openAppDetailsSettings() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            )
+        } catch (_: Exception) {
+        }
+    }
+
+    /** 组装可在 Termux 里直接粘贴执行的一行配置命令。 */
+    private fun buildRealTermuxSetupCode(): String {
+        val prootPart = if (BackendConfig.getEnvironment(this@PluginHostActivity) == BackendConfig.ENV_PROOT)
+            "pkg install proot-distro -y && proot-distro install ${BackendConfig.getContainer(this@PluginHostActivity)}"
+        else ""
+        return buildString {
+            append("mkdir -p ~/.termux; ")
+            append("grep -q '^allow-external-apps=true' ~/.termux/termux.properties 2>/dev/null || echo 'allow-external-apps=true' >> ~/.termux/termux.properties; ")
+            append("termux-setup-storage; ")
+            append("termux-reload-settings 2>/dev/null || true")
+            if (prootPart.isNotEmpty()) append("; $prootPart")
+        }.trimEnd()
+    }
+
+    private fun copyTextToClipboard(text: String) {
+        try {
+            val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("UIN_Tool", text))
+        } catch (_: Exception) {
+        }
     }
 
     fun showPluginConfirmDialog(
@@ -747,51 +642,6 @@ class PluginHostActivity : AppCompatActivity() {
                             onClick = {
                                 dismissPluginDialog()
                                 r.onDismiss()
-                            }
-                        ) { Text(Str.get(R.string.cancel)) }
-                    }
-                }
-            )
-
-            is PluginDialogRequest.PreCommand -> UnifiedDialog(
-                onDismissRequest = {
-                    dismissPluginDialog()
-                    r.onCancel()
-                },
-                title = Str.get(R.string.pre_command),
-                content = {
-                    Text(
-                        text = Str.get(R.string.plugin_r_name_needs_a_pre_command_in, r.name, r.command),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            dismissPluginDialog()
-                            r.onRunNow()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.radiusLarge)
-                    ) { Text(Str.get(R.string.run_now)) }
-                },
-                dismissButton = {
-                    Row {
-                        TextButton(
-                            onClick = {
-                                dismissPluginDialog()
-                                r.onLater()
-                            }
-                        ) { Text(Str.get(R.string.later)) }
-                        Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
-                        TextButton(
-                            onClick = {
-                                dismissPluginDialog()
-                                r.onCancel()
                             }
                         ) { Text(Str.get(R.string.cancel)) }
                     }
@@ -1083,18 +933,34 @@ class PluginHostActivity : AppCompatActivity() {
     }
 
     /**
-     * CUI 环境流水线：确保 Termux 环境（proot/other 需要时再确保 Alpine），
-     * 然后启动内嵌终端会话；若插件还声明了后端且非 other 模式，再后台启动后端。
+     * CUI 环境流水线：
+     * - 内置 Termux：确保 Termux 环境（需要时再确保 Alpine），然后启动全屏终端会话；
+     * - 实体 Termux：直接按后端设置（Termux 本机 / Proot 容器）启动 CUI 会话；
+     * 若插件还声明了后端，再后台启动后端。
      */
     private fun runCuiPipeline() {
         val info = pluginInfo ?: return
-        Logger.i(TAG, "🔍 runCuiPipeline()")
+        Logger.i(TAG, "🔍 runCuiPipeline(), backend=${BackendConfig.getImplementation(this)}")
+
+        if (BackendConfig.isRealTermux(this)) {
+            if (startCuiTerminalSession()) {
+                if (info.hasBackend()) {
+                    startBackendAfterEnv()
+                }
+                finish()
+            }
+            return
+        }
+
         ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
             val start = {
                 startCuiTerminalSession()
-                if (info.hasBackend() && !info.isOtherBackend()) {
+                if (info.hasBackend()) {
                     startBackendAfterEnv()
                 }
+                // 纯 CUI：终端会话已启动（全屏 TermuxActivity），关闭占位宿主页面，
+                // 避免残留一个看似“悬浮窗/多余窗口”的空白页。
+                finish()
             }
             if (info.useProotRuntime() || info.isOtherBackend()) {
                 ProotContainerManager.ensureAlpine(applicationContext, status = { showEnvProgress(it) }) { ok ->
@@ -1116,17 +982,23 @@ class PluginHostActivity : AppCompatActivity() {
     }
 
     /**
-     * 通过 RunCommandService 以 TERMINAL_SESSION 方式启动 CUI 会话：
-     * 在真实全屏终端（TermuxActivity）中运行 pre-command，无 pre-command 时进入插件目录的交互式 bash。
+     * 根据全局后端设置启动 CUI 会话：
+     * - 内置 Termux：通过 RunCommandService 以 TERMINAL_SESSION 方式启动，前台拉起全屏 TermuxActivity；
+     * - 实体 Termux：通过 com.termux RUN_COMMAND 启动前台终端会话。
+     * @return 是否成功启动
      */
-    private fun startCuiTerminalSession() {
+    private fun startCuiTerminalSession(): Boolean {
         try {
-            val info = pluginInfo ?: return
+            val info = pluginInfo ?: return false
             val pluginDir = File(Constants.PLUGIN_DIR, currentPluginId)
             val preCmd = info.backendPreCommand.trim()
-            val args = if (preCmd.isNotEmpty()) arrayOf("-lc", preCmd) else arrayOf("-l")
             Logger.i(TAG, "🔍 startCuiTerminalSession(), preCmd='$preCmd'")
 
+            if (BackendConfig.isRealTermux(this)) {
+                return startCuiInRealTermux(info, pluginDir, preCmd)
+            }
+
+            val args = if (preCmd.isNotEmpty()) arrayOf("-lc", preCmd) else arrayOf("-l")
             val intent = Intent(RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND).apply {
                 setClass(this@PluginHostActivity, RunCommandService::class.java)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, ProotContainerManager.BASH)
@@ -1134,14 +1006,96 @@ class PluginHostActivity : AppCompatActivity() {
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, pluginDir.absolutePath)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
                 putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, Str.get(R.string.cui_plugin_terminal))
-                // 不设置 EXTRA_BACKGROUND → Runner.TERMINAL_SESSION → 打开真实终端并执行命令
+                // 不设置 EXTRA_BACKGROUND → Runner.TERMINAL_SESSION → 创建真实终端会话并执行命令。
+                // 用 DONT_OPEN_ACTIVITY 让服务端只建会话、不开 Activity，避免触发
+                // “显示在其他应用上层”权限检查；随后由前台 Activity 直接拉起全屏终端。
+                // 注意：RunCommandService 用 getStringExtra 读取该值，必须传字符串。
+                putExtra(
+                    RUN_COMMAND_SERVICE.EXTRA_SESSION_ACTION,
+                    TERMUX_SERVICE.VALUE_EXTRA_SESSION_ACTION_SWITCH_TO_NEW_SESSION_AND_DONT_OPEN_ACTIVITY.toString()
+                )
             }
             startService(intent)
+            // 前台 Activity 直接启动全屏 TermuxActivity（不依赖“显示在其他应用上层”权限）。
+            // 会话由上面 RUN_COMMAND 创建，TermuxActivity 绑定后会自动附着到该会话。
+            startActivity(TermuxActivity.newInstance(this))
+            // 仅对进入的终端做淡入：宿主保持不透明直至被覆盖，避免交叉淡入淡出时
+            // 双方同时半透明、露出系统桌面/上一页的“空档期”。
+            overridePendingTransition(R.anim.fade_in, 0)
             Logger.success(TAG, Str.get(R.string.cui_terminal_session_started))
+            return true
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.cui_terminal_start_error_e_message, e.message), e)
             Toast.makeText(this, Str.get(R.string.cui_terminal_start_failed_e_message, e.message), Toast.LENGTH_LONG).show()
+            return false
         }
+    }
+
+    /**
+     * 实体 Termux 的 CUI 会话：根据后端设置的环境（Termux 本机 / Proot 容器）
+     * 以前台终端会话方式发送 RUN_COMMAND，由 com.termux 打开全屏终端。
+     */
+    private fun startCuiInRealTermux(info: PluginInfo, pluginDir: File, preCmd: String): Boolean {
+        if (!RealTermuxRuntime.isRunCommandPermissionGranted(this)) {
+            Toast.makeText(
+                this,
+                Str.get(R.string.real_termux_run_command_permission_denied),
+                Toast.LENGTH_LONG
+            ).show()
+            maybeShowRealTermuxGuidance()
+            return false
+        }
+
+        val isProot = BackendConfig.getEnvironment(this) == BackendConfig.ENV_PROOT
+        val intent = if (isProot) {
+            val container = BackendConfig.getContainer(this)
+            val bind = "${pluginDir.absolutePath}:/plugins/${info.pluginId}"
+            RealTermuxRuntime.buildRunCommandIntent(
+                commandPath = RealTermuxRuntime.PROOT_DISTRO_PATH,
+                arguments = buildList {
+                    add("login"); add(container)
+                    add("--bind"); add(bind)
+                    add("--"); add("sh")
+                    if (preCmd.isNotEmpty()) {
+                        add("-lc"); add(preCmd)
+                    } else {
+                        add("-l")
+                    }
+                }.toTypedArray(),
+                workDir = pluginDir.absolutePath,
+                shellName = info.name,
+                commandLabel = Str.get(R.string.cui_plugin_terminal),
+                background = false,
+                sessionAction = RealTermuxRuntime.SESSION_ACTION_DONT_OPEN_ACTIVITY
+            )
+        } else {
+            RealTermuxRuntime.buildRunCommandIntent(
+                commandPath = RealTermuxRuntime.BASH_PATH,
+                arguments = if (preCmd.isNotEmpty()) arrayOf("-lc", preCmd) else arrayOf("-l"),
+                workDir = pluginDir.absolutePath,
+                shellName = info.name,
+                commandLabel = Str.get(R.string.cui_plugin_terminal),
+                background = false,
+                sessionAction = RealTermuxRuntime.SESSION_ACTION_DONT_OPEN_ACTIVITY
+            )
+        }
+
+        if (!RealTermuxRuntime.startRunCommand(this, intent)) {
+            Toast.makeText(
+                this,
+                Str.get(R.string.real_termux_run_command_permission_denied),
+                Toast.LENGTH_LONG
+            ).show()
+            maybeShowRealTermuxGuidance()
+            return false
+        }
+        // 前台 Activity 直接拉起 com.termux 的全屏终端（不依赖其 Draw Over Apps 自动弹出）。
+        // 会话由上面 RUN_COMMAND 创建，com.termux 的 TermuxActivity 绑定后会附着到该会话。
+        startActivity(RealTermuxRuntime.termuxActivityIntent())
+        // 仅淡入新终端，宿主保持不透明，避免交叉淡入淡出露桌面。
+        overridePendingTransition(R.anim.fade_in, 0)
+        Logger.success(TAG, Str.get(R.string.cui_terminal_session_started))
+        return true
     }
 
     // ============================================================
@@ -1181,6 +1135,9 @@ class PluginHostActivity : AppCompatActivity() {
             callback(false, Str.get(R.string.backend_not_ready))
             return
         }
+
+        // WebView 直连请求也刷新空闲回收计时
+        PluginBackendManager.markActivity(currentPluginId)
 
         Thread {
             try {

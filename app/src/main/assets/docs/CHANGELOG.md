@@ -12,6 +12,48 @@
 
 ---
 
+## [5.1.0] - 2026-08-06
+
+### ⚙️ 后端运行架构重构（核心）
+
+**新增全局后端运行设置：**
+- 新增「后端运行设置」（`BackendConfig` + 开发页/管理页设置弹窗），全局统一控制所有后端插件的运行环境，持久化于 `uin_backend_prefs`：
+  - **内置 Termux**（默认）：使用应用内置的精简 Termux，强制走 Proot 共享 Alpine 容器（`alpine`）
+  - **实体 Termux**（`com.termux`）：通过 `RUN_COMMAND` 拉起外部 Termux，可再选 Termux 原生环境或 Proot 容器（容器名可配置，默认 `alpine`）
+- 新增**空闲自动回收**：后端空闲超过可配置时间（默认 5 分钟，可设 3/5/10/15）自动停止，活动请求会刷新计时
+
+**后端启动命令统一（`backendStartCommand`）：**
+- 移除旧式按语言解释器启动（python/node/php/… + `backendPort`/`backendEntry`/`backendPreCommand`），全部统一为 `backend = "other"` + `backendStartCommand` 单一路径
+- 插件打开后宿主执行 `sh -lc` 启动脚本，环境变量（`$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR` 等）内联注入
+- 旧式后端在加载时自动迁移（内存中合成启动命令），无需改动已发布插件
+- **移除启动前命令（`backendPreCommand`）弹窗流程**：删除「现在运行/稍后/取消」询问对话框与 `PreCommandResultReceiver`，`pre_cmd_done` 标记不再使用
+
+**实体 Termux 支持：**
+- 新增 `RealTermuxRuntime` 封装 `com.termux.app.RunCommandService` 的 `RUN_COMMAND` 意图，新增 `com.termux.permission.RUN_COMMAND` 权限声明与 `com.termux` 包探测
+- 启动失败时自动探测并给出引导：`allow-external-apps=true`、`termux-setup-storage`、`proot-distro install`、RUN_COMMAND 权限授予说明
+- 实体 Termux 进程无法被宿主终止，后端停止改为调用约定的 HTTP `/stop` 接口优雅退出
+
+### 🖥️ CUI 终端启动优化
+
+- 内置 Termux：直接前台启动全屏 `TermuxActivity`（`EXTRA_SESSION_ACTION = SWITCH_TO_NEW_SESSION_AND_DONT_OPEN_ACTIVITY`），不再依赖悬浮窗权限
+- 实体 Termux：通过 `RUN_COMMAND` 创建会话后拉起 `com.termux` 全屏终端
+- 两路径均改为纯淡入转场（`overridePendingTransition(R.anim.fade_in, 0)`），修复交叉淡入淡出期间露出系统桌面的空档期
+
+### 🧰 开发工具整合
+
+- 「运行日志」与「开发者选项」合并为独立的「开发工具」页面（`DevToolsActivity`/`DevToolsScreen`），从管理页单一菜单进入
+- 管理页移除「运行日志」「开发者选项」两个入口，新增「开发工具」与「后端运行设置」入口
+- 崩溃后自动跳转到「开发工具」页面展示崩溃日志（原跳转日志页逻辑迁移至新页面）
+
+### 🛠️ 插件开发完善
+
+- web + 后端插件向导不再生成 `web/script.js`，改为生成脚本内联的 `web/index.html`（`simple_index.html.tmpl`）
+- 后端模板改为统一生成 `scripts/start.sh`（启动命令）+ `scripts/backend/server.py`（读 `$PORT` + `/health`、`/stop` 端点），不再按语言生成不同后端入口
+- `plugin.json` 编辑对话框补全后端字段（`backend="other"`、`backendStartCommand`、`backendStartEntry`、`backendAutoStart`、`backendTimeout`、`backendHealthCheck`），`applyPluginJson` 同步读回
+- 开发页移除按语言选择后端的对话框，「Web UI + 后端」统一进入向导填写启动命令
+
+---
+
 ## [5.0.0] - 2026-08-05
 
 ### 🌐 全量国际化（i18n）
@@ -459,6 +501,16 @@
 
 ## 升级指南
 
+### 从 v5.0.0 升级到 v5.1.0
+
+v5.1.0 重构了后端运行架构，升级前请注意：
+
+1. **后端运行环境改为全局配置**：旧插件中的 `backendRuntime`/`backendPort`/`backendEntry`/`backendBinary` 等字段不再用于新式启动流程，加载时自动迁移为 `backendStartCommand`（内存中完成，不写回插件文件），无需改动插件
+2. **启动前命令弹窗移除**：旧版「现在运行/稍后/取消」的 `backendPreCommand` 弹窗流程已删除，`pre_cmd_done` 标记不再使用
+3. **运行环境切换**：如需使用实体 Termux 运行后端，需在「开发」/「管理」页的「后端运行设置」中切换，并按引导开启 `allow-external-apps`、执行 `termux-setup-storage`、授予 RUN_COMMAND 权限
+4. **后端停止方式变化**：实体 Termux 进程无法被宿主终止，后端需实现 `/stop` 端点以优雅退出
+5. **新增空闲自动回收**：后端空闲超过设定时间（默认 5 分钟）会自动停止
+
 ### 从 v4.4.0 升级到 v4.4.4
 
 v4.4.4 是插件弹窗与交互修复版本，升级前请注意：
@@ -499,9 +551,9 @@ v4.0.0 是一次重大重构，升级前请注意：
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.0.0 |
-| 最后更新 | 2026年8月5日 |
-| 对应应用版本 | v5.0.0 (Build 16) |
+| 文档版本 | 5.1.0 |
+| 最后更新 | 2026年8月6日 |
+| 对应应用版本 | v5.1.0 (Build 17) |
 
 ---
 

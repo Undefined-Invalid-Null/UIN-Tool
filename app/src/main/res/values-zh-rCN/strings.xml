@@ -125,6 +125,37 @@
     <string name="backend_command_open_plugin_pluginid">🔓 后台命令: 打开插件 %1$s</string>
     <string name="backend_entry_file_not_found_entrypa">❌ 后端入口文件不存在: %1$s</string>
     <string name="backend_environment" formatted="false">后端运行环境</string>
+    <string name="backend_implementation" formatted="false">后端实现</string>
+    <string name="backend_runtime_settings" formatted="false">后端运行设置</string>
+    <string name="backend_runtime_settings_desc" formatted="false">选择内置或实体 Termux 运行环境、容器与空闲回收时长</string>
+    <string name="builtin_termux" formatted="false">内置 Termux</string>
+    <string name="real_termux" formatted="false">实体 Termux</string>
+    <string name="real_termux_will_call_com_termux_t" formatted="false">实体 Termux：插件在已安装的 Termux（com.termux）内运行，需要先安装并配置好 Termux。</string>
+    <string name="builtin_termux_is_a_simplified_li" formatted="false">内置 Termux：本应用自带的精简 Linux 环境（Proot Alpine 容器），无需额外安装。</string>
+    <string name="proot_container_name" formatted="false">Proot 容器名</string>
+    <string name="run_proot_distro_list_in_termux_t" formatted="false">在 Termux 里执行 proot-distro list 可查看容器名。</string>
+    <string name="idle_recycle_timeout_minutes" formatted="false">空闲回收时长（分钟）</string>
+    <string name="min_" formatted="false">分钟</string>
+    <string name="backend_will_be_stopped_after_being_i" formatted="false">后端空闲超过该时长会被自动停止。建议在启动脚本里配置 /stop 端点以便优雅退出。</string>
+    <string name="reminder" formatted="false">提醒</string>
+    <string name="real_termux_requires_allow_external" formatted="false">使用实体 Termux 前，需要在 Termux 内完成以下配置，插件后端才能被启动：</string>
+    <string name="backend_settings_saved" formatted="false">后端设置已保存</string>
+    <string name="start_backend" formatted="false">启动后端</string>
+    <string name="real_termux_probe_failed_error" formatted="false">实体 Termux 未就绪: %1$s</string>
+    <string name="real_termux_command_started" formatted="false">已向实体 Termux 发送后端命令，等待就绪</string>
+    <string name="real_termux_start_failed_e_message" formatted="false">在实体 Termux 中启动命令失败: %1$s</string>
+    <string name="real_termux_backend_not_ready_pluginid" formatted="false">实体 Termux 后端未就绪（超时）: %1$s</string>
+    <string name="skipping_lingering_cleanup_real_termux" formatted="false">跳过残留后端清理（实体 Termux，跨应用无法杀进程）</string>
+    <string name="backend_dead_idle_recycled_pluginid" formatted="false">后端已退出，已回收状态: %1$s</string>
+    <string name="backend_idle_recycling_pluginid" formatted="false">后端空闲过久，正在回收: %1$s</string>
+    <string name="real_termux_not_ready" formatted="false">实体 Termux 未就绪</string>
+    <string name="setup_code_copied_to_clipboard" formatted="false">请在 Termux 中执行以下命令修复（已复制到剪贴板）：</string>
+    <string name="real_termux_not_installed" formatted="false">未安装 Termux（com.termux）</string>
+    <string name="real_termux_run_command_permission_denied" formatted="false">UIN Tool 缺少 com.termux.permission.RUN_COMMAND 权限。请在 设置 -> 应用 -> UIN Tool -> 权限 中授予（运行 Termux 环境中的命令）。</string>
+    <string name="real_termux_run_command_permission_grant_guide" formatted="false">要在实体 Termux 中运行命令，UIN Tool 需要「com.termux.permission.RUN_COMMAND」权限。\n\n请打开 设置 -> 应用 -> UIN Tool -> 权限，开启「运行 Termux 环境中的命令」。\n\n同时确保 ~/.termux/termux.properties 中已设置 allow-external-apps=true。</string>
+    <string name="failed_to_start_real_termux_probe_e" formatted="false">探测实体 Termux 失败: %1$s</string>
+    <string name="allow_external_apps_not_enabled" formatted="false">未开启 allow-external-apps。请在 ~/.termux/termux.properties 中添加 "allow-external-apps=true"</string>
+    <string name="real_termux_not_initialized" formatted="false">Termux bootstrap 未初始化。请先打开一次 Termux 让它安装基础包</string>
     <string name="backend_health_check_url">📡 健康检查地址: %1$s</string>
     <string name="backend_message_service_ready" formatted="false">✅ 后台消息服务已就绪</string>
     <string name="backend_message_service_started" formatted="false">📡 后台消息服务已启动</string>
@@ -426,6 +457,8 @@
     <string name="developer_2" formatted="false">开发者</string>
     <string name="developer_options" formatted="false">开发者选项</string>
     <string name="developer_options_desc" formatted="false">签名验证、调试设置等</string>
+    <string name="dev_tools" formatted="false">开发工具</string>
+    <string name="dev_tools_desc" formatted="false">运行日志与开发者选项</string>
     <string name="developer_tools" formatted="false">插件开发工具</string>
     <string name="development_docs" formatted="false">开发文档</string>
     <string name="device" formatted="false">设备</string>
@@ -450,6 +483,7 @@
     <string name="docs" formatted="false">文档</string>
     <string name="docs_center" formatted="false">文档中心</string>
     <string name="docs_center_feature_under_developmen" formatted="false">文档中心功能开发中</string>
+    <string name="dev_tools_feature_under_developmen" formatted="false">开发工具功能开发中</string>
     <string name="docs_feature_under_development" formatted="false">文档功能开发中</string>
     <string name="domestic_mirror" formatted="false">国内镜像</string>
     <string name="don_t_ask_again" formatted="false">不再提示</string>
@@ -1085,7 +1119,7 @@
     <string name="opening_plugin_directly_pluginid">直接打开插件: %1$s</string>
     <string name="opening_plugin_from_shortcut_plugini">从快捷方式打开插件: %1$s</string>
     <string name="opening_plugin_pluginid">打开插件: %1$s</string>
-    <string name="opening_terminal_and_running_command" formatted="false">正在打开终端并执行命令...\n\n若未自动弹出，请在通知栏查看 UIN Tool 终端。</string>
+    <string name="opening_terminal_and_running_command" formatted="false">正在打开全屏终端执行命令...\n\n终端打开后本页会自动关闭。</string>
     <string name="optional_resources_like_images_and_a" formatted="false">可选的图片、音频等资源文件</string>
     <string name="orientation" formatted="false">方向</string>
     <string name="other_mode_backend_ready_pluginid_po">✅ other 模式后端就绪: %1$s (端口 %2$s)</string>
@@ -1518,6 +1552,7 @@
     <string name="src_dir" formatted="false">  ✅ src/ 目录</string>
     <string name="stack_trace_n" formatted="false">堆栈信息:\n</string>
     <string name="start_command_required" formatted="false">启动命令（必需）</string>
+    <string name="start_command_runs_in_sh_lc_to_s" formatted="false">宿主会用 sh -lc 执行该命令，并注入 $PORT、$PLUGIN_ID、$WORK_DIR 环境变量。这里做依赖检测并启动后端，例如 "sh scripts/start.sh"。运行环境（内置/实体 Termux、Termux/proot）在开发页全局设定。</string>
     <string name="start_command_run_in_terminal_when_t" formatted="false">启动命令（插件打开时在终端中执行）</string>
     <string name="start_creating_backup" formatted="false">========== 开始创建备份 ==========</string>
     <string name="start_download" formatted="false">开始下载</string>

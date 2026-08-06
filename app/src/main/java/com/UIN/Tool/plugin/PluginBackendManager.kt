@@ -37,6 +37,8 @@ object PluginBackendManager {
     private val processLocks = mutableMapOf<String, Any>()
     private val startTimes = mutableMapOf<String, Long>()
     private val processPids = mutableMapOf<String, Int>()
+    /** 每个插件最后一次被请求的时间（毫秒），用于空闲自动回收 */
+    private val lastRequestTimes = mutableMapOf<String, Long>()
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -115,9 +117,40 @@ object PluginBackendManager {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(object : Runnable {
             override fun run() {
                 cleanupExpiredMessages()
+                checkIdleBackends()
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, CLEANUP_INTERVAL_MS)
             }
         }, CLEANUP_INTERVAL_MS)
+    }
+
+    /**
+     * 空闲自动回收：超过全局配置的空闲时长（默认 5 分钟）且无请求的后端会被停止。
+     * 先探测端口，端口已关则直接清理状态（进程已死）；否则调用 stopBackend 优雅停止。
+     */
+    private fun checkIdleBackends() {
+        if (!::context.isInitialized) return
+        val idleMinutes = BackendConfig.getIdleTimeoutMinutes(context)
+        val idleMs = idleMinutes * 60_000L
+        val now = System.currentTimeMillis()
+
+        runningPorts.keys.toList().forEach { pluginId ->
+            val port = runningPorts[pluginId] ?: return@forEach
+            if (port <= 0) return@forEach
+            val last = lastRequestTimes[pluginId] ?: return@forEach
+            if (now - last < idleMs) return@forEach
+
+            if (!isPortOpen(port)) {
+                runningProcesses.remove(pluginId)
+                runningPorts.remove(pluginId)
+                startTimes.remove(pluginId)
+                processPids.remove(pluginId)
+                lastRequestTimes.remove(pluginId)
+                Logger.w(TAG, Str.get(R.string.backend_dead_idle_recycled_pluginid, pluginId))
+            } else {
+                Logger.i(TAG, Str.get(R.string.backend_idle_recycling_pluginid, pluginId))
+                stopBackend(pluginId)
+            }
+        }
     }
 
     private fun cleanupExpiredMessages() {
@@ -420,6 +453,11 @@ object PluginBackendManager {
         return runningPorts[pluginId] ?: 0
     }
 
+    /** 记录某插件后端最近一次活跃时间（WebView 直连请求时也需调用，防止空闲误回收）。 */
+    fun markActivity(pluginId: String) {
+        lastRequestTimes[pluginId] = System.currentTimeMillis()
+    }
+
     // ============================================================
     // ✅ startBackend 带详细日志
     // ============================================================
@@ -453,146 +491,253 @@ object PluginBackendManager {
                 return true
             }
 
-            // other 模式：宿主不自动启动后端进程，仅注册端口并轮询就绪
-            if (info.isOtherBackend()) {
-                return startOtherBackend(info)
-            }
-
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
             Logger.d(TAG, Str.get(R.string.plugin_dir_plugindir_absolutepath, pluginDir.absolutePath))
             Logger.d(TAG, Str.get(R.string.dir_exists_plugindir_exists, pluginDir.exists()))
-            
+
             if (!pluginDir.exists()) {
                 Logger.e(TAG, Str.get(R.string.plugin_dir_not_found_plugindir_absol, pluginDir.absolutePath))
                 return false
             }
 
-            val entryPath = info.getBackendEntryPath(pluginDir.absolutePath)
-            val entryFile = File(entryPath)
-            Logger.d(TAG, Str.get(R.string.entry_path_entrypath, entryPath))
-            Logger.d(TAG, Str.get(R.string.file_exists_entryfile_exists, entryFile.exists()))
+            val isReal = BackendConfig.isRealTermux(context)
 
-            if (!entryFile.exists() && info.backend.lowercase() != "php") {
-                Logger.e(TAG, Str.get(R.string.backend_entry_file_not_found_entrypa, entryPath))
+            // 新式后端：统一 other + backendStartCommand。旧式插件已在 PluginInfo.fromJson 迁移为新式，
+            // 因此这里只存在一条启动路径。
+            val port = findAvailablePort()
+            runningPorts[pluginId] = port
+            lastRequestTimes[pluginId] = System.currentTimeMillis()
+            cleanupLingeringBackend(info, pluginDir, port)
+            val success = if (isReal) {
+                startScriptInRealTermux(context, info, pluginDir, port)
+            } else {
+                startScriptInBuiltin(context, info, pluginDir, port)
+            }
+            if (success) {
+                Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, pluginId, port))
+            } else {
+                runningPorts.remove(pluginId)
+            }
+            return success
+        }
+    }
+
+    // ============================================================
+    // 新式后端启动（内置 Termux，强制 proot Alpine 容器）
+    // ============================================================
+
+    private fun startScriptInBuiltin(context: Context, info: PluginInfo, pluginDir: File, port: Int): Boolean {
+        val container = BackendConfig.getBuiltinContainer()
+        val startCmd = info.getStartCommandText()
+        val inner = buildScriptCommand(info, "/plugins/${info.pluginId}", port, startCmd)
+        val command = listOf(
+            "/data/data/${context.packageName}/files/usr/bin/proot-distro",
+            "login", container,
+            "--bind", "${pluginDir.absolutePath}:/plugins/${info.pluginId}",
+            "--", "sh", "-lc", inner
+        )
+        Logger.d(TAG, Str.get(R.string.executing_command, command.joinToString(" ")))
+        return launchBuiltinProcess(context, info, pluginDir, port, command, isProot = true)
+    }
+
+    // ============================================================
+    // 新式后端启动（实体 Termux：Termux 本机 / proot 容器，RUN_COMMAND）
+    // ============================================================
+
+    private fun startScriptInRealTermux(context: Context, info: PluginInfo, pluginDir: File, port: Int): Boolean {
+        if (!probeRealTermux(context)) return false
+
+        val startCmd = info.getStartCommandText()
+        val isProotEnv = BackendConfig.getEnvironment(context) == BackendConfig.ENV_PROOT
+
+        val intent = if (isProotEnv) {
+            val container = BackendConfig.getContainer(context)
+            val inner = buildScriptCommand(info, "/plugins/${info.pluginId}", port, startCmd)
+            RealTermuxRuntime.buildRunCommandIntent(
+                commandPath = RealTermuxRuntime.PROOT_DISTRO_PATH,
+                arguments = arrayOf(
+                    "login", container,
+                    "--bind", "${pluginDir.absolutePath}:/plugins/${info.pluginId}",
+                    "--", "sh", "-lc", inner
+                ),
+                workDir = pluginDir.absolutePath,
+                shellName = info.name,
+                commandLabel = Str.get(R.string.start_backend)
+            )
+        } else {
+            val inner = buildScriptCommand(info, pluginDir.absolutePath, port, startCmd)
+            RealTermuxRuntime.buildRunCommandIntent(
+                commandPath = RealTermuxRuntime.BASH_PATH,
+                arguments = arrayOf("-lc", inner),
+                workDir = pluginDir.absolutePath,
+                shellName = info.name,
+                commandLabel = Str.get(R.string.start_backend)
+            )
+        }
+
+        return launchRealTermux(context, info, port, intent)
+    }
+
+    /**
+     * 组装新式启动脚本的 sh -lc 命令体：注入 PORT/PLUGIN_ID/PLUGIN_DIR/WORK_DIR 环境变量。
+     * @param baseDir 后端运行所在目录（proot 内为 /plugins/<id>，实体 Termux 为宿主插件目录）
+     */
+    private fun buildScriptCommand(info: PluginInfo, baseDir: String, port: Int, startCmd: String): String {
+        val exports = buildString {
+            append("export PORT=$port; ")
+            append("export PLUGIN_ID=${info.pluginId}; ")
+            append("export PLUGIN_DIR=$baseDir; ")
+            append("export WORK_DIR=$baseDir; ")
+            append("export PYTHONUNBUFFERED=1; ")
+        }
+        return "$exports cd $baseDir && $startCmd"
+    }
+
+    // ============================================================
+    // 实体 Termux 前端探测：allow-external-apps / 已初始化。失败时返回 false 并记录原因。
+    // ============================================================
+    private fun probeRealTermux(context: Context): Boolean {
+        val probe = RealTermuxRuntime.probe(context)
+        if (!probe.ok) {
+            Logger.e(TAG, Str.get(R.string.real_termux_probe_failed_error, probe.error))
+            return false
+        }
+        return true
+    }
+
+    /**
+     * 启动实体 Termux RUN_COMMAND（无法追踪进程），随后轮询端口就绪。
+     */
+    private fun launchRealTermux(context: Context, info: PluginInfo, port: Int, intent: android.content.Intent): Boolean {
+        try {
+            if (!RealTermuxRuntime.startRunCommand(context, intent)) {
+                Logger.w(TAG, Str.get(R.string.real_termux_run_command_permission_denied))
                 return false
             }
+            Logger.i(TAG, Str.get(R.string.real_termux_command_started))
+        } catch (e: Exception) {
+            Logger.e(TAG, Str.get(R.string.real_termux_start_failed_e_message, e.message), e)
+            return false
+        }
 
-            val port = if (info.backendPort > 0) info.backendPort else findAvailablePort()
-            runningPorts[pluginId] = port
-            Logger.d(TAG, Str.get(R.string.allocating_port_port, port))
+        // 实体 Termux 后端冷启动较慢（尤其 proot 容器），放宽就绪超时
+        val readyTimeout = maxOf(info.backendTimeout, if (BackendConfig.getEnvironment(context) == BackendConfig.ENV_PROOT) 120 else 60)
+        val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
+        if (ready) {
+            Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, info.pluginId, port))
+            return true
+        }
+        Logger.w(TAG, Str.get(R.string.real_termux_backend_not_ready_pluginid, info.pluginId))
+        return false
+    }
 
-            val command: List<String>
-            val workDir: File
-            // 进程被杀/应用被系统回收后，子进程会残留并继续占用端口；启动前清理，
-            // 否则新后端会因 "Address already in use" 反复失败。
-            cleanupLingeringBackend(info, pluginDir, port)
+    /**
+     * 通过 ProcessBuilder 启动内置 Termux 后端（可杀进程组），随后轮询端口就绪。
+     */
+    private fun launchBuiltinProcess(
+        context: Context,
+        info: PluginInfo,
+        pluginDir: File,
+        port: Int,
+        command: List<String>,
+        isProot: Boolean
+    ): Boolean {
+        val workDir = pluginDir
+        Logger.d(TAG, Str.get(R.string.work_dir_workdir_absolutepath, workDir.absolutePath))
 
-            if (info.useProotRuntime()) {
-                command = buildProotCommand(info, pluginDir, port)
-                workDir = pluginDir
-            } else {
-                val interpreter = getPythonPath(context)
-                Logger.d(TAG, Str.get(R.string.using_python_interpreter, interpreter))
-                Logger.d(TAG, Str.get(R.string.exists_file_interpreter_exists, File(interpreter).exists()))
-                command = listOf(interpreter, entryFile.absolutePath)
-                workDir = entryFile.parentFile ?: pluginDir
+        try {
+            val processBuilder = ProcessBuilder(command)
+                .directory(workDir)
+                .redirectErrorStream(false)
+
+            val env = processBuilder.environment()
+            val termuxBinDir = "/data/data/${context.packageName}/files/usr/bin"
+
+            val currentPath = env["PATH"] ?: ""
+            env["PATH"] = "$termuxBinDir:/system/bin:/system/xbin:/vendor/bin:$currentPath"
+
+            env["PYTHONUNBUFFERED"] = "1"
+            env["PORT"] = port.toString()
+            env["PLUGIN_ID"] = info.pluginId
+            env["PLUGIN_DIR"] = pluginDir.absolutePath
+            env["WORK_DIR"] = Constants.WORK_DIR
+
+            val termuxHomeDir = "/data/data/${context.packageName}/files/home"
+            val termuxPrefixDir = "/data/data/${context.packageName}/files/usr"
+            env["TERMUX_HOME"] = termuxHomeDir
+            env["TERMUX_PREFIX"] = termuxPrefixDir
+
+            // proot 运行时需完整的 Termux 环境变量，否则 proot-distro 会按默认 com.termux
+            // 前缀解析容器目录（CONTAINERS_DIR），导致 login 报 "container 'alpine' is not installed"。
+            if (isProot) {
+                env["PREFIX"] = termuxPrefixDir
+                env["HOME"] = termuxHomeDir
+                env["TMPDIR"] = "$termuxPrefixDir/tmp"
+                env["TERMUX__PREFIX"] = termuxPrefixDir
+                env["TERMUX__HOME"] = termuxHomeDir
+                env["TERMUX_APP__PACKAGE_NAME"] = context.packageName
+                env["TERMUX_VERSION"] = try {
+                    context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                } catch (_: Exception) {
+                    null
+                } ?: "1"
             }
-            Logger.d(TAG, Str.get(R.string.executing_command, command.joinToString(" ")))
-            Logger.d(TAG, Str.get(R.string.work_dir_workdir_absolutepath, workDir.absolutePath))
 
-            try {
-                val processBuilder = ProcessBuilder(command)
-                    .directory(workDir)
-                    .redirectErrorStream(false)
+            info.backendEnv.forEach { (k, v) -> env[k] = v }
 
-                val env = processBuilder.environment()
-                val termuxBinDir = "/data/data/${context.packageName}/files/usr/bin"
-                
-                val currentPath = env["PATH"] ?: ""
-                env["PATH"] = "$termuxBinDir:/system/bin:/system/xbin:/vendor/bin:$currentPath"
-                
-                env["PYTHONUNBUFFERED"] = "1"
-                env["PORT"] = port.toString()
-                env["PLUGIN_ID"] = pluginId
-                env["PLUGIN_DIR"] = pluginDir.absolutePath
-                env["WORK_DIR"] = Constants.WORK_DIR
+            Logger.d(TAG, "🔧 PATH: ${env["PATH"]}")
+            if (isProot) {
+                Logger.d(TAG, Str.get(R.string.proot_env_prefix, env["PREFIX"], env["TERMUX__PREFIX"], env["TERMUX_APP__PACKAGE_NAME"], env["HOME"], env["TMPDIR"]))
+            }
 
-                val termuxHomeDir = "/data/data/${context.packageName}/files/home"
-                val termuxPrefixDir = "/data/data/${context.packageName}/files/usr"
-                env["TERMUX_HOME"] = termuxHomeDir
-                env["TERMUX_PREFIX"] = termuxPrefixDir
+            Logger.i(TAG, Str.get(R.string.starting_process))
+            val process = processBuilder.start()
+            runningProcesses[info.pluginId] = process
+            startTimes[info.pluginId] = System.currentTimeMillis()
+            processPids[info.pluginId] = getProcessPid(process)
+            Logger.d(TAG, Str.get(R.string.process_started_pid_processpids_plug, processPids[info.pluginId]))
 
-                // proot 运行时需完整的 Termux 环境变量，否则 proot-distro 会按默认 com.termux
-                // 前缀解析容器目录（CONTAINERS_DIR），导致 login 报 "container 'alpine' is not installed"。
-                // 还原 restore（经 AppShell/TermuxShellEnvironment）时这些变量已就位，此处补全保持一致。
-                if (info.useProotRuntime()) {
-                    env["PREFIX"] = termuxPrefixDir
-                    env["HOME"] = termuxHomeDir
-                    env["TMPDIR"] = "$termuxPrefixDir/tmp"
-                    env["TERMUX__PREFIX"] = termuxPrefixDir
-                    env["TERMUX__HOME"] = termuxHomeDir
-                    env["TERMUX_APP__PACKAGE_NAME"] = context.packageName
-                    env["TERMUX_VERSION"] = try {
-                        context.packageManager.getPackageInfo(context.packageName, 0).versionName
-                    } catch (_: Exception) {
-                        null
-                    } ?: "1"
-                }
+            monitorOutput(info.pluginId, process, isProot)
 
-                info.backendEnv.forEach { (k, v) -> env[k] = v }
+            // proot 容器运行时冷启动较慢（proot-distro login + proot chroot + 链接转换 + 解释器），
+            // 放宽就绪超时（至少 120s）
+            val readyTimeout = if (isProot) {
+                maxOf(info.backendTimeout, 120)
+            } else {
+                minOf(info.backendTimeout, 30)
+            }
+            Logger.d(TAG, Str.get(R.string.starting_health_check_timeout_readyt, readyTimeout))
+            Logger.d(TAG, Str.get(R.string.backend_health_check_url, "http://127.0.0.1:$port${info.backendHealthCheck}"))
+            val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
 
-                Logger.d(TAG, "🔧 PATH: ${env["PATH"]}")
-                if (info.useProotRuntime()) {
-                    Logger.d(TAG, Str.get(R.string.proot_env_prefix, env["PREFIX"], env["TERMUX__PREFIX"], env["TERMUX_APP__PACKAGE_NAME"], env["HOME"], env["TMPDIR"]))
-                }
-
-                Logger.i(TAG, Str.get(R.string.starting_process))
-                val process = processBuilder.start()
-                runningProcesses[pluginId] = process
-                startTimes[pluginId] = System.currentTimeMillis()
-                processPids[pluginId] = getProcessPid(process)
-                Logger.d(TAG, Str.get(R.string.process_started_pid_processpids_plug, processPids[pluginId]))
-
-                monitorOutput(pluginId, process, info.useProotRuntime())
-
-                // proot 容器运行时冷启动较慢（proot-distro login + proot chroot + 链接转换 + 解释器），
-                // 放宽就绪超时（至少 120s）；常规 termux 运行时仍以 backendTimeout 为上限（最多 30s）
-                val readyTimeout = if (info.useProotRuntime()) {
-                    maxOf(info.backendTimeout, 120)
-                } else {
-                    minOf(info.backendTimeout, 30)
-                }
-                Logger.d(TAG, Str.get(R.string.starting_health_check_timeout_readyt, readyTimeout))
-                Logger.d(TAG, Str.get(R.string.backend_health_check_url, "http://127.0.0.1:$port${info.backendHealthCheck}"))
-                val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
-
-                if (ready) {
-                    Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, pluginId, port))
+            if (ready) {
+                Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, info.pluginId, port))
+                return true
+            } else {
+                if (process.isAlive) {
+                    Logger.w(TAG, Str.get(R.string.backend_running_but_health_check_tim))
                     return true
                 } else {
-                    if (process.isAlive) {
-                        Logger.w(TAG, Str.get(R.string.backend_running_but_health_check_tim))
-                        return true
-                    } else {
-                        Logger.e(TAG, Str.get(R.string.backend_process_exited))
-                        process.destroy()
-                        runningProcesses.remove(pluginId)
-                        runningPorts.remove(pluginId)
-                        return false
-                    }
+                    Logger.e(TAG, Str.get(R.string.backend_process_exited))
+                    process.destroy()
+                    runningProcesses.remove(info.pluginId)
+                    runningPorts.remove(info.pluginId)
+                    return false
                 }
-
-            } catch (e: Exception) {
-                Logger.e(TAG, Str.get(R.string.backend_start_error_e_message, e.message), e)
-                runningProcesses.remove(pluginId)
-                runningPorts.remove(pluginId)
-                return false
             }
+
+        } catch (e: Exception) {
+            Logger.e(TAG, Str.get(R.string.backend_start_error_e_message, e.message), e)
+            runningProcesses.remove(info.pluginId)
+            runningPorts.remove(info.pluginId)
+            return false
         }
     }
 
     fun stopBackend(pluginId: String) {
         synchronized(processLocks.getOrPut(pluginId) { Any() }) {
+            // 优先优雅停止：调用约定好的 /stop 端点。实体 Termux 无法杀进程，全靠它。
+            requestGracefulStop(pluginId)
             val pid = processPids[pluginId]
             if (pid != null && pid > 0) {
                 killProcessGroup(pid)
@@ -602,7 +747,30 @@ object PluginBackendManager {
             runningPorts.remove(pluginId)
             startTimes.remove(pluginId)
             processPids.remove(pluginId)
+            lastRequestTimes.remove(pluginId)
             Logger.i(TAG, Str.get(R.string.stopping_backend_pluginid, pluginId))
+        }
+    }
+
+    /** 向约定好的 HTTP /stop 端点发送请求，实现优雅退出（对实体 Termux 是唯一停止手段）。 */
+    private fun requestGracefulStop(pluginId: String) {
+        val port = runningPorts[pluginId] ?: return
+        if (port <= 0 || !isPortOpen(port)) return
+        Thread {
+            try {
+                val request = Request.Builder()
+                    .url("http://127.0.0.1:$port/stop")
+                    .get()
+                    .build()
+                val response = httpClient.newCall(request).execute()
+                response.close()
+                Logger.d(TAG, "graceful /stop sent for $pluginId")
+            } catch (_: Exception) {
+            }
+        }.start()
+        try {
+            Thread.sleep(400)
+        } catch (_: InterruptedException) {
         }
     }
 
@@ -627,6 +795,9 @@ object PluginBackendManager {
             callback(false, Str.get(R.string.invalid_port))
             return
         }
+
+        // 刷新最后请求时间，避免空闲回收误杀正在使用的后端
+        markActivity(pluginId)
 
         Thread {
             try {
@@ -680,59 +851,6 @@ object PluginBackendManager {
         return 8000 + runningPorts.size
     }
 
-    private fun getPythonPath(context: Context): String {
-        val packageName = context.packageName
-
-        val termuxPythonPaths = listOf(
-            "/data/data/$packageName/files/usr/bin/python",
-            "/data/data/$packageName/files/usr/bin/python3",
-            "/data/data/$packageName/files/usr/bin/python3.14",
-            "/data/data/$packageName/files/usr/bin/python3.13",
-            "/data/data/$packageName/files/usr/bin/python3.12",
-            "/data/data/$packageName/files/usr/bin/python3.11",
-            "/data/data/$packageName/files/usr/bin/python3.10",
-        )
-
-        for (path in termuxPythonPaths) {
-            val file = File(path)
-            if (file.exists()) {
-                Logger.d(TAG, Str.get(R.string.found_python_path, path))
-                return path
-            }
-        }
-
-        try {
-            val process = ProcessBuilder("which", "python")
-                .redirectErrorStream(true)
-                .start()
-            val result = process.inputStream.bufferedReader().readText().trim()
-            if (result.isNotEmpty()) {
-                val file = File(result)
-                if (file.exists()) {
-                    Logger.d(TAG, Str.get(R.string.found_via_which_result, result))
-                    return result
-                }
-            }
-        } catch (_: Exception) { }
-
-        try {
-            val process = ProcessBuilder("which", "python3")
-                .redirectErrorStream(true)
-                .start()
-            val result = process.inputStream.bufferedReader().readText().trim()
-            if (result.isNotEmpty()) {
-                val file = File(result)
-                if (file.exists()) {
-                    Logger.d(TAG, Str.get(R.string.found_via_which_python3_result, result))
-                    return result
-                }
-            }
-        } catch (_: Exception) { }
-
-        Logger.w(TAG, Str.get(R.string.python_not_found_using_default_pytho))
-        return "python"
-    }
-
     private fun monitorOutput(pluginId: String, process: Process, isProot: Boolean) {
         Thread {
             try {
@@ -769,102 +887,19 @@ object PluginBackendManager {
     }
 
     /**
-     * other 模式后端启动：宿主不自动启动后端进程，仅注册端口并轮询 TCP 就绪。
-     * backendPort > 0 时轮询端口；backendPort == 0 视为无端口插件，pre-command 会话存活即运行中。
-     */
-    private fun startOtherBackend(info: PluginInfo): Boolean {
-        val pluginId = info.pluginId
-        Logger.i(TAG, Str.get(R.string.other_mode_not_auto_starting_waiting, pluginId))
-
-        if (info.backendPort > 0) {
-            runningPorts[pluginId] = info.backendPort
-            // other 模式 pre-command 可能需等待容器启动，超时放宽到 90s+
-            val readyTimeout = maxOf(info.backendTimeout, 90)
-            Logger.d(TAG, Str.get(R.string.other_mode_polling_port_info_backend, info.backendPort, readyTimeout))
-            val ready = waitForPortOpen(info.backendPort, readyTimeout)
-            if (ready) {
-                Logger.success(TAG, Str.get(R.string.other_mode_backend_ready_pluginid_po, pluginId, info.backendPort))
-                return true
-            } else {
-                Logger.w(TAG, Str.get(R.string.other_mode_port_not_ready_pluginid, pluginId))
-                return false
-            }
-        } else {
-            // 无端口插件：pre-command 进程会话存活即运行中
-            runningPorts[pluginId] = 0
-            Logger.success(TAG, Str.get(R.string.other_mode_port_less_backend_marked_, pluginId))
-            return true
-        }
-    }
-
-    /**
-     * 构建 proot 容器内后端启动命令：
-     *   proot-distro login alpine --bind <pluginDir>:/plugins/<id> --env KEY=VALUE ... -- <interpreter> <entry>
-     *
-     * 将宿主插件目录绑定到容器内 /plugins/<pluginId>，使入口文件在容器中可见。
-     *
-     * 关键：proot-distro login 会给容器进程组装一份最小环境（不继承宿主 ProcessBuilder 的 env），
-     * 因此后端需要的变量（PORT/PLUGIN_ID/PLUGIN_DIR/WORK_DIR 等）必须经 login 的 --env 参数透传，
-     * 否则容器内拿不到端口号，宿主健康检查永远失败。PLUGIN_DIR/WORK_DIR 在容器内需用 /plugins/<id>。
-     */
-    private fun buildProotCommand(info: PluginInfo, pluginDir: File, port: Int): List<String> {
-        val prootBin = "/data/data/com.UIN.Tool/files/usr/bin/proot-distro"
-        val entryPath = info.getBackendEntryPath(pluginDir.absolutePath)
-        val entryInContainer = entryPath.replace(pluginDir.absolutePath, "/plugins/${info.pluginId}")
-
-        val envFlags = buildList {
-            add("--env")
-            add("PORT=$port")
-            add("--env")
-            add("PLUGIN_ID=${info.pluginId}")
-            add("--env")
-            add("PLUGIN_DIR=/plugins/${info.pluginId}")
-            add("--env")
-            add("WORK_DIR=/plugins/${info.pluginId}")
-            add("--env")
-            add("PYTHONUNBUFFERED=1")
-            info.backendEnv.forEach { (k, v) ->
-                add("--env")
-                add("$k=$v")
-            }
-        }
-
-        val inner: List<String> = when (info.backend.lowercase()) {
-            "python" -> listOf("python3", entryInContainer)
-            "node" -> listOf("node", entryInContainer)
-            "php" -> listOf("php", "-S", "127.0.0.1:${if (info.backendPort > 0) info.backendPort else 8000}", "-t", info.backendPhpDocRoot.ifEmpty { "/plugins/${info.pluginId}" })
-            "binary" -> listOf(info.backendBinary.ifEmpty { entryInContainer }) + info.backendArgs
-            "deno" -> listOf("deno", "run", "--allow-net", "--allow-read", entryInContainer)
-            "ruby" -> listOf("ruby", entryInContainer)
-            "perl" -> listOf("perl", entryInContainer)
-            "lua" -> listOf("lua", entryInContainer)
-            "java" -> {
-                if (info.backendJavaJar.isNotEmpty()) {
-                    listOf("java", "-jar", "/plugins/${info.pluginId}/${info.backendJavaJar}")
-                } else if (info.backendJavaClass.isNotEmpty()) {
-                    listOf("java", "-cp", "/plugins/${info.pluginId}", info.backendJavaClass)
-                } else {
-                    listOf("java", entryInContainer)
-                }
-            }
-            else -> listOf("bash", entryInContainer)
-        }
-
-        return listOf(
-            prootBin, "login", "alpine",
-            "--bind", "${pluginDir.absolutePath}:/plugins/${info.pluginId}",
-        ) + envFlags + listOf("--") + inner
-    }
-
-    /**
      * 清理上一次进程残留的后端子进程。
      * Android 应用进程被杀后，其派生的 proot/python 子进程不会随之退出（被 init 接管），
      * 仍占用端口，导致下次启动 Address already in use。通过 /proc/<pid>/cmdline 匹配
-     * 本插件标识（proot 用 /plugins/<id>，普通用宿主插件目录路径）并 SIGKILL。
+     * 本插件标识（proot 容器内固定为 /plugins/<id>）并 SIGKILL。
+     * 仅内置 Termux 可清理（同 UID 可杀）；实体 Termux 的进程跨应用不可杀，跳过。
      */
     private fun cleanupLingeringBackend(info: PluginInfo, pluginDir: File, port: Int) {
         if (!isPortOpen(port)) return
-        val marker = if (info.useProotRuntime()) "/plugins/${info.pluginId}" else pluginDir.absolutePath
+        if (BackendConfig.isRealTermux(context)) {
+            Logger.d(TAG, Str.get(R.string.skipping_lingering_cleanup_real_termux))
+            return
+        }
+        val marker = "/plugins/${info.pluginId}"
         val lingering = findPidsByCmdline(marker).filter { it != android.os.Process.myPid() }
         if (lingering.isEmpty()) return
         Logger.w(TAG, Str.get(R.string.port_port_held_by_lingering_backend_, port, lingering))
@@ -994,25 +1029,5 @@ object PluginBackendManager {
         } catch (_: Exception) {
             false
         }
-    }
-
-    /** 轮询等待 TCP 端口监听（other 模式就绪判定）。 */
-    private fun waitForPortOpen(port: Int, timeout: Int): Boolean {
-        val startTime = System.currentTimeMillis()
-        val timeoutMs = timeout * 1000L
-        Logger.d(TAG, Str.get(R.string.waiting_for_port_listen_127_0_0_1_po, port, timeout))
-        while (System.currentTimeMillis() - startTime < timeoutMs) {
-            if (isPortOpen(port)) {
-                Logger.success(TAG, Str.get(R.string.port_port_is_listening, port))
-                return true
-            }
-            try {
-                Thread.sleep(200)
-            } catch (_: InterruptedException) {
-                return false
-            }
-        }
-        Logger.w(TAG, Str.get(R.string.port_port_listen_timed_out, port))
-        return false
     }
 }

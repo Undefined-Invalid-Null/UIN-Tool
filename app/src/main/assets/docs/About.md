@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-5.0.0-blue)
-![Build](https://img.shields.io/badge/build-16-green)
+![Version](https://img.shields.io/badge/version-5.1.0-blue)
+![Build](https://img.shields.io/badge/build-17-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -58,19 +58,40 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v5.0.0 (Build 16)
+### 当前版本：v5.1.0 (Build 17)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 5.0.0 |
-| 版本代码 | 16 |
-| 更新日期 | 2026年8月5日 |
+| 版本号 | 5.1.0 |
+| 版本代码 | 17 |
+| 更新日期 | 2026年8月6日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
 | 架构 | arm64-v8a |
 
 ### 版本历史
+
+#### v5.1.0 (Build 17) - ⚙️ 后端运行架构重构 + 开发工具整合
+
+**⚙️ 后端运行架构重构：**
+- 新增全局「后端运行设置」（开发页插件工具卡片 / 管理页菜单）：**内置 Termux**（默认，强制 Proot Alpine 容器）或 **实体 Termux**（`com.termux` 的 `RUN_COMMAND`），实体 Termux 可选 Termux 原生 / Proot 容器环境
+- 后端启动统一为「启动命令」模式（`backendStartCommand`）：移除按语言解释器（python/node/php/…）与启动前命令弹窗流程，旧式插件自动迁移
+- 新增后端**空闲自动回收**（默认 5 分钟可配置）与实体 Termux 就绪探测 / 一键引导（`allow-external-apps`、`termux-setup-storage`、`proot-distro install`）
+- 实体 Termux 进程无法被杀，后端停止改为调用 HTTP `/stop` 接口优雅退出
+
+**🖥️ CUI 终端启动优化：**
+- 全屏终端改为直接前台启动（`SWITCH_TO_NEW_SESSION_AND_DONT_OPEN_ACTIVITY`），不再依赖悬浮窗权限
+- 纯淡入转场（`fade_in, 0`），修复交叉淡入淡出期间露出系统桌面的空档期
+
+**🧰 开发工具整合：**
+- 「运行日志」与「开发者选项」合并为独立的「开发工具」页面；管理页新增「后端运行设置」菜单项
+- 崩溃后自动跳转到「开发工具」页面展示崩溃日志
+
+**🛠️ 插件开发完善：**
+- web + 后端插件向导生成脚本内联的 `index.html`，不再生成 `web/script.js`
+- 后端模板统一为 `scripts/start.sh` + `scripts/backend/server.py`（读 `$PORT`、`/health`、`/stop` 端点）
+- `plugin.json` 编辑对话框补全后端字段（`backendStartCommand` 等），`applyPluginJson` 同步读回
 
 #### v5.0.0 (Build 16) - 🌐 全量国际化 + 动态主题引擎 + UI 全面优化
 
@@ -167,7 +188,7 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 - 修复确认对话框不显示的问题
 - 修复截图功能无法保存的问题（改用视图绘制方式捕获画面）
 
-#### v4.4.0 (2026年7月28日) - 🎉 持久化存储 + 权限系统完善
+#### v4.4.0 (Build 13) - 🎉 持久化存储 + 权限系统完善
 
 **🎉 重大更新：插件数据持久化存储**
 

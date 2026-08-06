@@ -133,6 +133,14 @@ fun BasePluginWizardScreen(
                 put("permissions", "")
                 put("dependencies", "")
                 put("notice", viewModel.pluginNotice.value)
+                if (uiType == "web" && backendType.isNotEmpty()) {
+                    put("backend", "other")
+                    put("backendStartCommand", viewModel.backendStartCommand.value.trim().ifBlank { "sh scripts/start.sh" })
+                    put("backendStartEntry", "scripts/start.sh")
+                    put("backendAutoStart", true)
+                    put("backendTimeout", 30)
+                    put("backendHealthCheck", "/health")
+                }
                 if (uiType == "cui") {
                     put("backendRuntime", viewModel.backendRuntime.value.ifEmpty { "termux" })
                     put("backendPreCommand", viewModel.backendPreCommand.value.ifBlank { "python3 scripts/script.py" })
@@ -158,6 +166,7 @@ fun BasePluginWizardScreen(
             viewModel.pluginNotice.value = json.optString("notice", viewModel.pluginNotice.value)
             viewModel.backendRuntime.value = json.optString("backendRuntime", viewModel.backendRuntime.value)
             viewModel.backendPreCommand.value = json.optString("backendPreCommand", viewModel.backendPreCommand.value)
+            viewModel.backendStartCommand.value = json.optString("backendStartCommand", viewModel.backendStartCommand.value)
             true
         } catch (e: Exception) {
             AppToast.error(context, Str.get(R.string.json_parse_failed_e_message, e.message))
@@ -536,10 +545,10 @@ fun BasePluginWizardScreen(
                         onPluginNoticeChange = { viewModel.pluginNotice.value = it },
                         uiType = uiType,
                         backendType = backendType,
-                        backendRuntime = viewModel.backendRuntime.value,
-                        onBackendRuntimeChange = { viewModel.backendRuntime.value = it },
                         backendPreCommand = viewModel.backendPreCommand.value,
-                        onBackendPreCommandChange = { viewModel.backendPreCommand.value = it }
+                        onBackendPreCommandChange = { viewModel.backendPreCommand.value = it },
+                        backendStartCommand = viewModel.backendStartCommand.value,
+                        onBackendStartCommandChange = { viewModel.backendStartCommand.value = it }
                     )
                     1 -> PluginIconStep(
                         iconPath = viewModel.iconPath.value,

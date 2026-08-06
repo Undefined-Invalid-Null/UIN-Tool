@@ -35,6 +35,10 @@ data class PluginInfo(
     var backend: String = "",
     var backendRuntime: String = "",
     var backendPort: Int = 0,
+    // 启动命令：宿主用 sh -lc 执行插件内的启动脚本（依赖检测 + 真正后端启动），
+    // 由插件配置，运行环境由用户在软件内全局设定。web+后端 插件必填。
+    var backendStartCommand: String = "",
+    var backendStartEntry: String = "scripts/start.sh",
     var backendEntry: String = "scripts/backend/server.py",
     var backendAutoStart: Boolean = true,
     var backendKeepAlive: Boolean = false,
@@ -74,6 +78,16 @@ data class PluginInfo(
 ) {
 
     fun hasBackend(): Boolean = backend.isNotEmpty() && backendAutoStart
+
+    /** 新式 web+后端 插件：通过启动命令（sh 执行插件内脚本）启动，而非语言解释器 */
+    fun hasStartCommand(): Boolean = backendStartCommand.isNotBlank()
+
+    /** 实际要执行的启动命令（缺省回退到入口脚本） */
+    fun getStartCommandText(): String =
+        backendStartCommand.ifBlank { "sh $backendStartEntry" }
+
+    /** 启动脚本在插件目录内的完整路径 */
+    fun getBackendStartEntryPath(pluginDir: String): String = "$pluginDir/$backendStartEntry"
 
     fun useProotRuntime(): Boolean = backendRuntime.equals("proot", ignoreCase = true)
 
@@ -200,6 +214,48 @@ data class PluginInfo(
         return if (backendHealthCheck.startsWith("/")) backendHealthCheck else "/$backendHealthCheck"
     }
 
+    /**
+     * 旧式后端强制迁移为新式（内存中完成，不写回插件文件）：
+     * - 无 backendStartCommand 的旧式语言后端（python/node/php/...）→ 由语言+入口合成启动命令，backend 置为 "other"。
+     * - 旧式 other（由 pre-command 启动长驻服务）→ pre-command 即启动命令。
+     * 迁移后宿主统一走「other + backendStartCommand」单一路径，旧式启动分支不再存在。
+     */
+    fun migrateLegacyBackend() {
+        if (backend.isBlank() || backendStartCommand.isNotBlank()) return
+
+        val lang = backend.lowercase()
+        val cmd = if (lang == "other") {
+            backendPreCommand.ifBlank { backendEntry }
+        } else {
+            when (lang) {
+                "python" -> "python3 $backendEntry"
+                "node" -> "node $backendEntry"
+                "php" -> "php -S 127.0.0.1:\${PORT:-8000} -t ${backendPhpDocRoot.ifBlank { "." }}"
+                "binary" -> {
+                    val bin = backendBinary.ifBlank { backendEntry }
+                    if (backendArgs.isNotEmpty()) "$bin ${backendArgs.joinToString(" ")}" else bin
+                }
+                "deno" -> "deno run --allow-net --allow-read $backendEntry"
+                "go" -> "go run $backendEntry"
+                "ruby" -> "ruby $backendEntry"
+                "perl" -> "perl $backendEntry"
+                "lua" -> "lua $backendEntry"
+                "java" -> when {
+                    backendJavaJar.isNotEmpty() -> "java -jar $backendJavaJar"
+                    backendJavaClass.isNotEmpty() -> "java -cp . $backendJavaClass"
+                    else -> "java $backendEntry"
+                }
+                else -> backendPreCommand.ifBlank { backendEntry }
+            }
+        }.trim()
+
+        backendStartCommand = cmd
+        backendStartEntry = backendEntry
+        backend = "other"
+        backendRuntime = ""
+        backendPreCommand = ""
+    }
+
     fun toJson(): String {
         return JSONObject().apply {
             put("pluginId", pluginId)
@@ -223,6 +279,8 @@ data class PluginInfo(
             put("backend", backend)
             put("backendRuntime", backendRuntime)
             put("backendPort", backendPort)
+            put("backendStartCommand", backendStartCommand)
+            put("backendStartEntry", backendStartEntry)
             put("backendEntry", backendEntry)
             put("backendAutoStart", backendAutoStart)
             put("backendKeepAlive", backendKeepAlive)
@@ -248,7 +306,7 @@ data class PluginInfo(
         fun fromJson(json: String): PluginInfo? {
             return try {
                 val obj = JSONObject(json)
-                PluginInfo(
+                val info = PluginInfo(
                     pluginId = obj.optString("pluginId", ""),
                     version = obj.optInt("version", 1),
                     versionName = obj.optString("versionName", "1.0.0"),
@@ -270,6 +328,8 @@ data class PluginInfo(
                     backend = obj.optString("backend", ""),
                     backendRuntime = obj.optString("backendRuntime", ""),
                     backendPort = obj.optInt("backendPort", 0),
+                    backendStartCommand = obj.optString("backendStartCommand", ""),
+                    backendStartEntry = obj.optString("backendStartEntry", "scripts/start.sh"),
                     backendEntry = obj.optString("backendEntry", "scripts/backend/server.py"),
                     backendAutoStart = obj.optBoolean("backendAutoStart", true),
                     backendKeepAlive = obj.optBoolean("backendKeepAlive", false),
@@ -289,6 +349,8 @@ data class PluginInfo(
                     maxCpuTime = obj.optInt("maxCpuTime", 60),
                     maxConcurrentTasks = obj.optInt("maxConcurrentTasks", 5)
                 )
+                info.migrateLegacyBackend()
+                info
             } catch (e: Exception) {
                 null
             }

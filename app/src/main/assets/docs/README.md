@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.0.0 |
-| 对应应用版本 | v5.0.0 (Build 16) |
-| 最后更新 | 2026年8月5日 |
+| 文档版本 | 5.1.0 |
+| 对应应用版本 | v5.1.0 (Build 17) |
+| 最后更新 | 2026年8月6日 |
 
 ---
 
@@ -38,13 +38,11 @@
 
 ### 五、Web 插件开发（带后端）
 - [5.1 概述](#51-概述)
-- [5.2 支持的后端语言](#52-支持的后端语言)
-- [5.3 Python 后端开发](#53-python-后端开发)
-- [5.4 Node.js 后端开发](#54-nodejs-后端开发)
-- [5.5 PHP 后端开发](#55-php-后端开发)
-- [5.6 二进制后端开发](#56-二进制后端开发)
-- [5.7 前端与后端通信](#57-前端与后端通信)
-- [5.8 后端 API 规范](#58-后端-api-规范)
+- [5.2 后端运行设置（全局）](#52-后端运行设置全局)
+- [5.3 启动命令与后端文件](#53-启动命令与后端文件)
+- [5.4 plugin.json 配置](#54-pluginjson-配置)
+- [5.5 前端与后端通信](#55-前端与后端通信)
+- [5.6 后端 API 规范](#56-后端-api-规范)
 
 ### 六、CUI 终端插件开发（v4.5.0 新增）
 - [6.1 CUI 插件是什么](#61-cui-插件是什么)
@@ -141,12 +139,7 @@
    - **纯 WebView**：仅 HTML/CSS/JS，无后端
    - **WebView + 后端**：HTML/CSS/JS + 后端服务
    - **CUI 终端**：全屏终端中运行脚本（v4.5.0 新增）
-5. 如选择「WebView + 后端」，选择后端语言：
-   - Python（推荐，使用内置 http.server）
-   - Node.js
-   - PHP
-   - 二进制文件
-   - 自定义（other，宿主不自动启动，由启动前命令手动拉起）
+5. 如选择「WebView + 后端」，向导中填写**后端启动命令**（默认 `sh scripts/start.sh`），后端运行环境在「开发」页或「管理」页的「后端运行设置」中全局配置（内置 Termux / 实体 Termux）
 6. 按照向导完成配置
 
 ### 1.2 配置插件信息
@@ -178,9 +171,9 @@
 - 向导会自动生成空白模板文件
 
 **带后端的 Web 插件**
-- 后端文件（server.py / server.js / index.php）自动生成空白模板
+- 向导生成 `scripts/start.sh`（启动命令）与 `scripts/backend/server.py`（后端服务，内置 http.server）
 - 无需额外编译
-- ⚠️ 生成后需手动修正 `plugin.json`：将 `entry` 改回 `web/index.html`（向导会误写为后端脚本路径），并把 `scripts/` 后端文件放入插件安装目录（当前打包器不打包 `scripts/`）
+- ⚠️ 当前打包器对 Web 插件只打包 `web/` 目录，不打包 `scripts/`：生成后需手动把 `scripts/` 后端文件放入插件安装目录（`/storage/emulated/0/UIN_Tool/plugins/{pluginId}/scripts/backend/`），否则后端启动命令找不到入口文件
 
 ### 1.5 导入运行
 
@@ -197,12 +190,12 @@
 
 | 特性 | 原生插件 | 纯 Web 插件 | Web + 后端插件 | CUI 终端插件 |
 |------|----------|-------------|----------------|--------------|
-| 开发语言 | Kotlin/Java | HTML/CSS/JS | HTML/CSS/JS + 后端语言 | Python/Shell 脚本 |
+| 开发语言 | Kotlin/Java | HTML/CSS/JS | HTML/CSS/JS + 启动命令（如 Python） | Python/Shell 脚本 |
 | UI 开发方式 | 代码动态创建 | HTML 布局 | HTML 布局 | 全屏终端 |
 | 开发效率 | 中等 | 高 | 高 | 高 |
 | 运行性能 | 高 | 中等 | 中等 | 高 |
 | 热更新 | 需重新编译 | 无需编译 | 无需编译 | 无需编译 |
-| 后端支持 | 无 | 无 | Python/Node.js/PHP/二进制/Deno/Go 等 12 种 | 可选（见 6.6） |
+| 后端支持 | 无 | 无 | 统一启动命令模式（`backendStartCommand`），运行环境全局设定 | 可选（见 6.6） |
 | 数据持久化 | ✅ PluginContext | ✅ UINPlugin API | ✅ UINPlugin API | ✅ 脚本内自行处理 |
 | 学习成本 | 需懂 Android | 懂前端即可 | 懂前端 + 后端 | 懂脚本即可 |
 | 编译方式 | 需要编译 | 无需编译 | 无需编译 | 无需编译 |
@@ -577,52 +570,104 @@ window.addEventListener('destroy', () => { console.log('插件销毁'); });
 
 ### 5.1 概述
 
-v4.2.0 新增功能：Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统命令执行等能力。
+Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统命令执行等能力。v5.1.0 起后端运行架构重构为**统一的「启动命令」模式**：
 
-后端服务特点：
+· 所有后端插件统一走 `backend: "other"` + `backendStartCommand` 单一路径，不再按语言解释器（python/node/php/…）区分启动方式
+· 运行环境由用户在软件内**全局设定**（内置 Termux / 实体 Termux），插件无需关心
+· 宿主执行 `sh -lc "<启动命令>"`，并注入 `$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR` 等环境变量
+· 旧式后端（`backend: "python"` 等语言后端）在加载时自动迁移为启动命令模式，无需改动已发布插件
 
-· 自动启动：用户打开插件时自动启动后端（`backendAutoStart: true`），完全无感知
-· 进程管理：插件关闭时自动停止后端（可配置保持运行）
-· HTTP 通信：使用 HTTP API，无需 WebSocket
-· 多语言支持：Python、Node.js、PHP、二进制程序、Deno、Go、Ruby、Perl、Lua、Java、Rust，以及自定义 other 模式
+### 5.2 后端运行设置（全局）
 
-### 5.2 支持的后端语言
+在「开发」页（插件工具卡片）或「管理」页（「后端运行设置」菜单项）点击「**后端运行设置**」可全局配置所有后端插件的运行环境，持久化于 `uin_backend_prefs`：
 
-| 后端类型 | 启动命令（termux 运行时） | 入口文件 | 适用场景 |
-|------|------|----------|----------|
-| python | `python`（自动探测路径） | server.py | 数据处理、AI、Web 服务 |
-| node | `node` | server.js | Web 服务、实时应用 |
-| php | `php -S 127.0.0.1:<port> -t <docRoot>` | index.php | Web 服务 |
-| binary | 可执行文件 | 任意 | 已有程序、系统工具 |
-| deno | `deno run --allow-net --allow-read` | server.ts | 现代 TypeScript 服务 |
-| go | `go run` | main.go | 编译型后端 |
-| ruby | `ruby` | server.rb | 脚本服务 |
-| perl | `perl` | server.pl | 脚本服务 |
-| lua | `lua` | server.lua | 轻量脚本 |
-| java | `java -jar <jar>` / `java -cp <dir> <class>` | Main.java | 企业级后端 |
-| rust | `cargo run --release --bin <name>` | main.rs | 高性能后端 |
-| other | 宿主不启动，由启动前命令手动拉起 | — | 常驻服务、手动启动 |
+| 设置项 | 选项 | 说明 |
+|------|------|------|
+| 运行实现 | 内置 Termux（默认） | 使用应用内置的精简 Termux，强制走 Proot 共享 Alpine 容器（`alpine`） |
+| | 实体 Termux | 通过 `com.termux` 的 `RUN_COMMAND` 拉起外部 Termux |
+| 环境（仅实体 Termux） | Termux 原生 | 直接在 Termux 环境中运行 |
+| | Proot 容器 | 在 Proot 容器中运行，容器名可配置（默认 `alpine`） |
+| 空闲回收超时 | 3 / 5 / 10 / 15 分钟 | 后端空闲超过该时长自动停止（默认 5 分钟） |
 
-> 安装命令：未配置 `backendInstallCmd` 时，宿主按语言给出默认 `pkg install` 命令（python→`pkg install python`、node→`pkg install nodejs`、php→`pkg install php`、java→`pkg install openjdk-17` 等）。环境检查命令同理（`python --version`、`node --version` 等）。
+> 使用实体 Termux 需要满足：安装 Termux、在 `.termux/termux.properties` 设置 `allow-external-apps=true`、执行 `termux-setup-storage` 并授予 `com.termux.permission.RUN_COMMAND`。启动失败时宿主会自动探测并给出对应引导。
 
-### 5.3 Python 后端开发
+### 5.3 启动命令与后端文件
 
-目录结构
+向导生成的后端插件包含以下文件：
 
 ```
 your-plugin/
 ├── plugin.json
 ├── icon.png
 ├── web/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
+│   └── index.html          # 前端页面（脚本已内联，不再生成 script.js）
 └── scripts/
+    ├── start.sh            # 启动命令入口（宿主以 sh -lc 执行）
     └── backend/
-        └── server.py          # Python 后端入口
+        └── server.py       # 后端服务示例（读 $PORT，含 /health、/stop 端点）
 ```
 
-plugin.json 配置
+`scripts/start.sh` 模板（由 `backend/start.sh.tmpl` 渲染）：
+
+```sh
+#!/usr/bin/env sh
+# 宿主已注入环境变量：PORT（动态端口）、PLUGIN_ID、PLUGIN_DIR、WORK_DIR
+set -e
+cd "$(dirname "$0")"
+# ---- 依赖检测：动态查找解释器，环境无关（Termux 用 pkg，容器用 apk） ----
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "[start.sh] python3 not found, installing..."
+    pkg install python -y 2>/dev/null || apk add python3 -y 2>/dev/null || {
+        echo "[start.sh] failed to install python3, exit"
+        exit 1
+    }
+fi
+echo "[start.sh] starting backend on 127.0.0.1:${PORT:-8000}"
+exec python3 scripts/backend/server.py
+```
+
+`scripts/backend/server.py` 模板（由 `backend/server.py.tmpl` 渲染，内置 `http.server`，无第三方依赖）：
+
+```python
+#!/usr/bin/env python3
+import json, os, threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = int(os.environ.get("PORT", "8000"))
+PLUGIN_ID = os.environ.get("PLUGIN_ID", "")
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            return self._json({"status": "ok", "plugin": PLUGIN_ID})
+        if self.path == "/stop":
+            return self._stop()
+        return self._json({"path": self.path, "method": "GET"})
+    def do_POST(self):
+        if self.path == "/stop":
+            return self._stop()
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        body = self.rfile.read(length).decode("utf-8", "ignore") if length else ""
+        return self._json({"path": self.path, "method": "POST", "body": body})
+    def _stop(self):
+        self._json({"status": "stopping"})
+        threading.Thread(target=self.server.shutdown, daemon=True).start()
+    def _json(self, data):
+        payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+    def log_message(self, *args):
+        pass
+
+if __name__ == "__main__":
+    print(f"[server.py] listening on 127.0.0.1:{PORT}")
+    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+```
+
+### 5.4 plugin.json 配置
 
 ```json
 {
@@ -631,409 +676,110 @@ plugin.json 配置
     "versionName": "1.0.0",
     "uiType": "web",
     "entry": "web/index.html",
-    "backend": "python",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/server.py",
-    "backendAutoStart": true,
-    "backendTimeout": 30
-}
-```
-
-server.py 模板
-
-```python
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import sys
-import os
-import json
-import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from socketserver import ThreadingMixIn
-
-PORT = int(os.environ.get("PORT", 8000))
-PLUGIN_DIR = os.environ.get("PLUGIN_DIR", ".")
-
-class SimpleHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/' or self.path == '/health':
-            self.send_json(200, {"status": "healthy", "timestamp": time.time()})
-        else:
-            self.send_json(404, {"error": "Not Found"})
-
-    def do_POST(self):
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else '{}'
-        try:
-            data = json.loads(body) if body else {}
-        except:
-            data = {}
-
-        if self.path == '/api/compute':
-            self.handle_compute(data)
-        elif self.path == '/api/echo':
-            self.handle_echo(data)
-        else:
-            self.send_json(404, {"error": "Not Found"})
-
-    def handle_compute(self, data):
-        try:
-            expression = data.get('expression', '')
-            safe_dict = {
-                "sum": lambda x: sum(x) if x else 0,
-                "len": len, "abs": abs,
-                "min": lambda x: min(x) if x else None,
-                "max": lambda x: max(x) if x else None,
-                "round": round, "pow": pow,
-                "sqrt": lambda x: x ** 0.5 if x >= 0 else None,
-                "pi": 3.141592653589793,
-            }
-            if expression:
-                result = eval(expression, {"__builtins__": {}}, safe_dict)
-            else:
-                result = {"message": "No expression"}
-            self.send_json(200, {"status": "ok", "result": result})
-        except Exception as e:
-            self.send_json(400, {"status": "error", "error": str(e)})
-
-    def handle_echo(self, data):
-        self.send_json(200, {"status": "ok", "echo": data, "timestamp": time.time()})
-
-    def send_json(self, status, data):
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
-
-class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    daemon_threads = True
-    allow_reuse_address = True
-
-if __name__ == "__main__":
-    print(f"Python 后端启动 (端口: {PORT})")
-    server = ThreadedHTTPServer(('127.0.0.1', PORT), SimpleHandler)
-    server.serve_forever()
-```
-
-### 5.4 Node.js 后端开发
-
-目录结构
-
-```
-your-plugin/
-├── plugin.json
-├── web/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-└── scripts/
-    └── backend/
-        └── server.js           # Node.js 后端入口
-```
-
-plugin.json 配置
-
-```json
-{
-    "pluginId": "com.example.nodebackend",
-    "version": 1,
-    "versionName": "1.0.0",
-    "uiType": "web",
-    "entry": "web/index.html",
-    "backend": "node",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/server.js",
-    "backendAutoStart": true,
-    "backendTimeout": 30
-}
-```
-
-server.js 模板（使用 Node 内置 `http` 模块，无需安装依赖）
-
-```javascript
-const http = require('http');
-
-const PORT = process.env.PORT || 8000;
-
-const server = http.createServer((req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-
-    if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
-        res.end(JSON.stringify({ status: 'healthy' }));
-        return;
-    }
-
-    if (req.method === 'POST' && req.url === '/api/echo') {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', () => {
-            res.end(JSON.stringify({ status: 'ok', echo: JSON.parse(body || '{}') }));
-        });
-        return;
-    }
-
-    res.statusCode = 404;
-    res.end(JSON.stringify({ error: 'Not Found' }));
-});
-
-server.listen(PORT, '127.0.0.1', () => {
-    console.log(`Node.js 后端启动 (端口: ${PORT})`);
-});
-```
-
-### 5.5 PHP 后端开发
-
-目录结构
-
-```
-your-plugin/
-├── plugin.json
-├── web/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-└── scripts/
-    └── backend/
-        └── index.php           # PHP 后端入口
-```
-
-plugin.json 配置
-
-```json
-{
-    "pluginId": "com.example.phpbackend",
-    "version": 1,
-    "versionName": "1.0.0",
-    "uiType": "web",
-    "entry": "web/index.html",
-    "backend": "php",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/index.php",
-    "backendPhpDocRoot": "scripts/backend",
-    "backendAutoStart": true,
-    "backendTimeout": 30
-}
-```
-
-> PHP 后端由宿主以 `php -S 127.0.0.1:<port> -t <docRoot>` 启动内置 Web 服务器。`backendPhpDocRoot` 指定文档根目录，留空则使用插件目录。入口文件使用超全局变量读取请求：
-
-```php
-<?php
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$method = $_SERVER['REQUEST_METHOD'];
-
-if (($path === '/' || $path === '/health') && $method === 'GET') {
-    echo json_encode(['status' => 'healthy']);
-} elseif ($path === '/api/echo' && $method === 'POST') {
-    $body = json_decode(file_get_contents('php://input'), true) ?? [];
-    echo json_encode(['status' => 'ok', 'echo' => $body]);
-} else {
-    http_response_code(404);
-    echo json_encode(['error' => 'Not Found']);
-}
-```
-
-### 5.6 二进制后端开发
-
-目录结构
-
-```
-your-plugin/
-├── plugin.json
-├── web/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-└── scripts/
-    └── backend/
-        └── myapp               # 可执行文件（已编译）
-```
-
-plugin.json 配置
-
-```json
-{
-    "pluginId": "com.example.binarybackend",
-    "version": 1,
-    "versionName": "1.0.0",
-    "uiType": "web",
-    "entry": "web/index.html",
-    "backend": "binary",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/myapp",
-    "backendBinary": "scripts/backend/myapp",
-    "backendArgs": "--port,8000",
-    "backendAutoStart": true,
-    "backendTimeout": 30
-}
-```
-
-| 字段 | 说明 |
-|------|------|
-| `backendBinary` | 可执行文件路径；留空则使用 `backendEntry` |
-| `backendArgs` | 附加命令行参数，逗号分隔（如 `--port,8000`） |
-| `backendInstallCmd` | 首次使用时的安装命令（默认 `pkg install <语言>`，binary 可自定义） |
-| `backendCheckCmd` | 环境检查命令（默认 `--version`） |
-
-> 二进制程序需为 arm64-v8a 架构。宿主会以 `<backendBinary> <backendArgs...>` 方式启动。
-
-### 5.7 前端与后端通信
-
-```javascript
-// 通过 JS 接口调用后端
-function callBackend() {
-    const callbackId = 'api_' + Date.now();
-    window.UINPluginCallbacks = window.UINPluginCallbacks || {};
-    window.UINPluginCallbacks[callbackId] = function(response) {
-        const data = JSON.parse(response);
-        console.log('后端响应:', data);
-    };
-    UINPlugin.callBackendApi('/api/compute', 'POST', JSON.stringify({
-        expression: 'sum([1,2,3,4,5])'
-    }), callbackId);
-}
-
-// 直接使用 fetch
-function fetchBackend() {
-    fetch('http://127.0.0.1:8000/api/echo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Hello' })
-    })
-    .then(res => res.json())
-    .then(data => console.log(data));
-}
-```
-
-### 5.8 后端 API 规范
-
-宿主通过 HTTP 与后端通信，后端必须遵守以下约定：
-
-**健康检查**
-
-- 路径：`backendHealthCheck` 指定（默认 `/health`），**必须带前导 `/`**（宿主不会自动补全）
-- 要求：返回 HTTP 200 即视为就绪
-- 检测方式：宿主每 **200ms** 先做 TCP 端口探测（500ms 连接超时），端口打开后再发 **GET** 请求健康检查端点（部分后端如 Python `http.server` 未实现 `do_HEAD`，故用 GET 而非 HEAD）
-- 超时：termux 运行时封顶 `min(backendTimeout, 30)` 秒；proot 运行时放宽至 `max(backendTimeout, 120)` 秒；other 模式 `max(backendTimeout, 90)` 秒
-- 兜底：健康检查超时但后端进程仍存活时，宿主记 warning 并按「就绪」继续使用（不会失败）
-
-**请求路径**
-
-- `GET /`：欢迎页/状态
-- `POST /api/<接口>`：业务接口，请求体为 JSON，响应为 JSON（仅为推荐约定）
-
-**公共约定**
-
-- 响应头建议带 `Access-Control-Allow-Origin: *`（前端 fetch 直连需要）
-- 监听地址必须是 `127.0.0.1`（宿主只访问 loopback）
-- 端口由 `backendPort` 指定；`backendPort` 为 `0` 时**普通后端会自动分配一个空闲端口**（8000 起）。前端通过 `UINPlugin.callBackendApi(path, method, body, callbackId)` 或 `fetch('http://127.0.0.1:<port>' + path)` 调用
-
-**环境变量注入**
-
-后端进程启动时宿主注入以下环境变量：
-
-| 变量 | termux 运行时 | proot 运行时（容器内） |
-|------|---------------|------------------------|
-| `PATH` | `/data/data/com.UIN.Tool/files/usr/bin:/system/bin:...` | 同左 |
-| `PORT` | 实际监听端口 | 同左 |
-| `PLUGIN_ID` | 插件 ID | 同左 |
-| `PLUGIN_DIR` | 插件目录绝对路径 | `/plugins/{pluginId}`（容器内路径） |
-| `WORK_DIR` | `/storage/emulated/0/UIN_Tool` | `/plugins/{pluginId}` |
-| `PYTHONUNBUFFERED` | `1` | `1` |
-| `TERMUX_HOME` | `/data/data/com.UIN.Tool/files/home` | 同左 |
-| `TERMUX_PREFIX` | `/data/data/com.UIN.Tool/files/usr` | 同左 |
-| `PREFIX`/`HOME`/`TMPDIR` | — | 追加（容器解析必需） |
-| `TERMUX__PREFIX` 等 | — | 追加（`proot-distro` 识别容器目录必需） |
-
-**后端生命周期**
-
-- 插件打开 → 宿主启动后端（`backendAutoStart: true` 才触发；`backendAutoStart: false` 时 Web 插件连启动前命令询问都不会出现）
-- 就绪判定：TCP 端口轮询 + HTTP 健康检查（见上）
-- 插件关闭 → 宿主按进程组 `SIGKILL` 停止后端（`backendKeepAlive: true` 时保持运行）
-- ⚠️ `backendMaxRetries` 为**预留字段**：当前版本启动流程为单次尝试，**不会自动重试**（仅保留在序列化中）
-- `backendLogLevel` 同样为预留字段：宿主日志级别按固定规则（termux=DEBUG、proot=INFO、stderr=ERROR），不读取该配置
-
-### 5.9 Proot 容器运行时与自定义后端（v4.5.0 新增）
-
-v4.5.0 新增两种后端运行方式：
-
-· 运行环境（backendRuntime）：`"termux"`（默认，宿主环境）或 `"proot"`（共享 Alpine 容器）
-· 后端类型（backend）：在原有类型之外新增 `"other"`（自定义，宿主不自动启动后端）
-
-Proot 容器运行时（backendRuntime: "proot"）
-
-插件后端可在共享 Alpine 容器中运行，与宿主机环境隔离。首次使用时自动初始化 Termux 环境，并从内置 assets（按 `alpine` 前缀查找，兼容 AndroidIDE 改写扩展名）离线恢复 Alpine 容器。
-
-> alpine.tar.xz 为 `proot-distro backup alpine` 生成的备份，内置预装好的 Python 等依赖环境，恢复时通过 `proot-distro restore` 一键还原，无需联网安装依赖。
-
-plugin.json 示例：
-
-```json
-{
-    "pluginId": "com.example.prootbackend",
-    "version": 1,
-    "versionName": "1.0.0",
-    "uiType": "web",
-    "entry": "web/index.html",
-    "backend": "python",
-    "backendRuntime": "proot",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/server.py",
+    "backend": "other",
+    "backendStartCommand": "sh scripts/start.sh",
+    "backendStartEntry": "scripts/start.sh",
     "backendAutoStart": true,
     "backendTimeout": 30,
     "backendHealthCheck": "/health"
 }
 ```
 
-容器说明：
+| 字段 | 说明 |
+|------|------|
+| `backend` | 固定为 `"other"` |
+| `backendStartCommand` | **启动命令**：宿主以 `sh -lc` 在插件目录执行；留空时默认 `sh scripts/start.sh` |
+| `backendStartEntry` | 启动脚本在插件目录内的路径（默认 `scripts/start.sh`） |
+| `backendAutoStart` | 打开插件时是否自动启动后端 |
+| `backendTimeout` | 就绪等待超时（秒） |
+| `backendHealthCheck` | 健康检查路径（必须带前导 `/`，默认 `/health`） |
 
-· 容器固定名称为 alpine，位于 `$PREFIX/var/lib/proot-distro/containers/alpine/rootfs`
-· 备份已预装 Python 环境，容器内可直接运行 Python 后端脚本
-· 插件目录经 `--bind <插件目录>:/plugins/{pluginId}` 绑定到容器内；`backendEntry` 使用相对路径即可（容器内按 `/plugins/{pluginId}` 解析）
-· 容器内 `127.0.0.1:PORT` 与宿主机互通，前端可直接调用后端 API
-· 容器内额外的依赖可通过 `apk add` / `pip install` 在启动前命令中安装，不会污染宿主 Termux 环境
-· 后端运行环境初始化流水线：Termux 就绪 → Alpine 就绪 → 启动前命令（可选）→ 启动后端
-· 容器冷启动较慢，就绪超时放宽至至少 120 秒
+> 旧式字段 `backendPort`、`backendEntry`、`backendBinary`、`backendPreCommand` 等不再被新式流程使用；插件加载时 `migrateLegacyBackend()` 会自动把它们转换为 `backendStartCommand`（内存中完成，不写回插件文件）。
 
-启动前命令（backendPreCommand，仅 proot / other 运行时生效）
+### 5.5 前端与后端通信
 
-> ⚠️ **Web 插件 + termux 运行时（backendRuntime 留空）下，`backendPreCommand` 完全不执行**，宿主直接启动后端。
+前端统一通过 `UINPlugin.callBackendApi` 代理调用，宿主代发 HTTP 请求到 `http://127.0.0.1:<动态端口>/<path>`，前端无需关心实际端口：
 
-pre-command 仅对 proot / other 运行时生效，首次打开插件时询问是否执行（常用于安装额外依赖、初始化数据）：
+**回调机制（必读）**
 
-· 弹窗三选项：「现在运行」「稍后」「取消」
-· 「现在运行」在**后台**执行（`bash -lc`，`EXTRA_BACKGROUND=true`），**不会弹出终端窗口**；执行成功（exit 0）一次后写入 `pre_cmd_done` 标记（存于 `plugin_data_{pluginId}`），下次打开不再询问
-· 执行完成后宿主自动启动后端；失败时会回到插件页提示退出码与错误信息
-· 「稍后」：非 other 模式直接启动后端；other 模式提示「后端未启动（需执行启动前命令）」
-· 「取消」：不执行命令也不启动后端
-· 「稍后」「取消」均不会标记 `pre_cmd_done`，下次打开会再次询问
+`callBackendApi(path, method, body, callbackId)` 的第四参 `callbackId` 是**字符串**（不是回调函数）。正确用法是先把回调函数注册到 `window.UINPluginCallbacks[callbackId]`，宿主返回时会以 **JSON 字符串**形式调用它（形如 `{"success": true, "data": "..."}`），JS 端需 `JSON.parse` 解析：
 
-自定义后端模式（backend: "other"）
-
-宿主不自动启动后端进程，由 `backendPreCommand` 后台启动常驻服务，适合「容器内长驻服务」「手动启动」等场景。**注意：other 模式即使 `backendRuntime` 非 proot，也会无条件初始化 Alpine 容器**。
-
-```json
-{
-    "pluginId": "com.example.otherbackend",
-    "uiType": "web",
-    "entry": "web/index.html",
-    "backend": "other",
-    "backendPort": 8000,
-    "backendAutoStart": true,
-    "backendTimeout": 60,
-    "backendPreCommand": "proot-distro login alpine --bind /storage/emulated/0/UIN_Tool/plugins/com.example.otherbackend:/plugins/com.example.otherbackend -- python3 /plugins/com.example.otherbackend/server.py"
+```javascript
+function callBackend() {
+    const callbackId = 'cb_' + Date.now();
+    window.UINPluginCallbacks = window.UINPluginCallbacks || {};
+    window.UINPluginCallbacks[callbackId] = function (res) {
+        const data = JSON.parse(res);          // {success: bool, data: string}
+        console.log('后端响应:', data);
+        if (data.success) {
+            // data.data 为后端返回的响应体字符串，可能需再次 JSON.parse
+        } else {
+            console.error('后端错误:', data.data);
+        }
+        delete window.UINPluginCallbacks[callbackId];   // 用完清理
+    };
+    UINPlugin.callBackendApi('/hello', 'GET', '', callbackId);
 }
 ```
 
-· `backendPort > 0`：宿主通过 TCP 端口轮询（200ms）判定后端就绪，超时放宽至至少 90 秒
-· `backendPort = 0`：视为**无端口插件**，宿主不检测端口，立即返回「运行中」（假定 pre-command 常驻服务已在运行）
+- `method`：`GET` / `POST` / `PUT` / `DELETE`（其他值按 GET 处理）
+- `body`：POST/PUT 的请求体，宿主以 `application/json` 发送，传 `''` 时用 `'{}'`
+- 后端未就绪时直接回调 `{"success": false, "data": "后端未就绪"}`
+- 后端就绪时宿主会调用 `window._onBackendReady(port)`；状态也可用 `UINPlugin.getBackendStatus()` 查询（返回 `running:{port}` / `starting` / `unknown`）
 
----
+> ℹ️ `simple_index.html.tmpl` 生成的示例页面内置了上述调用（`callBackend()` 调用 `/hello` 并展示响应），脚本已内联在 `index.html` 中，不再生成 `web/script.js`。历史模板 `web/script.js` 仍按本契约使用 `window.UINPluginCallbacks` 注册回调。
+
+### 5.6 后端 API 规范
+
+宿主通过 HTTP 与后端通信，后端必须遵守以下约定：
+
+**健康检查**
+
+- 路径：`backendHealthCheck` 指定（默认 `/health`），必须带前导 `/`
+- 要求：返回 HTTP 200 即视为就绪
+- 检测方式：宿主先做 TCP 端口探测，端口打开后再发 **GET** 请求健康检查端点
+
+**请求路径**
+
+- `GET /`：欢迎页/状态
+- `POST /api/<接口>`：业务接口，请求体为 JSON，响应为 JSON（推荐约定）
+- `GET|POST /stop`：宿主停止后端时调用的优雅退出端点（实体 Termux 进程无法被宿主终止，只能靠此端点退出）
+
+**公共约定**
+
+- 响应头建议带 `Access-Control-Allow-Origin: *`（前端 fetch 直连需要）
+- 监听地址必须是 `127.0.0.1`
+- 端口由宿主动态分配，通过 `$PORT` 注入（无需在插件中固定端口）
+
+**环境变量注入**
+
+| 变量 | 说明 |
+|------|------|
+| `PORT` | 实际监听端口（宿主动态分配） |
+| `PLUGIN_ID` | 插件 ID |
+| `PLUGIN_DIR` | 后端所在目录：本机为插件目录，proot 容器内为 `/plugins/{pluginId}` |
+| `WORK_DIR` | 与 `PLUGIN_DIR` 一致（宿主以 `WORK_DIR=$baseDir` 注入）；内置进程级默认 `/storage/emulated/0/UIN_Tool`，但会被容器/命令内联的 `export` 覆盖 |
+| `PYTHONUNBUFFERED` | `1`（Python 输出即时刷新） |
+
+**环境变量注入方式（按运行环境）**
+
+- **内置 Termux（proot Alpine 容器）**：宿主通过 `ProcessBuilder` 进程环境注入（含 `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR` 及 Termux 专有变量），再以 `proot-distro login alpine --bind <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器；容器继承进程环境。后端实际运行时位于容器内，`PLUGIN_DIR`/`WORK_DIR` 为 `/plugins/{pluginId}`。
+- **实体 Termux 本机**：宿主发起 `com.termux.RUN_COMMAND`，由于 intent **无环境变量通道**，宿主会把环境变量内联进 `sh -lc` 命令字符串（`export PORT=...; export PLUGIN_ID=...; cd <插件目录> && <启动命令>`）。
+- **实体 Termux proot 容器**：同上，在 `sh -lc` 内联注入后由 `proot-distro login <容器> --bind <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器。
+
+**运行环境约束（实体 Termux）**
+
+- 需在实体 Termux 中设置 `allow-external-apps=true`（`.termux/termux.properties`）、执行 `termux-setup-storage` 授予存储权限，并授予 `com.termux.permission.RUN_COMMAND`。插件位于共享存储（`/storage/emulated/0/UIN_Tool/plugins/`），Termux 需能读取该目录。
+- 实体 Termux 的进程**无法被宿主跨应用终止**，停止后端只能靠后端自己响应 `/stop` 端点退出——因此实体 Termux 后端**必须实现 `/stop`**（内置 Termux 在 `/stop` 之外还会按进程组 `SIGKILL` 兜底）。
+- 实体 Termux 后端冷启动较慢（尤其 proot 容器），就绪超时已按 `max(backendTimeout, 60/120)` 放宽，超时未就绪时宿主会提示但**不会自动杀掉已启动的进程**（内置版若进程已退出则会清理）。
+
+**后端生命周期**
+
+- 插件打开 → 宿主自动启动后端（`backendAutoStart: true`）
+- 就绪判定：先做 TCP 端口探测（500ms 连接超时），端口打开后再发 **GET** 健康检查（不用 HEAD，避免 501），返回 200 即视为就绪；每 200ms 重试直到超时
+- 插件关闭 → 宿主调用 `GET http://127.0.0.1:<port>/stop` 优雅退出（内置 Termux 额外按进程组终止进程）
+- 空闲回收：后端超过「空闲回收超时」（全局设置，默认 5 分钟，可选 3/5/10/15 分钟）未被调用时自动停止；WebView 直连请求也会刷新计时，防止误回收
+
 
 ## 六、CUI 终端插件开发（v4.5.0 新增）
 
@@ -1164,22 +910,19 @@ python3 scripts/tool.py
 
 ### 6.5 运行流程与生命周期
 
-1. 用户打开 CUI 插件 → `PluginHostActivity` 显示占位视图：「正在打开终端并执行命令... 若未自动弹出，请在通知栏查看 UIN Tool 终端。」
-2. 宿主确保 Termux 环境就绪（首次会自动初始化 bootstrap）
-3. 若配置了 `backendRuntime: "proot"` 或 `backend: "other"`，先确保 Alpine 容器就绪（从内置 `alpine.tar.xz` 离线恢复）
-4. 通过 `RunCommandService` 以 `bash -lc "<启动命令>"`（`backendPreCommand`）在插件目录启动**全屏终端会话**（TermuxActivity）；启动命令留空时以 `bash -l` 打开交互式登录 Shell
-5. 若同时配置了 `backend` 且 `backendAutoStart: true`（非 other），宿主还会在后台额外启动 HTTP 后端
-6. 终端会话独立于插件页存活：脚本/Shell 退出即关闭；插件页关闭**不会**强制杀死终端（会话归 TermuxService 管理）。但若曾启动 HTTP 后端且 `backendKeepAlive` 为 false，关闭插件页会停掉该后端
-7. ⚠️ **Android 10+**：从后台拉起终端需要「显示在其他应用上层」悬浮窗权限；未授予时终端会话只出现在通知栏（不会自动弹出全屏终端）
+1. 用户打开 CUI 插件 → `PluginHostActivity` 显示占位视图：「正在打开全屏终端执行命令...」
+2. 宿主按全局「后端运行设置」选择执行环境：内置 Termux 走环境流水线（Termux 就绪 → Alpine 就绪，若配置了 `backendRuntime: "proot"`）；实体 Termux 直接调用 `RUN_COMMAND`
+3. 通过 `RunCommandService` 以 `bash -lc "<启动命令>"`（`backendPreCommand`）在插件目录启动**全屏终端会话**，前台直接拉起 `TermuxActivity` / `com.termux` 全屏终端（不再依赖悬浮窗权限）；启动命令留空时以 `bash -l` 打开交互式登录 Shell
+4. 终端会话独立于插件页存活：脚本/Shell 退出即关闭；插件页关闭**不会**强制杀死终端（会话归 TermuxService 管理）
 
 ### 6.6 CUI 与后端/Proot 的关系
 
 - **纯 CUI**：`backend` 留空，只有终端，无 HTTP 后端
-- **CUI + 后端**：`backend: "python"` 等 + `backendAutoStart: true`，宿主在拉起终端的同时后台启动后端，脚本可调用 `127.0.0.1:<port>`
-- **CUI + Proot**：`backendRuntime: "proot"`，启动命令在 Alpine 容器内执行（需自行用 proot-distro 登录），适合需要隔离环境的场景
+- **CUI + 后端**：`backend: "other"` + `backendStartCommand` + `backendAutoStart: true`，宿主在拉起终端的同时后台启动后端
+- **CUI + Proot**：`backendRuntime: "proot"`，启动命令在 Alpine 容器内执行，适合需要隔离环境的场景
 - **CUI + other**：`backend: "other"` 时宿主不自动启动后端，启动命令通常是常驻服务，由终端自行拉起
 
-注意：CUI 的 `backendPreCommand` 是「每次打开都执行的启动命令」，与 Web 插件后端的一次性 pre-command（`pre_cmd_done` 标记）语义不同。
+注意：CUI 的 `backendPreCommand` 是「每次打开都执行的启动命令」，与 Web 插件后端的 `backendStartCommand`（宿主后台 `sh -lc` 执行，用于启动 HTTP 服务）语义不同。
 
 ---
 
@@ -1894,7 +1637,7 @@ UINPlugin.requestPermissions('["android.permission.CAMERA","android.permission.R
 // 获取后端状态
 const status = UINPlugin.getBackendStatus();   // "running:{port}" / "starting" / "unknown"
 
-// 调用后端 API（请求 http://127.0.0.1:{backendPort}{path}，GET/POST/PUT/DELETE，回调 {"success":bool,"data":...}）
+// 调用后端 API（请求 127.0.0.1 宿主动态端口 {path}，GET/POST/PUT/DELETE，回调 {"success":bool,"data":...}）
 UINPlugin.callBackendApi('/api/compute', 'POST', JSON.stringify({
     expression: 'sum([1,2,3,4,5])'
 }), callbackId);
@@ -1991,7 +1734,7 @@ plugin.tpk
 
 > ⚠️ **当前打包器对 Web 插件只打包 `web/` 目录**（不存在时自动生成默认 `index.html`），**不会打包 `scripts/` 后端文件**。后端文件需在生成后手动放入插件安装目录（`/storage/emulated/0/UIN_Tool/plugins/{pluginId}/scripts/backend/`），否则后端入口缺失无法启动。
 >
-> ⚠️ **向导已知问题**：选择「WebView + 后端」创建时，向导会把 `plugin.json` 的 `entry` 覆盖为后端脚本路径（如 `scripts/backend/server.py`）。Web 插件的 `entry` 应指向 HTML 页面（`web/index.html`），请在生成后手动改回，否则 WebView 会尝试把脚本当页面加载。
+> ℹ️ Web 插件的 `entry` 必须指向 HTML 页面（`web/index.html`）。v5.1.0 起向导创建「WebView + 后端」插件时已正确生成 `entry: "web/index.html"`，无需手动修改（旧版本向导曾误写为后端脚本路径，升级后生成的新插件不再有此问题）。
 
 CUI 插件（v4.5.0 新增）
 
@@ -2032,18 +1775,14 @@ plugin.tpk
     "entry": "web/index.html",
     "permissions": "android.permission.INTERNET",
     "dependencies": "com.example.lib",
-    "backend": "python",
-    "backendRuntime": "proot",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/server.py",
+    "backend": "other",
+    "backendStartCommand": "sh scripts/start.sh",
+    "backendStartEntry": "scripts/start.sh",
     "backendAutoStart": true,
-    "backendKeepAlive": false,
-    "backendPreCommand": "pip install requests",
     "backendTimeout": 30,
     "backendHealthCheck": "/health",
     "backendMaxRetries": 3,
     "backendLogLevel": "info",
-    "backendArgs": "",
     "maxMemory": 512,
     "maxCpuTime": 60,
     "maxConcurrentTasks": 5
@@ -2069,39 +1808,29 @@ plugin.tpk
 | `category` | string | `未分类` | ❌ | 插件分类名，用于插件管理页分类展示。 |
 | `signature` | string | `""` | ❌ | 插件签名（宿主安装时写入并校验，防篡改）。一般由宿主维护，勿手写。 |
 | `uiType` | string | `native` | ✅ | 前端类型：`native`（原生 View）、`web`（WebView）、`cui`（全屏终端）。决定宿主的加载分支。 |
-| `entry` | string | `web/index.html` | Web✅ | Web 插件入口页面（相对插件根目录，宿主用 `file://<pluginDir>/<entry>` 加载）。CUI 留空。⚠️ 向导在创建带后端 Web 插件时会把此字段误写为后端脚本路径，生成后需改回 `web/index.html`。 |
+| `entry` | string | `web/index.html` | Web✅ | Web 插件入口页面（相对插件根目录，宿主用 `file://<pluginDir>/<entry>` 加载）。CUI 留空。必须指向 HTML 页面；v5.1.0 向导已正确生成，旧版生成的插件若 `entry` 指向脚本路径需手动改回。 |
 | `permissions` | string | `""` | ❌ | 所需权限列表，**逗号分隔字符串**（如 `android.permission.INTERNET,android.permission.VIBRATE`）。⚠️ 宿主按 `,` 拆分解析，写成 JSON 数组会被忽略。 |
 | `dependencies` | string | `""` | ❌ | 依赖插件 ID 列表，**逗号分隔字符串**（宿主按 `,` 拆分；JSON 数组形式会被忽略）。宿主启动前检查依赖是否存在。 |
 | `frontendConfig` | object | `{}` | ❌ | **预留字段**。模型已声明（`Map<String, Any>`），但当前版本不参与 JSON 读写、无任何消费者，勿在 plugin.json 中填写。 |
 
 #### 12.3.3 后端配置字段
 
+> v5.1.0 起后端统一为「启动命令」模式（`backendStartCommand`），旧式按语言启动字段（`backendPort`/`backendEntry`/`backendBinary`/`backendPreCommand` 等）不再用于新式流程，插件加载时由 `migrateLegacyBackend()` 自动转换为 `backendStartCommand`。运行环境在「开发」/「管理」页的「后端运行设置」中全局配置。
+
 | 字段 | 类型 | 默认值 | 必填 | 详细说明 |
 |------|------|--------|------|----------|
-| `backend` | string | `""` | ❌ | 后端类型：`python`、`node`、`php`、`binary`（二进制）、`deno`、`go`、`ruby`、`perl`、`lua`、`java`、`rust`、`other`（自定义，宿主不自动启动）。留空表示无后端。 |
-| `backendRuntime` | string | `""` | ❌ | 后端运行环境：`termux`（默认，宿主 Termux 环境）或 `proot`（共享 Alpine 容器，隔离环境）。v4.5.0 新增。 |
-| `backendPort` | int | `0` | ❌ | 后端监听端口。`0` 表示无端口（配合 `other` 或 CUI 使用）。填端口时宿主通过 TCP 轮询 + 健康检查判定就绪。 |
-| `backendEntry` | string | `scripts/backend/server.py` | ❌ | 后端入口文件路径（相对插件根目录）。PHP 以外语言用解释器 + 入口启动。 |
-| `backendAutoStart` | boolean | `true` | ❌ | 打开插件时是否自动启动后端。`false` 时仅当 `backendPreCommand` 手动启动。 |
-| `backendKeepAlive` | boolean | `false` | ❌ | 插件关闭后是否保持后端运行。`true` 时宿主不在 onDestroy 时停止后端。 |
-| `backendPreCommand` | string | `""` | ❌ | 启动前命令。**两种语义**：① Web 后端：首次打开弹窗询问执行，成功（exit 0）一次后跳过（`pre_cmd_done`）；② CUI 插件：作为每次打开的终端启动命令。 |
-| `backendTimeout` | int | `30` | ❌ | 后端就绪等待超时（秒）。实际生效值按运行时放宽：termux 为 `min(backendTimeout, 30)` 秒，proot 为 `max(backendTimeout, 120)` 秒，other 为 `max(backendTimeout, 90)` 秒（详见 5.8）。 |
+| `backend` | string | `""` | ❌ | 后端类型：`other`（统一启动命令模式）。留空表示无后端。旧值（`python`/`node`/`php` 等）加载时自动迁移为 `other`。 |
+| `backendStartCommand` | string | `""` | web+后端✅ | **启动命令**：宿主以 `sh -lc` 在插件目录执行（依赖检测 + 启动后端）。留空时默认 `sh scripts/start.sh`。宿主注入 `$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR`。 |
+| `backendStartEntry` | string | `scripts/start.sh` | ❌ | 启动脚本在插件目录内的相对路径。 |
+| `backendAutoStart` | boolean | `true` | ❌ | 打开插件时是否自动启动后端。 |
+| `backendTimeout` | int | `30` | ❌ | 后端就绪等待超时（秒）。实际生效值按运行环境放宽（见 5.6）：内置 Termux 恒为 proot 容器 → `max(backendTimeout, 120)` 秒；实体 Termux proot → `max(backendTimeout, 120)` 秒；实体 Termux 本机 → `max(backendTimeout, 60)` 秒。 |
 | `backendHealthCheck` | string | `/health` | ❌ | 健康检查端点路径。宿主轮询该路径返回 200 即视为就绪。 |
 | `backendMaxRetries` | int | `3` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未实现重试逻辑（失败即提示，不自动重试）。 |
 | `backendLogLevel` | string | `info` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未按其切换日志级别（日志固定输出，不读取该值）。 |
-| `backendArgs` | string | `""` | ❌ | 附加命令行参数，**逗号分隔字符串**（如 `--port,8000`）。⚠️ 宿主按 `,` 拆分解析，JSON 数组形式会被忽略。 |
-| `backendEnv` | object | `{}` | ❌ | **注意：当前不读取该 JSON 字段。** 模型已声明并在运行时使用（termux 环境注入 env；proot 下经 `--env k=v` 透传给容器），但 `fromJson()`/`toJson()` 尚未读写它，因此写在 plugin.json 中不会生效，仅能由宿主程序内部设置。 |
+| `backendKeepAlive` | boolean | `false` | ❌ | 插件关闭后是否保持后端运行。`true` 时宿主不在 onDestroy 时停止后端。 |
+| `backendEnv` | object | `{}` | ❌ | **注意：当前不读取该 JSON 字段，且 `fromJson()`/`toJson()` 尚未读写它，写在 plugin.json 中不会生效**（仅能由宿主程序内部设置）。透传行为分环境：内置 Termux 经 `ProcessBuilder` 进程环境注入，proot 容器继承该环境生效；**实体 Termux 走 `RUN_COMMAND` intent，无环境变量通道，`backendEnv` 完全不透传**——需要变量时请直接写进 `backendStartCommand`（如 `export KEY=value; ...`）。 |
 
-#### 12.3.4 后端语言专用字段
-
-| 字段 | 类型 | 默认值 | 适用后端 | 详细说明 |
-|------|------|--------|----------|----------|
-| `backendBinary` | string | `""` | binary | 可执行文件路径（相对插件根目录）。留空则用 `backendEntry`。 |
-| `backendInstallCmd` | string | `""` | 全部 | 自定义首次安装命令（如 `pkg install xx`）。留空按语言默认（python→`pkg install python`，node→`pkg install nodejs` 等）。 |
-| `backendCheckCmd` | string | `""` | 全部 | 自定义环境检查命令。留空按语言默认（`python --version` 等）。 |
-| `backendPhpDocRoot` | string | `""` | php | PHP 内置服务器文档根目录（`php -S 127.0.0.1:<port> -t <docRoot>`）。留空用插件目录。 |
-| `backendJavaClass` | string | `""` | java | Java 后端主类名（`java -cp <pluginDir> <class>`）。 |
-| `backendJavaJar` | string | `""` | java | Java 可执行 JAR 路径（`java -jar <jar>`，优先于 class）。 |
+> 旧式字段（仍可被读取并在加载时自动迁移，不建议新插件使用）：`backendRuntime`（`termux`/`proot`）、`backendPort`、`backendEntry`、`backendPreCommand`、`backendBinary`、`backendInstallCmd`、`backendCheckCmd`、`backendPhpDocRoot`、`backendJavaClass`、`backendJavaJar`、`backendArgs`。
 
 #### 12.3.5 资源限制字段
 
@@ -2139,7 +1868,7 @@ plugin.tpk
 }
 ```
 
-**Web 插件（带 Python 后端）**
+**Web 插件（带后端）**
 
 ```json
 {
@@ -2149,10 +1878,12 @@ plugin.tpk
     "versionName": "1.0.0",
     "uiType": "web",
     "entry": "web/index.html",
-    "backend": "python",
-    "backendPort": 8000,
-    "backendEntry": "scripts/backend/server.py",
-    "backendAutoStart": true
+    "backend": "other",
+    "backendStartCommand": "sh scripts/start.sh",
+    "backendStartEntry": "scripts/start.sh",
+    "backendAutoStart": true,
+    "backendTimeout": 30,
+    "backendHealthCheck": "/health"
 }
 ```
 
@@ -2177,10 +1908,11 @@ plugin.tpk
 | 模板文件 | 说明 |
 |----------|------|
 | `com.example.cuitest.tpk` | CUI 终端插件示例（全屏终端执行脚本） |
-| `com.example.othertest.tpk` | 自定义后端插件示例（other 模式，pre-command 手动启动） |
+| `com.example.othertest.tpk` | 自定义后端插件示例（other 模式，启动命令拉起） |
 | `com.example.termuxtest.tpk` | Termux 后端插件示例（Python 后端） |
 | `com.test.allapi.tpk` | 全接口测试插件 |
 | `com.test.storage.tpk` | 存储测试插件 |
+| `web_plugin_template.tpk` | Web 纯前端插件模板（无后端） |
 | `NativeTestPlugin.tpk` | 原生插件示例 |
 | `web_plugin_template.tpk` | Web 插件模板（纯前端） |
 
@@ -2322,8 +2054,8 @@ print("调试信息")
 
 ### 16.2 查看运行日志
 
-· 在「管理」→「运行日志」中查看
-· 崩溃日志自动保存
+· 在「管理」→「开发工具」中查看（含运行日志与开发者选项）
+· 崩溃日志自动保存，下次打开应用自动跳转到该页面
 · 日志位置：/storage/emulated/0/UIN_Tool/logs/
 
 ### 16.3 WebView 远程调试
@@ -2354,7 +2086,7 @@ Q4: 插件无法调用宿主权限？
 
 Q5: 如何调试插件？
 
-使用 Logger 输出日志，在「管理」→「运行日志」中查看。Web 插件可用 Chrome DevTools 调试。
+使用 Logger 输出日志，在「管理」→「开发工具」中查看。Web 插件可用 Chrome DevTools 调试。
 
 Q6: 插件数据存储在哪里？
 
@@ -2453,9 +2185,9 @@ Q15: 导出模板一直显示「导出中...」？
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.0.0 |
-| 对应应用版本 | v5.0.0 (Build 16) |
-| 最后更新 | 2026年8月5日 |
+| 文档版本 | 5.1.0 |
+| 对应应用版本 | v5.1.0 (Build 17) |
+| 最后更新 | 2026年8月6日 |
 
 ---
 

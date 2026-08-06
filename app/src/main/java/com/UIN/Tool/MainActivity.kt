@@ -54,7 +54,7 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginHostActivity
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.ui.screen.log.LogViewerActivity
+import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.dev.DevScreen
 import com.UIN.Tool.ui.screen.manage.ManageScreen
 import com.UIN.Tool.ui.screen.repo.RepoScreen
@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
             CrashLogUtils.clearNavigateFlag(this)
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 try {
-                    startActivity(Intent(this, LogViewerActivity::class.java).apply {
+                    startActivity(Intent(this, DevToolsActivity::class.java).apply {
                         putExtra("auto_open", true)
                     })
                 } catch (e: Exception) {

@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# {{PLUGIN_NAME}} 后端启动脚本
+# 由 UIN Tool 用 sh -lc 执行：依赖检测 + 启动后端
+# 宿主已注入环境变量：PORT（动态端口）、PLUGIN_ID、PLUGIN_DIR、WORK_DIR
+set -e
+
+cd "$(dirname "$0")"
+
+# ---- 依赖检测：动态查找解释器，环境无关（Termux 用 pkg，容器用 apk） ----
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "[start.sh] python3 not found, installing..."
+    pkg install python -y 2>/dev/null || apk add python3 -y 2>/dev/null || {
+        echo "[start.sh] failed to install python3, exit"
+        exit 1
+    }
+fi
+
+echo "[start.sh] starting backend on 127.0.0.1:${PORT:-8000}"
+exec python3 scripts/backend/server.py

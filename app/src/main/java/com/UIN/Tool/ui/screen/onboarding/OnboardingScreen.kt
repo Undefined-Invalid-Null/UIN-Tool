@@ -47,7 +47,7 @@ fun OnboardingScreen(
 
     val items = if (isVersionUpdate) {
         listOf(
-            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "5.0.0"), Icons.Outlined.SystemUpdate),
+            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "5.1.0"), Icons.Outlined.SystemUpdate),
             OnboardingItem(Str.get(R.string.plugin_management), Str.get(R.string.one_tap_import_export_plugins_n_supp), Icons.Outlined.Folder),
             OnboardingItem(Str.get(R.string.plugin_development), Str.get(R.string.visual_plugin_creation_wizard_n_buil), Icons.Outlined.DeveloperMode),
             OnboardingItem(Str.get(R.string.get_started), Str.get(R.string.now_explore_the_new_features_of_uin_), Icons.Outlined.RocketLaunch)
@@ -137,7 +137,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "v${versionName ?: "5.0.0"}",
+                            text = "v${versionName ?: "5.1.0"}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant
                         )

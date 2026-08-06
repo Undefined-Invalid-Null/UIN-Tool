@@ -76,6 +76,9 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- 实体 Termux RUN_COMMAND：由 com.termux 声明的 dangerous 权限，
+         需要在 本应用 App Info -> 权限 -> 其他权限 中手动授予，否则启动 RunCommandService 会抛 SecurityException -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
 
     <!-- ==================== MultiDex ==================== -->
     <uses-permission android:name="android.permission.MULTI_DEX" />
@@ -83,6 +86,7 @@
     <queries>
         <package android:name="moe.shizuku.privileged.api" />
         <package android:name="com.rosan.dhizuku" />
+        <package android:name="com.termux" />
     </queries>
 
     <application
@@ -254,6 +258,13 @@
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/title_log_viewer" />
 
+        <!-- ==================== 开发工具 ==================== -->
+        <activity
+            android:name=".ui.screen.dev.DevToolsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/dev_tools" />
+
         <!-- ==================== 插件向导 ==================== -->
         <activity
             android:name=".ui.screen.dev.BasePluginWizardActivity"
@@ -410,7 +421,7 @@
             android:exported="false" />
 
         <receiver
-            android:name=".plugin.PreCommandResultReceiver"
+            android:name=".plugin.RealTermuxProbeReceiver"
             android:exported="false" />
 
         <receiver

@@ -91,10 +91,10 @@ fun PluginConfigStep(
     onPluginNoticeChange: (String) -> Unit,
     uiType: String,
     backendType: String = "",
-    backendRuntime: String = "termux",
-    onBackendRuntimeChange: (String) -> Unit = {},
     backendPreCommand: String = "",
-    onBackendPreCommandChange: (String) -> Unit = {}
+    onBackendPreCommandChange: (String) -> Unit = {},
+    backendStartCommand: String = "",
+    onBackendStartCommandChange: (String) -> Unit = {}
 ) {
     Column {
         UIComponents.TextInput(
@@ -197,57 +197,20 @@ fun PluginConfigStep(
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
 
-        if (uiType == "web" && backendType.isNotEmpty() && backendType != "binary") {
+        if (uiType == "web" && backendType.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (backendType != "other") {
-                // ✅ 后端运行环境
-                UIComponents.BodyText(Str.get(R.string.backend_environment))
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val options = listOf(
-                        "termux" to Str.get(R.string.termux_local),
-                        "proot" to Str.get(R.string.proot_container)
-                    )
-                    options.forEach { (key, label) ->
-                        FilterChip(
-                            selected = backendRuntime == key,
-                            onClick = { onBackendRuntimeChange(key) },
-                            label = { Text(label) },
-                            modifier = Modifier.weight(1f),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        )
-                    }
-                }
-                UIComponents.CaptionText(
-                    Str.get(R.string.proot_backend_runs_in_a_shared_alpin),
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // ✅ 启动前命令（pre-command）
+            // ✅ 启动命令（必填）：宿主用 sh -lc 执行，运行环境由用户在开发页全局设定
             UIComponents.TextInput(
-                value = backendPreCommand,
-                onValueChange = onBackendPreCommandChange,
-                label = if (backendType == "other") Str.get(R.string.start_command_required) else Str.get(R.string.pre_command_optional),
-                placeholder = if (backendType == "other")
-                    "proot-distro login alpine --bind ... -- python3 server.py"
-                else
-                    Str.get(R.string.e_g_apk_add_python3_pip_install_r_re),
+                value = backendStartCommand,
+                onValueChange = onBackendStartCommandChange,
+                label = Str.get(R.string.start_command_required),
+                placeholder = "sh scripts/start.sh",
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = false
             )
             UIComponents.CaptionText(
-                if (backendType == "other")
-                    Str.get(R.string.in_custom_mode_the_host_won_t_auto_s)
-                else
-                    Str.get(R.string.runs_in_the_terminal_when_the_plugin),
+                Str.get(R.string.start_command_runs_in_sh_lc_to_s),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }

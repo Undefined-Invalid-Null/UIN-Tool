@@ -35,6 +35,7 @@ class PluginWizardViewModel(
     // ==================== 后端运行配置 ====================
     var backendRuntime = mutableStateOf("termux")
     var backendPreCommand = mutableStateOf("")
+    var backendStartCommand = mutableStateOf("")
 
     // ==================== 插件说明 ====================
     var pluginNotice = mutableStateOf("")
@@ -109,10 +110,18 @@ class PluginWizardViewModel(
 
     fun generateWebTemplates() {
         try {
-            val files = mutableMapOf<String, String>()
-            files["web/index.html"] = ""
-            files["web/style.css"] = ""
-            files["web/script.js"] = ""
+            val vars = mapOf(
+                "PLUGIN_NAME" to pluginName.value,
+                "PLUGIN_ID" to pluginId.value,
+                "PLUGIN_VERSION" to pluginVersion.value,
+                "PLUGIN_VERSION_NAME" to pluginVersionName.value,
+                "PLUGIN_AUTHOR" to pluginAuthor.value
+            )
+            val files = TemplateUtils.generateWebTemplates(
+                context,
+                vars,
+                if (uiType == "web" && backendType.isNotEmpty()) 2 else webTemplateType.value
+            )
 
             fileList.value = files.keys.toList()
             fileContents.value = files
@@ -154,32 +163,35 @@ class PluginWizardViewModel(
     }
 
     private fun generateBackendFiles() {
-        if (uiType != "web" || backendType.isEmpty() || backendType == "binary") {
+        if (uiType != "web" || backendType.isEmpty()) {
             return
         }
 
         val files = fileContents.value.toMutableMap()
         val fileNames = fileList.value.toMutableList()
 
-        val backendFile = when (backendType) {
-            "python" -> "scripts/backend/server.py"
-            "node" -> "scripts/backend/server.js"
-            "php" -> "scripts/backend/index.php"
-            "deno" -> "scripts/backend/server.ts"
-            "go" -> "scripts/backend/main.go"
-            "ruby" -> "scripts/backend/server.rb"
-            "perl" -> "scripts/backend/server.pl"
-            "lua" -> "scripts/backend/server.lua"
-            "java" -> "scripts/backend/Main.java"
-            else -> null
+        val vars = mapOf(
+            "PLUGIN_NAME" to pluginName.value,
+            "PLUGIN_ID" to pluginId.value,
+            "PLUGIN_VERSION" to pluginVersion.value,
+            "PLUGIN_VERSION_NAME" to pluginVersionName.value,
+            "PLUGIN_AUTHOR" to pluginAuthor.value
+        )
+
+        // 新式后端：生成启动脚本 + 后端服务示例（不再按语言生成）
+        val startScript = TemplateUtils.generateBackendStartScript(context, vars)
+        val serverScript = TemplateUtils.generateBackendServer(context, vars)
+
+        files["scripts/start.sh"] = startScript
+        files["scripts/backend/server.py"] = serverScript
+
+        for (path in listOf("scripts/start.sh", "scripts/backend/server.py")) {
+            if (path !in fileNames) fileNames.add(path)
         }
 
-        if (backendFile != null) {
-            files[backendFile] = ""
-            if (backendFile !in fileNames) {
-                fileNames.add(backendFile)
-            }
-            entryPath.value = backendFile
+        entryPath.value = "web/index.html"
+        if (backendStartCommand.value.isBlank()) {
+            backendStartCommand.value = "sh scripts/start.sh"
         }
 
         fileList.value = fileNames
@@ -252,35 +264,13 @@ class PluginWizardViewModel(
             put("notice", pluginNotice.value)
 
             if (uiType == "web" && backendType.isNotEmpty()) {
-                put("backend", backendType)
-                put("backendPort", 8000)
-                if (backendType == "binary") {
-                    val binaryName = File(binaryFilePath.value).name
-                    put("backendEntry", "backend/$binaryName")
-                    put("backendBinary", binaryName)
-                } else if (backendType == "other") {
-                    // other 模式：宿主不自动启动后端，由 pre-command 负责启动
-                    put("backendEntry", "")
-                } else {
-                    val backendFile = when (backendType) {
-                        "python" -> "scripts/backend/server.py"
-                        "node" -> "scripts/backend/server.js"
-                        "php" -> "scripts/backend/index.php"
-                        "deno" -> "scripts/backend/server.ts"
-                        "go" -> "scripts/backend/main.go"
-                        "ruby" -> "scripts/backend/server.rb"
-                        "perl" -> "scripts/backend/server.pl"
-                        "lua" -> "scripts/backend/server.lua"
-                        "java" -> "scripts/backend/Main.java"
-                        else -> "scripts/backend/server"
-                    }
-                    put("backendEntry", backendFile)
-                }
+                // 新式后端：统一 other 模式 + 必填启动命令，运行环境由用户在软件内全局设定
+                put("backend", "other")
+                put("backendStartCommand", backendStartCommand.value.trim().ifBlank { "sh scripts/start.sh" })
+                put("backendStartEntry", "scripts/start.sh")
                 put("backendAutoStart", true)
                 put("backendTimeout", 30)
                 put("backendHealthCheck", "/health")
-                put("backendRuntime", backendRuntime.value.ifEmpty { "termux" })
-                put("backendPreCommand", backendPreCommand.value.trim())
             }
 
             // CUI 插件：无后端，打开终端时执行 pre-command 进入脚本
