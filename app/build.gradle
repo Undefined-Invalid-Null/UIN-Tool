@@ -18,8 +18,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 18
-        versionName "5.2.0"
+        versionCode 19
+        versionName "5.3.0"
 
         multiDexEnabled true
         multiDexKeepProguard file('multidex-config.pro')
@@ -201,6 +201,15 @@ dependencies {
 
     // 协程
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+
+    // ==================== Shizuku / Dhizuku ====================
+    // 注意：版本受限——Shizuku api 13.x 需 minSdk 24（项目为 23），故用 12.2.0（minSdk 23）；
+    // Dhizuku-API 2.6.0 需 compileSdk 37（项目为 35 / AGP 8.7.2 最高 35），故用 2.5.3（compileSdk 无限制）
+    implementation "dev.rikka.shizuku:api:12.2.0"
+    implementation "dev.rikka.shizuku:provider:12.2.0"
+    implementation("io.github.iamr0s:Dhizuku-API:2.5.3") {
+        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib'
+    }
 
     // 网络
     implementation "com.squareup.okhttp3:okhttp:4.12.0"

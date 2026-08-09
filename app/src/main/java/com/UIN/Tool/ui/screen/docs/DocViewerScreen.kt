@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.MarkdownRenderer
 import java.io.BufferedReader
@@ -41,6 +43,7 @@ fun DocViewerScreen() {
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = title,
@@ -54,7 +57,7 @@ fun DocViewerScreen() {
                 .padding(paddingValues)
         ) {
             if (isLoading) {
-                UIComponents.FullScreenLoading(Str.get(R.string.loading_document))
+                UnifiedLoadingIndicator(message = Str.get(R.string.loading_document))
             } else {
                 AndroidView(
                     factory = { ctx ->

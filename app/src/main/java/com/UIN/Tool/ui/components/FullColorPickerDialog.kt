@@ -1,31 +1,44 @@
 // app/src/main/java/com/UIN/Tool/ui/components/FullColorPickerDialog.kt
 package com.UIN.Tool.ui.components
 
+import android.graphics.Color as AndroidColor
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import kotlin.math.roundToInt
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.dialogBackgroundOf
+import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
+import kotlin.math.roundToInt
 
 /**
- * 完整颜色选择器 - 支持 RGB + Alpha 通道
+ * 完整颜色选择器 - 支持可视化取色 + RGB + Alpha 通道
  *
- * 使用固定白色容器背景与深色文字，避免跟随主题变色导致难以辨认。
+ * 容器背景跟随主题（玻璃效果或 MaterialTheme surface），文字使用主题色。
  */
 @Composable
 fun FullColorPickerDialog(
@@ -38,20 +51,73 @@ fun FullColorPickerDialog(
     var blue by remember { mutableStateOf((initialColor.blue * 255).roundToInt()) }
     var alpha by remember { mutableStateOf((initialColor.alpha * 255).roundToInt()) }
 
-    val currentColor = Color(red / 255f, green / 255f, blue / 255f, alpha / 255f)
-    val hexColor = String.format("#%02X%02X%02X%02X", alpha, red, green, blue)
+    var hue by remember { mutableStateOf(toHsv(initialColor)[0]) }
+    var saturation by remember { mutableStateOf(toHsv(initialColor)[1] * 100f) }
+    var value by remember { mutableStateOf(toHsv(initialColor)[2] * 100f) }
 
-    val onWhite = Color(0xFF212121)
-    val onWhiteSecondary = Color(0xFF616F7E)
+    var hexInput by remember { mutableStateOf("") }
+
+    fun updateHexInput() {
+        hexInput = String.format("#%02X%02X%02X%02X", alpha, red, green, blue)
+    }
+
+    fun parseHex(input: String) {
+        val cleaned = input.trim().removePrefix("#")
+        if (cleaned.length != 6 && cleaned.length != 8) return
+        val hexValue = cleaned.toLongOrNull(16) ?: return
+        var a = alpha
+        var r: Int
+        var g: Int
+        var b: Int
+        if (cleaned.length == 8) {
+            a = ((hexValue shr 24) and 0xFF).toInt()
+            r = ((hexValue shr 16) and 0xFF).toInt()
+            g = ((hexValue shr 8) and 0xFF).toInt()
+            b = (hexValue and 0xFF).toInt()
+        } else {
+            r = ((hexValue shr 16) and 0xFF).toInt()
+            g = ((hexValue shr 8) and 0xFF).toInt()
+            b = (hexValue and 0xFF).toInt()
+        }
+        alpha = a
+        red = r
+        green = g
+        blue = b
+        val hsv = floatArrayOf(0f, 0f, 0f)
+        AndroidColor.colorToHSV(
+            AndroidColor.rgb(r, g, b),
+            hsv
+        )
+        hue = hsv[0]
+        saturation = hsv[1] * 100f
+        value = hsv[2] * 100f
+    }
+
+    LaunchedEffect(red, green, blue, alpha) {
+        updateHexInput()
+    }
+
+    val currentColor = Color(red / 255f, green / 255f, blue / 255f, alpha / 255f)
+
+    val applyHsv: (Float, Float, Float) -> Unit = { newHue, newSat, newVal ->
+        hue = newHue
+        saturation = newSat
+        value = newVal
+        val rgb = Color.hsv(newHue, newSat / 100f, newVal / 100f)
+        red = (rgb.red * 255).roundToInt()
+        green = (rgb.green * 255).roundToInt()
+        blue = (rgb.blue * 255).roundToInt()
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            color = Color.White,
+                .padding(16.dp)
+                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.radiusXXLarge))),
+            color = Color.Transparent,
             shape = RoundedCornerShape(AppDimens.radiusXXLarge),
-            shadowElevation = 8.dp
+            shadowElevation = 0.dp
         ) {
             Column(
                 modifier = Modifier
@@ -64,7 +130,7 @@ fun FullColorPickerDialog(
                     Str.get(R.string.full_color_picker),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = onWhite
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -79,12 +145,45 @@ fun FullColorPickerDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 颜色值显示
-                Text(
-                    text = hexColor,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace,
-                    color = onWhite
+                // 十六进制颜色值输入
+                OutlinedTextField(
+                    value = hexInput,
+                    onValueChange = {
+                        val cleaned = it.trim().removePrefix("#").uppercase()
+                        if (cleaned.length <= 8 && cleaned.all { c -> c.isDigit() || c in 'A'..'F' }) {
+                            hexInput = "#$cleaned"
+                            parseHex(hexInput)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    shape = RoundedCornerShape(AppDimens.radiusSmall)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 可视化取色面板（饱和度 × 亮度）
+                SVSquare(
+                    hue = hue,
+                    saturation = saturation,
+                    value = value,
+                    indicatorColor = currentColor,
+                    onSaturationChange = { sat -> applyHsv(hue, sat, value) },
+                    onValueChange = { v -> applyHsv(hue, saturation, v) }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 色相条
+                HueBar(
+                    hue = hue,
+                    onHueChange = { h -> applyHsv(h, saturation, value) }
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -93,24 +192,21 @@ fun FullColorPickerDialog(
                 ColorSliderRow(
                     label = "R",
                     value = red,
-                    onValueChange = { red = it },
-                    labelColor = onWhite
+                    onValueChange = { red = it }
                 )
 
                 // Green 滑块
                 ColorSliderRow(
                     label = "G",
                     value = green,
-                    onValueChange = { green = it },
-                    labelColor = onWhite
+                    onValueChange = { green = it }
                 )
 
                 // Blue 滑块
                 ColorSliderRow(
                     label = "B",
                     value = blue,
-                    onValueChange = { blue = it },
-                    labelColor = onWhite
+                    onValueChange = { blue = it }
                 )
 
                 // Alpha 滑块
@@ -118,8 +214,7 @@ fun FullColorPickerDialog(
                     label = "A",
                     value = alpha,
                     onValueChange = { alpha = it },
-                    isAlpha = true,
-                    labelColor = onWhiteSecondary
+                    isAlpha = true
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -128,7 +223,7 @@ fun FullColorPickerDialog(
                 Text(
                     text = Str.get(R.string.preset_colors),
                     fontSize = 12.sp,
-                    color = onWhiteSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
@@ -149,6 +244,7 @@ fun FullColorPickerDialog(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         rowColors.forEach { color ->
+                            val swatchShape = RoundedCornerShape(AppDimens.radiusSmall)
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
@@ -159,7 +255,14 @@ fun FullColorPickerDialog(
                                         blue = (color.blue * 255).roundToInt()
                                         alpha = (color.alpha * 255).roundToInt()
                                     }
-                                    .background(color, RoundedCornerShape(AppDimens.radiusSmall))
+                                    .then(
+                                        if (color == Color.White) {
+                                            Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, swatchShape)
+                                        } else {
+                                            Modifier
+                                        }
+                                    )
+                                    .background(color, swatchShape)
                             )
                         }
                         repeat(4 - rowColors.size) {
@@ -181,14 +284,96 @@ fun FullColorPickerDialog(
                     Text(Str.get(R.string.ok_2))
                 }
 
-                TextButton(
+                UnifiedDialogTextButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(Str.get(R.string.cancel), color = onWhite)
+                    Text(Str.get(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HueBar(
+    hue: Float,
+    onHueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val rainbow = listOf(
+        Color(0xFFFF0000), Color(0xFFFFFF00), Color(0xFF00FF00),
+        Color(0xFF00FFFF), Color(0xFF0000FF), Color(0xFFFF00FF), Color(0xFFFF0000)
+    )
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .clip(RoundedCornerShape(AppDimens.radiusSmall))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        onHueChange((offset.x / size.width * 360f).coerceIn(0f, 360f))
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        onHueChange((change.position.x / size.width * 360f).coerceIn(0f, 360f))
+                    }
+                )
+            }
+    ) {
+        drawRect(brush = Brush.horizontalGradient(rainbow))
+        val x = (hue / 360f * size.width).coerceIn(0f, size.width)
+        drawLine(
+            color = Color.White,
+            start = Offset(x, 0f),
+            end = Offset(x, size.height),
+            strokeWidth = 3.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+@Composable
+private fun SVSquare(
+    hue: Float,
+    saturation: Float,
+    value: Float,
+    indicatorColor: Color,
+    onSaturationChange: (Float) -> Unit,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val baseColor = Color.hsv(hue, 1f, 1f)
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(240.dp)
+            .clip(RoundedCornerShape(AppDimens.radiusSmall))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        onSaturationChange((offset.x / size.width * 100f).coerceIn(0f, 100f))
+                        onValueChange(((1f - offset.y / size.height) * 100f).coerceIn(0f, 100f))
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        onSaturationChange((change.position.x / size.width * 100f).coerceIn(0f, 100f))
+                        onValueChange(((1f - change.position.y / size.height) * 100f).coerceIn(0f, 100f))
+                    }
+                )
+            }
+    ) {
+        drawRect(baseColor)
+        drawRect(brush = Brush.horizontalGradient(listOf(Color.White, Color.Transparent)))
+        drawRect(brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
+
+        val x = saturation / 100f * size.width
+        val y = (1f - value / 100f) * size.height
+        drawCircle(Color.White, radius = 8.dp.toPx(), center = Offset(x, y))
+        drawCircle(indicatorColor, radius = 5.dp.toPx(), center = Offset(x, y))
     }
 }
 
@@ -198,7 +383,9 @@ private fun ColorSliderRow(
     value: Int,
     onValueChange: (Int) -> Unit,
     isAlpha: Boolean = false,
-    labelColor: Color = Color(0xFF212121)
+    labelColor: Color = MaterialTheme.colorScheme.onSurface,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..255f,
+    steps: Int = 255
 ) {
     Row(
         modifier = Modifier
@@ -217,13 +404,13 @@ private fun ColorSliderRow(
         Slider(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.roundToInt()) },
-            valueRange = 0f..255f,
-            steps = 255,
+            valueRange = valueRange,
+            steps = steps,
             modifier = Modifier.weight(1f),
             colors = SliderDefaults.colors(
-                thumbColor = if (isAlpha) Color(0xFF616F7E) else Color(0xFF1A3A4A),
-                activeTrackColor = if (isAlpha) Color(0xFF616F7E) else Color(0xFF1A3A4A),
-                inactiveTrackColor = Color(0xFFE0E4E8)
+                thumbColor = if (isAlpha) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                activeTrackColor = if (isAlpha) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
 
@@ -232,7 +419,20 @@ private fun ColorSliderRow(
             modifier = Modifier.width(32.dp),
             fontSize = 12.sp,
             fontFamily = FontFamily.Monospace,
-            color = Color(0xFF212121)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+private fun toHsv(color: Color): FloatArray {
+    val hsv = floatArrayOf(0f, 0f, 0f)
+    AndroidColor.colorToHSV(
+        AndroidColor.rgb(
+            (color.red * 255).roundToInt(),
+            (color.green * 255).roundToInt(),
+            (color.blue * 255).roundToInt()
+        ),
+        hsv
+    )
+    return hsv
 }

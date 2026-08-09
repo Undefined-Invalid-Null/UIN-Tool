@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
+import com.UIN.Tool.ui.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +23,7 @@ fun PermissionExplainScreen(
     onBack: () -> Unit
 ) {
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.permission_description),
@@ -35,7 +38,7 @@ fun PermissionExplainScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            UIComponents.BodyText(
+            UnifiedBodyText(
                 Str.get(R.string.uin_tool_needs_the_following_permiss),
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -58,10 +61,10 @@ fun PermissionExplainScreen(
                 description = Str.get(R.string.camera_microphone_permission_desc)
             )
 
-            UIComponents.Card(
+            UnifiedCard(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
             ) {
-                UIComponents.BodyText(
+                UnifiedBodyText(
                     Str.get(R.string.other_permissions_location_phone_sms),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -78,7 +81,7 @@ fun PermissionExplainCard(
     title: String,
     description: String
 ) {
-    UIComponents.Card(
+    UnifiedCard(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -90,10 +93,10 @@ fun PermissionExplainCard(
                     modifier = Modifier.size(32.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                UIComponents.BodyText(title)
+                UnifiedBodyText(title)
             }
             Spacer(modifier = Modifier.height(8.dp))
-            UIComponents.BodyText(description)
+            UnifiedBodyText(description)
         }
     }
 }

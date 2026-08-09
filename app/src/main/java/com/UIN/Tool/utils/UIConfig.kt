@@ -67,6 +67,7 @@ object UIConfig {
         }
         
         ensureDefaultSections()
+        migrateLegacyDefaults()
         
         useIconTint = prefs.getBoolean(KEY_USE_ICON_TINT, true)
         currentTheme = prefs.getString(KEY_CURRENT_THEME, "default") ?: "default"
@@ -78,7 +79,7 @@ object UIConfig {
      */
     private fun ensureDefaultSections() {
         val def = getDefaultConfig()
-        val sections = listOf("theme", "theme_dark", "shape", "size", "font", "experimental")
+        val sections = listOf("theme", "theme_dark", "shape", "size", "font", "experimental", "gradient")
         for (section in sections) {
             val current = config.optJSONObject(section)
             val defaultSection = def.optJSONObject(section) ?: continue
@@ -95,7 +96,66 @@ object UIConfig {
             }
         }
     }
-    
+
+    /**
+     * 迁移旧版本遗留的默认值：
+     * 旧深色模式 primary_dark 默认值 #FF4A4A4A（无消费方）迁移为新默认值
+     * #FFD0D0D0（与深色 onSecondaryContainer 一致，避免接入后深色文本对比度回退）。
+     */
+    private fun migrateLegacyDefaults() {
+        try {
+            val themeDark = config.optJSONObject("theme_dark") ?: return
+            val oldDefault = "#FF4A4A4A"
+            val newDefault = "#FFD0D0D0"
+            if (themeDark.optString("primary_dark", "") == oldDefault) {
+                themeDark.put("primary_dark", newDefault)
+            }
+            migrateLegacyGradientDefault()
+        } catch (e: Exception) {
+            Logger.w(TAG, "migrateLegacyDefaults failed: ${e.message}")
+        }
+    }
+
+    /**
+     * 迁移旧版「多色默认渐变」（multi + 三色默认值）为新版「单色默认渐变」：
+     * 浅色 #FFC4D6DF / 深色 #FF4C4F51，方向自右下 → 左上。
+     * 仅当用户未自定义（仍为旧默认三色列表）时迁移，保留用户自定义配置。
+     */
+    private fun migrateLegacyGradientDefault() {
+        try {
+            val gradient = config.optJSONObject("gradient") ?: return
+            val oldDefaultColors = listOf("#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA")
+            val currentColors = gradient.optJSONArray("colors")?.let { arr ->
+                (0 until arr.length()).map { arr.optString(it, "") }
+            } ?: emptyList()
+            val isOldDefault = gradient.optString("mode", "") == GRADIENT_MODE_MULTI &&
+                gradient.optString("color", "") == "#FFC4D6DF" &&
+                currentColors == oldDefaultColors
+            if (isOldDefault) {
+                gradient.put("mode", GRADIENT_MODE_SINGLE)
+                gradient.put("color", "#FFC4D6DF")
+                gradient.put("color_dark", "#FF4C4F51")
+                config.put("gradient", gradient)
+            } else if (!gradient.has("color_dark")) {
+                gradient.put("color_dark", "#FF4C4F51")
+                config.put("gradient", gradient)
+            }
+            if (gradient.optString("color_dark", "") == "#FF4D4F50") {
+                gradient.put("color_dark", "#FF4C4F51")
+                config.put("gradient", gradient)
+            }
+            // 旧版 setGradientColorBoth 会把同一个颜色同时写入浅色与深色
+            // （如深色也存成浅色默认 #FFC4D6DF）；这种「深色等于浅色」的旧配置
+            // 需迁移回深色独立的默认单色 #FF4C4F51，否则深色模式仍显示浅色渐变。
+            if (gradient.optString("color_dark", "") == gradient.optString("color", "")) {
+                gradient.put("color_dark", "#FF4C4F51")
+                config.put("gradient", gradient)
+            }
+        } catch (e: Exception) {
+            Logger.w(TAG, "migrateLegacyGradientDefault failed: ${e.message}")
+        }
+    }
+
     fun saveConfig() {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         prefs.edit().apply {
@@ -130,7 +190,7 @@ object UIConfig {
                     put("surface", "#FFFFFFFF")
                     put("surface_variant", "#FFF5F7FA")
                     put("divider", "#FFE0E4E8")
-                    put("glass_background", "#E6FFFFFF")
+                    put("glass_background", "#B3FFFFFF")
                     put("disabled", "#FFBDBDBD")
                     put("status_bar", "#FF0F2838")
                     put("navigation_bar", "#FFFFFFFF")
@@ -139,7 +199,7 @@ object UIConfig {
                 })
                 put("theme_dark", JSONObject().apply {
                     put("primary", "#FF8B949E")
-                    put("primary_dark", "#FF4A4A4A")
+                    put("primary_dark", "#FFD0D0D0")
                     put("primary_light", "#FFE6E6E6")
                     put("accent", "#FF8B949E")
                     put("success", "#FF66BB6A")
@@ -154,7 +214,7 @@ object UIConfig {
                     put("surface", "#FF363636")
                     put("surface_variant", "#FF3F3F3F")
                     put("divider", "#FF484848")
-                    put("glass_background", "#E62A2A2A")
+                    put("glass_background", "#B32A2A2A")
                     put("disabled", "#FF666666")
                     put("status_bar", "#FF1F1F1F")
                     put("navigation_bar", "#FF2A2A2A")
@@ -196,6 +256,19 @@ object UIConfig {
                 put("experimental", JSONObject().apply {
                     put("enableGlassEffect", true)
                     put("enableRipple", true)
+                })
+                put("gradient", JSONObject().apply {
+                    put("enabled", true)
+                    put("mode", GRADIENT_MODE_SINGLE)
+                    put("color", "#FFC4D6DF")
+                    put("color_dark", "#FF4C4F51")
+                    put("from", GRADIENT_DIR_BOTTOM_RIGHT)
+                    put("to", GRADIENT_DIR_TOP_LEFT)
+                    put("colors", org.json.JSONArray().apply {
+                        put("#FFC4D6DF")
+                        put("#FFD6E8F2")
+                        put("#FFEAF4FA")
+                    })
                 })
             }
         } catch (e: Exception) {
@@ -395,6 +468,117 @@ object UIConfig {
     fun isRippleEnabled(): Boolean = getBoolean("enableRipple", true)
     fun isBoldEnabled(): Boolean = config.optJSONObject("font")?.optBoolean("enableBold", true) ?: true
     fun getFontFamily(): String = config.optJSONObject("font")?.optString("fontFamily", "sans-serif") ?: "sans-serif"
+
+    // ==================== 渐变背景配置 ====================
+
+    const val GRADIENT_MODE_SINGLE = "single"
+    const val GRADIENT_MODE_MULTI = "multi"
+
+    const val GRADIENT_DIR_TOP = "top"
+    const val GRADIENT_DIR_BOTTOM = "bottom"
+    const val GRADIENT_DIR_TOP_LEFT = "top_left"
+    const val GRADIENT_DIR_TOP_RIGHT = "top_right"
+    const val GRADIENT_DIR_BOTTOM_LEFT = "bottom_left"
+    const val GRADIENT_DIR_BOTTOM_RIGHT = "bottom_right"
+
+    val GRADIENT_DIRECTIONS = listOf(
+        GRADIENT_DIR_TOP,
+        GRADIENT_DIR_BOTTOM,
+        GRADIENT_DIR_TOP_LEFT,
+        GRADIENT_DIR_TOP_RIGHT,
+        GRADIENT_DIR_BOTTOM_LEFT,
+        GRADIENT_DIR_BOTTOM_RIGHT
+    )
+
+    fun isGradientBackgroundEnabled(): Boolean = config.optJSONObject("gradient")?.optBoolean("enabled", true) ?: true
+
+    fun getGradientMode(): String {
+        val mode = config.optJSONObject("gradient")?.optString("mode", GRADIENT_MODE_SINGLE) ?: GRADIENT_MODE_SINGLE
+        return if (mode == GRADIENT_MODE_SINGLE || mode == GRADIENT_MODE_MULTI) mode else GRADIENT_MODE_SINGLE
+    }
+
+    fun getGradientFrom(): String {
+        val dir = config.optJSONObject("gradient")?.optString("from", GRADIENT_DIR_BOTTOM_RIGHT)
+            ?: GRADIENT_DIR_BOTTOM_RIGHT
+        return if (GRADIENT_DIRECTIONS.contains(dir)) dir else GRADIENT_DIR_BOTTOM_RIGHT
+    }
+
+    fun getGradientTo(): String {
+        val dir = config.optJSONObject("gradient")?.optString("to", GRADIENT_DIR_TOP_LEFT)
+            ?: GRADIENT_DIR_TOP_LEFT
+        return if (GRADIENT_DIRECTIONS.contains(dir)) dir else GRADIENT_DIR_TOP_LEFT
+    }
+
+    fun getGradientColorString(): String {
+        return config.optJSONObject("gradient")?.optString("color", "#FFC4D6DF") ?: "#FFC4D6DF"
+    }
+
+    fun getGradientColorStringDark(): String {
+        return config.optJSONObject("gradient")?.optString("color_dark", "#FF4C4F51") ?: "#FF4C4F51"
+    }
+
+    fun getGradientColorsString(): List<String> {
+        val arr = config.optJSONObject("gradient")?.optJSONArray("colors") ?: return listOf("#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA")
+        val list = mutableListOf<String>()
+        for (i in 0 until arr.length()) {
+            arr.optString(i, "").takeIf { it.isNotEmpty() }?.let { list.add(it) }
+        }
+        return if (list.isNotEmpty()) list else listOf("#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA")
+    }
+
+    fun setGradientBackgroundEnabled(enabled: Boolean) {
+        val gradient = config.optJSONObject("gradient") ?: JSONObject()
+        gradient.put("enabled", enabled)
+        config.put("gradient", gradient)
+        saveConfig()
+    }
+
+    fun setGradientMode(mode: String) {
+        val normalized = if (mode == GRADIENT_MODE_SINGLE) GRADIENT_MODE_SINGLE else GRADIENT_MODE_MULTI
+        val gradient = config.optJSONObject("gradient") ?: JSONObject()
+        gradient.put("mode", normalized)
+        config.put("gradient", gradient)
+        saveConfig()
+    }
+
+    fun setGradientColor(color: String) {
+        val gradient = config.optJSONObject("gradient") ?: JSONObject()
+        gradient.put("color", color)
+        config.put("gradient", gradient)
+        saveConfig()
+    }
+
+    fun setGradientColorDark(color: String) {
+        val gradient = config.optJSONObject("gradient") ?: JSONObject()
+        gradient.put("color_dark", color)
+        config.put("gradient", gradient)
+        saveConfig()
+    }
+
+    fun setGradientFrom(dir: String) {
+        val normalized = if (GRADIENT_DIRECTIONS.contains(dir)) dir else GRADIENT_DIR_BOTTOM_RIGHT
+        val gradient = config.optJSONObject("gradient") ?: JSONObject()
+        gradient.put("from", normalized)
+        config.put("gradient", gradient)
+        saveConfig()
+    }
+
+    fun setGradientTo(dir: String) {
+        val normalized = if (GRADIENT_DIRECTIONS.contains(dir)) dir else GRADIENT_DIR_TOP_LEFT
+        val gradient = config.optJSONObject("gradient") ?: JSONObject()
+        gradient.put("to", normalized)
+        config.put("gradient", gradient)
+        saveConfig()
+    }
+
+    fun setGradientColors(colors: List<String>) {
+        val gradient = config.optJSONObject("gradient") ?: JSONObject()
+        val arr = org.json.JSONArray()
+        colors.forEach { arr.put(it) }
+        gradient.put("colors", arr)
+        config.put("gradient", gradient)
+        saveConfig()
+    }
     
     // ==================== 颜色便捷方法 ====================
     

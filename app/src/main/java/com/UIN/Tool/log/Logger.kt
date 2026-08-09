@@ -2,6 +2,7 @@ package com.UIN.Tool.log
 
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import com.UIN.Tool.utils.formatFileSize
 import android.util.Log
 import com.UIN.Tool.BuildConfig
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -254,9 +255,5 @@ object Logger {
 }
 
 fun Long.formatFileSize(): String {
-    return when {
-        this < 1024 -> "$this B"
-        this < 1024 * 1024 -> String.format("%.2f KB", this / 1024.0)
-        else -> String.format("%.2f MB", this / (1024.0 * 1024.0))
-    }
+    return formatFileSize(this)
 }

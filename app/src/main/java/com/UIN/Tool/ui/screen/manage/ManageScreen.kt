@@ -36,7 +36,7 @@ import com.UIN.Tool.core.update.UpdateChecker
 import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.UpdateDialog
 import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.backup.BackupManagerActivity
@@ -315,7 +315,7 @@ fun ManageScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            UIComponents.TitleText(Str.get(R.string.manage))
+            UnifiedTitleText(Str.get(R.string.manage))
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -324,6 +324,7 @@ fun ManageScreen(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 84.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             items(menuItems) { item ->
@@ -380,7 +381,7 @@ fun ManageScreen(
 
     // ==================== 进度对话框 ====================
     if (showProgressDialog) {
-        UIComponents.LoadingDialog(
+        UnifiedLoadingDialog(
             message = progressMessage,
             onCancel = {
                 showProgressDialog = false
@@ -407,10 +408,9 @@ fun ManageMenuItemCard(
     )
     val cardShape = RoundedCornerShape(AppDimens.cardCornerRadius)
 
-    Card(
+    UnifiedCard(
         modifier = modifier
             .fillMaxWidth()
-            .height(110.dp)
             .scale(scale)
             .clip(cardShape)
             .clickable(
@@ -418,37 +418,14 @@ fun ManageMenuItemCard(
                 indication = LocalIndication.current,
                 onClick = item.onClick,
                 onClickLabel = item.title
-            ),
-        shape = cardShape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp
-        )
+            )
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
-                        )
-                    )
-                )
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
                 Box(
                     modifier = Modifier
                         .size(44.dp)
@@ -500,4 +477,3 @@ fun ManageMenuItemCard(
             }
         }
     }
-}

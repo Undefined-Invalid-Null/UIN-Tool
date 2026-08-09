@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.UIN.Tool.app.TermuxActivity
 import com.UIN.Tool.app.activities.SettingsActivity
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
@@ -49,18 +49,19 @@ fun DevScreen() {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(16.dp),
+            .padding(16.dp)
+            .padding(bottom = 84.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        UIComponents.TitleText(Str.get(R.string.developer))
+        UnifiedTitleText(Str.get(R.string.developer))
 
         // ============================================================
         // 终端卡片
         // ============================================================
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.SectionTitle(Str.get(R.string.terminal))
+            UnifiedSectionTitle(Str.get(R.string.terminal))
             Text(
                 text = Str.get(R.string.a_full_linux_terminal_environment_nb),
                 style = MaterialTheme.typography.bodyMedium,
@@ -71,7 +72,7 @@ fun DevScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                UIComponents.PrimaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.open_terminal),
                     icon = Icons.Default.Terminal,
                     onClick = {
@@ -87,7 +88,8 @@ fun DevScreen() {
                     },
                     modifier = Modifier.weight(1f)
                 )
-                UIComponents.SecondaryButton(
+                UnifiedButton(
+                    variant = ButtonVariant.Outlined,
                     text = Str.get(R.string.terminal_settings),
                     icon = Icons.Default.Settings,
                     onClick = {
@@ -108,10 +110,10 @@ fun DevScreen() {
         // ============================================================
         // 插件开发工具卡片
         // ============================================================
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.SectionTitle(Str.get(R.string.plugin_development_tools))
+            UnifiedSectionTitle(Str.get(R.string.plugin_development_tools))
             Text(
                 text = Str.get(R.string.create_uin_tool_plugins_with_native_),
                 style = MaterialTheme.typography.bodyMedium,
@@ -119,14 +121,15 @@ fun DevScreen() {
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            UIComponents.PrimaryButton(
+            UnifiedButton(
                 text = Str.get(R.string.create_plugin),
                 icon = Icons.Default.Add,
                 onClick = { showCreatePluginDialog = true },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            UIComponents.SecondaryButton(
+            UnifiedButton(
+                variant = ButtonVariant.Outlined,
                 text = if (isExporting) Str.get(R.string.exporting) else Str.get(R.string.export_template),
                 icon = Icons.Default.FileDownload,
                 onClick = {
@@ -147,17 +150,18 @@ fun DevScreen() {
         // ============================================================
         // 快速开始卡片
         // ============================================================
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.SectionTitle(Str.get(R.string.quick_start))
+            UnifiedSectionTitle(Str.get(R.string.quick_start))
             Text(
                 text = Str.get(R.string.dev_create_plugin_steps),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            UIComponents.SecondaryButton(
+            UnifiedButton(
+                variant = ButtonVariant.Outlined,
                 text = Str.get(R.string.view_development_docs),
                 icon = Icons.Default.Info,
                 onClick = {
@@ -179,12 +183,8 @@ fun DevScreen() {
     // 创建插件对话框（白色背景）
     // ============================================================
     if (showCreatePluginDialog) {
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { showCreatePluginDialog = false },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
             title = {
                 Text(
                     Str.get(R.string.choose_frontend_type),
@@ -203,7 +203,7 @@ fun DevScreen() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 原生 UI
-                    UIComponents.PrimaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.native_ui_android_view),
                         onClick = {
                             selectedUiType = "native"
@@ -214,7 +214,7 @@ fun DevScreen() {
                     )
                     
                     // ✅ 纯 WebView（无后端）
-                    UIComponents.PrimaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.web_ui_frontend_only_no_backend),
                         onClick = {
                             selectedUiType = "web"
@@ -227,7 +227,7 @@ fun DevScreen() {
                     )
                     
                     // WebView + 后端
-                    UIComponents.PrimaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.web_ui_backend),
                         onClick = {
                             selectedUiType = "web"
@@ -240,7 +240,7 @@ fun DevScreen() {
                     )
                     
                     // ✅ CUI 终端
-                    UIComponents.PrimaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.cui_terminal_command_line),
                         onClick = {
                             selectedUiType = "cui"
@@ -251,12 +251,10 @@ fun DevScreen() {
                         modifier = Modifier.fillMaxWidth()
                     )
                     
-                    TextButton(
+                    UnifiedDialogTextButton(
                         onClick = { showCreatePluginDialog = false },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ) {
                         Text(Str.get(R.string.cancel))
                     }

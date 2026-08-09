@@ -38,7 +38,7 @@
     </style>
 
     <!-- ============================================================
-         窗口切换动画（水平滑动 + 淡入淡出，类似底部导航切换）
+         窗口切换动画（滑动 + 淡入淡出：旧屏滑出并淡出，新屏滑入并淡入）
          ============================================================ -->
     <style name="Theme.UIN.Tool.WindowAnimation" parent="android:style/Animation.Activity">
         <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>

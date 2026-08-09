@@ -71,6 +71,8 @@ object PermissionUtils {
                     false
                 }
             }
+            "SHIZUKU" -> hasShizukuPermission()
+            "DHIZUKU" -> hasDhizukuPermission(context)
             else -> false
         }
     }
@@ -82,7 +84,9 @@ object PermissionUtils {
             "WRITE_SETTINGS",
             "REQUEST_INSTALL_PACKAGES",
             "PACKAGE_USAGE_STATS",
-            "ACCESSIBILITY"
+            "ACCESSIBILITY",
+            "SHIZUKU",
+            "DHIZUKU"
         )
     }
 
@@ -119,6 +123,20 @@ object PermissionUtils {
             }
             "ACCESSIBILITY" -> {
                 Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            }
+            "SHIZUKU" -> {
+                if (rikka.shizuku.Shizuku.pingBinder()) {
+                    null
+                } else {
+                    activity.packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE)
+                }
+            }
+            "DHIZUKU" -> {
+                if (com.rosan.dhizuku.api.Dhizuku.init(activity)) {
+                    null
+                } else {
+                    activity.packageManager.getLaunchIntentForPackage(DHIZUKU_PACKAGE)
+                }
             }
             else -> null
         }
@@ -168,6 +186,82 @@ object PermissionUtils {
             "SHIZUKU" -> "Shizuku"
             "DHIZUKU" -> "Dhizuku"
             else -> permission
+        }
+    }
+
+    private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
+    private const val DHIZUKU_PACKAGE = "com.rosan.dhizuku"
+    const val SHIZUKU_REQUEST_CODE = 48629
+
+    fun isShizukuBinderAlive(): Boolean {
+        return try {
+            rikka.shizuku.Shizuku.pingBinder()
+        } catch (e: Throwable) {
+            false
+        }
+    }
+
+    fun hasShizukuPermission(): Boolean {
+        return try {
+            rikka.shizuku.Shizuku.pingBinder() &&
+                rikka.shizuku.Shizuku.checkSelfPermission() ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        } catch (e: Throwable) {
+            false
+        }
+    }
+
+    fun requestShizukuPermission() {
+        try {
+            rikka.shizuku.Shizuku.requestPermission(SHIZUKU_REQUEST_CODE)
+        } catch (e: Throwable) {
+            // ignore
+        }
+    }
+
+    fun hasDhizukuPermission(context: Context): Boolean {
+        return try {
+            com.rosan.dhizuku.api.Dhizuku.init(context) &&
+                com.rosan.dhizuku.api.Dhizuku.isPermissionGranted()
+        } catch (e: Throwable) {
+            false
+        }
+    }
+
+    fun requestDhizukuPermission(
+        context: Context,
+        onResult: (Boolean) -> Unit
+    ) {
+        try {
+            if (!com.rosan.dhizuku.api.Dhizuku.init(context)) {
+                onResult(false)
+                return
+            }
+            com.rosan.dhizuku.api.Dhizuku.requestPermission(
+                object : com.rosan.dhizuku.api.DhizukuRequestPermissionListener() {
+                    override fun onRequestPermission(grantResult: Int) {
+                        onResult(grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED)
+                    }
+                }
+            )
+        } catch (e: Throwable) {
+            onResult(false)
+        }
+    }
+
+    fun addShizukuPermissionResultListener(listener: rikka.shizuku.Shizuku.OnRequestPermissionResultListener) {
+        try {
+            rikka.shizuku.Shizuku.addRequestPermissionResultListener(listener)
+        } catch (e: Throwable) {
+            // ignore
+        }
+    }
+
+    fun removeShizukuPermissionResultListener(listener: rikka.shizuku.Shizuku.OnRequestPermissionResultListener) {
+        try {
+            rikka.shizuku.Shizuku.removeRequestPermissionResultListener(listener)
+        } catch (e: Throwable) {
+            // ignore
         }
     }
 }

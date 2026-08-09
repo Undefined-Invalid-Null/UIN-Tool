@@ -1,9 +1,16 @@
 // app/src/main/java/com/UIN/Tool/ui/theme/AppColors.kt
 package com.UIN.Tool.ui.theme
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import com.UIN.Tool.utils.UIConfig
 
 /**
@@ -148,11 +155,60 @@ object AppColors {
     
     @Composable
     fun glassBackground(): Color = if (glassEnabled()) {
-        dynamicColor("glass_background", surface().copy(alpha = 0.85f))
+        dynamicColor("glass_background", surface().copy(alpha = 0.7f))
     } else {
         surface()
     }
-    
+
     @Composable
-    fun glassBorder(): Color = if (glassEnabled()) Color.White.copy(alpha = 0.35f) else Color.Transparent
+    fun glassBorder(): Color = Color.Transparent
+
+    /**
+     * 弹窗卡片背景色：与主背景完全一致（不透明、不透出背后的组件）。
+     * 渐变开启时由 [pageGradientBrush] 提供同款渐变，此处仅返回纯色兜底。
+     */
+    @Composable
+    fun dialogBackground(): Color = background()
+
+    /**
+     * 页面根背景色：渐变开启时返回透明以透出全局渐变背景；
+     * 否则回到玻璃效果或主题背景色。
+     */
+    @Composable
+    fun pageBackground(): Color {
+        if (UIConfig.isInitialized() && UIConfig.isGradientBackgroundEnabled()) {
+            return Color.Transparent
+        }
+        return if (glassEnabled()) glassBackground() else background()
+    }
+}
+
+/**
+ * 主页面背景渐变画刷（同方向/同颜色的那套渐变），供弹窗背景复用；
+ * 未启用渐变时返回 null。
+ */
+@Composable
+fun pageGradientBrush(): Brush? {
+    if (UIConfig.isInitialized() && UIConfig.isGradientBackgroundEnabled()) {
+        val density = LocalDensity.current
+        val config = LocalConfiguration.current
+        val widthPx = with(density) { config.screenWidthDp.dp.toPx() }
+        val heightPx = with(density) { config.screenHeightDp.dp.toPx() }
+        return gradientBackgroundBrush(widthPx, heightPx)
+    }
+    return null
+}
+
+/**
+ * 弹窗背景修饰符：与主页面同款渐变铺底（或纯 background 色），
+ * 按 shape 圆角裁剪，保持弹窗视觉与主背景一致且不透明。
+ */
+@Composable
+fun Modifier.dialogBackgroundOf(shape: Shape): Modifier {
+    val brush = pageGradientBrush()
+    return if (brush != null) {
+        then(Modifier.background(brush, shape))
+    } else {
+        then(Modifier.background(AppColors.dialogBackground(), shape))
+    }
 }

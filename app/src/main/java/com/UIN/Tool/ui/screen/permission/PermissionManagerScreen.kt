@@ -5,11 +5,12 @@ import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.Manifest
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,16 +25,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.PermissionUtils
-import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.AppColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -78,13 +83,21 @@ fun PermissionManagerScreen() {
             PermissionItem(Str.get(R.string.system_permission), Manifest.permission.VIBRATE),
             PermissionItem(Str.get(R.string.accessibility_permission), "ACCESSIBILITY", true),
             PermissionItem(Str.get(R.string.advanced_permissions), "REQUEST_INSTALL_PACKAGES", true),
-            PermissionItem(Str.get(R.string.advanced_permissions), "PACKAGE_USAGE_STATS", true)
+            PermissionItem(Str.get(R.string.advanced_permissions), "PACKAGE_USAGE_STATS", true),
+            PermissionItem(Str.get(R.string.system_permission), "SHIZUKU", true),
+            PermissionItem(Str.get(R.string.system_permission), "DHIZUKU", true)
         )
     }
 
     fun checkPermission(permission: String): Boolean {
         return PermissionUtils.hasPermission(context, permission) ||
                 PermissionUtils.hasSpecialPermission(context, permission)
+    }
+
+    // 授权状态派生自 refreshKey：授权回调/Shizuku 监听/下拉刷新都会 +1，
+    // 触发重新检查所有权限状态，从而自动刷新列表勾选。
+    val permissionStates = remember(refreshKey) {
+        permissionItems.associate { item -> item.permission to checkPermission(item.permission) }
     }
 
     val multiplePermissionLauncher = rememberLauncherForActivityResult(
@@ -101,17 +114,76 @@ fun PermissionManagerScreen() {
         AppToast.info(context, Str.get(R.string.permission_status_refreshed))
     }
 
-    fun requestPermission(permission: String) {
-        if (PermissionUtils.isSpecialPermission(permission)) {
-            if (activity != null) {
-                PermissionUtils.requestSpecialPermission(
-                    activity,
-                    permission,
-                    settingsLauncher
+    fun requestShizukuPermission() {
+        if (PermissionUtils.isShizukuBinderAlive()) {
+            PermissionUtils.requestShizukuPermission()
+        } else {
+            val intent = activity?.packageManager
+                ?.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+            if (intent != null) {
+                settingsLauncher.launch(intent)
+            }
+        }
+    }
+
+    fun requestDhizukuPermission() {
+        PermissionUtils.requestDhizukuPermission(context) { granted ->
+            Handler(Looper.getMainLooper()).post {
+                refreshKey++
+                AppToast.info(
+                    context,
+                    if (granted) Str.get(R.string.permission_granted)
+                    else Str.get(R.string.permission_denied)
                 )
             }
-        } else {
-            multiplePermissionLauncher.launch(arrayOf(permission))
+        }
+    }
+
+    fun requestPermission(permission: String) {
+        when (permission) {
+            "SHIZUKU" -> requestShizukuPermission()
+            "DHIZUKU" -> requestDhizukuPermission()
+            else -> {
+                if (PermissionUtils.isSpecialPermission(permission)) {
+                    if (activity != null) {
+                        PermissionUtils.requestSpecialPermission(
+                            activity,
+                            permission,
+                            settingsLauncher
+                        )
+                    }
+                } else {
+                    multiplePermissionLauncher.launch(arrayOf(permission))
+                }
+            }
+        }
+    }
+
+    // Shizuku 权限请求结果为异步 binder 回调，需要注册结果监听器刷新状态
+    DisposableEffect(Unit) {
+        val listener = rikka.shizuku.Shizuku.OnRequestPermissionResultListener { requestCode, _ ->
+            if (requestCode == PermissionUtils.SHIZUKU_REQUEST_CODE) {
+                refreshKey++
+                AppToast.info(context, Str.get(R.string.permission_status_refreshed))
+            }
+        }
+        PermissionUtils.addShizukuPermissionResultListener(listener)
+        onDispose {
+            PermissionUtils.removeShizukuPermissionResultListener(listener)
+        }
+    }
+
+    // 从系统设置/Shizuku/Dhizuku 返回前台时自动刷新权限状态，无需手动下拉
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshKey++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -124,17 +196,12 @@ fun PermissionManagerScreen() {
         }
         permissionItems.filter { PermissionUtils.isSpecialPermission(it.permission) }
             .forEach {
-                if (activity != null) {
-                    PermissionUtils.requestSpecialPermission(
-                        activity,
-                        it.permission,
-                        settingsLauncher
-                    )
-                }
+                requestPermission(it.permission)
             }
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.permission_management),
@@ -177,23 +244,14 @@ fun PermissionManagerScreen() {
             }
             // 插件权限管理入口卡片
             item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            try {
-                                context.startActivity(Intent(context, PluginPermissionActivity::class.java))
-                            } catch (e: Exception) {
-                                AppToast.warning(context, Str.get(R.string.plugin_permission_feature_under_deve))
-                            }
-                        },
-                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (AppColors.glassEnabled())
-                            AppColors.glassBackground()
-                        else
-                            MaterialTheme.colorScheme.surface
-                    )
+                UnifiedCard(
+                    onClick = {
+                        try {
+                            context.startActivity(Intent(context, PluginPermissionActivity::class.java))
+                        } catch (e: Exception) {
+                            AppToast.warning(context, Str.get(R.string.plugin_permission_feature_under_deve))
+                        }
+                    }
                 ) {
                     Row(
                         modifier = Modifier
@@ -250,8 +308,8 @@ fun PermissionManagerScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    UIComponents.TitleText(Str.get(R.string.app_permissions))
-                    UIComponents.PrimaryButton(
+                    UnifiedTitleText(Str.get(R.string.app_permissions))
+                    UnifiedButton(
                         text = Str.get(R.string.grant_all),
                         onClick = { requestAllPermissions() },
                         modifier = Modifier.height(32.dp)
@@ -261,15 +319,13 @@ fun PermissionManagerScreen() {
 
             // 权限列表
             items(permissionItems) { item ->
-                val granted = checkPermission(item.permission)
-                UIComponents.Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (!granted) {
-                                requestPermission(item.permission)
-                            }
+                val granted = permissionStates[item.permission] ?: checkPermission(item.permission)
+                UnifiedCard(
+                    onClick = {
+                        if (!granted) {
+                            requestPermission(item.permission)
                         }
+                    }
                 ) {
                     Row(
                         modifier = Modifier
@@ -279,6 +335,8 @@ fun PermissionManagerScreen() {
                     ) {
                         Icon(
                             when {
+                                item.permission == "SHIZUKU" -> Icons.Default.Shield
+                                item.permission == "DHIZUKU" -> Icons.Default.Security
                                 item.category.contains(Str.get(R.string.storage)) -> Icons.Default.Folder
                                 item.category.contains(Str.get(R.string.network)) -> Icons.Default.Wifi
                                 item.category.contains(Str.get(R.string.camera)) -> Icons.Default.Camera
@@ -347,7 +405,7 @@ fun PermissionManagerScreen() {
             // 底部提示 - 移除 Emoji
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                UIComponents.CaptionText(
+                UnifiedCaptionText(
                     Str.get(R.string.note_some_permissions_e_g_overlay_wi)
                 )
             }

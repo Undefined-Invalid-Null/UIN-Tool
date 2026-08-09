@@ -1,5 +1,6 @@
 package com.UIN.Tool.domain.model
 
+import com.UIN.Tool.utils.formatFileSize
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -20,10 +21,6 @@ data class BackupInfo(
     }
     
     fun getFormattedSize(): String {
-        return when {
-            size < 1024 -> "$size B"
-            size < 1024 * 1024 -> String.format("%.2f KB", size / 1024.0)
-            else -> String.format("%.2f MB", size / (1024.0 * 1024.0))
-        }
+        return formatFileSize(size)
     }
 }

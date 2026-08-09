@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppToast
 
 data class DevDocItem(
@@ -42,6 +44,7 @@ fun DevDocScreen() {
     )
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.docs_center),
@@ -57,7 +60,7 @@ fun DevDocScreen() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(docs) { doc ->
-                UIComponents.Card(
+                UnifiedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
@@ -84,8 +87,8 @@ fun DevDocScreen() {
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            UIComponents.BodyText(doc.title)
-                            UIComponents.CaptionText(doc.description)
+                            UnifiedBodyText(doc.title)
+                            UnifiedCaptionText(doc.description)
                         }
                         Icon(
                             Icons.Default.KeyboardArrowRight,

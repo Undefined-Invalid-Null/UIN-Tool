@@ -27,6 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.UnifiedBodyText
+import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
+import com.UIN.Tool.ui.components.unified.UnifiedCard
+import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
+import com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator
+import com.UIN.Tool.ui.components.unified.UnifiedTitleText
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -115,16 +123,17 @@ fun LogViewerScreen(
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.runtime_logs),
                 onBack = onBack,
                 actions = {
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.DeleteSweep,
                         onClick = { showClearAllConfirm = true }
                     )
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.FileDownload,
                         onClick = {
                             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -170,7 +179,7 @@ fun LogViewerScreen(
             // 崩溃提示 - 使用 Material Icon 替换 ⚠️
             if (showCrashMessage) {
                 item {
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 8.dp)
@@ -194,17 +203,17 @@ fun LogViewerScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
-                                    UIComponents.BodyText(
+                                    UnifiedBodyText(
                                         Str.get(R.string.an_exception_occurred),
                                         color = MaterialTheme.colorScheme.error
                                     )
-                                    UIComponents.CaptionText(
+                                    UnifiedCaptionText(
                                         Str.get(R.string.please_check_the_crash_log_below_for),
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 }
                             }
-                            UIComponents.IconButton(
+                            UnifiedIconButton(
                                 icon = Icons.Default.Close,
                                 onClick = { showCrashMessage = false },
                                 tint = MaterialTheme.colorScheme.error
@@ -216,15 +225,15 @@ fun LogViewerScreen(
 
             // 统计信息
             item {
-                UIComponents.Card(
+                UnifiedCard(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        UIComponents.BodyText(Str.get(R.string.loglines_size_lines_in_total, logLines.size))
-                        UIComponents.CaptionText(Str.get(R.string.latest_logs_at_the_top))
+                        UnifiedBodyText(Str.get(R.string.loglines_size_lines_in_total, logLines.size))
+                        UnifiedCaptionText(Str.get(R.string.latest_logs_at_the_top))
                     }
                 }
             }
@@ -235,7 +244,7 @@ fun LogViewerScreen(
                         modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        UIComponents.FullScreenLoading()
+                        UnifiedLoadingIndicator()
                     }
                 }
                 logLines.isEmpty() -> item {
@@ -251,7 +260,7 @@ fun LogViewerScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            UIComponents.TitleText(Str.get(R.string.no_log_records_yet))
+                            UnifiedTitleText(Str.get(R.string.no_log_records_yet))
                         }
                     }
                 }
@@ -264,7 +273,7 @@ fun LogViewerScreen(
                         else -> MaterialTheme.colorScheme.onSurface
                     }
                     val isHeader = line.contains("==================")
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
@@ -287,7 +296,7 @@ fun LogViewerScreen(
     }
 
     if (showClearAllConfirm) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_clear),
             message = Str.get(R.string.clear_all_historical_log_files),
             onConfirm = { clearAllLogs(); showClearAllConfirm = false },

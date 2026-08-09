@@ -30,6 +30,15 @@ import com.UIN.Tool.domain.model.BackupInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.UnifiedBodyText
+import com.UIN.Tool.ui.components.unified.UnifiedButton
+import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
+import com.UIN.Tool.ui.components.unified.UnifiedCard
+import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
+import com.UIN.Tool.ui.components.unified.UnifiedLinearProgressIndicator
+import com.UIN.Tool.ui.components.unified.UnifiedTitleText
+import com.UIN.Tool.ui.components.unified.ButtonVariant
+import com.UIN.Tool.ui.components.unified.ButtonSize
 import com.UIN.Tool.utils.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,14 +47,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
-
-private fun formatFileSize(size: Long): String {
-    return when {
-        size < 1024 -> "$size B"
-        size < 1024 * 1024 -> String.format("%.2f KB", size / 1024.0)
-        else -> String.format("%.2f MB", size / (1024.0 * 1024.0))
-    }
-}
 
 private fun addFileToZip(
     zos: java.util.zip.ZipOutputStream,
@@ -548,7 +549,7 @@ fun BackupScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    UIComponents.TitleText(Str.get(R.string.backup_restore))
+                    UnifiedTitleText(Str.get(R.string.backup_restore))
                 }
             }
             item {
@@ -559,7 +560,7 @@ fun BackupScreen() {
             }
 
             item {
-                UIComponents.PrimaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.create_backup),
                     icon = Icons.Default.Backup,
                     onClick = { createBackup() },
@@ -570,16 +571,10 @@ fun BackupScreen() {
 
             // 备份选项
             item {
-                Card(
+                UnifiedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (AppColors.glassEnabled())
-                            AppColors.glassBackground()
-                        else
-                            MaterialTheme.colorScheme.surface
-                    )
+                        .padding(vertical = 4.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -624,7 +619,7 @@ fun BackupScreen() {
 
             if (showProgress) {
                 item {
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
@@ -634,9 +629,9 @@ fun BackupScreen() {
                                 .fillMaxWidth()
                                 .padding(12.dp)
                         ) {
-                            UIComponents.LinearProgressIndicator(progress = progressValue)
+                            UnifiedLinearProgressIndicator(progress = progressValue)
                             Spacer(modifier = Modifier.height(4.dp))
-                            UIComponents.CaptionText(progressMessage)
+                            UnifiedCaptionText(progressMessage)
                         }
                     }
                 }
@@ -656,8 +651,8 @@ fun BackupScreen() {
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            UIComponents.TitleText(Str.get(R.string.no_backup_files_yet))
-                            UIComponents.BodyText(Str.get(R.string.tap_create_backup_to_back_up_your_pl))
+                            UnifiedTitleText(Str.get(R.string.no_backup_files_yet))
+                            UnifiedBodyText(Str.get(R.string.tap_create_backup_to_back_up_your_pl))
                         }
                     }
                 }
@@ -677,7 +672,7 @@ fun BackupScreen() {
     }
 
     deleteTarget?.let { backup ->
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_delete),
             message = Str.get(R.string.delete_backup_backup_name, backup.name),
             onConfirm = {
@@ -689,7 +684,7 @@ fun BackupScreen() {
     }
 
     if (showRestoreConfirm && restoreTarget != null) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_restore),
             message = Str.get(R.string.restoring_will_overwrite_existing_pl),
             onConfirm = {
@@ -710,13 +705,10 @@ fun BackupItemCardCompact(
     onRestore: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
+    UnifiedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+        elevation = 0.5.dp
     ) {
         Row(
             modifier = Modifier
@@ -786,43 +778,25 @@ fun BackupItemCardCompact(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Button(
+                UnifiedButton(
+                    text = Str.get(R.string.restore),
                     onClick = onRestore,
                     modifier = Modifier
                         .height(28.dp)
                         .width(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
-                    contentPadding = PaddingValues(horizontal = 6.dp)
-                ) {
-                    Text(
-                        text = Str.get(R.string.restore),
-                        fontSize = AppDimens.captionTextSize.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                    variant = ButtonVariant.Primary,
+                    size = ButtonSize.Small
+                )
 
-                Button(
+                UnifiedButton(
+                    text = Str.get(R.string.delete),
                     onClick = onDelete,
                     modifier = Modifier
                         .height(28.dp)
                         .width(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    ),
-                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
-                    contentPadding = PaddingValues(horizontal = 6.dp)
-                ) {
-                    Text(
-                        text = Str.get(R.string.delete),
-                        fontSize = AppDimens.captionTextSize.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                    variant = ButtonVariant.Destructive,
+                    size = ButtonSize.Small
+                )
             }
         }
     }

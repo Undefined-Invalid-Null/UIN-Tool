@@ -1,5 +1,7 @@
 package com.UIN.Tool.domain.model
 
+import com.UIN.Tool.utils.formatFileSize
+
 /**
  * 仓库插件信息
  * 从GitHub获取的插件信息
@@ -21,11 +23,7 @@ data class RepoPluginInfo(
 ) {
     
     fun getFormattedSize(): String {
-        return when {
-            size < 1024 -> "$size B"
-            size < 1024 * 1024 -> String.format("%.2f KB", size / 1024.0)
-            else -> String.format("%.2f MB", size / (1024.0 * 1024.0))
-        }
+        return formatFileSize(size)
     }
     
     fun getFormattedDate(): String {

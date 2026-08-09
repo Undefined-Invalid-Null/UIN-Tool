@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.dialogBackgroundOf
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.MarkdownRenderer
 
@@ -114,11 +114,13 @@ fun UpdateDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
+                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
+            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+            border = null,
             colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+                containerColor = Color.Transparent
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             UpdateContent(
                 releaseInfo = releaseInfo,

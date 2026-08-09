@@ -1,5 +1,9 @@
 package com.UIN.Tool.ui.theme
 
+import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,8 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.node.DelegatableNode
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -68,7 +78,7 @@ val CardShadow = Color(0x1A000000)
 val CardRipple = Color(0x0D1A3A4A)
 
 // ==================== 玻璃效果 ====================
-val GlassBackground = Color(0xE6FFFFFF)
+val GlassBackground = Color(0xB3FFFFFF)
 val GlassBorder = Color(0x40FFFFFF)
 val GlassShadow = Color(0x20000000)
 
@@ -205,6 +215,61 @@ fun isAppDarkTheme(): Boolean {
     return UIConfig.shouldUseDarkTheme(isSystemInDarkTheme())
 }
 
+private fun parseUiColor(uiConfig: UIConfig, key: String, dark: Boolean, fallback: Color): Color {
+    return parseColor(uiConfig.getColorStringForMode(key, dark), fallback)
+}
+
+/**
+ * 读取全局渐变背景画刷。
+ * 单选模式：所选颜色向背景色渐变；多选模式：多个颜色构成渐变。
+ * 渐变方向由「from（起始方向）→ to（结束方向）」决定，需传入绘制区域宽高（px）。
+ * 关闭时返回 null，由根布局回退到背景色。
+ */
+@Composable
+fun gradientBackgroundBrush(widthPx: Float, heightPx: Float): Brush? {
+    if (!UIConfig.isInitialized() || !UIConfig.isGradientBackgroundEnabled()) return null
+    val dark = isAppDarkTheme()
+    val background = parseUiColor(UIConfig.getInstance(), "background", dark, MaterialTheme.colorScheme.background)
+    val colors = if (dark) {
+        // 深色模式：渐变始终使用深色单色（默认 #FF4C4F51），不受浅色多色配置影响
+        val stored = UIConfig.getInstance().getGradientColorStringDark()
+        val c = parseColor(stored, Color(0xFF4C4F51))
+        listOf(c, background)
+    } else when (UIConfig.getInstance().getGradientMode()) {
+        UIConfig.GRADIENT_MODE_SINGLE -> {
+            val stored = UIConfig.getInstance().getGradientColorString()
+            val c = parseColor(stored, Color(0xFFC4D6DF))
+            listOf(c, background)
+        }
+        else -> {
+            val parsed = UIConfig.getInstance().getGradientColorsString()
+                .map { parseColor(it, Color(0xFFC4D6DF)) }
+                .filter { it != Color.Unspecified }
+            if (parsed.isEmpty()) {
+                listOf(Color(0xFFC4D6DF), background)
+            } else if (parsed.size == 1) {
+                listOf(parsed[0], background)
+            } else {
+                parsed
+            }
+        }
+    }
+    val from = gradientDirectionOffset(UIConfig.getInstance().getGradientFrom(), widthPx, heightPx)
+    val to = gradientDirectionOffset(UIConfig.getInstance().getGradientTo(), widthPx, heightPx)
+    return Brush.linearGradient(colors = colors, start = from, end = to)
+}
+
+private fun gradientDirectionOffset(direction: String, width: Float, height: Float): Offset {
+    return when (direction) {
+        UIConfig.GRADIENT_DIR_TOP -> Offset(width / 2, 0f)
+        UIConfig.GRADIENT_DIR_BOTTOM -> Offset(width / 2, height)
+        UIConfig.GRADIENT_DIR_TOP_LEFT -> Offset(0f, 0f)
+        UIConfig.GRADIENT_DIR_TOP_RIGHT -> Offset(width, 0f)
+        UIConfig.GRADIENT_DIR_BOTTOM_LEFT -> Offset(0f, height)
+        else -> Offset(width, height)
+    }
+}
+
 /**
  * 是否启用粗体（字体页开关），供文本组件复用。
  */
@@ -218,6 +283,7 @@ private fun buildDynamicColorScheme(uiConfig: UIConfig, dark: Boolean): ColorSch
     val base = if (dark) DarkColorScheme else LightColorScheme
 
     val primary = uiColor(uiConfig, "primary", base.primary, dark)
+    val primaryDark = uiColor(uiConfig, "primary_dark", base.onSecondaryContainer, dark)
     val primaryLight = uiColor(uiConfig, "primary_light", base.primaryContainer, dark)
     val accent = uiColor(uiConfig, "accent", base.secondary, dark)
     val info = uiColor(uiConfig, "info", base.tertiary, dark)
@@ -237,6 +303,7 @@ private fun buildDynamicColorScheme(uiConfig: UIConfig, dark: Boolean): ColorSch
         onPrimaryContainer = textInverse,
         secondary = accent,
         onSecondary = textInverse,
+        onSecondaryContainer = primaryDark,
         tertiary = info,
         onTertiary = textInverse,
         background = background,
@@ -289,9 +356,26 @@ private fun buildDynamicTypography(): Typography {
 
 // ==================== 主题函数 ====================
 
+/**
+ * 无涟漪指示器：当用户关闭「涟漪效果」时作为全局 LocalIndication 提供，
+ * 使所有使用 LocalIndication 的可点击组件不再绘制涟漪。
+ */
+private object NoRippleIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode = NoRippleNode()
+    override fun hashCode(): Int = -1
+    override fun equals(other: Any?): Boolean = other === this
+}
+
+private class NoRippleNode : Modifier.Node(), DrawModifierNode {
+    override fun ContentDrawScope.draw() {
+        drawContent()
+    }
+}
+
 @Composable
 fun UINToolTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    fillBackground: Boolean = true,
     content: @Composable () -> Unit
 ) {
     // 观察配置版本号：任何保存都会触发整个主题树重组，实现即时生效
@@ -320,8 +404,14 @@ fun UINToolTheme(
     SideEffect {
         window?.let {
             val barColor = colorScheme.background.toArgb()
-            it.statusBarColor = barColor
-            it.navigationBarColor = barColor
+            val statusColor = if (UIConfig.isInitialized()) {
+                UIConfig.getInstance().getColorForMode("status_bar", resolvedDark)
+            } else barColor
+            val navColor = if (UIConfig.isInitialized()) {
+                UIConfig.getInstance().getColorForMode("navigation_bar", resolvedDark)
+            } else barColor
+            it.statusBarColor = statusColor
+            it.navigationBarColor = navColor
             it.decorView.setBackgroundColor(barColor)
             WindowCompat.getInsetsController(it, view).apply {
                 isAppearanceLightStatusBars = !resolvedDark
@@ -330,47 +420,69 @@ fun UINToolTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = typography,
-        shapes = shapes,
-        content = {
-            val snackbarHostState = remember { SnackbarHostState() }
-            val lifecycleOwner = LocalLifecycleOwner.current
-            DisposableEffect(lifecycleOwner, snackbarHostState) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_START) {
+    val rippleEnabled = if (UIConfig.isInitialized()) UIConfig.isRippleEnabled() else true
+    val effectiveIndication = if (rippleEnabled) LocalIndication.current else NoRippleIndication
+    CompositionLocalProvider(LocalIndication provides effectiveIndication) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            shapes = shapes,
+            content = {
+                val snackbarHostState = remember { SnackbarHostState() }
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner, snackbarHostState) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_START) {
+                            AppToast.bindHost(snackbarHostState)
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                         AppToast.bindHost(snackbarHostState)
                     }
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                        AppToast.unbindHost(snackbarHostState)
+                    }
                 }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                    AppToast.bindHost(snackbarHostState)
-                }
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                    AppToast.unbindHost(snackbarHostState)
-                }
-            }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                content()
-                SnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(start = 12.dp, end = 12.dp, bottom = 64.dp)
-                ) { data ->
-                    Snackbar(
-                        snackbarData = data,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        actionColor = MaterialTheme.colorScheme.primary,
-                        dismissActionContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+                    val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
+                    val gradientBrush = gradientBackgroundBrush(widthPx, heightPx)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (fillBackground) {
+                                    if (gradientBrush != null) Modifier.background(gradientBrush)
+                                    else Modifier.background(colorScheme.background)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    ) {
+                        content()
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(start = 12.dp, end = 12.dp, bottom = 64.dp)
+                        ) { data ->
+                            Snackbar(
+                                snackbarData = data,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                actionColor = MaterialTheme.colorScheme.primary,
+                                dismissActionContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
-        }
-    )
+        )
+    }
 }

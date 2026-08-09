@@ -1,6 +1,7 @@
 package com.UIN.Tool.domain.model
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import com.UIN.Tool.utils.formatFileSize
 
 /**
  * GitHub Release信息
@@ -29,11 +30,10 @@ data class ReleaseInfo(
     }
     
     fun getFormattedSize(): String {
-        return when {
-            apkSize <= 0 -> Str.get(R.string.unknown)
-            apkSize < 1024 -> "${apkSize} B"
-            apkSize < 1024 * 1024 -> String.format("%.2f KB", apkSize / 1024.0)
-            else -> String.format("%.2f MB", apkSize / (1024.0 * 1024.0))
+        return if (apkSize <= 0) {
+            Str.get(R.string.unknown)
+        } else {
+            formatFileSize(apkSize)
         }
     }
 }

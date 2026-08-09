@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.sp
 import com.UIN.Tool.R
 import com.UIN.Tool.plugin.BackendConfig
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Str
 
@@ -58,6 +60,7 @@ fun BackendSettingsScreen(
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.backend_runtime_settings),
@@ -73,7 +76,7 @@ fun BackendSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            UIComponents.SectionTitle(Str.get(R.string.backend_implementation))
+            UnifiedSectionTitle(Str.get(R.string.backend_implementation))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -93,7 +96,7 @@ fun BackendSettingsScreen(
                     )
                 }
             }
-            UIComponents.CaptionText(
+            UnifiedCaptionText(
                 if (isReal)
                     Str.get(R.string.real_termux_will_call_com_termux_t)
                 else
@@ -102,7 +105,7 @@ fun BackendSettingsScreen(
             )
 
             if (isReal) {
-                UIComponents.SectionTitle(Str.get(R.string.backend_environment))
+                UnifiedSectionTitle(Str.get(R.string.backend_environment))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -123,21 +126,21 @@ fun BackendSettingsScreen(
                     }
                 }
                 if (env == BackendConfig.ENV_PROOT) {
-                    UIComponents.TextInput(
+                    UnifiedTextField(
                         value = container,
                         onValueChange = { container = it },
                         label = Str.get(R.string.proot_container_name),
                         placeholder = "alpine",
                         modifier = Modifier.fillMaxWidth()
                     )
-                    UIComponents.CaptionText(
+                    UnifiedCaptionText(
                         Str.get(R.string.run_proot_distro_list_in_termux_t),
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     )
                 }
             }
 
-            UIComponents.SectionTitle(Str.get(R.string.idle_recycle_timeout_minutes))
+            UnifiedSectionTitle(Str.get(R.string.idle_recycle_timeout_minutes))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -154,14 +157,14 @@ fun BackendSettingsScreen(
                     )
                 }
             }
-            UIComponents.CaptionText(
+            UnifiedCaptionText(
                 Str.get(R.string.backend_will_be_stopped_after_being_i),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
 
             if (isReal) {
                 // ==================== 实体 Termux 初始化命令（可复制） ====================
-                UIComponents.Card(
+                UnifiedCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -182,7 +185,7 @@ fun BackendSettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        UIComponents.IconButton(
+                        UnifiedIconButton(
                             icon = Icons.Default.ContentCopy,
                             onClick = { copySetupCode() },
                             contentDescription = Str.get(R.string.copy_command)
@@ -210,7 +213,7 @@ fun BackendSettingsScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            UIComponents.PrimaryButton(
+            UnifiedButton(
                 text = Str.get(R.string.save),
                 onClick = {
                     BackendConfig.setImplementation(context, impl)

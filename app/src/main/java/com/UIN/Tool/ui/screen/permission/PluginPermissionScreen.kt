@@ -3,12 +3,9 @@ package com.UIN.Tool.ui.screen.permission
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.app.Activity
-import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,17 +22,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.PermissionUtils
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.AppColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -162,6 +159,7 @@ fun PluginPermissionScreen() {
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.plugin_permissions),
@@ -207,7 +205,7 @@ fun PluginPermissionScreen() {
             }
             if (plugins.isEmpty()) {
                 item {
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -223,8 +221,8 @@ fun PluginPermissionScreen() {
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            UIComponents.BodyText(Str.get(R.string.no_installed_plugins))
-                            UIComponents.CaptionText(Str.get(R.string.import_plugins_on_the_manage_page_fi))
+                            UnifiedBodyText(Str.get(R.string.no_installed_plugins))
+                            UnifiedCaptionText(Str.get(R.string.import_plugins_on_the_manage_page_fi))
                         }
                     }
                 }
@@ -236,7 +234,7 @@ fun PluginPermissionScreen() {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    UIComponents.BodyText(Str.get(R.string.select_plugin), modifier = Modifier.weight(0.3f))
+                    UnifiedBodyText(Str.get(R.string.select_plugin), modifier = Modifier.weight(0.3f))
 
                     var expanded by remember { mutableStateOf(false) }
                     val selectedPlugin = plugins.find { it.pluginId == selectedPluginId }
@@ -298,7 +296,7 @@ fun PluginPermissionScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    UIComponents.PrimaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.grant_all_permissions),
                         icon = Icons.Default.Check,
                         onClick = { requestAllPermissions() },
@@ -306,11 +304,12 @@ fun PluginPermissionScreen() {
                         enabled = !isLoading && selectedPluginId != null,
                         loading = isLoading
                     )
-                    UIComponents.SecondaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.refresh),
                         icon = Icons.Default.Refresh,
                         onClick = { refreshPermissions() },
-                        modifier = Modifier.weight(0.5f)
+                        modifier = Modifier.weight(0.5f),
+                        variant = ButtonVariant.Outlined
                     )
                 }
             }
@@ -320,7 +319,7 @@ fun PluginPermissionScreen() {
                 val plugin = plugins.find { it.pluginId == pluginId }
                 if (plugin != null) {
                     item {
-                        UIComponents.Card(
+                        UnifiedCard(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -328,9 +327,9 @@ fun PluginPermissionScreen() {
                                     .fillMaxWidth()
                                     .padding(12.dp)
                             ) {
-                                UIComponents.BodyText(Str.get(R.string.plugin_plugin_name, plugin.name))
-                                UIComponents.CaptionText(Str.get(R.string.id_plugin_pluginid_version_plugin_ve, plugin.pluginId, plugin.versionName))
-                                UIComponents.CaptionText(Str.get(R.string.declared_permissions_plugin_permissi, plugin.permissions.size))
+                                UnifiedBodyText(Str.get(R.string.plugin_plugin_name, plugin.name))
+                                UnifiedCaptionText(Str.get(R.string.id_plugin_pluginid_version_plugin_ve, plugin.pluginId, plugin.versionName))
+                                UnifiedCaptionText(Str.get(R.string.declared_permissions_plugin_permissi, plugin.permissions.size))
                             }
                         }
                     }
@@ -344,7 +343,7 @@ fun PluginPermissionScreen() {
                         modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        UIComponents.BodyText(Str.get(R.string.please_select_a_plugin))
+                        UnifiedBodyText(Str.get(R.string.please_select_a_plugin))
                     }
                 }
                 pluginPermissions.isEmpty() -> item {
@@ -360,20 +359,18 @@ fun PluginPermissionScreen() {
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            UIComponents.TitleText(Str.get(R.string.this_plugin_declares_no_permissions_2))
-                            UIComponents.CaptionText(Str.get(R.string.plugins_declare_their_required_permi))
+                            UnifiedTitleText(Str.get(R.string.this_plugin_declares_no_permissions_2))
+                            UnifiedCaptionText(Str.get(R.string.plugins_declare_their_required_permi))
                         }
                     }
                 }
                 else -> items(pluginPermissions.entries.toList()) { (permission, granted) ->
-                    UIComponents.Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (!granted) {
-                                    togglePermission(permission)
-                                }
+                    UnifiedCard(
+                        onClick = {
+                            if (!granted) {
+                                togglePermission(permission)
                             }
+                        }
                     ) {
                         Row(
                             modifier = Modifier
@@ -391,9 +388,9 @@ fun PluginPermissionScreen() {
                                         MaterialTheme.colorScheme.onSurface
                                     }
                                 )
-                                UIComponents.CaptionText(permission)
+                                UnifiedCaptionText(permission)
                                 if (PermissionUtils.isSpecialPermission(permission)) {
-                                    UIComponents.CaptionText(
+                                    UnifiedCaptionText(
                                         Str.get(R.string.special_permission_requires_enabling_2),
                                         color = MaterialTheme.colorScheme.error
                                     )

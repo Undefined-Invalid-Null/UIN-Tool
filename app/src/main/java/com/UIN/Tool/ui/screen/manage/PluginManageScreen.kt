@@ -8,9 +8,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -38,6 +41,7 @@ import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -47,6 +51,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.dialogBackgroundOf
 
 private const val TAG = "PluginManageScreen"
 
@@ -67,6 +72,7 @@ fun PluginManageScreen(
     var lastRefreshTime by remember { mutableStateOf<String?>(null) }
     val pullRefreshState = rememberPullToRefreshState()
     var showDeleteDialog by remember { mutableStateOf<PluginInfo?>(null) }
+    var batchDeleteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showDetailDialog by remember { mutableStateOf<PluginInfo?>(null) }
     var showPermissionDialog by remember { mutableStateOf<PluginInfo?>(null) }
     var showResultDialog by remember { mutableStateOf<String?>(null) }
@@ -74,6 +80,8 @@ fun PluginManageScreen(
     var showPermissionDetail by remember { mutableStateOf<PluginInfo?>(null) }
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(Str.get(R.string.all)) }
+    var categoryTargetIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectionMode by remember { mutableStateOf(false) }
 
     fun loadPlugins() {
         pluginManager.refreshPlugins()
@@ -359,6 +367,38 @@ fun PluginManageScreen(
         }
     }
 
+    fun uninstallPluginsBatch(ids: Set<String>) {
+        if (ids.isEmpty()) {
+            batchDeleteIds = emptySet()
+            return
+        }
+        scope.launch {
+            try {
+                isLoading = true
+                val successList = pluginManager.uninstallPluginsBatch(ids.toList())
+                val failedIds = ids - successList.toSet()
+                loadPlugins()
+                refreshWidgets()
+                batchDeleteIds = emptySet()
+                selectedPluginIds = emptySet()
+                if (failedIds.isEmpty()) {
+                    AppToast.success(context, Str.get(R.string.uninstall_successful_plugin_count, successList.size))
+                } else {
+                    AppToast.warning(
+                        context,
+                        Str.get(R.string.batch_uninstall_result_success_failed, successList.size, failedIds.size)
+                    )
+                }
+                AppLog.success(TAG, Str.get(R.string.batch_uninstall_result_success_failed, successList.size, failedIds.size))
+            } catch (e: Exception) {
+                AppLog.e(TAG, Str.get(R.string.uninstall_failed), e)
+                AppToast.error(context, Str.get(R.string.uninstall_failed_e_message, e.message))
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
     fun requestPluginPermissions(plugin: PluginInfo) {
         scope.launch {
             try {
@@ -412,10 +452,22 @@ fun PluginManageScreen(
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.plugin_management),
-                onBack = onBack
+                onBack = onBack,
+                actions = {
+                    UnifiedIconButton(
+                        icon = if (selectionMode) Icons.Default.Close else Icons.Default.Checklist,
+                        onClick = {
+                            selectionMode = !selectionMode
+                            selectedPluginIds = emptySet()
+                        },
+                        tint = if (selectionMode) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             )
         }
     ) { paddingValues ->
@@ -442,7 +494,10 @@ fun PluginManageScreen(
                 )
             }
         ) {
+        val manageListState = rememberLazyListState()
+        Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
+            state = manageListState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
@@ -455,7 +510,7 @@ fun PluginManageScreen(
                 )
             }
             item {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = searchText,
                     onValueChange = { searchText = it },
                     placeholder = Str.get(R.string.search_plugins),
@@ -471,11 +526,12 @@ fun PluginManageScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     categories.forEach { category ->
-                        UIComponents.Chip(
+                        UnifiedChip(
                             label = category,
                             selected = selectedCategory == category,
                             onClick = { selectedCategory = category }
@@ -487,7 +543,7 @@ fun PluginManageScreen(
 
         if (exportProgress.isNotEmpty()) {
             item {
-                UIComponents.Card(
+                UnifiedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
@@ -520,56 +576,69 @@ fun PluginManageScreen(
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                UIComponents.PrimaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.import_label),
                     icon = Icons.Default.FileUpload,
                     onClick = { importLauncher.launch("*/*") },
                     modifier = Modifier.weight(1f),
                     enabled = !isLoading
                 )
-                UIComponents.SecondaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.batch),
                     icon = Icons.Default.Add,
                     onClick = { batchImportLauncher.launch(arrayOf("*/*")) },
                     modifier = Modifier.weight(1f),
-                    enabled = !isLoading
+                    enabled = !isLoading,
+                    variant = ButtonVariant.Outlined
                 )
-                UIComponents.SecondaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.plugin_set),
                     icon = Icons.Default.Archive,
                     onClick = { importZipLauncher.launch("application/zip") },
                     modifier = Modifier.weight(1f),
-                    enabled = !isLoading
+                    enabled = !isLoading,
+                    variant = ButtonVariant.Outlined
                 )
             }
         }
 
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                UIComponents.SecondaryButton(
-                    text = Str.get(R.string.export_selectedpluginids_size, selectedPluginIds.size),
-                    icon = Icons.Default.FileDownload,
-                    onClick = { exportSelectedPlugins() },
-                    modifier = Modifier.weight(1f),
-                    enabled = selectedPluginIds.isNotEmpty() && !isLoading
-                )
-                UIComponents.SecondaryButton(
-                    text = Str.get(R.string.delete),
-                    icon = Icons.Default.Delete,
-                    onClick = {
-                        if (selectedPluginIds.isNotEmpty()) {
-                            val plugin = plugins.find { it.pluginId == selectedPluginIds.first() }
-                            plugin?.let { showDeleteDialog = it }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = selectedPluginIds.isNotEmpty() && !isLoading
-                )
+        if (selectionMode) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    UnifiedButton(
+                        text = Str.get(R.string.export_selectedpluginids_size, selectedPluginIds.size),
+                        icon = Icons.Default.FileDownload,
+                        onClick = { exportSelectedPlugins() },
+                        modifier = Modifier.weight(1f),
+                        enabled = selectedPluginIds.isNotEmpty() && !isLoading,
+                        variant = ButtonVariant.Outlined
+                    )
+                    UnifiedButton(
+                        text = Str.get(R.string.delete),
+                        icon = Icons.Default.Delete,
+                        onClick = {
+                            if (selectedPluginIds.isNotEmpty()) {
+                                batchDeleteIds = selectedPluginIds.toSet()
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = selectedPluginIds.isNotEmpty() && !isLoading,
+                        variant = ButtonVariant.Outlined
+                    )
+                    UnifiedButton(
+                        text = Str.get(R.string.btn_change_category),
+                        icon = Icons.Default.Category,
+                        onClick = { categoryTargetIds = selectedPluginIds.toSet() },
+                        modifier = Modifier.weight(1f),
+                        enabled = selectedPluginIds.isNotEmpty() && !isLoading,
+                        variant = ButtonVariant.Outlined
+                    )
+                }
             }
         }
 
@@ -589,19 +658,21 @@ fun PluginManageScreen(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(
-                        onClick = {
-                            selectedPluginIds = if (selectedPluginIds.size == filteredPlugins.size) {
-                                emptySet()
-                            } else {
-                                filteredPlugins.map { it.pluginId }.toSet()
+                    if (selectionMode) {
+                        TextButton(
+                            onClick = {
+                                selectedPluginIds = if (selectedPluginIds.size == filteredPlugins.size) {
+                                    emptySet()
+                                } else {
+                                    filteredPlugins.map { it.pluginId }.toSet()
+                                }
                             }
+                        ) {
+                            Text(
+                                if (selectedPluginIds.size == filteredPlugins.size) Str.get(R.string.deselect_all_2) else Str.get(R.string.select_all),
+                                fontSize = AppDimens.captionTextSize.sp
+                            )
                         }
-                    ) {
-                        Text(
-                            if (selectedPluginIds.size == filteredPlugins.size) Str.get(R.string.deselect_all_2) else Str.get(R.string.select_all),
-                            fontSize = AppDimens.captionTextSize.sp
-                        )
                     }
                     if (selectedPluginIds.isNotEmpty()) {
                         Text(
@@ -653,10 +724,11 @@ fun PluginManageScreen(
                     }
                 }
             }
-            else -> items(filteredPlugins, key = { it.pluginId }) { plugin ->
+            else -> itemsIndexed(filteredPlugins, key = { _, plugin -> plugin.pluginId }) { index, plugin ->
                 PluginManageItem(
                     plugin = plugin,
                     isSelected = selectedPluginIds.contains(plugin.pluginId),
+                    selectionMode = selectionMode,
                     modifier = Modifier.animateItem(),
                     onToggle = {
                         selectedPluginIds = if (selectedPluginIds.contains(plugin.pluginId)) {
@@ -669,9 +741,10 @@ fun PluginManageScreen(
                     onDelete = { showDeleteDialog = plugin },
                     onDetail = { showDetailDialog = plugin },
                     onManagePermissions = { showPermissionDialog = plugin },
-                    onViewPermissions = { showPermissionDetail = plugin }
+onViewPermissions = { showPermissionDetail = plugin }
                 )
             }
+        }
         }
     }
     }
@@ -679,7 +752,7 @@ fun PluginManageScreen(
 
     // ==================== 删除确认对话框 ====================
     if (showDeleteDialog != null) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_delete),
             message = Str.get(R.string.delete_plugin_showdeletedialog_name_, showDeleteDialog!!.name),
             confirmText = Str.get(R.string.delete),
@@ -692,9 +765,22 @@ fun PluginManageScreen(
         )
     }
 
+    // ==================== 批量删除确认对话框 ====================
+    if (batchDeleteIds.isNotEmpty()) {
+        UnifiedConfirmDialog(
+            title = Str.get(R.string.confirm_delete),
+            message = Str.get(R.string.delete_selected_plugins_count, batchDeleteIds.size),
+            confirmText = Str.get(R.string.delete),
+            dismissText = Str.get(R.string.cancel),
+            onConfirm = { uninstallPluginsBatch(batchDeleteIds) },
+            onDismiss = { batchDeleteIds = emptySet() },
+            isDestructive = true
+        )
+    }
+
     // ==================== 操作结果对话框 ====================
     if (showResultDialog != null) {
-        UIComponents.InfoDialog(
+        UnifiedInfoDialog(
             title = Str.get(R.string.result),
             message = showResultDialog!!,
             onDismiss = { showResultDialog = null }
@@ -705,7 +791,21 @@ fun PluginManageScreen(
     if (showDetailDialog != null) {
         PluginDetailDialog(
             plugin = showDetailDialog!!,
-            onDismiss = { showDetailDialog = null }
+            onDismiss = { showDetailDialog = null },
+            onChangeCategory = { categoryTargetIds = setOf(showDetailDialog!!.pluginId) },
+            onUninstall = { showDeleteDialog = showDetailDialog }
+        )
+    }
+
+    // ==================== 更换分类对话框 ====================
+    if (categoryTargetIds.isNotEmpty()) {
+        CategoryChangeDialog(
+            targetPluginIds = categoryTargetIds,
+            onDismiss = { categoryTargetIds = emptySet() },
+            onCategoryUpdated = {
+                loadPlugins()
+                refreshWidgets()
+            }
         )
     }
 
@@ -786,24 +886,17 @@ fun PermissionManagementDialog(
             decorFitsSystemWindows = false
         )
     ) {
-        Card(
+        UnifiedCard(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .heightIn(max = 450.dp),
-            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-            colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .heightIn(max = 450.dp)
+                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
+            containerColor = Color.Transparent
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1044,7 +1137,7 @@ fun PermissionDetailDialog(
         refreshPermissions()
     }
 
-    UIComponents.ConfirmDialog(
+    UnifiedConfirmDialog(
         title = Str.get(R.string.permission_details_plugin_name, plugin.name),
         message = buildString {
             val grantedCount = permissions.values.count { it }
@@ -1095,6 +1188,8 @@ fun PermissionItemCompact(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+        border = null,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (AppColors.glassEnabled())
                 AppColors.glassBackground()
@@ -1167,6 +1262,7 @@ fun PermissionItemCompact(
 fun PluginManageItem(
     plugin: PluginInfo,
     isSelected: Boolean,
+    selectionMode: Boolean,
     modifier: Modifier = Modifier,
     onToggle: () -> Unit,
     onOpen: () -> Unit,
@@ -1183,31 +1279,27 @@ fun PluginManageItem(
     val hasMissingPermissions = permissionSummary.hasMissing
     val hasPermissions = plugin.permissions.isNotEmpty()
 
-    Card(
+    UnifiedCard(
         modifier = modifier
-            .fillMaxWidth()
-            .clickable { onDetail() },
-        shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .fillMaxWidth(),
+        onClick = { onDetail() }
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = { onToggle() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = MaterialTheme.colorScheme.primary,
-                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.size(36.dp)
-            )
+            if (selectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onToggle() },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.primary,
+                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.size(36.dp)
+                )
+            }
 
             Box(
                 modifier = Modifier
@@ -1384,7 +1476,7 @@ fun PluginManageItem(
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 if (hasPermissions) {
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = if (hasMissingPermissions)
                             Icons.Default.Security
                         else
@@ -1398,14 +1490,14 @@ fun PluginManageItem(
                     )
                 }
 
-                UIComponents.IconButton(
+                UnifiedIconButton(
                     icon = Icons.Default.PlayArrow,
                     onClick = onOpen,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp)
                 )
 
-                UIComponents.IconButton(
+                UnifiedIconButton(
                     icon = Icons.Default.Delete,
                     onClick = onDelete,
                     tint = MaterialTheme.colorScheme.error,
@@ -1421,7 +1513,9 @@ fun PluginManageItem(
 @Composable
 fun PluginDetailDialog(
     plugin: PluginInfo,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onChangeCategory: (() -> Unit)? = null,
+    onUninstall: (() -> Unit)? = null
 ) {
     val pluginManager = ServiceLocator.getPluginManager()
     val context = LocalContext.current
@@ -1457,23 +1551,16 @@ fun PluginDetailDialog(
             decorFitsSystemWindows = false
         )
     ) {
-        Card(
+        UnifiedCard(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .heightIn(max = 620.dp),
-            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-            colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .heightIn(max = 620.dp)
+                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
+            containerColor = Color.Transparent
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
             ) {
                 // ==================== 头部 ====================
                 Row(
@@ -1665,7 +1752,53 @@ fun PluginDetailDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                TextButton(
+                if (onChangeCategory != null) {
+                    Button(
+                        onClick = {
+                            onChangeCategory()
+                            onDismiss()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                    ) {
+                        Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(Str.get(R.string.btn_change_category), fontSize = AppDimens.bodyTextSize.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (onUninstall != null) {
+                    Button(
+                        onClick = {
+                            onUninstall()
+                            onDismiss()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(Str.get(R.string.btn_uninstall), fontSize = AppDimens.bodyTextSize.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                UnifiedDialogTextButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1674,6 +1807,101 @@ fun PluginDetailDialog(
             }
         }
     }
+}
+
+// ==================== 更换分类对话框 ====================
+
+@Composable
+fun CategoryChangeDialog(
+    targetPluginIds: Set<String>,
+    onDismiss: () -> Unit,
+    onCategoryUpdated: () -> Unit
+) {
+    val pluginManager = ServiceLocator.getPluginManager()
+    val context = LocalContext.current
+    val existingCategories = remember {
+        pluginManager.getAllCategories()
+            .filter { it != Str.get(R.string.all) }
+            .distinct()
+    }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var customCategory by remember { mutableStateOf("") }
+    val category = customCategory.trim().ifEmpty { selectedCategory }
+
+    UnifiedDialog(
+        onDismissRequest = onDismiss,
+        title = Str.get(R.string.btn_change_category),
+        content = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = Str.get(R.string.select_category),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(existingCategories) { itemCategory ->
+                        UnifiedChip(
+                            label = itemCategory,
+                            selected = selectedCategory == itemCategory,
+                            onClick = { selectedCategory = itemCategory },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (existingCategories.isEmpty()) {
+                        item {
+                            Text(
+                                text = Str.get(R.string.uncategorized),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                UnifiedTextField(
+                    value = customCategory,
+                    onValueChange = { customCategory = it },
+                    label = Str.get(R.string.custom_category),
+                    placeholder = Str.get(R.string.custom_category),
+                    leadingIcon = Icons.Default.Edit,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val newCategory = category ?: return@Button
+                    targetPluginIds.forEach { id ->
+                        pluginManager.updatePluginCategory(id, newCategory)
+                    }
+                    AppToast.success(context, Str.get(R.string.category_updated, newCategory))
+                    onCategoryUpdated()
+                    onDismiss()
+                },
+                enabled = category != null && category.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = RoundedCornerShape(AppDimens.radiusLarge)
+            ) {
+                Text(Str.get(R.string.ok_2))
+            }
+        },
+        dismissButton = {
+            UnifiedDialogTextButton(onClick = onDismiss) {
+                Text(Str.get(R.string.cancel))
+            }
+        }
+    )
 }
 
 // ==================== 详情对话框内部组件 ====================

@@ -252,6 +252,8 @@ Bootstrap binaries compiled for &TERMUX_APP_NAME; have hardcoded $PREFIX paths a
     <string name="btn_backup" formatted="false">Backup</string>
     <string name="btn_batch_import" formatted="false">Batch import</string>
     <string name="btn_change_category" formatted="false">Change category</string>
+    <string name="select_category" formatted="false">Select category</string>
+    <string name="custom_category" formatted="false">Custom category</string>
     <string name="btn_clear_all" formatted="false">Clear all</string>
     <string name="btn_clear_today" formatted="false">Clear today</string>
     <string name="btn_compile" formatted="false">Generate project files</string>
@@ -817,7 +819,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="found_via_which_python3_result">✅ Found via which python3: %1$s</string>
     <string name="found_via_which_result">✅ Found via which: %1$s</string>
     <string name="full_api_test_plugin" formatted="false">Full-API test plugin</string>
-    <string name="full_color_picker" formatted="false">Full Color Picker</string>
+    <string name="full_color_picker" formatted="false">Color Picker</string>
     <string name="full_replace_new_length_fulltext_len">Full replace, new length: %1$s</string>
     <string name="generate_project_files" formatted="false">Generate Project Files</string>
     <string name="generate_project_files_and_package_a" formatted="false">Generate project files and package as TPK</string>
@@ -1995,6 +1997,9 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="uninstall_plugin" formatted="false">Uninstall plugin</string>
     <string name="uninstall_plugin_confirm" formatted="false">Uninstall plugin "%s"?</string>
     <string name="uninstall_successful_plugin_name">Uninstall successful: %1$s</string>
+    <string name="uninstall_successful_plugin_count">Uninstalled %1$d plugin(s)</string>
+    <string name="batch_uninstall_result_success_failed">Uninstalled %1$d plugin(s), %2$d failed</string>
+    <string name="delete_selected_plugins_count">Delete %1$d selected plugin(s)?\n\nPlugin data will be cleared and cannot be recovered.</string>
     <string name="uninstalled_pluginid">Uninstalled: %1$s</string>
     <string name="unknown" formatted="false">Unknown</string>
     <string name="unknown_call_action">Unknown call: %1$s</string>
@@ -2166,4 +2171,18 @@ Please import plugins in the app first</string>
     <string name="widget_3x3_desc" formatted="false">Shows 3 plugins at once for quick switching\nAuto-rotates to show plugin status\nTap a plugin card to open it directly</string>
     <string name="widget_add_steps" formatted="false">1. Tap "Add to Home Screen" and choose a location\n2. Drag the widget to reposition it\n3. Long-press the widget to resize or remove it\n4. A shortcut opens the plugin directly without entering the app</string>
     <string name="widget_config_steps" formatted="false">1. Long-press an empty area of the home screen\n2. Choose "Widgets" or "Add tools"\n3. Find "UIN Tool"\n4. Long-press and drag it to the home screen</string>
+    <string name="gradient_background" formatted="false">Gradient background</string>
+    <string name="gradient_mode" formatted="false">Gradient mode</string>
+    <string name="single_color_gradient" formatted="false">Single color</string>
+    <string name="multi_color_gradient" formatted="false">Multi color</string>
+    <string name="gradient_color" formatted="false">Gradient color</string>
+    <string name="add_gradient_color" formatted="false">Add color</string>
+    <string name="gradient_from" formatted="false">Start direction</string>
+    <string name="gradient_to" formatted="false">End direction</string>
+    <string name="gradient_dir_top" formatted="false">Top</string>
+    <string name="gradient_dir_bottom" formatted="false">Bottom</string>
+    <string name="gradient_dir_top_left" formatted="false">Top left</string>
+    <string name="gradient_dir_top_right" formatted="false">Top right</string>
+    <string name="gradient_dir_bottom_left" formatted="false">Bottom left</string>
+    <string name="gradient_dir_bottom_right" formatted="false">Bottom right</string>
 </resources>

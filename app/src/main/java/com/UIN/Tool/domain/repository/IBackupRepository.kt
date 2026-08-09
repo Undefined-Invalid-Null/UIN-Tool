@@ -3,7 +3,7 @@ package com.UIN.Tool.domain.repository
 import com.UIN.Tool.domain.model.BackupInfo
 import kotlinx.coroutines.flow.StateFlow
 
-interface BackupRepository {
+interface IBackupRepository {
     fun getBackups(): StateFlow<List<BackupInfo>>
     suspend fun createBackup(progress: (String) -> Unit): BackupInfo?
     suspend fun restoreBackup(backup: BackupInfo, progress: (String) -> Unit): Boolean

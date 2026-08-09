@@ -246,6 +246,8 @@
     <string name="btn_backup" formatted="false">备份</string>
     <string name="btn_batch_import" formatted="false">批量导入</string>
     <string name="btn_change_category" formatted="false">修改分类</string>
+    <string name="select_category" formatted="false">选择分类</string>
+    <string name="custom_category" formatted="false">自定义分类</string>
     <string name="btn_clear_all" formatted="false">清空全部</string>
     <string name="btn_clear_today" formatted="false">清空今日</string>
     <string name="btn_compile" formatted="false">生成项目文件</string>
@@ -806,7 +808,7 @@
     <string name="found_via_which_python3_result">✅ 通过 which python3 找到: %1$s</string>
     <string name="found_via_which_result">✅ 通过 which 找到: %1$s</string>
     <string name="full_api_test_plugin" formatted="false">全接口测试插件</string>
-    <string name="full_color_picker" formatted="false">完整颜色选择器</string>
+    <string name="full_color_picker" formatted="false">颜色选择器</string>
     <string name="full_replace_new_length_fulltext_len">全文替换，新长度: %1$s</string>
     <string name="generate_project_files" formatted="false">生成项目文件</string>
     <string name="generate_project_files_and_package_a" formatted="false">生成项目文件并打包为 TPK</string>
@@ -1978,6 +1980,9 @@
     <string name="uninstall_plugin" formatted="false">卸载插件</string>
     <string name="uninstall_plugin_confirm" formatted="false">确定要卸载插件 "%s" 吗？</string>
     <string name="uninstall_successful_plugin_name">卸载成功: %1$s</string>
+    <string name="uninstall_successful_plugin_count">已卸载 %1$d 个插件</string>
+    <string name="batch_uninstall_result_success_failed">已卸载 %1$d 个插件，%2$d 个失败</string>
+    <string name="delete_selected_plugins_count">确定要删除所选的 %1$d 个插件吗？\n\n删除后插件数据将被清除，不可恢复。</string>
     <string name="uninstalled_pluginid">卸载成功: %1$s</string>
     <string name="unknown" formatted="false">未知</string>
     <string name="unknown_call_action">未知调用: %1$s</string>
@@ -2148,4 +2153,18 @@
     <string name="widget_3x3_desc" formatted="false">• 同时显示 3 个插件，方便快速切换\n• 自动轮播展示插件状态\n• 点击插件卡片直接进入对应功能</string>
     <string name="widget_add_steps" formatted="false">1. 点击「添加到桌面」按钮，系统会提示选择放置位置\n2. 在桌面拖动小部件可调整位置\n3. 长按小部件可调整大小或移除\n4. 快捷方式点击后直接打开插件，无需进入应用</string>
     <string name="widget_config_steps" formatted="false">1. 长按桌面空白处\n2. 选择「小部件」或「添加工具」\n3. 找到「UIN Tool」\n4. 长按拖拽到桌面即可</string>
+    <string name="gradient_background" formatted="false">渐变背景</string>
+    <string name="gradient_mode" formatted="false">渐变模式</string>
+    <string name="single_color_gradient" formatted="false">单选（单色渐变）</string>
+    <string name="multi_color_gradient" formatted="false">多选（多色渐变）</string>
+    <string name="gradient_color" formatted="false">渐变颜色</string>
+    <string name="add_gradient_color" formatted="false">添加颜色</string>
+    <string name="gradient_from" formatted="false">起始方向</string>
+    <string name="gradient_to" formatted="false">结束方向</string>
+    <string name="gradient_dir_top" formatted="false">上</string>
+    <string name="gradient_dir_bottom" formatted="false">下</string>
+    <string name="gradient_dir_top_left" formatted="false">左上</string>
+    <string name="gradient_dir_top_right" formatted="false">右上</string>
+    <string name="gradient_dir_bottom_left" formatted="false">左下</string>
+    <string name="gradient_dir_bottom_right" formatted="false">右下</string>
 </resources>

@@ -13,7 +13,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -51,6 +50,26 @@ import androidx.compose.ui.unit.sp
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.isBoldEnabled
+import com.UIN.Tool.ui.components.unified.ButtonSize
+import com.UIN.Tool.ui.components.unified.ButtonVariant
+import com.UIN.Tool.ui.components.unified.CardVariant
+import com.UIN.Tool.ui.components.unified.UnifiedBodyText
+import com.UIN.Tool.ui.components.unified.UnifiedButton
+import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
+import com.UIN.Tool.ui.components.unified.UnifiedCard
+import com.UIN.Tool.ui.components.unified.UnifiedChip
+import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
+import com.UIN.Tool.ui.components.unified.UnifiedEmptyState
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
+import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
+import com.UIN.Tool.ui.components.unified.UnifiedLinearProgressIndicator
+import com.UIN.Tool.ui.components.unified.UnifiedListItem
+import com.UIN.Tool.ui.components.unified.UnifiedLoadingDialog
+import com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator
+import com.UIN.Tool.ui.components.unified.UnifiedSectionTitle
+import com.UIN.Tool.ui.components.unified.UnifiedSwitch
+import com.UIN.Tool.ui.components.unified.UnifiedTextField
+import com.UIN.Tool.ui.components.unified.UnifiedTitleText
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -90,38 +109,16 @@ object UIComponents {
         icon: ImageVector? = null,
         loading: Boolean = false
     ) {
-        Button(
+        UnifiedButton(
+            text = text,
             onClick = onClick,
+            modifier = modifier,
+            variant = ButtonVariant.Primary,
+            size = ButtonSize.Medium,
             enabled = enabled,
-            modifier = modifier
-                .height(AppDimens.buttonHeight)
-                .defaultMinSize(minWidth = AppDimens.buttonMinWidth),
-            shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = AppDimens.buttonElevation,
-                pressedElevation = AppDimens.buttonPressedElevation
-            )
-        ) {
-            if (loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp
-                )
-            } else {
-                icon?.let {
-                    Icon(it, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(AppDimens.spacingSmall))
-                }
-                Text(text)
-            }
-        }
+            loading = loading,
+            icon = icon
+        )
     }
 
     @Composable
@@ -132,25 +129,15 @@ object UIComponents {
         enabled: Boolean = true,
         icon: ImageVector? = null
     ) {
-        OutlinedButton(
+        UnifiedButton(
+            text = text,
             onClick = onClick,
+            modifier = modifier,
+            variant = ButtonVariant.Outlined,
+            size = ButtonSize.Medium,
             enabled = enabled,
-            modifier = modifier
-                .height(AppDimens.buttonHeight)
-                .defaultMinSize(minWidth = AppDimens.buttonMinWidth),
-            shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary,
-                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            ),
-            border = ButtonDefaults.outlinedButtonBorder(enabled)
-        ) {
-            icon?.let {
-                Icon(it, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(AppDimens.spacingSmall))
-            }
-            Text(text)
-        }
+            icon = icon
+        )
     }
 
     @Composable
@@ -161,20 +148,14 @@ object UIComponents {
         enabled: Boolean = true,
         textStyle: TextStyle = MaterialTheme.typography.titleMedium
     ) {
-        androidx.compose.material3.TextButton(
+        UnifiedButton(
+            text = text,
             onClick = onClick,
-            enabled = enabled,
             modifier = modifier,
-            colors = ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary,
-                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            )
-        ) {
-            Text(
-                text = text,
-                style = textStyle.copy(fontSize = 14.sp)
-            )
-        }
+            variant = ButtonVariant.Text,
+            size = ButtonSize.Medium,
+            enabled = enabled
+        )
     }
 
     @Composable
@@ -185,17 +166,13 @@ object UIComponents {
         tint: Color? = null,
         contentDescription: String? = null
     ) {
-        androidx.compose.material3.IconButton(
+        UnifiedIconButton(
+            icon = icon,
             onClick = onClick,
-            modifier = modifier
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = tint ?: LocalContentColor.current,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+            modifier = modifier,
+            tint = tint,
+            contentDescription = contentDescription
+        )
     }
 
     // ==================== 卡片 ====================
@@ -209,7 +186,7 @@ object UIComponents {
         onBack: (() -> Unit)? = null,
         actions: @Composable RowScope.() -> Unit = {}
     ) {
-        val container = MaterialTheme.colorScheme.background
+        val container = AppColors.pageBackground()
         val content = MaterialTheme.colorScheme.onBackground
         TopAppBar(
             title = {
@@ -248,40 +225,14 @@ object UIComponents {
         shape: Shape? = null,
         content: @Composable ColumnScope.() -> Unit
     ) {
-        val finalElevation = elevation ?: AppDimens.cardElevation
-        val finalShape = shape ?: RoundedCornerShape(AppDimens.cardCornerRadius)
-        val glass = AppColors.glassEnabled()
-        val container = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
-
-        val cardModifier = modifier
-            .shadow(finalElevation, finalShape)
-            .clip(finalShape)
-            .background(container, finalShape)
-            .then(
-                if (glass) Modifier.glassSheen().border(1.dp, AppColors.glassBorder(), finalShape) else Modifier
-            )
-
-        val clickableModifier = if (onClick != null) {
-            cardModifier.clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = LocalIndication.current,
-                onClick = onClick
-            )
-        } else cardModifier
-
-        Surface(
-            modifier = clickableModifier,
-            color = container,
-            shape = finalShape,
-            shadowElevation = 0.dp
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(AppDimens.cardPadding),
-                content = content
-            )
-        }
+        UnifiedCard(
+            modifier = modifier,
+            onClick = onClick,
+            variant = CardVariant.Elevated,
+            shape = shape ?: RoundedCornerShape(AppDimens.cardCornerRadius),
+            elevation = elevation ?: AppDimens.cardElevation,
+            content = content
+        )
     }
 
     @Composable
@@ -289,25 +240,11 @@ object UIComponents {
         modifier: Modifier = Modifier,
         content: @Composable ColumnScope.() -> Unit
     ) {
-        val shape = RoundedCornerShape(AppDimens.cardCornerRadius)
-        val glassColor = AppColors.glassBackground()
-        Surface(
-            modifier = modifier
-                .shadow(AppDimens.cardElevation, shape)
-                .clip(shape)
-                .background(glassColor)
-                .then(if (AppColors.glassEnabled()) Modifier.glassSheen().border(1.dp, AppColors.glassBorder(), shape) else Modifier),
-            color = glassColor,
-            shape = shape,
-            shadowElevation = 0.dp
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(AppDimens.cardPadding),
-                content = content
-            )
-        }
+        UnifiedCard(
+            modifier = modifier,
+            variant = CardVariant.Glass,
+            content = content
+        )
     }
 
     // ==================== 输入框 ====================
@@ -326,26 +263,18 @@ object UIComponents {
         supportingText: String? = null,
         enabled: Boolean = true
     ) {
-        OutlinedTextField(
+        UnifiedTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = modifier,
-            label = label?.let { { Text(it, fontSize = AppDimens.bodyTextSize.sp) } },
-            placeholder = placeholder?.let { { Text(it, fontSize = AppDimens.bodyTextSize.sp) } },
-            leadingIcon = leadingIcon?.let { { Icon(it, null) } },
-            trailingIcon = trailingIcon?.let { { Icon(it, null) } },
+            label = label,
+            placeholder = placeholder,
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
             singleLine = singleLine,
-            isError = isError,
-            supportingText = supportingText?.let { { Text(it, fontSize = AppDimens.captionTextSize.sp) } },
-            enabled = enabled,
-            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                cursorColor = MaterialTheme.colorScheme.primary
-            ),
-            textStyle = LocalTextStyle.current.copy(fontSize = AppDimens.bodyTextSize.sp)
+            error = if (isError) supportingText else null,
+            supportingText = if (isError) null else supportingText,
+            enabled = enabled
         )
     }
 
@@ -409,64 +338,26 @@ object UIComponents {
         onClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
-        Card(
+        UnifiedListItem(
+            leadingContent = leadingContent,
+            title = title,
+            subtitle = subtitle,
+            trailingContent = trailingContent,
+            onClick = onClick,
             modifier = modifier
-                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
-                .clickable(onClick = onClick),
-            onClick = null
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(AppDimens.cardPadding),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                leadingContent?.invoke()
-                if (leadingContent != null) Spacer(Modifier.width(AppDimens.spacingMedium))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = AppDimens.bodyTextSize.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    subtitle?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = AppDimens.captionTextSize.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                trailingContent?.invoke()
-            }
-        }
+        )
     }
 
     // ==================== 加载指示器 ====================
 
     @Composable
     fun FullScreenLoading(message: String = Str.get(R.string.loading)) {
-        com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator(
-            message = message
-        )
+        UnifiedLoadingIndicator(message = message)
     }
 
     @Composable
     fun LinearProgressIndicator(progress: Float) {
-        androidx.compose.material3.LinearProgressIndicator(
-            progress = { progress.coerceIn(0f, 1f) },
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.outlineVariant,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(AppDimens.progressHeight)
-                .clip(RoundedCornerShape(AppDimens.progressCornerRadius))
-        )
+        UnifiedLinearProgressIndicator(progress = progress)
     }
 
     // ==================== 文本 ====================
@@ -478,14 +369,10 @@ object UIComponents {
         color: Color? = null,
         textAlign: TextAlign? = null
     ) {
-        Text(
+        UnifiedTitleText(
             text = text,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontSize = AppDimens.titleTextSize.sp,
-                fontWeight = if (isBoldEnabled()) FontWeight.Bold else FontWeight.SemiBold
-            ),
-            color = color ?: MaterialTheme.colorScheme.onSurface,
             modifier = modifier,
+            color = color,
             textAlign = textAlign
         )
     }
@@ -497,13 +384,10 @@ object UIComponents {
         color: Color? = null,
         textAlign: TextAlign? = null
     ) {
-        Text(
+        UnifiedBodyText(
             text = text,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = AppDimens.bodyTextSize.sp
-            ),
-            color = color ?: MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = modifier,
+            color = color,
             textAlign = textAlign
         )
     }
@@ -515,13 +399,10 @@ object UIComponents {
         color: Color? = null,
         textAlign: TextAlign? = null
     ) {
-        Text(
+        UnifiedCaptionText(
             text = text,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = AppDimens.captionTextSize.sp
-            ),
-            color = color ?: MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             modifier = modifier,
+            color = color,
             textAlign = textAlign
         )
     }
@@ -532,14 +413,10 @@ object UIComponents {
         modifier: Modifier = Modifier,
         color: Color? = null
     ) {
-        Text(
+        UnifiedSectionTitle(
             text = text,
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontSize = AppDimens.sectionTitleTextSize.sp,
-                fontWeight = if (isBoldEnabled()) FontWeight.SemiBold else FontWeight.Medium
-            ),
-            color = color ?: MaterialTheme.colorScheme.onSurface,
-            modifier = modifier.padding(vertical = AppDimens.spacingSmall)
+            modifier = modifier.padding(vertical = AppDimens.spacingSmall),
+            color = color
         )
     }
 
@@ -552,17 +429,11 @@ object UIComponents {
         modifier: Modifier = Modifier,
         enabled: Boolean = true
     ) {
-        Switch(
+        UnifiedSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             modifier = modifier,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-            )
+            enabled = enabled
         )
     }
 
@@ -577,36 +448,13 @@ object UIComponents {
         enabled: Boolean = true,
         leadingIcon: @Composable (() -> Unit)? = null
     ) {
-        AssistChip(
+        UnifiedChip(
+            label = label,
+            selected = selected,
             onClick = onClick,
-            label = {
-                Text(
-                    text = label,
-                    fontSize = AppDimens.captionTextSize.sp
-                )
-            },
             modifier = modifier,
             enabled = enabled,
-            leadingIcon = leadingIcon,
-            colors = AssistChipDefaults.assistChipColors(
-                containerColor = if (selected)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.surface,
-                labelColor = if (selected)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurface,
-                leadingIconContentColor = if (selected)
-                    MaterialTheme.colorScheme.onPrimary
-                else
-                    MaterialTheme.colorScheme.onSurface
-            ),
-            border = if (selected) null else AssistChipDefaults.assistChipBorder(
-                borderColor = MaterialTheme.colorScheme.outline,
-                enabled = enabled
-            ),
-            shape = RoundedCornerShape(AppDimens.radiusXXXLarge)
+            leadingIcon = leadingIcon
         )
     }
 
@@ -705,6 +553,7 @@ object UIComponents {
                         .fillMaxWidth()
                         .height(76.dp),
                     shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+                    border = null,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     )

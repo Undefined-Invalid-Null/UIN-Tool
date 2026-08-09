@@ -23,6 +23,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.RepoPluginInfo
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.viewmodel.RepoViewModel
 import com.UIN.Tool.utils.AppLog
 import kotlinx.coroutines.delay
@@ -80,7 +81,7 @@ fun RepoScreen() {
     ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 84.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
@@ -89,7 +90,7 @@ fun RepoScreen() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                UIComponents.TitleText(Str.get(R.string.plugin_repository))
+                UnifiedTitleText(Str.get(R.string.plugin_repository))
             }
         }
         item {
@@ -100,7 +101,7 @@ fun RepoScreen() {
         }
 
         item {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = searchText,
                 onValueChange = { text ->
                     searchText = text
@@ -119,7 +120,7 @@ fun RepoScreen() {
         // 下载进度
         if (downloadProgress.isDownloading) {
             item {
-                UIComponents.Card(
+                UnifiedCard(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
@@ -127,15 +128,15 @@ fun RepoScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            UIComponents.BodyText(Str.get(R.string.downloading_downloadprogress_plugini, downloadProgress.pluginId))
-                            UIComponents.BodyText(
+                            UnifiedBodyText(Str.get(R.string.downloading_downloadprogress_plugini, downloadProgress.pluginId))
+                            UnifiedBodyText(
                                 "${downloadProgress.progress}%",
                                 modifier = Modifier.align(Alignment.CenterVertically)
                             )
                         }
-                        UIComponents.LinearProgressIndicator(progress = downloadProgress.progress / 100f)
+                        UnifiedLinearProgressIndicator(progress = downloadProgress.progress / 100f)
                         if (downloadProgress.total > 0) {
-                            UIComponents.CaptionText(
+                            UnifiedCaptionText(
                                 "${formatSize(downloadProgress.downloaded)} / ${formatSize(downloadProgress.total)}"
                             )
                         }
@@ -163,10 +164,10 @@ fun RepoScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UIComponents.BodyText(
+                        UnifiedBodyText(
                             if (searchText.isNotEmpty()) Str.get(R.string.no_matching_plugins) else Str.get(R.string.no_plugins_available)
                         )
-                        UIComponents.CaptionText(
+                        UnifiedCaptionText(
                             if (searchText.isNotEmpty()) Str.get(R.string.try_other_keywords) else Str.get(R.string.check_your_network_connection_and_re)
                         )
                     }
@@ -190,7 +191,7 @@ fun RepoScreen() {
     // ==================== 插件详情对话框 ====================
     if (showDetailDialog != null) {
         val plugin = showDetailDialog!!
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = plugin.name,
             message = buildString {
                 append("ID: ${plugin.pluginId}\n")
@@ -230,7 +231,7 @@ fun RepoPluginCard(
     onOpen: () -> Unit,
     onClick: () -> Unit
 ) {
-    UIComponents.Card(
+    UnifiedCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick
     ) {
@@ -257,16 +258,16 @@ fun RepoPluginCard(
                     ) { }
                 }
             }
-            UIComponents.CaptionText(plugin.pluginId)
+            UnifiedCaptionText(plugin.pluginId)
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                UIComponents.CaptionText(Str.get(R.string.author_plugin_author, plugin.author))
-                UIComponents.CaptionText(plugin.getFormattedDate())
+                UnifiedCaptionText(Str.get(R.string.author_plugin_author, plugin.author))
+                UnifiedCaptionText(plugin.getFormattedDate())
             }
             if (plugin.description.isNotEmpty()) {
-                UIComponents.BodyText(
+                UnifiedBodyText(
                     plugin.description,
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -276,10 +277,10 @@ fun RepoPluginCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                UIComponents.CaptionText(plugin.getFormattedSize())
+                UnifiedCaptionText(plugin.getFormattedSize())
                 when {
                     isDownloading -> {
-                        UIComponents.PrimaryButton(
+                        UnifiedButton(
                             text = "${downloadProgress}%",
                             onClick = {},
                             modifier = Modifier.height(32.dp),
@@ -287,14 +288,15 @@ fun RepoPluginCard(
                         )
                     }
                     isInstalled -> {
-                        UIComponents.SecondaryButton(
+                        UnifiedButton(
                             text = Str.get(R.string.open),
                             onClick = onOpen,
-                            modifier = Modifier.height(32.dp)
+                            modifier = Modifier.height(32.dp),
+                            variant = ButtonVariant.Outlined
                         )
                     }
                     else -> {
-                        UIComponents.PrimaryButton(
+                        UnifiedButton(
                             text = Str.get(R.string.install),
                             onClick = onInstall,
                             modifier = Modifier.height(32.dp)

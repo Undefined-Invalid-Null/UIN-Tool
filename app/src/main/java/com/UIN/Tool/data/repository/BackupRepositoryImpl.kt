@@ -5,7 +5,7 @@ import com.UIN.Tool.utils.Str
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.data.local.FileManager
 import com.UIN.Tool.domain.model.BackupInfo
-import com.UIN.Tool.domain.repository.BackupRepository
+import com.UIN.Tool.domain.repository.IBackupRepository
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +20,7 @@ import java.util.*
 class BackupRepositoryImpl(
     private val pluginManager: PluginManager,
     private val fileManager: FileManager
-) : BackupRepository {
+) : IBackupRepository {
 
     companion object {
         private const val TAG = "BackupRepositoryImpl"

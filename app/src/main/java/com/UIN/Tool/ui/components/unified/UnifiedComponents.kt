@@ -3,9 +3,9 @@ package com.UIN.Tool.ui.components.unified
 
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.isBoldEnabled
+import androidx.compose.material3.LocalContentColor
 
 enum class ButtonVariant {
     Primary,
@@ -108,6 +110,11 @@ fun UnifiedButton(
             .height(size.height)
             .defaultMinSize(minWidth = size.minWidth),
         shape = shape,
+        border = if (variant == ButtonVariant.Outlined) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        } else {
+            null
+        },
         colors = when (variant) {
             ButtonVariant.Outlined -> ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.primary
@@ -180,11 +187,11 @@ fun UnifiedCard(
     variant: CardVariant = CardVariant.Elevated,
     shape: Shape = RoundedCornerShape(AppDimens.cardCornerRadius),
     elevation: Dp = AppDimens.cardElevation,
+    containerColor: Color? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val finalModifier = modifier
         .clip(shape)
-        .border(1.dp, AppColors.glassBorder(), shape)
         .then(
             if (onClick != null) {
                 Modifier.clickable(
@@ -203,10 +210,12 @@ fun UnifiedCard(
         CardVariant.Elevated -> {
             Card(
                 modifier = finalModifier,
+                border = null,
                 colors = CardDefaults.cardColors(
-                    containerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+                    containerColor = containerColor
+                        ?: if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+                elevation = CardDefaults.cardElevation(defaultElevation = if (glass) 0.dp else elevation),
                 shape = shape
             ) {
                 Column(
@@ -220,8 +229,10 @@ fun UnifiedCard(
         CardVariant.Filled -> {
             Card(
                 modifier = finalModifier,
+                border = null,
                 colors = CardDefaults.cardColors(
-                    containerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = containerColor
+                        ?: if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 shape = shape
@@ -237,6 +248,7 @@ fun UnifiedCard(
         CardVariant.Outlined -> {
             Card(
                 modifier = finalModifier,
+                border = null,
                 colors = CardDefaults.cardColors(
                     containerColor = Color.Transparent
                 ),
@@ -284,6 +296,7 @@ fun UnifiedTextField(
     isPassword: Boolean = false,
     showClearButton: Boolean = false,
     error: String? = null,
+    supportingText: String? = null,
     enabled: Boolean = true,
     singleLine: Boolean = true,
     onTrailingIconClick: (() -> Unit)? = null
@@ -325,7 +338,7 @@ fun UnifiedTextField(
             VisualTransformation.None
         },
         isError = error != null,
-        supportingText = error?.let { { Text(it) } },
+        supportingText = error?.let { { Text(it) } } ?: supportingText?.let { { Text(it) } },
         enabled = enabled,
         singleLine = singleLine,
         shape = RoundedCornerShape(AppDimens.inputCornerRadius),
@@ -351,7 +364,7 @@ fun UnifiedTitleText(
         text = text,
         style = MaterialTheme.typography.titleLarge.copy(
             fontSize = AppDimens.titleTextSize.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = if (isBoldEnabled()) FontWeight.Bold else FontWeight.SemiBold
         ),
         color = color ?: MaterialTheme.colorScheme.onSurface,
         modifier = modifier,
@@ -405,7 +418,7 @@ fun UnifiedSectionTitle(
         text = text,
         style = MaterialTheme.typography.headlineSmall.copy(
             fontSize = AppDimens.sectionTitleTextSize.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = if (isBoldEnabled()) FontWeight.SemiBold else FontWeight.Medium
         ),
         color = color ?: MaterialTheme.colorScheme.onSurface,
         modifier = modifier
@@ -482,6 +495,22 @@ fun UnifiedChip(
 // ==================== 统一加载指示器 ====================
 
 @Composable
+fun UnifiedLinearProgressIndicator(
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.LinearProgressIndicator(
+        progress = { progress.coerceIn(0f, 1f) },
+        color = MaterialTheme.colorScheme.primary,
+        trackColor = MaterialTheme.colorScheme.outlineVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(AppDimens.progressHeight)
+            .clip(RoundedCornerShape(AppDimens.progressCornerRadius))
+    )
+}
+
+@Composable
 fun UnifiedLoadingIndicator(
     modifier: Modifier = Modifier,
     message: String? = null
@@ -551,6 +580,68 @@ fun UnifiedEmptyState(
                 onClick = onAction,
                 variant = ButtonVariant.Primary
             )
+        }
+    }
+}
+
+// ==================== 统一图标按钮 ====================
+
+@Composable
+fun UnifiedIconButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color? = null,
+    contentDescription: String? = null
+) {
+    androidx.compose.material3.IconButton(
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint ?: LocalContentColor.current,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+// ==================== 统一列表项 ====================
+
+@Composable
+fun UnifiedListItem(
+    leadingContent: @Composable (() -> Unit)? = null,
+    title: String,
+    subtitle: String? = null,
+    trailingContent: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    UnifiedCard(
+        modifier = modifier,
+        onClick = onClick,
+        variant = CardVariant.Elevated
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            leadingContent?.let {
+                it()
+                Spacer(modifier = Modifier.width(AppDimens.spacingMedium))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                UnifiedBodyText(
+                    text = title,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                subtitle?.let {
+                    Spacer(modifier = Modifier.height(AppDimens.spacingXSmall))
+                    UnifiedCaptionText(text = it)
+                }
+            }
+            trailingContent?.invoke()
         }
     }
 }

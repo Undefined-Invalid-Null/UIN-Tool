@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -125,16 +127,17 @@ fun DevToolsScreen(
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.dev_tools),
                 onBack = onBack,
                 actions = {
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.DeleteSweep,
                         onClick = { showClearAllConfirm = true }
                     )
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.FileDownload,
                         onClick = {
                             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -173,12 +176,12 @@ fun DevToolsScreen(
             ) {
                 // ==================== 开发者选项 ====================
                 item {
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 8.dp)
                     ) {
-                        UIComponents.SectionTitle(Str.get(R.string.developer_options))
+                        UnifiedSectionTitle(Str.get(R.string.developer_options))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
@@ -204,7 +207,7 @@ fun DevToolsScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.PrimaryButton(
+                        UnifiedButton(
                             text = Str.get(R.string.save),
                             onClick = { saveDeveloperOptions() },
                             modifier = Modifier.fillMaxWidth()
@@ -221,7 +224,7 @@ fun DevToolsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        UIComponents.SectionTitle(Str.get(R.string.runtime_logs))
+                        UnifiedSectionTitle(Str.get(R.string.runtime_logs))
                     }
                 }
 
@@ -235,7 +238,7 @@ fun DevToolsScreen(
                 // 崩溃提示
                 if (showCrashMessage) {
                     item {
-                        UIComponents.Card(
+                        UnifiedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp)
@@ -259,17 +262,17 @@ fun DevToolsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
-                                        UIComponents.BodyText(
+                                        UnifiedBodyText(
                                             Str.get(R.string.an_exception_occurred),
                                             color = MaterialTheme.colorScheme.error
                                         )
-                                        UIComponents.CaptionText(
+                                        UnifiedCaptionText(
                                             Str.get(R.string.please_check_the_crash_log_below_for),
                                             color = MaterialTheme.colorScheme.error
                                         )
                                     }
                                 }
-                                UIComponents.IconButton(
+                                UnifiedIconButton(
                                     icon = Icons.Default.Close,
                                     onClick = { showCrashMessage = false },
                                     tint = MaterialTheme.colorScheme.error
@@ -281,15 +284,15 @@ fun DevToolsScreen(
 
                 // 统计信息
                 item {
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            UIComponents.BodyText(Str.get(R.string.loglines_size_lines_in_total, logLines.size))
-                            UIComponents.CaptionText(Str.get(R.string.latest_logs_at_the_top))
+                            UnifiedBodyText(Str.get(R.string.loglines_size_lines_in_total, logLines.size))
+                            UnifiedCaptionText(Str.get(R.string.latest_logs_at_the_top))
                         }
                     }
                 }
@@ -300,7 +303,7 @@ fun DevToolsScreen(
                             modifier = Modifier.fillParentMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            UIComponents.FullScreenLoading()
+                            UnifiedLoadingIndicator(message = Str.get(R.string.loading))
                         }
                     }
                     logLines.isEmpty() -> item {
@@ -316,7 +319,7 @@ fun DevToolsScreen(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
-                                UIComponents.TitleText(Str.get(R.string.no_log_records_yet))
+                                UnifiedTitleText(Str.get(R.string.no_log_records_yet))
                             }
                         }
                     }
@@ -329,7 +332,7 @@ fun DevToolsScreen(
                             else -> MaterialTheme.colorScheme.onSurface
                         }
                         val isHeader = line.contains("==================")
-                        UIComponents.Card(
+                        UnifiedCard(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
@@ -352,7 +355,7 @@ fun DevToolsScreen(
     }
 
     if (showClearAllConfirm) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_clear),
             message = Str.get(R.string.clear_all_historical_log_files),
             onConfirm = { clearAllLogs(); showClearAllConfirm = false },

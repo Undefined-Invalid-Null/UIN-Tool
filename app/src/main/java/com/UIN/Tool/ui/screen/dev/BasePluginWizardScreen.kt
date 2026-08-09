@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.core.compiler.JavaToDexCompiler
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -397,173 +397,124 @@ fun BasePluginWizardScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        when {
-                            uiType == "native" -> Str.get(R.string.create_native_plugin)
-                            backendType == "binary" -> Str.get(R.string.create_binary_backend_plugin)
-                            uiType == "web" && backendType.isEmpty() -> Str.get(R.string.create_web_plugin)
-                            uiType == "cui" -> Str.get(R.string.create_cui_plugin)
-                            else -> Str.get(R.string.create_web_backend_plugin)
-                        }
-                    )
-                },
-                navigationIcon = {
-                    UIComponents.IconButton(
-                        icon = Icons.Default.ArrowBack,
-                        onClick = onFinish
-                    )
-                },
-                actions = {
-                    if (currentStep == 0) {
-                        UIComponents.IconButton(
-                            icon = Icons.Default.Code,
-                            onClick = {
-                                jsonDraft = buildPluginJson()
-                                showJsonEditor = true
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = AppColors.pageBackground(),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            when {
+                                uiType == "native" -> Str.get(R.string.create_native_plugin)
+                                backendType == "binary" -> Str.get(R.string.create_binary_backend_plugin)
+                                uiType == "web" && backendType.isEmpty() -> Str.get(R.string.create_web_plugin)
+                                uiType == "cui" -> Str.get(R.string.create_cui_plugin)
+                                else -> Str.get(R.string.create_web_backend_plugin)
                             }
                         )
-                    }
-                    if (currentStep == 2 && backendType != "binary") {
-                        UIComponents.IconButton(
-                            icon = Icons.Default.Edit,
-                            onClick = { openCodeEditor() }
+                    },
+                    navigationIcon = {
+                        UnifiedIconButton(
+                            icon = Icons.Default.ArrowBack,
+                            onClick = onFinish
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                    },
+                    actions = {
+                        if (currentStep == 0) {
+                            UnifiedIconButton(
+                                icon = Icons.Default.Code,
+                                onClick = {
+                                    jsonDraft = buildPluginJson()
+                                    showJsonEditor = true
+                                }
+                            )
+                        }
+                        if (currentStep == 2 && backendType != "binary") {
+                            UnifiedIconButton(
+                                icon = Icons.Default.Edit,
+                                onClick = { openCodeEditor() }
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = AppColors.pageBackground(),
+                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                        actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                    )
                 )
-            )
-        },
-        bottomBar = {
-            NavigationBar(
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = MaterialTheme.colorScheme.surface
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    if (currentStep > 0) {
-                        UIComponents.SecondaryButton(
-                            text = Str.get(R.string.previous),
-                            onClick = { if (currentStep > 0) currentStep-- },
-                            modifier = Modifier.weight(1f)
+                    repeat(totalSteps) { index ->
+                        Box(
+                            modifier = Modifier
+                                .size(if (index == currentStep) 12.dp else 8.dp)
+                                .background(
+                                    if (index <= currentStep)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(50)
+                                )
                         )
-                    }
-
-                    if (currentStep < totalSteps - 1) {
-                        UIComponents.PrimaryButton(
-                            text = Str.get(R.string.next),
-                            onClick = {
-                                if (validateCurrentStep()) {
-                                    if (currentStep < totalSteps - 1) currentStep++
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-                    } else {
-                        val packaged = viewModel.tpkFile.value?.exists() == true
-                        UIComponents.PrimaryButton(
-                            text = when {
-                                viewModel.isCompiling.value -> Str.get(R.string.working)
-                                packaged -> Str.get(R.string.finish)
-                                else -> Str.get(R.string.package_label)
-                            },
-                            onClick = {
-                                if (packaged) {
-                                    onFinish()
-                                } else if (validateCurrentStep()) {
-                                    startCompileAndPackage()
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = !viewModel.isCompiling.value,
-                            loading = viewModel.isCompiling.value
-                        )
+                        if (index < totalSteps - 1) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
                     }
                 }
-            }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                repeat(totalSteps) { index ->
-                    Box(
-                        modifier = Modifier
-                            .size(if (index == currentStep) 12.dp else 8.dp)
-                            .background(
-                                if (index <= currentStep)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(50)
-                            )
-                    )
-                    if (index < totalSteps - 1) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                }
-            }
 
-            UIComponents.TitleText(
-                getStepTitle(),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            if (currentStep == 0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    UIComponents.BodyText(
-                        getStepDesc(),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                    UIComponents.IconButton(
-                        icon = Icons.Default.Info,
-                        onClick = { showStepOverview = true },
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        contentDescription = Str.get(R.string.view_field_overview)
-                    )
-                }
-            } else {
-                UIComponents.BodyText(
-                    getStepDesc(),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                UnifiedTitleText(
+                    getStepTitle(),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                if (currentStep == 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        UnifiedBodyText(
+                            getStepDesc(),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                        UnifiedIconButton(
+                            icon = Icons.Default.Info,
+                            onClick = { showStepOverview = true },
+                            modifier = Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = Str.get(R.string.view_field_overview)
+                        )
+                    }
+                } else {
+                    UnifiedBodyText(
+                        getStepDesc(),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 84.dp)
+                ) {
                 when (currentStep) {
                     0 -> PluginConfigStep(
                         pluginId = viewModel.pluginId.value,
@@ -669,6 +620,58 @@ fun BasePluginWizardScreen(
                 }
             }
         }
+        }
+
+        // 悬浮式底部操作栏：纯透明、紧贴按钮高度（不再带白色卡片背景与固定高度）
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (currentStep > 0) {
+                UnifiedButton(
+                    variant = ButtonVariant.Outlined,
+                    text = Str.get(R.string.previous),
+                    onClick = { if (currentStep > 0) currentStep-- },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (currentStep < totalSteps - 1) {
+                UnifiedButton(
+                    text = Str.get(R.string.next),
+                    onClick = {
+                        if (validateCurrentStep()) {
+                            if (currentStep < totalSteps - 1) currentStep++
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                val packaged = viewModel.tpkFile.value?.exists() == true
+                UnifiedButton(
+                    text = when {
+                        viewModel.isCompiling.value -> Str.get(R.string.working)
+                        packaged -> Str.get(R.string.finish)
+                        else -> Str.get(R.string.package_label)
+                    },
+                    onClick = {
+                        if (packaged) {
+                            onFinish()
+                        } else if (validateCurrentStep()) {
+                            startCompileAndPackage()
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = !viewModel.isCompiling.value,
+                    loading = viewModel.isCompiling.value
+                )
+            }
+        }
     }
 
     // ============================================================
@@ -684,12 +687,8 @@ fun BasePluginWizardScreen(
                 literalColor = scheme.error
             )
         }
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { showJsonEditor = false },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
             title = { Text(Str.get(R.string.edit_plugin_json)) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -714,28 +713,30 @@ fun BasePluginWizardScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                UnifiedButton(
+                    variant = ButtonVariant.Text,
+                    text = Str.get(R.string.save),
                     onClick = {
                         if (applyPluginJson(jsonDraft)) {
                             showJsonEditor = false
                             AppToast.success(context, Str.get(R.string.json_applied))
                         }
                     }
-                ) { Text(Str.get(R.string.save)) }
+                )
             },
             dismissButton = {
-                TextButton(onClick = { showJsonEditor = false }) { Text(Str.get(R.string.cancel)) }
+                UnifiedButton(
+                    variant = ButtonVariant.Text,
+                    text = Str.get(R.string.cancel),
+                    onClick = { showJsonEditor = false }
+                )
             }
         )
     }
 
     if (showStepOverview) {
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { showStepOverview = false },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
             title = { Text(Str.get(R.string.fill_in_the_plugin_basic_configurati)) },
             text = {
                 Column(
@@ -751,9 +752,11 @@ fun BasePluginWizardScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showStepOverview = false }) {
-                    Text(Str.get(R.string.ok_2))
-                }
+                UnifiedButton(
+                    variant = ButtonVariant.Text,
+                    text = Str.get(R.string.ok_2),
+                    onClick = { showStepOverview = false }
+                )
             }
         )
     }

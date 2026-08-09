@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.plugin.PluginPermissionManager
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.FileUtils
@@ -118,14 +118,13 @@ fun PluginConfigStep(
 
     Column {
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = pluginId,
                 onValueChange = onPluginIdChange,
                 label = Str.get(R.string.plugin_id),
                 placeholder = "com.example.myplugin",
                 modifier = Modifier.fillMaxWidth(),
-                isError = pluginId.isNotEmpty() && !pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$")),
-                supportingText = if (pluginId.isNotEmpty() && !pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
+                error = if (pluginId.isNotEmpty() && !pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
                     Str.get(R.string.must_be_a_reversed_domain_name_e_g_c)
                 } else null
             )
@@ -133,7 +132,7 @@ fun PluginConfigStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = pluginName,
                 onValueChange = onPluginNameChange,
                 label = Str.get(R.string.plugin_name),
@@ -144,7 +143,7 @@ fun PluginConfigStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = pluginAuthor,
                 onValueChange = onPluginAuthorChange,
                 label = Str.get(R.string.author),
@@ -155,7 +154,7 @@ fun PluginConfigStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = pluginDescription,
                 onValueChange = onPluginDescriptionChange,
                 label = Str.get(R.string.description),
@@ -173,7 +172,7 @@ fun PluginConfigStep(
             ConfigFieldRow(
                 modifier = Modifier.weight(1f)
             ) {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = pluginVersion,
                     onValueChange = onPluginVersionChange,
                     label = Str.get(R.string.version_code),
@@ -184,7 +183,7 @@ fun PluginConfigStep(
             ConfigFieldRow(
                 modifier = Modifier.weight(1f)
             ) {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = pluginVersionName,
                     onValueChange = onPluginVersionNameChange,
                     label = Str.get(R.string.version_name),
@@ -197,21 +196,20 @@ fun PluginConfigStep(
 
         if (uiType == "native") {
             ConfigFieldRow {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = mainClass,
                     onValueChange = onMainClassChange,
                     label = Str.get(R.string.main_class),
                     placeholder = "com.example.MainPlugin",
                     modifier = Modifier.fillMaxWidth(),
-                    isError = mainClass.isNotEmpty() && !mainClass.contains("."),
-                    supportingText = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
-                        Str.get(R.string.must_include_the_package_e_g_com_exa)
-                    } else null
+error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
+                    Str.get(R.string.must_include_the_package_e_g_com_exa)
+                } else null
                 )
             }
         } else if (uiType == "web") {
             ConfigFieldRow {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = entryPath,
                     onValueChange = onEntryPathChange,
                     label = Str.get(R.string.entry_file),
@@ -231,7 +229,7 @@ fun PluginConfigStep(
             ConfigFieldRow(
                 modifier = Modifier.weight(1f)
             ) {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = minHostVersion,
                     onValueChange = onMinHostVersionChange,
                     label = Str.get(R.string.min_host_version),
@@ -242,7 +240,7 @@ fun PluginConfigStep(
             ConfigFieldRow(
                 modifier = Modifier.weight(1f)
             ) {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = apiLevel,
                     onValueChange = onApiLevelChange,
                     label = Str.get(R.string.api_level),
@@ -254,7 +252,7 @@ fun PluginConfigStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = category,
                 onValueChange = onCategoryChange,
                 label = Str.get(R.string.category),
@@ -265,7 +263,7 @@ fun PluginConfigStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = updateUrl,
                 onValueChange = onUpdateUrlChange,
                 label = Str.get(R.string.update_url),
@@ -276,7 +274,7 @@ fun PluginConfigStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = dependencies,
                 onValueChange = onDependenciesChange,
                 label = Str.get(R.string.dependencies),
@@ -297,7 +295,7 @@ fun PluginConfigStep(
 
         // ✅ 插件说明
         ConfigFieldRow {
-            UIComponents.TextInput(
+            UnifiedTextField(
                 value = pluginNotice,
                 onValueChange = onPluginNoticeChange,
                 label = Str.get(R.string.plugin_notice_optional),
@@ -306,7 +304,7 @@ fun PluginConfigStep(
                 singleLine = false
             )
         }
-        UIComponents.CaptionText(
+        UnifiedCaptionText(
             Str.get(R.string.this_notice_appears_when_the_plugin_),
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
@@ -316,7 +314,7 @@ fun PluginConfigStep(
 
             // ✅ 启动命令（必填）：宿主用 sh -lc 执行，运行环境由用户在开发页全局设定
             ConfigFieldRow {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = backendStartCommand,
                     onValueChange = onBackendStartCommandChange,
                     label = Str.get(R.string.start_command_required),
@@ -325,7 +323,7 @@ fun PluginConfigStep(
                     singleLine = false
                 )
             }
-            UIComponents.CaptionText(
+            UnifiedCaptionText(
                 Str.get(R.string.start_command_runs_in_sh_lc_to_s),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
@@ -336,7 +334,7 @@ fun PluginConfigStep(
 
             // ✅ CUI 启动命令
             ConfigFieldRow {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = backendPreCommand,
                     onValueChange = onBackendPreCommandChange,
                     label = Str.get(R.string.start_command_run_in_terminal_when_t),
@@ -345,7 +343,7 @@ fun PluginConfigStep(
                     singleLine = false
                 )
             }
-            UIComponents.CaptionText(
+            UnifiedCaptionText(
                 Str.get(R.string.the_plugin_opens_a_fullscreen_termin),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
@@ -406,12 +404,8 @@ private fun PermissionSelectionDialog(
 ) {
     var draft by remember { mutableStateOf(selected.toSet()) }
 
-    AlertDialog(
+    UnifiedAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = if (AppColors.glassEnabled())
-            AppColors.glassBackground()
-        else
-            MaterialTheme.colorScheme.surface,
         title = {
             Text(
                 Str.get(R.string.select_permissions),
@@ -457,16 +451,18 @@ private fun PermissionSelectionDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onConfirm(draft.toList()) }
-            ) {
-                Text(Str.get(R.string.ok_2))
-            }
+UnifiedButton(
+                    variant = ButtonVariant.Text,
+                    text = Str.get(R.string.ok_2),
+                    onClick = { onConfirm(draft.toList()) }
+                )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(Str.get(R.string.cancel))
-            }
+            UnifiedButton(
+                variant = ButtonVariant.Text,
+                text = Str.get(R.string.cancel),
+                onClick = onDismiss
+            )
         }
     )
 }
@@ -578,14 +574,15 @@ fun PluginIconStep(
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            UIComponents.PrimaryButton(
+            UnifiedButton(
                 text = if (iconPath.isNotEmpty()) Str.get(R.string.change_icon) else Str.get(R.string.select_icon),
                 icon = Icons.Default.FileUpload,
                 onClick = { iconPickerLauncher.launch("image/*") }
             )
 
             if (iconPath.isNotEmpty()) {
-                UIComponents.SecondaryButton(
+                UnifiedButton(
+                    variant = ButtonVariant.Outlined,
                     text = Str.get(R.string.remove_icon),
                     onClick = { onIconSelected("") }
                 )
@@ -594,7 +591,7 @@ fun PluginIconStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UIComponents.CaptionText(
+        UnifiedCaptionText(
             Str.get(R.string.recommend_128x128_png)
         )
     }
@@ -606,10 +603,10 @@ fun NativeCodeStep(
     fileCount: Int
 ) {
     Column {
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.BodyText(
+            UnifiedBodyText(
                 Str.get(R.string.native_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
                 modifier = Modifier.padding(8.dp)
             )
@@ -617,7 +614,7 @@ fun NativeCodeStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UIComponents.PrimaryButton(
+        UnifiedButton(
             text = Str.get(R.string.open_code_editor_files, fileCount),
             icon = Icons.Default.Edit,
             onClick = onOpenEditor,
@@ -633,10 +630,10 @@ fun WebCodeStep(
     onImportWebProject: () -> Unit
 ) {
     Column {
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.BodyText(
+            UnifiedBodyText(
                 Str.get(R.string.web_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
                 modifier = Modifier.padding(8.dp)
             )
@@ -644,7 +641,7 @@ fun WebCodeStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UIComponents.PrimaryButton(
+        UnifiedButton(
             text = Str.get(R.string.open_code_editor_files, fileCount),
             icon = Icons.Default.Edit,
             onClick = onOpenEditor,
@@ -653,7 +650,8 @@ fun WebCodeStep(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        UIComponents.SecondaryButton(
+        UnifiedButton(
+            variant = ButtonVariant.Outlined,
             text = Str.get(R.string.import_existing_web_project_zip),
             icon = Icons.Default.FileUpload,
             onClick = onImportWebProject,
@@ -668,10 +666,10 @@ fun CuiCodeStep(
     onOpenEditor: () -> Unit
 ) {
     Column {
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.BodyText(
+            UnifiedBodyText(
                 Str.get(R.string.cui_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
                 modifier = Modifier.padding(8.dp)
             )
@@ -679,7 +677,7 @@ fun CuiCodeStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UIComponents.PrimaryButton(
+        UnifiedButton(
             text = Str.get(R.string.open_code_editor_files, fileCount),
             icon = Icons.Default.Edit,
             onClick = onOpenEditor,
@@ -705,13 +703,13 @@ fun ResourcesStep(
     }
 
     Column {
-        UIComponents.BodyText(Str.get(R.string.add_resource_files_optional))
+        UnifiedBodyText(Str.get(R.string.add_resource_files_optional))
         Spacer(modifier = Modifier.height(8.dp))
-        UIComponents.CaptionText(Str.get(R.string.add_images_audio_resources))
+        UnifiedCaptionText(Str.get(R.string.add_images_audio_resources))
         Spacer(modifier = Modifier.height(16.dp))
 
         if (resourcePaths.isEmpty()) {
-            UIComponents.Card(
+            UnifiedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
@@ -728,7 +726,7 @@ fun ResourcesStep(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.CaptionText(Str.get(R.string.no_resource_files))
+                        UnifiedCaptionText(Str.get(R.string.no_resource_files))
                     }
                 }
             }
@@ -739,7 +737,7 @@ fun ResourcesStep(
             ) {
                 items(resourcePaths.indices.toList()) { index ->
                     val path = resourcePaths[index]
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -760,9 +758,9 @@ fun ResourcesStep(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                UIComponents.BodyText(File(path).name)
+                                UnifiedBodyText(File(path).name)
                             }
-                            UIComponents.IconButton(
+                            UnifiedIconButton(
                                 icon = Icons.Default.Close,
                                 onClick = { onResourceRemoved(index) },
                                 tint = MaterialTheme.colorScheme.error,
@@ -776,7 +774,7 @@ fun ResourcesStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UIComponents.PrimaryButton(
+        UnifiedButton(
             text = Str.get(R.string.add_resource_files),
             icon = Icons.Default.Add,
             onClick = { resourcePickerLauncher.launch("*/*") },
@@ -793,10 +791,10 @@ fun PackageStep(
     tpkFile: File?
 ) {
     Column {
-        UIComponents.TitleText(Str.get(R.string.generate_project_files))
+        UnifiedTitleText(Str.get(R.string.generate_project_files))
         Spacer(modifier = Modifier.height(8.dp))
 
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(if (isCompiling) 280.dp else 240.dp)
@@ -815,10 +813,10 @@ fun PackageStep(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UIComponents.LinearProgressIndicator(progress = compileProgress / 100f)
+                        UnifiedLinearProgressIndicator(progress = compileProgress / 100f)
                         Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.BodyText(compileMessage)
-                        UIComponents.CaptionText("$compileProgress%")
+                        UnifiedBodyText(compileMessage)
+                        UnifiedCaptionText("$compileProgress%")
                     } else if (tpkFile != null && tpkFile.exists()) {
                         Icon(
                             Icons.Default.CheckCircle,
@@ -827,10 +825,10 @@ fun PackageStep(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UIComponents.TitleText(Str.get(R.string.packaged_successfully))
+                        UnifiedTitleText(Str.get(R.string.packaged_successfully))
                         Spacer(modifier = Modifier.height(8.dp))
-                        UIComponents.CaptionText(tpkFile.absolutePath)
-                        UIComponents.CaptionText(Str.get(R.string.size_formatfilesize_tpkfile_length, formatFileSize(tpkFile.length())))
+                        UnifiedCaptionText(tpkFile.absolutePath)
+                        UnifiedCaptionText(Str.get(R.string.size_formatfilesize_tpkfile_length, formatFileSize(tpkFile.length())))
                     } else {
                         Icon(
                             Icons.Default.Build,
@@ -839,10 +837,10 @@ fun PackageStep(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UIComponents.BodyText(Str.get(R.string.tap_the_finish_button_to_generate_th))
+                        UnifiedBodyText(Str.get(R.string.tap_the_finish_button_to_generate_th))
                         if (compileMessage.isNotEmpty() && !compileMessage.contains(Str.get(R.string.success))) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            UIComponents.CaptionText(
+                            UnifiedCaptionText(
                                 compileMessage,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -861,10 +859,10 @@ fun BinaryFileSelectionStep(
     onFilePicker: () -> Unit
 ) {
     Column {
-        UIComponents.Card(
+        UnifiedCard(
             modifier = Modifier.fillMaxWidth()
         ) {
-            UIComponents.BodyText(
+            UnifiedBodyText(
                 Str.get(R.string.binary_backend_instructions),
                 modifier = Modifier.padding(8.dp)
             )
@@ -873,7 +871,7 @@ fun BinaryFileSelectionStep(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (filePath.isNotEmpty()) {
-            UIComponents.Card(
+            UnifiedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -884,14 +882,14 @@ fun BinaryFileSelectionStep(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        UIComponents.BodyText(Str.get(R.string.file_selected))
-                        UIComponents.CaptionText(File(filePath).name)
-                        UIComponents.CaptionText(
+                        UnifiedBodyText(Str.get(R.string.file_selected))
+                        UnifiedCaptionText(File(filePath).name)
+                        UnifiedCaptionText(
                             Str.get(R.string.size_formatfilesize_file_filepath_le, formatFileSize(File(filePath).length())),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.Close,
                         onClick = { onFileSelected("") },
                         tint = MaterialTheme.colorScheme.error
@@ -902,7 +900,7 @@ fun BinaryFileSelectionStep(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UIComponents.PrimaryButton(
+        UnifiedButton(
             text = if (filePath.isNotEmpty()) Str.get(R.string.change_binary_file) else Str.get(R.string.select_binary_file),
             icon = Icons.Default.FileUpload,
             onClick = onFilePicker,

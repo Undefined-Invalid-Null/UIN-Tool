@@ -18,6 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.UnifiedBodyText
+import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
+import com.UIN.Tool.ui.components.unified.UnifiedCard
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppToast
 
 data class DocItem(
@@ -42,6 +46,7 @@ fun DocBrowserScreen() {
     )
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.docs_center),
@@ -57,7 +62,7 @@ fun DocBrowserScreen() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(docs) { doc ->
-                UIComponents.Card(
+                UnifiedCard(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         try {
@@ -84,8 +89,8 @@ fun DocBrowserScreen() {
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            UIComponents.BodyText(doc.title)
-                            UIComponents.CaptionText(doc.description)
+                            UnifiedBodyText(doc.title)
+                            UnifiedCaptionText(doc.description)
                         }
                         Icon(
                             Icons.Default.KeyboardArrowRight,

@@ -26,6 +26,7 @@ import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.data.remote.MirrorManager
 import com.UIN.Tool.domain.model.MirrorItem
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
@@ -163,6 +164,7 @@ fun GitHubMirrorScreen(
     LaunchedEffect(Unit) { loadMirrors() }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.github_acceleration_2),
@@ -217,7 +219,7 @@ fun GitHubMirrorScreen(
             }
             // CDN 开关
             item {
-                UIComponents.Card(
+                UnifiedCard(
                     modifier = Modifier.fillMaxWidth().clickable { useCdn = !useCdn }
                 ) {
                     Row(
@@ -226,10 +228,10 @@ fun GitHubMirrorScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            UIComponents.BodyText(Str.get(R.string.cdn_acceleration))
-                            UIComponents.CaptionText(Str.get(R.string.use_cdn_proxy_to_speed_up_downloads))
+                            UnifiedBodyText(Str.get(R.string.cdn_acceleration))
+                            UnifiedCaptionText(Str.get(R.string.use_cdn_proxy_to_speed_up_downloads))
                         }
-                        UIComponents.ToggleSwitch(
+                        UnifiedSwitch(
                             checked = useCdn,
                             onCheckedChange = { useCdn = it }
                         )
@@ -242,11 +244,12 @@ fun GitHubMirrorScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    UIComponents.SecondaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.import_label),
                         icon = Icons.Default.FileUpload,
                         onClick = { importLauncher.launch("text/plain") },
                         modifier = Modifier.weight(1f),
+                        variant = ButtonVariant.Outlined,
                         enabled = !isLoading
                     )
                 }
@@ -256,38 +259,41 @@ fun GitHubMirrorScreen(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    UIComponents.SecondaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.export),
                         icon = Icons.Default.FileDownload,
                         onClick = { exportLauncher.launch("mirrors_${System.currentTimeMillis()}.txt") },
                         modifier = Modifier.weight(1f),
+                        variant = ButtonVariant.Outlined,
                         enabled = !isLoading
                     )
-                    UIComponents.SecondaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.test),
                         icon = Icons.Default.Check,
                         onClick = { testAllMirrors() },
                         modifier = Modifier.weight(1f),
+                        variant = ButtonVariant.Outlined,
                         enabled = !isLoading
                     )
                 }
             }
             item {
-                UIComponents.SecondaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.reset_to_default),
                     icon = Icons.Default.Refresh,
                     onClick = { showResetDialog = true },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    variant = ButtonVariant.Outlined
                 )
             }
 
             // 测试结果
             showTestResult?.let { result ->
                 item {
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     ) {
-                        UIComponents.BodyText(
+                        UnifiedBodyText(
                             result,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -303,12 +309,12 @@ fun GitHubMirrorScreen(
                         modifier = Modifier.fillParentMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        UIComponents.BodyText(Str.get(R.string.no_mirrors_yet))
+                        UnifiedBodyText(Str.get(R.string.no_mirrors_yet))
                     }
                 }
             } else {
                 items(mirrors) { mirror ->
-                    UIComponents.Card(
+                    UnifiedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -344,7 +350,7 @@ fun GitHubMirrorScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    UIComponents.BodyText(mirror.name)
+                                    UnifiedBodyText(mirror.name)
                                     if (mirror.isDefault) {
                                         BadgedBox(
                                             badge = {
@@ -372,13 +378,13 @@ fun GitHubMirrorScreen(
                                         ) { }
                                     }
                                 }
-                                UIComponents.CaptionText(mirror.url)
+                                UnifiedCaptionText(mirror.url)
                                 if (mirror.remark.isNotEmpty()) {
-                                    UIComponents.CaptionText(mirror.remark)
+                                    UnifiedCaptionText(mirror.remark)
                                 }
                             }
                             if (!mirror.isDefault) {
-                                UIComponents.IconButton(
+                                UnifiedIconButton(
                                     icon = Icons.Default.Close,
                                     onClick = {
                                         mirrors = mirrors.filter { it.url != mirror.url }
@@ -393,7 +399,7 @@ fun GitHubMirrorScreen(
             }
         }
 
-            UIComponents.PrimaryButton(
+            UnifiedButton(
                 text = Str.get(R.string.save_settings),
                 onClick = {
                     preferenceManager.setEnabledMirrors(enabledMirrors.toList())
@@ -409,7 +415,7 @@ fun GitHubMirrorScreen(
 
     // 确认重置对话框
     if (showResetDialog) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_reset),
             message = Str.get(R.string.reset_to_the_default_mirror_list),
             onConfirm = { loadMirrors(); showResetDialog = false },
@@ -423,16 +429,12 @@ fun GitHubMirrorScreen(
         var url by remember { mutableStateOf("") }
         var remark by remember { mutableStateOf("") }
 
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { showAddDialog = false },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surfaceContainerHigh,
             title = { Text(Str.get(R.string.add_mirror)) },
             text = {
                 Column {
-                    UIComponents.TextInput(
+                    UnifiedTextField(
                         value = name,
                         onValueChange = { name = it },
                         label = Str.get(R.string.name),
@@ -440,7 +442,7 @@ fun GitHubMirrorScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    UIComponents.TextInput(
+                    UnifiedTextField(
                         value = url,
                         onValueChange = { url = it },
                         label = "URL",
@@ -448,7 +450,7 @@ fun GitHubMirrorScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    UIComponents.TextInput(
+                    UnifiedTextField(
                         value = remark,
                         onValueChange = { remark = it },
                         label = Str.get(R.string.note_optional),
@@ -458,7 +460,7 @@ fun GitHubMirrorScreen(
                 }
             },
             confirmButton = {
-                UIComponents.PrimaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.add),
                     onClick = {
                         if (name.isNotEmpty() && url.isNotEmpty()) {
@@ -475,9 +477,10 @@ fun GitHubMirrorScreen(
                 )
             },
             dismissButton = {
-                UIComponents.TextButton(
+                UnifiedButton(
                     text = Str.get(R.string.cancel),
-                    onClick = { showAddDialog = false }
+                    onClick = { showAddDialog = false },
+                    variant = ButtonVariant.Text
                 )
             }
         )

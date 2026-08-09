@@ -10,11 +10,13 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
@@ -174,6 +176,8 @@ class WidgetConfigureActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
+                            border = null,
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (AppColors.glassEnabled())
                                     AppColors.glassBackground()
@@ -252,6 +256,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                     containerColor = Color.White,
                                     contentColor = Color(0xFF1A3A4A)
                                 ),
+                                border = BorderStroke(1.dp, Color(0xFFB0C4D0)),
                                 shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                             ) {
                                 Text(Str.get(R.string.add_shortcut))

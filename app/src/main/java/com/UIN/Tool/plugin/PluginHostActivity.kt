@@ -33,6 +33,7 @@ import com.UIN.Tool.shared.termux.TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE
 import com.UIN.Tool.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_SERVICE
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
+import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
@@ -546,14 +547,14 @@ class PluginHostActivity : AppCompatActivity() {
                 },
                 dismissButton = {
                     Row {
-                        TextButton(
+                        UnifiedDialogTextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onNever()
                             }
                         ) { Text(Str.get(R.string.don_t_ask_again)) }
                         Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
-                        TextButton(
+                        UnifiedDialogTextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onLater()
@@ -617,14 +618,14 @@ class PluginHostActivity : AppCompatActivity() {
                 },
                 dismissButton = {
                     Row {
-                        TextButton(
+                        UnifiedDialogTextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onNeutral()
                             }
                         ) { Text(Str.get(R.string.ignore)) }
                         Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
-                        TextButton(
+                        UnifiedDialogTextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onDismiss()
@@ -671,7 +672,7 @@ class PluginHostActivity : AppCompatActivity() {
                         ) { Text(Str.get(R.string.ok_2)) }
                     },
                     dismissButton = {
-                        TextButton(
+                        UnifiedDialogTextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onDismiss()
@@ -743,10 +744,11 @@ class PluginHostActivity : AppCompatActivity() {
         container.removeAllViews()
 
         // 统一对话框宿主（Compose 覆盖层，置于 WebView 之上；自身透明且不拦截触摸，
-        // 弹窗通过独立窗口浮于最上）
+        // 弹窗通过独立窗口浮于最上）。fillBackground=false 使覆盖层不再绘制不透明背景，
+        // 否则会盖住插件 WebView 内容（背景只剩纯色而无控件）。
         dialogHost = ComposeView(this).apply {
             setContent {
-                UINToolTheme {
+                UINToolTheme(fillBackground = false) {
                     PluginDialogHost()
                 }
             }

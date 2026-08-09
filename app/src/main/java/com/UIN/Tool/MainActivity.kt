@@ -15,6 +15,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,6 +26,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,12 +35,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -59,6 +59,8 @@ import com.UIN.Tool.plugin.PluginHostActivity
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.UpdateDialog
+import com.UIN.Tool.ui.components.unified.UnifiedAlertDialog
+import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.dev.DevScreen
 import com.UIN.Tool.ui.screen.manage.ManageScreen
@@ -66,6 +68,8 @@ import com.UIN.Tool.ui.screen.repo.RepoScreen
 import com.UIN.Tool.ui.screen.tools.ToolsScreen
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.ui.theme.dynamicColor
+import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -638,7 +642,7 @@ fun MainContent(
 
     // 静默下载进度提示
     if (silentProgress) {
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { },
             title = { Text(Str.get(R.string.downloading_update)) },
             text = {
@@ -655,7 +659,7 @@ fun MainContent(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { silentProgress = false }) {
+                UnifiedDialogTextButton(onClick = { silentProgress = false }) {
                     Text(Str.get(R.string.cancel))
                 }
             }
@@ -675,88 +679,95 @@ fun MainContent(
         )
     }
 
-    Scaffold(
-        bottomBar = {
-            val selectedColor = dynamicColor("nav_selected", MaterialTheme.colorScheme.primary)
-            val unselectedColor = dynamicColor("nav_unselected", MaterialTheme.colorScheme.onSurfaceVariant)
-            val navSurface = dynamicColor("navigation_bar", MaterialTheme.colorScheme.surface)
-            val navShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-            // 自绘底部导航：不透明底色覆盖到底（含手势导航区），顶部细边框裁切进圆角避免突出
-            val navBorder = dynamicColor("divider", MaterialTheme.colorScheme.outlineVariant)
-            Row(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = AppColors.pageBackground()
+        ) { paddingValues ->
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(navSurface)
-                    .clip(navShape)
-                    .background(navSurface, navShape)
-                    .navigationBarsPadding()
-                    .height(56.dp)
-                    .drawBehind {
-                        // 顶部 1dp 边框，圆角用与 navShape 完全相同的 24dp 圆弧(addArc)，避免二次贝塞尔与圆角不匹配而在角部突出
-                        val stroke = 1.dp.toPx()
-                        val corner = 24.dp.toPx()
-                        val corner2 = corner * 2
-                        val w = size.width
-                        val borderPath = Path().apply {
-                            moveTo(0f, corner)
-                            addArc(Rect(0f, 0f, corner2, corner2), 180f, 90f)
-                            lineTo(w - corner, 0f)
-                            addArc(Rect(w - corner2, 0f, w, corner2), 270f, 90f)
-                        }
-                        drawPath(borderPath, navBorder, style = Stroke(stroke))
-                    }
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                tabs.forEachIndexed { index, (label, icon) ->
-                    val isSelected = selectedTab == index
-                    val interactionSource = remember { MutableInteractionSource() }
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .semantics { role = Role.Tab }
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClick = { selectedTab = index }
-                            ),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = icon),
-                            contentDescription = label,
-                            modifier = Modifier.size(24.dp),
-                            tint = if (isSelected) selectedColor else unselectedColor
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            label,
-                            color = if (isSelected) selectedColor else unselectedColor,
-                            fontSize = 10.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        val direction = if (targetState > initialState) 1 else -1
+                        (slideInHorizontally(tween(300)) { it * direction } + fadeIn(tween(300)))
+                            .togetherWith(
+                                slideOutHorizontally(tween(300)) { -it * direction } + fadeOut(tween(300))
+                            )
+                    },
+                    label = "main_tab_content"
+                ) { tab ->
+                    when (tab) {
+                        0 -> DevScreen()
+                        1 -> ToolsScreen()
+                        2 -> RepoScreen()
+                        3 -> ManageScreen(checkUpdate = checkUpdate)
                     }
                 }
             }
         }
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = {
-                    val direction = if (targetState > initialState) 1 else -1
-                    (slideInHorizontally(tween(300)) { it * direction } + fadeIn(tween(300)))
-                        .togetherWith(
-                            slideOutHorizontally(tween(300)) { -it * direction } + fadeOut(tween(300))
-                        )
-                },
-                label = "main_tab_content"
-            ) { tab ->
-                when (tab) {
-                    0 -> DevScreen()
-                    1 -> ToolsScreen()
-                    2 -> RepoScreen()
-                    3 -> ManageScreen(checkUpdate = checkUpdate)
+
+        // 悬浮式底部导航：风格完全遵照卡片（不透明 surface 背景、卡片圆角与阴影），
+        // 比玻璃态卡片更白更实，点击动效（按压缩放 + 选中放大）保持不变
+        val selectedColor = dynamicColor("nav_selected", MaterialTheme.colorScheme.primary)
+        val unselectedColor = dynamicColor("nav_unselected", MaterialTheme.colorScheme.onSurfaceVariant)
+        val navShape = RoundedCornerShape(AppDimens.cardCornerRadius)
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .shadow(AppDimens.cardElevation, navShape)
+                .background(AppColors.cardBackground(), navShape)
+                .height(AppDimens.bottomNavHeight)
+        ) {
+            tabs.forEachIndexed { index, (label, icon) ->
+                val isSelected = selectedTab == index
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val tabScale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.88f else 1f,
+                    animationSpec = tween(durationMillis = 150),
+                    label = "nav_tab_scale"
+                )
+                val iconSize by animateDpAsState(
+                    targetValue = if (isSelected) 30.dp else 24.dp,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "nav_icon_size"
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .graphicsLayer {
+                            scaleX = tabScale
+                            scaleY = tabScale
+                        }
+                        .semantics { role = Role.Tab }
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { selectedTab = index }
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = icon),
+                        contentDescription = label,
+                        modifier = Modifier.size(iconSize),
+                        tint = if (isSelected) selectedColor else unselectedColor
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        label,
+                        color = if (isSelected) selectedColor else unselectedColor,
+                        fontSize = 10.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
                 }
             }
         }

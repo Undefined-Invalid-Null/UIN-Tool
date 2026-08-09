@@ -4,6 +4,14 @@ package com.UIN.Tool.ui.screen.onboarding
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import com.UIN.Tool.ui.components.ReleaseChangelog
+import com.UIN.Tool.ui.components.unified.ButtonSize
+import com.UIN.Tool.ui.components.unified.ButtonVariant
+import com.UIN.Tool.ui.components.unified.UnifiedBodyText
+import com.UIN.Tool.ui.components.unified.UnifiedButton
+import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
+import com.UIN.Tool.ui.components.unified.UnifiedCard
+import com.UIN.Tool.ui.components.unified.UnifiedSectionTitle
+import com.UIN.Tool.ui.components.unified.UnifiedTitleText
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,12 +31,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.AppColors
 
 data class OnboardingItem(
     val title: String,
@@ -82,14 +89,13 @@ fun OnboardingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorScheme.background)
+            .background(com.UIN.Tool.ui.theme.AppColors.pageBackground())
             .padding(16.dp)
     ) {
         // 跳过按钮
         if (pagerState.currentPage > 0) {
-            Text(
+            UnifiedBodyText(
                 text = Str.get(R.string.skip),
-                style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -137,34 +143,26 @@ fun OnboardingScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
+                        UnifiedTitleText(
                             text = Str.get(R.string.welcome_to_uin_tool),
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.onBackground
-                            ),
+                            color = colorScheme.onBackground,
                             textAlign = TextAlign.Center
                         )
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        Text(
+                        UnifiedBodyText(
                             text = "v${versionName ?: "5.2.0"}",
-                            style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // ✅ 作者的话 + 终端环境提示卡片
-                        Card(
+                        UnifiedCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 4.dp),
-                            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFE3F2FD)  // 淡蓝色
-                            )
+                                .padding(horizontal = 4.dp)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -182,21 +180,15 @@ fun OnboardingScreen(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
+                                    UnifiedSectionTitle(
                                         text = Str.get(R.string.a_word_from_the_author),
-                                        style = MaterialTheme.typography.titleSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF0D47A1)
-                                        )
+                                        color = Color(0xFF0D47A1)
                                     )
                                 }
 
-                                Text(
+                                UnifiedBodyText(
                                     text = Str.get(R.string.onboarding_author_words),
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = Color(0xFF0D47A1)
-                                    ),
-                                    lineHeight = 20.sp
+                                    color = Color(0xFF0D47A1)
                                 )
 
                                 HorizontalDivider(
@@ -215,30 +207,23 @@ fun OnboardingScreen(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
+                                    UnifiedSectionTitle(
                                         text = Str.get(R.string.terminal_environment_notice),
-                                        style = MaterialTheme.typography.titleSmall.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFFBF360C)
-                                        )
+                                        color = Color(0xFFBF360C)
                                     )
                                 }
 
-                                Text(
+                                UnifiedBodyText(
                                     text = Str.get(R.string.onboarding_terminal_notice),
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = Color(0xFFBF360C)
-                                    ),
-                                    lineHeight = 20.sp
+                                    color = Color(0xFFBF360C)
                                 )
                             }
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
+                        UnifiedCaptionText(
                             text = Str.get(R.string.swipe_left_right_to_browse_features),
-                            style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
@@ -263,22 +248,17 @@ fun OnboardingScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
+                    UnifiedTitleText(
                         text = items[page].title,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = colorScheme.onBackground
-                        ),
+                        color = colorScheme.onBackground,
                         textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
+                    UnifiedBodyText(
                         text = items[page].description,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            color = colorScheme.onSurfaceVariant
-                        ),
+                        color = colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -309,7 +289,8 @@ fun OnboardingScreen(
         }
 
         // 按钮
-        Button(
+        UnifiedButton(
+            text = if (pagerState.currentPage == items.size - 1) Str.get(R.string.start_exploring) else Str.get(R.string.next),
             onClick = {
                 if (pagerState.currentPage == items.size - 1) {
                     onNavigateToMain()
@@ -319,21 +300,12 @@ fun OnboardingScreen(
                     }
                 }
             },
+            variant = ButtonVariant.Primary,
+            size = ButtonSize.Large,
             modifier = Modifier
                 .fillMaxWidth(0.8f)
-                .height(48.dp)
-                .align(Alignment.CenterHorizontally),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colorScheme.primary,
-                contentColor = colorScheme.onPrimary
-            ),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text(
-                text = if (pagerState.currentPage == items.size - 1) Str.get(R.string.start_exploring) else Str.get(R.string.next),
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
+                .align(Alignment.CenterHorizontally)
+        )
     }
 }
 
@@ -350,7 +322,7 @@ fun VersionUpdateScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorScheme.background)
+            .background(com.UIN.Tool.ui.theme.AppColors.pageBackground())
             .padding(16.dp)
     ) {
         Column(
@@ -376,20 +348,16 @@ fun VersionUpdateScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
+            UnifiedTitleText(
                 text = Str.get(R.string.version_update),
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onBackground
-                ),
+                color = colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
+            UnifiedBodyText(
                 text = Str.get(R.string.onboarding_version_updated, versionName),
-                style = MaterialTheme.typography.bodyMedium,
                 color = colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
@@ -407,12 +375,9 @@ fun VersionUpdateScreen(
                     tint = colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
+                UnifiedSectionTitle(
                     text = Str.get(R.string.changelog),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Medium,
-                        color = colorScheme.onSurface
-                    )
+                    color = colorScheme.onSurface
                 )
             }
         }
@@ -426,22 +391,14 @@ fun VersionUpdateScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Button(
+        UnifiedButton(
+            text = Str.get(R.string.start_exploring),
             onClick = onNavigateToMain,
+            variant = ButtonVariant.Primary,
+            size = ButtonSize.Large,
             modifier = Modifier
                 .fillMaxWidth(0.8f)
-                .height(48.dp)
-                .align(Alignment.CenterHorizontally),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colorScheme.primary,
-                contentColor = colorScheme.onPrimary
-            ),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text(
-                text = Str.get(R.string.start_exploring),
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
+                .align(Alignment.CenterHorizontally)
+        )
     }
 }

@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import io.github.rosemoe.sora.event.ContentChangeEvent
@@ -283,24 +283,15 @@ fun ThemeSelectionDialog(
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        Card(
+        UnifiedCard(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .padding(16.dp),
-            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-            colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    Color.White
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
             ) {
                 Text(
                     text = Str.get(R.string.select_theme),
@@ -700,6 +691,7 @@ fun CodeEditorScreen(
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             TopAppBar(
                 title = { /* 不显示标题 */ },
@@ -739,7 +731,7 @@ fun CodeEditorScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = AppColors.pageBackground(),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                     navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
                     actionIconContentColor = MaterialTheme.colorScheme.onBackground
@@ -754,7 +746,7 @@ fun CodeEditorScreen(
                     modifier = Modifier
                         .width(sidebarWidth)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(AppColors.pageBackground())
                 ) {
                     Column {
                         Row(
@@ -1004,16 +996,12 @@ fun CodeEditorScreen(
     if (showAddFileDialog) {
         var newFileName by remember { mutableStateOf("") }
         var newFileContent by remember { mutableStateOf("") }
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { showAddFileDialog = false },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
             title = { Text(Str.get(R.string.add_new_file)) },
             text = {
                 Column {
-                    UIComponents.TextInput(
+                    UnifiedTextField(
                         value = newFileName,
                         onValueChange = { newFileName = it },
                         label = Str.get(R.string.file_name),
@@ -1021,7 +1009,7 @@ fun CodeEditorScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    UIComponents.TextInput(
+                    UnifiedTextField(
                         value = newFileContent,
                         onValueChange = { newFileContent = it },
                         label = Str.get(R.string.file_content_optional),
@@ -1031,7 +1019,7 @@ fun CodeEditorScreen(
                 }
             },
             confirmButton = {
-                UIComponents.PrimaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.add),
                     onClick = {
                         if (newFileName.isNotEmpty()) {
@@ -1043,7 +1031,8 @@ fun CodeEditorScreen(
                 )
             },
             dismissButton = {
-                UIComponents.TextButton(
+                UnifiedButton(
+                    variant = ButtonVariant.Text,
                     text = Str.get(R.string.cancel),
                     onClick = { showAddFileDialog = false }
                 )
@@ -1052,7 +1041,7 @@ fun CodeEditorScreen(
     }
 
     if (showDeleteConfirm != null) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_delete),
             message = Str.get(R.string.delete_1_s, showDeleteConfirm),
             confirmText = Str.get(R.string.delete),
@@ -1070,15 +1059,11 @@ fun CodeEditorScreen(
     val renameOld = renameTarget
     if (renameOld != null) {
         var newFileName by remember(renameOld) { mutableStateOf(renameOld) }
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { renameTarget = null },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
             title = { Text(Str.get(R.string.rename_file)) },
             text = {
-                UIComponents.TextInput(
+                UnifiedTextField(
                     value = newFileName,
                     onValueChange = { newFileName = it },
                     label = Str.get(R.string.file_name),
@@ -1086,7 +1071,7 @@ fun CodeEditorScreen(
                 )
             },
             confirmButton = {
-                UIComponents.PrimaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.ok_2),
                     onClick = {
                         if (renameFile(renameOld, newFileName)) {
@@ -1100,7 +1085,8 @@ fun CodeEditorScreen(
                 )
             },
             dismissButton = {
-                UIComponents.TextButton(
+                UnifiedButton(
+                    variant = ButtonVariant.Text,
                     text = Str.get(R.string.cancel),
                     onClick = { renameTarget = null }
                 )
@@ -1113,12 +1099,8 @@ fun CodeEditorScreen(
     if (propFile != null) {
         val content = contents[propFile] ?: ""
         val lineCount = if (content.isEmpty()) 0 else content.lines().size
-        AlertDialog(
+        UnifiedAlertDialog(
             onDismissRequest = { propertiesTarget = null },
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                MaterialTheme.colorScheme.surface,
             title = { Text(Str.get(R.string.file_properties)) },
             text = {
                 Column {
@@ -1129,9 +1111,11 @@ fun CodeEditorScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { propertiesTarget = null }) {
-                    Text(Str.get(R.string.ok_2))
-                }
+                UnifiedButton(
+                    variant = ButtonVariant.Text,
+                    text = Str.get(R.string.ok_2),
+                    onClick = { propertiesTarget = null }
+                )
             }
         )
     }

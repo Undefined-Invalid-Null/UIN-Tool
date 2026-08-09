@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.UIN.Tool.data.local.PreferenceManager
+import com.UIN.Tool.data.remote.MirrorManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -26,14 +27,6 @@ class UpdateChecker(
     companion object {
         private const val TAG = "UpdateChecker"
         private const val GITHUB_API = "https://api.github.com/repos/Undefined-Invalid-Null/UIN-Tool/releases"
-        private val DEFAULT_MIRRORS = listOf(
-            "https://hub.fastgit.xyz",
-            "https://github.moeyy.xyz",
-            "https://ghproxy.net",
-            "https://mirror.ghproxy.com",
-            "https://gh.api.99988866.xyz",
-            "https://gitclone.com"
-        )
     }
 
     private val client = OkHttpClient.Builder()
@@ -42,6 +35,8 @@ class UpdateChecker(
         .writeTimeout(Constants.NETWORK_WRITE_TIMEOUT, TimeUnit.SECONDS)
         .cache(okhttp3.Cache(File(context.cacheDir, "okhttp_cache"), Constants.CACHE_SIZE))
         .build()
+
+    private val mirrorManager = MirrorManager(client)
 
     private var currentMirror: String? = null
     private var onUpdateListener: OnUpdateListener? = null
@@ -100,7 +95,7 @@ class UpdateChecker(
                         // 应用镜像到下载链接
                         currentMirror?.let { mirror ->
                             if (release.downloadUrl.startsWith("https://github.com")) {
-                                release.downloadUrl = getMirrorDownloadUrl(mirror, release.downloadUrl)
+                                release.downloadUrl = mirrorManager.getDownloadMirrorUrl(mirror, release.downloadUrl, true)
                             }
                         }
                         break
@@ -144,11 +139,11 @@ class UpdateChecker(
         val mirrorsToTest = if (enabledMirrors.isNotEmpty() && useCdn) {
             enabledMirrors
         } else {
-            DEFAULT_MIRRORS
+            Constants.DEFAULT_MIRRORS
         }
 
         for (mirror in mirrorsToTest) {
-            val testUrl = getMirrorUrl(mirror, GITHUB_API)
+            val testUrl = mirrorManager.getMirrorUrl(mirror, GITHUB_API)
             Logger.d(TAG, Str.get(R.string.testing_mirror_testurl, testUrl))
             if (testUrl(testUrl)) {
                 currentMirror = mirror
@@ -160,8 +155,8 @@ class UpdateChecker(
         // 如果配置的镜像都不可用，尝试默认镜像
         if (enabledMirrors.isNotEmpty() && useCdn) {
             Logger.d(TAG, Str.get(R.string.configured_mirror_unavailable_trying))
-            for (mirror in DEFAULT_MIRRORS) {
-                val testUrl = getMirrorUrl(mirror, GITHUB_API)
+            for (mirror in Constants.DEFAULT_MIRRORS) {
+                val testUrl = mirrorManager.getMirrorUrl(mirror, GITHUB_API)
                 if (testUrl(testUrl)) {
                     currentMirror = mirror
                     Logger.success(TAG, Str.get(R.string.found_usable_default_mirror_mirror, mirror))
@@ -261,23 +256,6 @@ class UpdateChecker(
         releases.sortByDescending { it.versionCode.toIntOrNull() ?: 0 }
 
         return releases
-    }
-
-    private fun getMirrorUrl(mirror: String, originalUrl: String): String {
-        return when {
-            mirror.contains("ghproxy") -> "$mirror/$originalUrl"
-            mirror.contains("fastgit") -> originalUrl.replace("https://api.github.com", "$mirror/api.github.com")
-            mirror.contains("moeyy") -> "$mirror/$originalUrl"
-            else -> "$mirror/$originalUrl"
-        }
-    }
-
-    private fun getMirrorDownloadUrl(mirror: String, originalUrl: String): String {
-        return when {
-            mirror.contains("ghproxy") -> "$mirror/$originalUrl"
-            mirror.contains("fastgit") -> originalUrl.replace("https://github.com", "$mirror/github.com")
-            else -> originalUrl
-        }
     }
 
     private fun getCurrentVersionCode(): Int {

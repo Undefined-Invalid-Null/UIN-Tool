@@ -7,7 +7,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +29,15 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.UIN.Tool.ui.components.FullColorPickerDialog
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.ButtonVariant
+import com.UIN.Tool.ui.components.unified.UnifiedBodyText
+import com.UIN.Tool.ui.components.unified.UnifiedButton
+import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
+import com.UIN.Tool.ui.components.unified.UnifiedCard
+import com.UIN.Tool.ui.components.unified.UnifiedSectionTitle
+import com.UIN.Tool.ui.components.unified.UnifiedSwitch
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
+import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.FileUtils
@@ -127,7 +135,13 @@ private data class ConfigState(
     val sectionTitleTextSize: Float,
     val enableGlassEffect: Boolean,
     val enableRipple: Boolean,
-    val enableBold: Boolean
+    val enableBold: Boolean,
+    val enableGradientBackground: Boolean,
+    val gradientMode: String,
+    val gradientColor: String,
+    val gradientColors: List<String>,
+    val gradientFrom: String,
+    val gradientTo: String
 )
 
 private fun loadConfigFromUIConfig(): ConfigState {
@@ -204,7 +218,13 @@ private fun loadConfigFromUIConfig(): ConfigState {
         sectionTitleTextSize = uiConfig.getSize("sectionTitleTextSize"),
         enableGlassEffect = uiConfig.isGlassEffectEnabled(),
         enableRipple = uiConfig.isRippleEnabled(),
-        enableBold = uiConfig.isBoldEnabled()
+        enableBold = uiConfig.isBoldEnabled(),
+        enableGradientBackground = uiConfig.isGradientBackgroundEnabled(),
+        gradientMode = uiConfig.getGradientMode(),
+        gradientColor = if (uiConfig.shouldUseDarkTheme()) uiConfig.getGradientColorStringDark() else uiConfig.getGradientColorString(),
+        gradientColors = uiConfig.getGradientColorsString(),
+        gradientFrom = uiConfig.getGradientFrom(),
+        gradientTo = uiConfig.getGradientTo()
     )
 }
 
@@ -212,6 +232,11 @@ private fun saveConfigToUIConfig(config: ConfigState) {
     AppLog.i(TAG, Str.get(R.string.saving_ui_config_to_uiconfig))
 
     val uiConfig = UIConfig.getInstance()
+
+    // 记录保存前实际生效的主题模式；梯度写入必须依据旧模式分流，
+    // 否则用户切换主题模式后保存会把「浅色模式加载出来的渐变值」写进深色区（反之亦然），
+    // 造成切到深色仍显示浅色渐变的旧 bug 复发。
+    val saveWasDark = uiConfig.shouldUseDarkTheme()
 
     uiConfig.updateColor("primary", config.primaryColor)
     uiConfig.updateColor("primary_dark", config.primaryDarkColor)
@@ -292,6 +317,17 @@ private fun saveConfigToUIConfig(config: ConfigState) {
     uiConfig.updateBoolean("enableRipple", config.enableRipple)
     uiConfig.updateBoolean("enableBold", config.enableBold)
 
+    uiConfig.setGradientBackgroundEnabled(config.enableGradientBackground)
+    uiConfig.setGradientMode(config.gradientMode)
+    if (saveWasDark) {
+        uiConfig.setGradientColorDark(config.gradientColor)
+    } else {
+        uiConfig.setGradientColor(config.gradientColor)
+    }
+    uiConfig.setGradientColors(config.gradientColors)
+    uiConfig.setGradientFrom(config.gradientFrom)
+    uiConfig.setGradientTo(config.gradientTo)
+
     uiConfig.saveConfig()
 
     AppLog.success(TAG, Str.get(R.string.ui_config_saved))
@@ -312,8 +348,10 @@ fun UIConfigScreen(
     var isSaving by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
     var selectedColorKey by remember { mutableStateOf<String?>(null) }
+    var selectedGradientColorIndex by remember { mutableStateOf(-1) }
     var showResetDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
+    var showDarkPalette by remember { mutableStateOf(false) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         AppLog.i(TAG, Str.get(R.string.loading_config_from_uiconfig))
@@ -534,6 +572,26 @@ fun UIConfigScreen(
                     uiConfig.updateBoolean("enableRipple", experimental.optBoolean("enableRipple", true))
                 }
 
+                val gradient = obj.optJSONObject("gradient")
+                if (gradient != null) {
+                    uiConfig.setGradientBackgroundEnabled(gradient.optBoolean("enabled", true))
+                    uiConfig.setGradientMode(gradient.optString("mode", UIConfig.GRADIENT_MODE_SINGLE))
+                    uiConfig.setGradientColor(gradient.optString("color", "#FFC4D6DF"))
+                    if (gradient.has("color_dark")) {
+                        uiConfig.setGradientColorDark(gradient.optString("color_dark", "#FF4C4F51"))
+                    }
+                    uiConfig.setGradientFrom(gradient.optString("from", UIConfig.GRADIENT_DIR_BOTTOM_RIGHT))
+                    uiConfig.setGradientTo(gradient.optString("to", UIConfig.GRADIENT_DIR_TOP_LEFT))
+                    val colorsArr = gradient.optJSONArray("colors")
+                    if (colorsArr != null) {
+                        val colors = mutableListOf<String>()
+                        for (i in 0 until colorsArr.length()) {
+                            colors.add(colorsArr.optString(i, "#FFC4D6DF"))
+                        }
+                        uiConfig.setGradientColors(colors)
+                    }
+                }
+
                 val font = obj.optJSONObject("font")
                 if (font != null) {
                     uiConfig.updateBoolean("enableBold", font.optBoolean("enableBold", true))
@@ -581,24 +639,25 @@ fun UIConfigScreen(
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.ui_customization),
                 onBack = onBack,
                 actions = {
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.Save,
                         onClick = { saveConfig() }
                     )
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.FileUpload,
                         onClick = { importLauncher.launch("application/json") }
                     )
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.FileDownload,
                         onClick = { exportLauncher.launch("ui_config.json") }
                     )
-                    UIComponents.IconButton(
+                    UnifiedIconButton(
                         icon = Icons.Default.Restore,
                         onClick = { showResetDialog = true }
                     )
@@ -610,21 +669,14 @@ fun UIConfigScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(
-                    if (AppColors.glassEnabled())
-                        AppColors.glassBackground()
-                    else
-                        MaterialTheme.colorScheme.background
-                )
+                .background(AppColors.pageBackground())
         ) {
-            // 标签页
+            // 标签页：跟随背景色（渐变开启时透明透出），底部不画分割线
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface,
-                edgePadding = 0.dp
+                containerColor = AppColors.pageBackground(),
+                edgePadding = 0.dp,
+                divider = {}
             ) {
                 listOf(Str.get(R.string.colors), Str.get(R.string.shapes), Str.get(R.string.sizes), Str.get(R.string.fonts), Str.get(R.string.effects)).forEachIndexed { index, title ->
                     Tab(
@@ -655,23 +707,14 @@ fun UIConfigScreen(
                 when (selectedTab) {
                     0 -> {
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
                                 ) {
-                                    Text(
-                                        Str.get(R.string.theme_mode),
-                                        style = MaterialTheme.typography.bodyMedium,
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.theme_mode),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
@@ -727,39 +770,62 @@ fun UIConfigScreen(
                             "nav_unselected" to Str.get(R.string.bottom_nav_unselected_color)
                         )
 
-                        listOf(
-                            "light" to Str.get(R.string.light_palette),
-                            "dark" to Str.get(R.string.dark_palette)
-                        ).forEach { (prefix, sectionLabel) ->
-                            item(key = "section_$prefix") {
-                                Text(
-                                    sectionLabel,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                                )
+                        item(key = "palette_mode_switch") {
+                            UnifiedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.palette_editing),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        listOf(
+                                            "light" to Str.get(R.string.light_palette),
+                                            "dark" to Str.get(R.string.dark_palette)
+                                        ).forEach { (prefix, label) ->
+                                            FilterChip(
+                                                selected = if (prefix == "light") !showDarkPalette else showDarkPalette,
+                                                onClick = { showDarkPalette = prefix == "dark" },
+                                                label = { Text(label) },
+                                                modifier = Modifier.weight(1f),
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    containerColor = MaterialTheme.colorScheme.surface,
+                                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
                             }
+                        }
 
-                            items(colorKeys, key = { "$prefix:${it.first}" }) { (key, displayName) ->
-                                val prefixedKey = "$prefix:$key"
+                        val activePrefix = if (showDarkPalette) "dark" else "light"
+
+                        item(key = "section_$activePrefix") {
+                            UnifiedSectionTitle(
+                                text = if (showDarkPalette) Str.get(R.string.dark_palette) else Str.get(R.string.light_palette),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                            )
+                        }
+
+                        items(colorKeys, key = { "$activePrefix:${it.first}" }) { (key, displayName) ->
+                                val prefixedKey = "$activePrefix:$key"
                                 val colorValue = paletteColorValue(prefixedKey)
 
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
-                                        .clickable {
-                                            selectedColorKey = prefixedKey
-                                            showColorPicker = true
-                                        },
-                                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                    ),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                                UnifiedCard(
+                                    onClick = {
+                                        selectedColorKey = prefixedKey
+                                        showColorPicker = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -768,15 +834,13 @@ fun UIConfigScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            displayName,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                        UnifiedBodyText(
+                                            text = displayName,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                colorValue,
-                                                style = MaterialTheme.typography.bodySmall,
+                                            UnifiedCaptionText(
+                                                text = colorValue,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 modifier = Modifier.padding(end = 8.dp)
                                             )
@@ -789,7 +853,6 @@ fun UIConfigScreen(
                                                     )
                                             )
                                         }
-                                    }
                                 }
                             }
                         }
@@ -820,16 +883,8 @@ fun UIConfigScreen(
                                 else -> 8f
                             }
 
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -838,14 +893,12 @@ fun UIConfigScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
-                                            displayName,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                        UnifiedBodyText(
+                                            text = displayName,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            "${value.toInt()} dp",
-                                            style = MaterialTheme.typography.bodySmall,
+                                        UnifiedCaptionText(
+                                            text = "${value.toInt()} dp",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -926,16 +979,8 @@ fun UIConfigScreen(
                                 else -> 0f..100f
                             }
 
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -944,14 +989,12 @@ fun UIConfigScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
-                                            displayName,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                        UnifiedBodyText(
+                                            text = displayName,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            "${value.toInt()} dp",
-                                            style = MaterialTheme.typography.bodySmall,
+                                        UnifiedCaptionText(
+                                            text = "${value.toInt()} dp",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -990,16 +1033,8 @@ fun UIConfigScreen(
 
                     3 -> {
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -1008,14 +1043,12 @@ fun UIConfigScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
-                                            Str.get(R.string.title_font_size),
-                                            style = MaterialTheme.typography.bodyMedium,
+                                        UnifiedBodyText(
+                                            text = Str.get(R.string.title_font_size),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            "${configState.titleTextSize.toInt()} sp",
-                                            style = MaterialTheme.typography.bodySmall,
+                                        UnifiedCaptionText(
+                                            text = "${configState.titleTextSize.toInt()} sp",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -1037,16 +1070,8 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -1055,14 +1080,12 @@ fun UIConfigScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
-                                            Str.get(R.string.body_font_size),
-                                            style = MaterialTheme.typography.bodyMedium,
+                                        UnifiedBodyText(
+                                            text = Str.get(R.string.body_font_size),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            "${configState.bodyTextSize.toInt()} sp",
-                                            style = MaterialTheme.typography.bodySmall,
+                                        UnifiedCaptionText(
+                                            text = "${configState.bodyTextSize.toInt()} sp",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -1084,16 +1107,8 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -1102,14 +1117,12 @@ fun UIConfigScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
-                                            Str.get(R.string.caption_font_size),
-                                            style = MaterialTheme.typography.bodyMedium,
+                                        UnifiedBodyText(
+                                            text = Str.get(R.string.caption_font_size),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            "${configState.captionTextSize.toInt()} sp",
-                                            style = MaterialTheme.typography.bodySmall,
+                                        UnifiedCaptionText(
+                                            text = "${configState.captionTextSize.toInt()} sp",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -1131,16 +1144,8 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp)
@@ -1149,14 +1154,12 @@ fun UIConfigScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(
-                                            Str.get(R.string.section_title_size),
-                                            style = MaterialTheme.typography.bodyMedium,
+                                        UnifiedBodyText(
+                                            text = Str.get(R.string.section_title_size),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Text(
-                                            "${configState.sectionTitleTextSize.toInt()} sp",
-                                            style = MaterialTheme.typography.bodySmall,
+                                        UnifiedCaptionText(
+                                            text = "${configState.sectionTitleTextSize.toInt()} sp",
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -1178,16 +1181,8 @@ fun UIConfigScreen(
                         }
 
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1196,19 +1191,13 @@ fun UIConfigScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        Str.get(R.string.bold_text),
-                                        style = MaterialTheme.typography.bodyMedium,
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.bold_text),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Switch(
+                                    UnifiedSwitch(
                                         checked = configState.enableBold,
-                                        onCheckedChange = { configState = configState.copy(enableBold = it) },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                            uncheckedTrackColor = Color.White
-                                        )
+                                        onCheckedChange = { configState = configState.copy(enableBold = it) }
                                     )
                                 }
                             }
@@ -1217,16 +1206,228 @@ fun UIConfigScreen(
 
                     4 -> {
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        UnifiedBodyText(
+                                            text = Str.get(R.string.gradient_background),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        UnifiedSwitch(
+                                            checked = configState.enableGradientBackground,
+                                            onCheckedChange = {
+                                                configState = configState.copy(enableGradientBackground = it)
+                                            }
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.gradient_mode),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    var modeExpanded by remember { mutableStateOf(false) }
+                                    val modeOptions = listOf(
+                                        UIConfig.GRADIENT_MODE_SINGLE to Str.get(R.string.single_color_gradient),
+                                        UIConfig.GRADIENT_MODE_MULTI to Str.get(R.string.multi_color_gradient)
+                                    )
+                                    val currentModeLabel = modeOptions
+                                        .firstOrNull { it.first == configState.gradientMode }
+                                        ?.second
+                                        ?: Str.get(R.string.single_color_gradient)
+                                    ExposedDropdownMenuBox(
+                                        expanded = modeExpanded,
+                                        onExpandedChange = { modeExpanded = it }
+                                    ) {
+                                        OutlinedTextField(
+                                            value = currentModeLabel,
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .menuAnchor(),
+                                            trailingIcon = {
+                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeExpanded)
+                                            },
+                                            colors = OutlinedTextFieldDefaults.colors(
+                                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                                cursorColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
+                                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        )
+                                        ExposedDropdownMenu(
+                                            expanded = modeExpanded,
+                                            onDismissRequest = { modeExpanded = false },
+                                            containerColor = MaterialTheme.colorScheme.surface
+                                        ) {
+                                            modeOptions.forEach { (mode, label) ->
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            label,
+                                                            color = MaterialTheme.colorScheme.onSurface,
+                                                            fontSize = AppDimens.bodyTextSize.sp
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        configState = configState.copy(gradientMode = mode)
+                                                        modeExpanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.gradient_from),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    gradientDirectionDropdown(configState.gradientFrom) {
+                                        configState = configState.copy(gradientFrom = it)
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.gradient_to),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    gradientDirectionDropdown(configState.gradientTo) {
+                                        configState = configState.copy(gradientTo = it)
+                                    }
+
+                                    if (configState.gradientMode == UIConfig.GRADIENT_MODE_SINGLE) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        val gradientColorValue = configState.gradientColor
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(AppDimens.inputCornerRadius))
+                                                .clickable {
+                                                    selectedColorKey = "gradient_color"
+                                                    showColorPicker = true
+                                                }
+                                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            UnifiedBodyText(
+                                                text = Str.get(R.string.gradient_color),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                UnifiedCaptionText(
+                                                    text = gradientColorValue,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(end = 8.dp)
+                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(24.dp)
+                                                        .background(
+                                                            safeParseColor(gradientColorValue),
+                                                            RoundedCornerShape(AppDimens.radiusSmall)
+                                                        )
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        configState.gradientColors.forEachIndexed { index, color ->
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                UnifiedBodyText(
+                                                    text = Str.get(R.string.gradient_color),
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    UnifiedCaptionText(
+                                                        text = color,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.padding(end = 8.dp)
+                                                    )
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(24.dp)
+                                                            .background(
+                                                                safeParseColor(color),
+                                                                RoundedCornerShape(AppDimens.radiusSmall)
+                                                            )
+                                                    )
+                                                    UnifiedIconButton(
+                                                        icon = Icons.Default.Edit,
+                                                        onClick = {
+                                                            selectedGradientColorIndex = index
+                                                            selectedColorKey = "gradient_multi_color"
+                                                            showColorPicker = true
+                                                        }
+                                                    )
+                                                    UnifiedIconButton(
+                                                        icon = Icons.Default.RemoveCircle,
+                                                        onClick = {
+                                                            if (configState.gradientColors.size > 1) {
+                                                                configState = configState.copy(
+                                                                    gradientColors = configState.gradientColors.toMutableList().apply {
+                                                                        removeAt(index)
+                                                                    }
+                                                                )
+                                                            }
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        if (configState.gradientColors.size < 6) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            UnifiedButton(
+                                                variant = ButtonVariant.Outlined,
+                                                text = Str.get(R.string.add_gradient_color),
+                                                icon = Icons.Default.Add,
+                                                onClick = {
+                                                    if (configState.gradientColors.size < 6) {
+                                                        configState = configState.copy(
+                                                            gradientColors = configState.gradientColors + "#FF4FC3F7"
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1235,35 +1436,21 @@ fun UIConfigScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        Str.get(R.string.glass_effect),
-                                        style = MaterialTheme.typography.bodyMedium,
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.glass_effect),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Switch(
+                                    UnifiedSwitch(
                                         checked = configState.enableGlassEffect,
-                                        onCheckedChange = { configState = configState.copy(enableGlassEffect = it) },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                            uncheckedTrackColor = Color.White
-                                        )
+                                        onCheckedChange = { configState = configState.copy(enableGlassEffect = it) }
                                     )
                                 }
                             }
                         }
 
                         item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                    AppColors.glassBackground()
-                else
-                    MaterialTheme.colorScheme.surface
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation)
+                            UnifiedCard(
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -1272,19 +1459,13 @@ fun UIConfigScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        Str.get(R.string.ripple_effect),
-                                        style = MaterialTheme.typography.bodyMedium,
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.ripple_effect),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Switch(
+                                    UnifiedSwitch(
                                         checked = configState.enableRipple,
-                                        onCheckedChange = { configState = configState.copy(enableRipple = it) },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                            uncheckedTrackColor = Color.White
-                                        )
+                                        onCheckedChange = { configState = configState.copy(enableRipple = it) }
                                     )
                                 }
                             }
@@ -1316,22 +1497,19 @@ fun UIConfigScreen(
                                             if (previewGlass) {
                                                 Modifier
                                                     .background(safeParseColor(paletteColorValue("glass_background")))
-                                                    .border(1.dp, Color.White.copy(alpha = 0.35f), previewShape)
                                             } else {
                                                 Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
                                             }
                                         )
                                         .padding(16.dp)
                                 ) {
-                                    Text(
-                                        Str.get(R.string.glass_effect_preview),
-                                        style = MaterialTheme.typography.bodyMedium,
+                                    UnifiedBodyText(
+                                        text = Str.get(R.string.glass_effect_preview),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        if (previewGlass) Str.get(R.string.this_is_a_glass_effect_card) else Str.get(R.string.glass_effect_disabled),
-                                        style = MaterialTheme.typography.bodySmall,
+                                    UnifiedCaptionText(
+                                        text = if (previewGlass) Str.get(R.string.this_is_a_glass_effect_card) else Str.get(R.string.glass_effect_disabled),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -1342,8 +1520,8 @@ fun UIConfigScreen(
 
                 item {
                     saveMessage?.let {
-                        Text(
-                            it,
+                        UnifiedBodyText(
+                            text = it,
                             color = if (it.contains(Str.get(R.string.saved_successfully)) || it.contains(Str.get(R.string.saved)))
                                 MaterialTheme.colorScheme.primary
                             else
@@ -1352,35 +1530,14 @@ fun UIConfigScreen(
                         )
                     }
 
-                    Button(
+                    UnifiedButton(
+                        text = if (isSaving) Str.get(R.string.saving) else Str.get(R.string.save_config),
                         onClick = { saveConfig() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
-                        enabled = !isSaving
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        } else {
-                            Icon(
-                                Icons.Default.Save,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(if (isSaving) Str.get(R.string.saving) else Str.get(R.string.save_config), fontSize = AppDimens.bodyTextSize.sp, fontWeight = FontWeight.Medium)
-                    }
+                        variant = ButtonVariant.Primary,
+                        loading = isSaving,
+                        icon = Icons.Default.Save,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
@@ -1392,7 +1549,12 @@ fun UIConfigScreen(
     if (showColorPicker && pickerKey != null) {
         var colorValue by remember { mutableStateOf("") }
         LaunchedEffect(pickerKey) {
-            colorValue = paletteColorValue(pickerKey)
+            colorValue = when {
+                pickerKey == "gradient_color" -> configState.gradientColor
+                pickerKey == "gradient_multi_color" && selectedGradientColorIndex in configState.gradientColors.indices ->
+                    configState.gradientColors[selectedGradientColorIndex]
+                else -> paletteColorValue(pickerKey)
+            }
         }
 
         val initialColor = safeParseColor(colorValue)
@@ -1405,7 +1567,17 @@ fun UIConfigScreen(
                     (selectedColor.green * 255).toInt(),
                     (selectedColor.blue * 255).toInt()
                 )
-                updatePaletteColor(pickerKey, newColor)
+                when {
+                    pickerKey == "gradient_color" -> configState = configState.copy(gradientColor = newColor)
+                    pickerKey == "gradient_multi_color" && selectedGradientColorIndex in configState.gradientColors.indices -> {
+                        configState = configState.copy(
+                            gradientColors = configState.gradientColors.toMutableList().apply {
+                                this[selectedGradientColorIndex] = newColor
+                            }
+                        )
+                    }
+                    else -> updatePaletteColor(pickerKey, newColor)
+                }
                 showColorPicker = false
             },
             onDismiss = {
@@ -1416,7 +1588,7 @@ fun UIConfigScreen(
 
     // ==================== 重置对话框 ====================
     if (showResetDialog) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_reset),
             message = Str.get(R.string.reset_all_ui_config_to_defaults_this),
             confirmText = Str.get(R.string.reset),
@@ -1425,5 +1597,73 @@ fun UIConfigScreen(
             onDismiss = { showResetDialog = false },
             isDestructive = true
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun gradientDirectionDropdown(
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = gradientDirectionLabel(selected),
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                cursorColor = MaterialTheme.colorScheme.primary
+            ),
+            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            UIConfig.GRADIENT_DIRECTIONS.forEach { dir ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            gradientDirectionLabel(dir),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = AppDimens.bodyTextSize.sp
+                        )
+                    },
+                    onClick = {
+                        onSelect(dir)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun gradientDirectionLabel(dir: String): String {
+    return when (dir) {
+        UIConfig.GRADIENT_DIR_TOP -> Str.get(R.string.gradient_dir_top)
+        UIConfig.GRADIENT_DIR_BOTTOM -> Str.get(R.string.gradient_dir_bottom)
+        UIConfig.GRADIENT_DIR_TOP_LEFT -> Str.get(R.string.gradient_dir_top_left)
+        UIConfig.GRADIENT_DIR_TOP_RIGHT -> Str.get(R.string.gradient_dir_top_right)
+        UIConfig.GRADIENT_DIR_BOTTOM_LEFT -> Str.get(R.string.gradient_dir_bottom_left)
+        else -> Str.get(R.string.gradient_dir_bottom_right)
     }
 }

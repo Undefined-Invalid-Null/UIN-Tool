@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.MarkdownRenderer
@@ -46,6 +47,7 @@ fun HelpScreen() {
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.help_2),
@@ -59,7 +61,7 @@ fun HelpScreen() {
                 .padding(paddingValues)
         ) {
             if (isLoading) {
-                UIComponents.FullScreenLoading(Str.get(R.string.loading_help_document))
+                UnifiedLoadingIndicator(message = Str.get(R.string.loading_help_document))
             } else {
                 AndroidView(
                     factory = { ctx ->

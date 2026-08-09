@@ -58,8 +58,9 @@ import com.UIN.Tool.constants.AppConstants as Constants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
-import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.dialogBackgroundOf
+import com.UIN.Tool.ui.theme.pageGradientBrush
 
 private const val SPLASH_DELAY = 700L
 private const val UPDATE_CHECK_TIMEOUT = 5000L
@@ -468,7 +469,11 @@ fun SplashScreenWithUpdate(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .then(
+                pageGradientBrush()?.let { brush ->
+                    Modifier.background(brush)
+                } ?: Modifier.background(MaterialTheme.colorScheme.background)
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -570,11 +575,13 @@ fun PermissionExplainDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
+                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
+            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+            border = null,
             colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
+                containerColor = Color.Transparent
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -733,11 +740,13 @@ fun PermissionDeniedDialog(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
+                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
+            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+            border = null,
             colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
+                containerColor = Color.Transparent
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -920,11 +929,13 @@ fun DownloadProgressDialog(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .wrapContentHeight()
-                .clip(RoundedCornerShape(AppDimens.cardCornerRadius)),
+                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
+            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
+            border = null,
             colors = CardDefaults.cardColors(
-                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else colorScheme.surface
+                containerColor = Color.Transparent
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier

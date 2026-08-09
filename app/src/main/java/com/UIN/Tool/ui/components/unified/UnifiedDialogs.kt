@@ -5,8 +5,8 @@ import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -16,11 +16,38 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.dialogBackgroundOf
+
+// ==================== 统一弹窗文本按钮（带描边） ====================
+
+/**
+ * 弹窗内的「透明」文本按钮：默认无底色，但带一圈描边，
+ * 让按钮在加深的弹窗背景上仍清晰可辨。
+ */
+@Composable
+fun UnifiedDialogTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentColor: Color = MaterialTheme.colorScheme.primary,
+    content: @Composable RowScope.() -> Unit
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
+        colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    ) {
+        content()
+    }
+}
 
 // ==================== 动画常量 - 纯淡入淡出 ====================
 
@@ -91,27 +118,20 @@ fun UnifiedDialog(
                     enter = FadeInAnimation,
                     exit = FadeOutAnimation
                 ) {
-                    Surface(
-                        modifier = modifier
-                            .fillMaxWidth(0.92f)
-                            .wrapContentHeight()
-                            .border(
-                                width = 1.dp,
-                                color = AppColors.glassBorder(),
-                                shape = RoundedCornerShape(AppDimens.dialogCornerRadius)
-                            )
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { /* 阻止点击穿透到背景 */ }
-                            ),
-                        shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
-                        color = if (AppColors.glassEnabled())
-                            AppColors.glassBackground()
-                        else
-                            MaterialTheme.colorScheme.surface,
-                        shadowElevation = AppDimens.dialogElevation
-                    ) {
+Surface(
+                    modifier = modifier
+                        .fillMaxWidth(0.92f)
+                        .wrapContentHeight()
+                        .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius)))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { /* 阻止点击穿透到背景 */ }
+                        ),
+                    shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
+                    color = Color.Transparent,
+                    shadowElevation = 0.dp
+                ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -197,7 +217,7 @@ fun UnifiedConfirmDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            UnifiedDialogTextButton(onClick = onDismiss) {
                 Text(dismissText)
             }
         }
@@ -238,6 +258,75 @@ fun UnifiedInfoDialog(
     )
 }
 
+// ==================== 统一Alert对话框（渐变背景） ====================
+
+/**
+ * AlertDialog 风格的对话框：与 Material3 [AlertDialog] 参数对齐，
+ * 但背景用与主页面同款渐变铺底（[dialogBackgroundOf]），
+ * 关闭或未启用渐变时回退到与页面一致的纯色背景。
+ */
+@Composable
+fun UnifiedAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    dismissButton: (@Composable () -> Unit)? = null,
+    title: (@Composable () -> Unit)? = null,
+    text: (@Composable () -> Unit)? = null,
+    shape: Shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
+    properties: DialogProperties = DialogProperties()
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = properties
+    ) {
+        Surface(
+            modifier = modifier.then(Modifier.dialogBackgroundOf(shape)),
+            shape = shape,
+            color = Color.Transparent,
+            shadowElevation = 0.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .padding(vertical = AppDimens.dialogPadding),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.spacingMedium)
+            ) {
+                if (title != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AppDimens.dialogPadding),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        title()
+                    }
+                }
+                if (text != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AppDimens.dialogPadding),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        text()
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AppDimens.dialogPadding),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    dismissButton?.invoke()
+                    confirmButton()
+                }
+            }
+        }
+    }
+}
+
 // ==================== 统一加载对话框 ====================
 
 @Composable
@@ -274,10 +363,11 @@ fun UnifiedLoadingDialog(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
-                            .wrapContentHeight(),
+                            .wrapContentHeight()
+                            .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
                         shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
-                        color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = AppDimens.dialogElevation
+                        color = Color.Transparent,
+                        shadowElevation = 0.dp
                     ) {
                         Column(
                             modifier = Modifier
@@ -297,7 +387,7 @@ fun UnifiedLoadingDialog(
                             )
                             onCancel?.let {
                                 Spacer(modifier = Modifier.height(AppDimens.spacingMedium))
-                                TextButton(onClick = it) {
+                                UnifiedDialogTextButton(onClick = it) {
                                     Text(Str.get(R.string.cancel))
                                 }
                             }
@@ -324,7 +414,7 @@ fun UnifiedListDialog(
         content = {
             Column {
                 items.forEachIndexed { index, item ->
-                    TextButton(
+                    UnifiedDialogTextButton(
                         onClick = { onItemClick(index) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -344,7 +434,7 @@ fun UnifiedListDialog(
             }
         },
         dismissButton = {
-            TextButton(
+            UnifiedDialogTextButton(
                 onClick = onDismiss,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -371,7 +461,13 @@ fun UnifiedBottomSheet(
         sheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true
         ),
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color.Transparent,
+        modifier = Modifier.dialogBackgroundOf(
+            RoundedCornerShape(
+                topStart = AppDimens.radiusXXLarge,
+                topEnd = AppDimens.radiusXXLarge
+            )
+        ),
         shape = RoundedCornerShape(
             topStart = AppDimens.radiusXXLarge,
             topEnd = AppDimens.radiusXXLarge

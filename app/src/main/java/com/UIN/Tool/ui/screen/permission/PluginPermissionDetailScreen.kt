@@ -6,13 +6,11 @@ import com.UIN.Tool.utils.Str
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -24,17 +22,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppToast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.AppColors
 
 class PluginPermissionDetailActivity : ComponentActivity() {
 
@@ -108,6 +106,7 @@ fun PluginPermissionDetailScreen(
     }
 
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = if (plugin != null) Str.get(R.string.plugin_name_permissions, plugin.name) else Str.get(R.string.permission_details),
@@ -159,7 +158,7 @@ fun PluginPermissionDetailScreen(
                             modifier = Modifier.fillParentMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            UIComponents.EmptyState(
+                            UnifiedEmptyState(
                                 title = Str.get(R.string.plugin_does_not_exist),
                                 description = Str.get(R.string.no_matching_plugin_info_found)
                             )
@@ -168,15 +167,9 @@ fun PluginPermissionDetailScreen(
                 } else {
                     // 插件信息 - 移除 📦
                     item {
-                        Card(
+                        UnifiedCard(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (AppColors.glassEnabled())
-                                    AppColors.glassBackground()
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            )
+                            variant = CardVariant.Filled
                         ) {
                             Column(
                                 modifier = Modifier
@@ -207,15 +200,9 @@ fun PluginPermissionDetailScreen(
                     // 权限列表
                     if (permissions.isEmpty()) {
                         item {
-                            Card(
+                            UnifiedCard(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                                    AppColors.glassBackground()
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                variant = CardVariant.Filled
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -243,15 +230,9 @@ fun PluginPermissionDetailScreen(
                         item {
                             val grantedCount = permissions.values.count { it }
                             val totalCount = permissions.size
-                            Card(
+                            UnifiedCard(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (AppColors.glassEnabled())
-                                    AppColors.glassBackground()
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                variant = CardVariant.Filled
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -282,17 +263,11 @@ fun PluginPermissionDetailScreen(
                         // 进度消息 - 移除 ✅ 和 ⚠️
                         if (progressMessage.isNotEmpty()) {
                             item {
-                                Card(
+                                UnifiedCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 4.dp),
-                                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (AppColors.glassEnabled())
-                                    AppColors.glassBackground()
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                                    )
+                                    variant = CardVariant.Filled
                                 ) {
                                     Text(
                                         text = progressMessage,
@@ -337,7 +312,7 @@ fun PluginPermissionDetailScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    UIComponents.PrimaryButton(
+                    UnifiedButton(
                         text = if (allGranted) Str.get(R.string.all_permissions_granted) else Str.get(R.string.grant_all_2),
                         onClick = { requestAllPermissions() },
                         modifier = Modifier.weight(1f),
@@ -345,12 +320,13 @@ fun PluginPermissionDetailScreen(
                         loading = isRequesting
                     )
 
-                    UIComponents.SecondaryButton(
+                    UnifiedButton(
                         text = Str.get(R.string.refresh),
                         icon = Icons.Default.Refresh,
                         onClick = { loadPermissions() },
                         modifier = Modifier.weight(0.4f),
-                        enabled = !isRequesting
+                        enabled = !isRequesting,
+                        variant = ButtonVariant.Outlined
                     )
                 }
             }
@@ -365,19 +341,9 @@ fun PermissionDetailItem(
     granted: Boolean,
     onRequest: () -> Unit
 ) {
-    Card(
+    UnifiedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                if (granted)
-                    MaterialTheme.colorScheme.surface
-                else
-                    MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        variant = CardVariant.Filled
     ) {
         Row(
             modifier = Modifier
@@ -442,7 +408,7 @@ fun PermissionDetailItem(
                     )
                 }
             } else {
-                UIComponents.PrimaryButton(
+                UnifiedButton(
                     text = Str.get(R.string.grant),
                     onClick = onRequest,
                     modifier = Modifier.height(32.dp)

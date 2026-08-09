@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.UIN.Tool.R
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
@@ -116,6 +117,7 @@ fun WidgetConfigScreen(
     onAddShortcut: () -> Unit
 ) {
     Scaffold(
+        containerColor = AppColors.pageBackground(),
         topBar = {
             UIComponents.ManageTopAppBar(
                 titleText = Str.get(R.string.widget),
@@ -135,21 +137,12 @@ fun WidgetConfigScreen(
             // 快捷方式卡片
             // ============================================================
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (AppColors.glassEnabled())
-                            AppColors.glassBackground()
-                        else
-                            MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                UnifiedCard(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -216,21 +209,12 @@ fun WidgetConfigScreen(
             // 3x3 小部件卡片
             // ============================================================
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (AppColors.glassEnabled())
-                            AppColors.glassBackground()
-                        else
-                            MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                UnifiedCard(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -297,21 +281,12 @@ fun WidgetConfigScreen(
             // 底部说明
             // ============================================================
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (AppColors.glassEnabled())
-                            AppColors.glassBackground()
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                UnifiedCard(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
