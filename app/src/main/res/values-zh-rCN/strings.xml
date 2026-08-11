@@ -2088,6 +2088,29 @@
     <string name="webview_load_error_description_code_">❌ WebView 加载错误: %1$s (code: %2$s), url: %3$s</string>
     <string name="welcome_to_uin_tool" formatted="false">欢迎使用 UIN Tool</string>
     <string name="when_enabled_unsigned_plugins_can_be" formatted="false">开启后可以安装未签名的插件，但存在安全风险</string>
+    <string name="dev_native_plugin_multi_instance" formatted="false">原生插件多开（实验性）</string>
+    <string name="dev_native_plugin_multi_instance_desc" formatted="false">允许同一原生插件以独立实例重复打开；默认关闭</string>
+    <string name="dev_backend_independent_port" formatted="false">每实例独立后端端口</string>
+    <string name="dev_backend_independent_port_desc" formatted="false">每个插件实例运行各自独立的后端进程/端口；关闭时各实例共享一个后端</string>
+    <string name="native_plugin_already_running_single_ins" formatted="false">原生插件 \"%1$s\" 正在运行中</string>
+    <string name="native_plugin_already_running_single_ins_2" formatted="false">该原生插件已打开（单实例）。请先关闭它，或在开发者工具中开启多开。</string>
+    <string name="plugin_open_receiver_label" formatted="false">UIN 插件</string>
+    <string name="open_data_collect_failed" formatted="false">解析分享内容失败</string>
+    <string name="no_open_data_received" formatted="false">未收到文本、链接或文件内容</string>
+    <string name="no_plugin_for_open_with" formatted="false">没有已安装的插件可以接收该内容</string>
+    <string name="no_plugin_matches_open_data" formatted="false">没有 openWith 插件匹配该分享内容（类型=链接/文本/文件）</string>
+    <string name="choose_plugin_to_receive" formatted="false">选择要接收的插件</string>
+    <string name="opening_plugin_for_open_data" formatted="false">正在用分享内容打开插件\"%1$s\"</string>
+    <string name="open_dispatch_failed" formatted="false">分发分享内容失败</string>
+    <string name="open_with_choose_title" formatted="false">选择接收插件</string>
+    <string name="open_with_done" formatted="false">完成</string>
+    <string name="open_with_share_text" formatted="false">文本</string>
+    <string name="open_with_share_url" formatted="false">链接</string>
+    <string name="open_with_share_files" formatted="false">文件</string>
+    <string name="open_with_copy_failed" formatted="false">准备接收文件失败：%1$s</string>
+    <string name="open_with_share_files_colon" formatted="false">%1$d 个文件</string>
+    <string name="open_with_receiver_hint" formatted="false">选择接收该内容的插件</string>
+    <string name="failed_to_create_incoming_dir" formatted="false">创建接收目录失败</string>
     <string name="widget" formatted="false">小部件</string>
     <string name="widget_1x1_config_saved" formatted="false">快捷方式配置已保存</string>
     <string name="widget_1x1_config_saved_refreshing_widget" formatted="false">1x1配置已保存，刷新小部件</string>
@@ -2167,4 +2190,8 @@
     <string name="gradient_dir_top_right" formatted="false">右上</string>
     <string name="gradient_dir_bottom_left" formatted="false">左下</string>
     <string name="gradient_dir_bottom_right" formatted="false">右下</string>
+    <string name="retained_session_webview_reused" formatted="false">复用保留的 WebView 会话</string>
+    <string name="retained_session_rebound_clients" formatted="false">已为本 Activity 重新绑定 WebViewClient/JS 接口</string>
+    <string name="retained_session_webview_missing_create_new" formatted="false">保留会话不存在，新建 WebView</string>
+    <string name="retained_session_webview_cached" formatted="false">WebView 会话已保留，下次打开直接复用</string>
 </resources>

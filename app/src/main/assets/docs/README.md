@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.3.0 |
-| 对应应用版本 | v5.3.0 (Build 19) |
-| 最后更新 | 2026年8月8日 |
+| 文档版本 | 5.4.0 |
+| 对应应用版本 | v5.4.0 (Build 20) |
+| 最后更新 | 2026年8月10日 |
 
 ---
 
@@ -80,6 +80,7 @@
 ### 十、PluginInterface 接口详解
 - [10.1 方法说明](#101-方法说明)
 - [10.2 完整实现示例](#102-完整实现示例)
+- [10.3 插件多开（v5.4.0 新增）](#103-插件多开v540-新增)
 
 ### 十一、JavaScript API 完整参考（v4.5.0）
 - [11.1 基础 API](#111-基础-api)
@@ -97,6 +98,7 @@
 - [12.1 打包方式](#121-打包方式)
 - [12.2 文件结构](#122-文件结构)
 - [12.3 plugin.json 完整字段](#123-pluginjson-完整字段)
+  - [12.3.4 外部内容接收（openWith）](#1234-外部内容接收openwith，v540-新增)
 
 ### 十三、发布到插件仓库
 - [13.1 仓库要求](#131-仓库要求)
@@ -1369,6 +1371,34 @@ class MainPlugin : PluginInterface {
 }
 ```
 
+### 10.3 插件多开（v5.4.0 新增）
+
+宿主以「**实例键**」（`pluginId:instanceId`）隔离同一插件的多个运行实例，每个实例拥有全局唯一的 `instanceId`。
+
+**各类型默认行为**
+
+| 插件类型 | 默认行为 | 说明 |
+|----------|----------|------|
+| Web | **支持多开** | 每次打开启动新 WebView 实例，页面状态、注入的 JS 接口、dialogHost 互不干扰 |
+| CUI | **支持多开** | 每次打开启动新的前台终端会话（实例键区分） |
+| 原生 | **单实例** | 默认复用同一 `PluginInterface` 实例与 View；在「开发工具」→「原生插件多开（实验性）」开启后，每次打开新建独立实例与 View（`ClassLoader` 仍共享） |
+
+**宿主隔离维度**：
+
+- **生命周期回调**：`onPluginResume`/`onPluginPause`/`onPluginDestroy` 等均按实例键路由
+- **WebView 缓存**：`PluginManager` 的实例 WebView 缓存以实例键为键；`onResume` 时只向当前实例投递 `resume` 事件
+- **JS 接口**：实例通过 `PluginHostActivity.kt` 的 `currentInstanceKey` 区分，`PluginJSInterface.getInstanceId()` 可获取当前实例 ID
+- **原生实例**：`pluginInstances` 缓存默认按 pluginId 复用；开启原生多开后每次 `newInstance()`
+
+**后端多实例（后端插件）**：
+
+| 后端多开模式 | 行为 | 配置 |
+|--------------|------|------|
+| **共享端口** | 同一插件的所有实例复用同一个后端进程（首个启动的实例持有其主实例键） | 默认；「开发工具」→「每实例独立后端端口」**关闭** |
+| **独立端口** | 每个实例启动独立的后端进程与端口（`PluginBackendManager.startBackendInstance` 按实例键启动），实例互不干扰 | 「开发工具」→「每实例独立后端端口」**开启** |
+
+> 多开场景下若配置了独立端口模式，插件后端通过 `$PORT` 环境变量感知自己是哪个实例（`$PORT` 该实例独享）；共享端口模式下仅主实例持有后端，其余实例复用其 `$PORT`。
+
 ---
 
 ## 十一、JavaScript API 完整参考（v4.5.0）
@@ -1435,6 +1465,26 @@ UINPlugin.httpGet('https://example.com', callbackId);
 | `window._onUINPluginReady()` | 页面加载完成、接口注入后 | 可安全调用 `UINPlugin.*` |
 | `window._onBackendReady(port)` | 后端就绪 | 参数为实际监听端口 |
 | `window._onBackendProgress(progress, message)` | 后端启动过程中 | 进度与提示信息 |
+
+**外部内容接收（openWith，v5.4.0 新增）**
+
+从系统「分享 / 用其他应用打开」传给本插件的内容，可通过 `UINPlugin.getOpenData()` 读取（返回 **JSON 字符串**，无数据时返回 `{}`）。宿主同时注入 `window.UINOpenData`（同内容字符串）与 `window.getOpenData()`（等效函数）：
+
+```javascript
+// 读取外部打开内容
+const openData = JSON.parse(UINPlugin.getOpenData() || '{}');
+if (openData.kind === 'url') {
+    console.log('收到链接:', openData.url);
+} else if (openData.kind === 'file') {
+    console.log('收到文件:', openData.name);
+    console.log('本机路径:', openData.filePath);
+    console.log('容器路径:', openData.containerPath);
+} else if (openData.kind === 'text') {
+    console.log('收到文本:', openData.text);
+}
+```
+
+字段说明见本文档 **12.3.4 外部内容接收（openWith）** 的「openData JSON 结构」表。
 
 ### 11.2 存储 API
 
@@ -1835,7 +1885,15 @@ plugin.tpk
     "backendLogLevel": "info",
     "maxMemory": 512,
     "maxCpuTime": 60,
-    "maxConcurrentTasks": 5
+    "maxConcurrentTasks": 5,
+    "openWith": {
+        "enabled": true,
+        "label": "我的接收器",
+        "mimeTypes": "text/*",
+        "acceptText": true,
+        "acceptUrl": true,
+        "acceptFile": true
+    }
 }
 ```
 
@@ -1881,6 +1939,54 @@ plugin.tpk
 | `backendEnv` | object | `{}` | ❌ | **注意：当前不读取该 JSON 字段，且 `fromJson()`/`toJson()` 尚未读写它，写在 plugin.json 中不会生效**（仅能由宿主程序内部设置）。透传行为分环境：内置 Termux 经 `ProcessBuilder` 进程环境注入，proot 容器继承该环境生效；**实体 Termux 走 `RUN_COMMAND` intent，无环境变量通道，`backendEnv` 完全不透传**——需要变量时请直接写进 `backendStartCommand`（如 `export KEY=value; ...`）。 |
 
 > 旧式字段（仍可被读取并在加载时自动迁移，不建议新插件使用）：`backendRuntime`（`termux`/`proot`）、`backendPort`、`backendEntry`、`backendPreCommand`、`backendBinary`、`backendInstallCmd`、`backendCheckCmd`、`backendPhpDocRoot`、`backendJavaClass`、`backendJavaJar`、`backendArgs`。
+
+#### 12.3.4 外部内容接收（openWith，v5.4.0 新增）
+
+`openWith`（意图中转）声明本插件可接收从系统「分享 / 用其他应用打开」传入的**文本、链接、文件**。声明后，插件会出现在系统分享面板的「UIN Tool」入口与应用内「选择接收插件」中转页中。
+
+```json
+"openWith": {
+    "enabled": true,
+    "label": "编写助手",
+    "mimeTypes": "text/*,application/pdf",
+    "acceptText": true,
+    "acceptUrl": true,
+    "acceptFile": true
+}
+```
+
+| 字段 | 类型 | 默认值 | 必填 | 详细说明 |
+|------|------|--------|------|----------|
+| `enabled` | boolean | `true` | ❌ | 是否启用接收外部内容。`false` 时插件不出现在中转页与系统分享入口。 |
+| `label` | string | `""` | ❌ | 在中转页显示的接收名称（留空则用插件 `name`）。 |
+| `mimeTypes` | string | `""` | ❌ | 支持的文件 MIME 类型，**逗号分隔字符串**（如 `"text/*,application/pdf"`）。⚠️ 宿主用 `optString().split(",")` 解析，**写成 JSON 数组会被忽略/解析错误**。匹配规则：规则为 `*/*` 恒匹配；规则以 `/*` 结尾（如 `text/*`）则按类型前缀比较（大小写不敏感，规则值会转小写）；否则精确匹配；传入 MIME 为空或规则列表为空/含 `*/*` 表示接受任意。 |
+| `acceptText` | boolean | `true` | ❌ | 是否接受纯文本（`ACTION_SEND` 的 `EXTRA_TEXT`）。 |
+| `acceptUrl` | boolean | `true` | ❌ | 是否接受 URL / 链接（自动识别 `http(s)`、`magnet:` 或 `Patterns.WEB_URL`）。 |
+| `acceptFile` | boolean | `true` | ❌ | 是否接受文件（`content://` / `file://`，含 `SEND_MULTIPLE` 多选）。 |
+
+**匹配规则**：中转页按「内容类型」（`file` / `text` / `url`）先过滤 `accept*` 开关，再按 MIME 精确/通配匹配。仅 1 个匹配插件时**自动打开**；无匹配时中转页提示「没有已安装的插件可以接收该内容」。
+
+**文件落地**：文件会自动复制进插件目录的 `.incoming/`，并在 openData JSON 中写入 `filePath`（本机绝对路径）与 `containerPath`（proot 容器内路径 `/plugins/<id>/.incoming/<文件名>`），插件后端可挂载后直接读取。
+
+**openData JSON 结构**（宿主注入，插件只读）：
+
+| 顶层字段 | 类型 | 说明 |
+|----------|------|------|
+| `kind` / `type` | string | 内容类型：`file` / `text` / `url` |
+| `when` | long | 接收时间戳 |
+| `mime` | string | MIME 类型（若有） |
+| `url` | string | `kind=url` 时的链接 |
+| `text` | string | `kind=text` 时的文本 |
+| `uri` / `name` | string | `kind=file` 时的原始 Uri 与文件名 |
+| `filePath` / `incomingName` / `containerPath` | string | 复制进 `.incoming/` 后的路径信息（`kind=file`） |
+| `files` | array | 多文件时的数组，每项含 `uri` / `name` / `mime` / `filePath` / `incomingName` / `containerPath` |
+| `streamCount` | int | 文件数量（多选时） |
+
+**读取方式**：
+- **Web 插件**：宿主注入 `window.UINOpenData`（原始 JSON 字符串）与 `window.getOpenData()`（返回 JSON 字符串，无数据时返回 `{}`）；也可调用 `UINPlugin.getOpenData()`（等效，字符串返回值），`JSON.parse()` 后读取
+- **原生插件**：`onHostEvent("host.open", Bundle)`，Bundle 含 `instanceId`、`openDataJson`、`multiInstanceEnabled`
+
+> ⚠️ 宿主 `PluginOpenDispatchActivity` 仅在 `ACTION_SEND` / `SEND_MULTIPLE` / `VIEW` + `text/*`、`*/*` 及通用 MIME 的 intent-filter 下被系统唤起；其它应用调用时 UIN Tool 会显示为可接收分享的应用之一。
 
 #### 12.3.5 资源限制字段
 
@@ -2235,9 +2341,9 @@ Q15: 导出模板一直显示「导出中...」？
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.3.0 |
-| 对应应用版本 | v5.3.0 (Build 19) |
-| 最后更新 | 2026年8月8日 |
+| 文档版本 | 5.4.0 |
+| 对应应用版本 | v5.4.0 (Build 20) |
+| 最后更新 | 2026年8月10日 |
 
 ---
 

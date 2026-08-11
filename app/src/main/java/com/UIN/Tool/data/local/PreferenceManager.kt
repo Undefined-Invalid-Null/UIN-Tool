@@ -191,6 +191,41 @@ class PreferenceManager(private val context: Context) {
         prefs.edit().putString(Constants.KEY_CURRENT_THEME, theme).apply()
     }
 
+    // ==================== 插件多开 ====================
+
+    /** 原生插件是否允许多开（内置单实例限制，开发者选项可开启实验性支持） */
+    fun isNativeMultiInstanceEnabled(): Boolean {
+        return prefs.getBoolean(Constants.KEY_NATIVE_MULTI_INSTANCE, false)
+    }
+
+    fun setNativeMultiInstanceEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(Constants.KEY_NATIVE_MULTI_INSTANCE, enabled).apply()
+    }
+
+    /** 同一插件多实例的后端端口模式：shared=共享端口 / independent=独立端口 */
+    fun getBackendMultiMode(): String {
+        return prefs.getString(
+            Constants.KEY_BACKEND_MULTI_MODE,
+            Constants.BACKEND_MULTI_MODE_SHARED
+        ) ?: Constants.BACKEND_MULTI_MODE_SHARED
+    }
+
+    fun isBackendMultiModeIndependent(): Boolean =
+        getBackendMultiMode() == Constants.BACKEND_MULTI_MODE_INDEPENDENT
+
+    fun setBackendMultiMode(mode: String) {
+        prefs.edit().putString(Constants.KEY_BACKEND_MULTI_MODE, mode).apply()
+    }
+
+    /** 共享端口模式下关闭插件时是否保留页面/后端会话（重开直接复用，不重新走环境流水线） */
+    fun isSharedSessionRetainEnabled(): Boolean {
+        return prefs.getBoolean(Constants.KEY_SHARED_SESSION_RETAIN, true)
+    }
+
+    fun setSharedSessionRetainEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(Constants.KEY_SHARED_SESSION_RETAIN, enabled).apply()
+    }
+
     // ==================== UI配置 ====================
 
     fun getUiConfig(): String {

@@ -737,7 +737,7 @@ fun PluginManageScreen(
                             selectedPluginIds + plugin.pluginId
                         }
                     },
-                    onOpen = { pluginManager.openPlugin(plugin.pluginId, context) },
+                    onOpen = { PluginShortcutHelper.createShortcut(context, plugin) },
                     onDelete = { showDeleteDialog = plugin },
                     onDetail = { showDetailDialog = plugin },
                     onManagePermissions = { showPermissionDialog = plugin },
@@ -1491,9 +1491,10 @@ fun PluginManageItem(
                 }
 
                 UnifiedIconButton(
-                    icon = Icons.Default.PlayArrow,
+                    icon = Icons.Default.Add,
                     onClick = onOpen,
                     tint = MaterialTheme.colorScheme.primary,
+                    contentDescription = Str.get(R.string.add_shortcut),
                     modifier = Modifier.size(32.dp)
                 )
 

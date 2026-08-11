@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-5.3.0-blue)
-![Build](https://img.shields.io/badge/build-19-green)
+![Version](https://img.shields.io/badge/version-5.4.0-blue)
+![Build](https://img.shields.io/badge/build-20-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -58,19 +58,37 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v5.3.0 (Build 19)
+### 当前版本：v5.4.0 (Build 20)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 5.3.0 |
-| 版本代码 | 19 |
-| 更新日期 | 2026年8月8日 |
+| 版本号 | 5.4.0 |
+| 版本代码 | 20 |
+| 更新日期 | 2026年8月10日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
 | 架构 | arm64-v8a |
 
 ### 版本历史
+
+#### v5.4.0 (Build 20) - 📥 主动能力扩展：插件接收外部内容（openWith 中转）+ 插件多开
+
+**📥 插件接收外部内容（Intent 中转，openWith）：**
+- 系统/其它应用「分享」或「用其他应用打开」的**文本、链接、文件**可发送给 UIN Tool，中转页列出所有声明 `openWith` 且匹配的插件，由用户选择交给哪个插件处理
+- `plugin.json` 新增 **`openWith`** 字段（`enabled` / `label` / `mimeTypes` / `acceptText` / `acceptUrl` / `acceptFile`），支持 MIME 通配匹配
+- 支持单文件 / 多文件（`SEND_MULTIPLE`）接收，文件复制进插件 `.incoming/` 目录供后端直接读取
+- **Web 插件**：宿主注入 `window.UINOpenData` / `window.getOpenData()`，亦可用 `UINPlugin.getOpenData()` 读取；**原生插件**：`onHostEvent("host.open", bundle)` 携带 `instanceId` / `openDataJson`
+- 仅 1 个匹配插件时自动打开；中转页支持**实时搜索**（按显示名 / 插件 ID / 描述过滤）
+
+**🧩 插件多开（Multi-Instance）：**
+- **Web / CUI 插件默认支持多开**；**原生插件**默认单实例，开发工具页可开启「原生插件多开（实验性）」
+- 每实例有全局唯一 `instanceId`，宿主以实例键（`pluginId:instanceId`）隔离生命周期 / WebView / 原生实例 / 后端
+- 后端：默认多实例共享同一进程（共享端口）；「开发工具」的「每实例独立后端端口」开启后每实例独享进程与端口
+
+**➕ 其他：**
+- 插件管理页列表项「启动」按钮改为「**新增桌面快捷方式**」（`＋` 图标）
+- 中转页新增搜索；版本号升级至 5.4.0（Build 20）
 
 #### v5.3.0 (Build 19) - 🎨 全面完善：统一 UI 组件体系 + 颜色选择器/分类管理/权限管理增强
 

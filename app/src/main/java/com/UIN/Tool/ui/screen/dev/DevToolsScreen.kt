@@ -56,6 +56,13 @@ fun DevToolsScreen(
     var ignoreSignature by remember {
         mutableStateOf(PluginManager.isIgnoreSignatureWarning())
     }
+    val pluginManager = com.UIN.Tool.core.di.ServiceLocator.getPluginManager()
+    var nativeMultiInstance by remember {
+        mutableStateOf(pluginManager.isNativeMultiInstanceEnabled())
+    }
+    var backendIndependent by remember {
+        mutableStateOf(pluginManager.isBackendMultiModeIndependent())
+    }
 
     fun loadLogs() {
         isLoading = true
@@ -114,6 +121,11 @@ fun DevToolsScreen(
 
     fun saveDeveloperOptions() {
         PluginManager.setIgnoreSignatureWarning(ignoreSignature)
+        pluginManager.setNativeMultiInstanceEnabled(nativeMultiInstance)
+        pluginManager.setBackendMultiMode(
+            if (backendIndependent) Constants.BACKEND_MULTI_MODE_INDEPENDENT
+            else Constants.BACKEND_MULTI_MODE_SHARED
+        )
         AppToast.info(
             context,
             if (ignoreSignature) Str.get(R.string.signature_verification_ignored) else Str.get(R.string.signature_verification_enabled)
@@ -205,6 +217,58 @@ fun DevToolsScreen(
                             text = Str.get(R.string.when_enabled_unsigned_plugins_can_be),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 原生插件多开（实验性）
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = nativeMultiInstance,
+                                onCheckedChange = { nativeMultiInstance = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                            Text(
+                                text = Str.get(R.string.dev_native_plugin_multi_instance),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = Str.get(R.string.dev_native_plugin_multi_instance_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // 后端独立端口模式（多实例各自独立后端）
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = backendIndependent,
+                                onCheckedChange = { backendIndependent = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                            Text(
+                                text = Str.get(R.string.dev_backend_independent_port),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = Str.get(R.string.dev_backend_independent_port_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         UnifiedButton(

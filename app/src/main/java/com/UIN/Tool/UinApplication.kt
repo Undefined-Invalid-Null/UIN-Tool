@@ -381,8 +381,6 @@ class UinApplication : TermuxApplication() {
         }
 
         val subDirs = listOf(
-            "home", "usr", "usr/bin", "usr/lib", "usr/include",
-            "etc", "tmp", "var", "var/log", "var/run", "var/tmp",
             "plugins", "templates", "downloads", "cache", "logs"
         )
 
@@ -390,6 +388,20 @@ class UinApplication : TermuxApplication() {
             val dir = File(workDir, subDir)
             if (!dir.exists()) {
                 dir.mkdirs()
+            }
+        }
+
+        // 清理历史遗留的空 Termux 目录（usr/var/etc 等不属于本软件，仅删除空目录）。
+        // 先删最深子目录，再删父目录，避免父目录因内含空子目录而被跳过。
+        val staleTermuxDirs = listOf(
+            "usr/bin", "usr/lib", "usr/include", "usr",
+            "var/log", "var/run", "var/tmp", "var",
+            "home", "etc", "tmp"
+        )
+        for (staleDir in staleTermuxDirs) {
+            val dir = File(workDir, staleDir)
+            if (dir.isDirectory && dir.listFiles()?.isEmpty() == true) {
+                dir.delete()
             }
         }
 

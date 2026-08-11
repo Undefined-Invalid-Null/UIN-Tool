@@ -15,8 +15,8 @@ object AppConstants {
 
     // ==================== 应用信息 ====================
     const val APP_NAME = "UIN_Tool"
-    const val APP_VERSION = "5.3.0"
-    const val APP_VERSION_CODE = 19
+    const val APP_VERSION = "5.4.0"
+    const val APP_VERSION_CODE = 20
 
     // ==================== 目录路径 ====================
     val WORK_DIR = File(Environment.getExternalStorageDirectory(), APP_NAME).absolutePath
@@ -73,6 +73,16 @@ object AppConstants {
     const val WIDGET_GLOBAL_PLUGIN_1 = "global_plugin_1"
     const val WIDGET_GLOBAL_PLUGIN_2 = "global_plugin_2"
     const val WIDGET_GLOBAL_PLUGIN_3 = "global_plugin_3"
+
+    // ==================== 偏好设置键（插件多开） ====================
+    /** 原生插件多开开关（默认关闭，开发工具页可开启） */
+    const val KEY_NATIVE_MULTI_INSTANCE = "native_multi_instance"
+    /** 同一插件多实例时的后端端口模式：shared=共享端口，independent=独立端口 */
+    const val KEY_BACKEND_MULTI_MODE = "backend_multi_mode"
+    const val BACKEND_MULTI_MODE_SHARED = "shared"
+    const val BACKEND_MULTI_MODE_INDEPENDENT = "independent"
+    /** 共享端口模式下关闭插件时保留页面/后端会话，重开直接复用（默认开启） */
+    const val KEY_SHARED_SESSION_RETAIN = "shared_session_retain"
 
     // ==================== 插件相关 ====================
     const val PLUGIN_EXTENSION = ".tpk"

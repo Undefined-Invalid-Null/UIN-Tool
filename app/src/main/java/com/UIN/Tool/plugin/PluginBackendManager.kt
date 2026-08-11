@@ -39,6 +39,8 @@ object PluginBackendManager {
     private val processPids = mutableMapOf<String, Int>()
     /** 每个插件最后一次被请求的时间（毫秒），用于空闲自动回收 */
     private val lastRequestTimes = mutableMapOf<String, Long>()
+    /** 共享端口模式下，同一插件被多少个实例持有的引用计数（>0 表示仍在被使用） */
+    private val holdCounts = mutableMapOf<String, Int>()
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -463,14 +465,27 @@ object PluginBackendManager {
     // ============================================================
 
     fun startBackend(context: Context, info: PluginInfo): Boolean {
+        return startBackendInternal(context, info, info.pluginId)
+    }
+
+    /**
+     * 按「实例键」启动后端（独立端口模式多开）：
+     * 每个插件实例拥有独立的进程与端口，互不干扰。
+     */
+    fun startBackendInstance(context: Context, info: PluginInfo, instanceKey: String): Boolean {
+        return startBackendInternal(context, info, instanceKey)
+    }
+
+    private fun startBackendInternal(context: Context, info: PluginInfo, key: String): Boolean {
         Logger.d(TAG, "========================================")
         Logger.d(TAG, Str.get(R.string.pluginbackendmanager_startbackend_ca))
         Logger.d(TAG, "📦 pluginId: ${info.pluginId}")
+        Logger.d(TAG, "🔑 instanceKey(backend key): $key")
         Logger.d(TAG, "🐍 backend: ${info.backend}")
         Logger.d(TAG, "📄 backendEntry: ${info.backendEntry}")
         Logger.d(TAG, "🔌 backendPort: ${info.backendPort}")
         Logger.d(TAG, Str.get(R.string.time_system_currenttimemillis, System.currentTimeMillis()))
-        
+
         // 确保消息服务已启动
         if (!isMessageServiceRunning) {
             Logger.d(TAG, Str.get(R.string.message_service_not_running_initiali))
@@ -482,16 +497,15 @@ object PluginBackendManager {
             return false
         }
 
-        val pluginId = info.pluginId
-        synchronized(processLocks.getOrPut(pluginId) { Any() }) {
+        synchronized(processLocks.getOrPut(key) { Any() }) {
             Logger.d(TAG, Str.get(R.string.lock_acquired))
-            
-            if (isRunning(pluginId)) {
-                Logger.d(TAG, Str.get(R.string.backend_already_running_pluginid, pluginId))
+
+            if (isRunning(key)) {
+                Logger.d(TAG, Str.get(R.string.backend_already_running_pluginid, key))
                 return true
             }
 
-            val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
+            val pluginDir = File(Constants.PLUGIN_DIR, info.pluginId)
             Logger.d(TAG, Str.get(R.string.plugin_dir_plugindir_absolutepath, pluginDir.absolutePath))
             Logger.d(TAG, Str.get(R.string.dir_exists_plugindir_exists, pluginDir.exists()))
 
@@ -505,18 +519,18 @@ object PluginBackendManager {
             // 新式后端：统一 other + backendStartCommand。旧式插件已在 PluginInfo.fromJson 迁移为新式，
             // 因此这里只存在一条启动路径。
             val port = findAvailablePort()
-            runningPorts[pluginId] = port
-            lastRequestTimes[pluginId] = System.currentTimeMillis()
+            runningPorts[key] = port
+            lastRequestTimes[key] = System.currentTimeMillis()
             cleanupLingeringBackend(info, pluginDir, port)
             val success = if (isReal) {
-                startScriptInRealTermux(context, info, pluginDir, port)
+                startScriptInRealTermux(context, info, pluginDir, port, key)
             } else {
-                startScriptInBuiltin(context, info, pluginDir, port)
+                startScriptInBuiltin(context, info, pluginDir, port, key)
             }
             if (success) {
-                Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, pluginId, port))
+                Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, key, port))
             } else {
-                runningPorts.remove(pluginId)
+                runningPorts.remove(key)
             }
             return success
         }
@@ -526,7 +540,7 @@ object PluginBackendManager {
     // 新式后端启动（内置 Termux，强制 proot Alpine 容器）
     // ============================================================
 
-    private fun startScriptInBuiltin(context: Context, info: PluginInfo, pluginDir: File, port: Int): Boolean {
+    private fun startScriptInBuiltin(context: Context, info: PluginInfo, pluginDir: File, port: Int, key: String): Boolean {
         val container = BackendConfig.getBuiltinContainer()
         val startCmd = info.getStartCommandText()
         val inner = buildScriptCommand(info, "/plugins/${info.pluginId}", port, startCmd)
@@ -537,14 +551,14 @@ object PluginBackendManager {
             "--", "sh", "-lc", inner
         )
         Logger.d(TAG, Str.get(R.string.executing_command, command.joinToString(" ")))
-        return launchBuiltinProcess(context, info, pluginDir, port, command, isProot = true)
+        return launchBuiltinProcess(context, info, pluginDir, port, command, key = key, isProot = true)
     }
 
     // ============================================================
     // 新式后端启动（实体 Termux：Termux 本机 / proot 容器，RUN_COMMAND）
     // ============================================================
 
-    private fun startScriptInRealTermux(context: Context, info: PluginInfo, pluginDir: File, port: Int): Boolean {
+    private fun startScriptInRealTermux(context: Context, info: PluginInfo, pluginDir: File, port: Int, key: String): Boolean {
         if (!probeRealTermux(context)) return false
 
         val startCmd = info.getStartCommandText()
@@ -575,7 +589,7 @@ object PluginBackendManager {
             )
         }
 
-        return launchRealTermux(context, info, port, intent)
+        return launchRealTermux(context, info, port, intent, key)
     }
 
     /**
@@ -608,7 +622,7 @@ object PluginBackendManager {
     /**
      * 启动实体 Termux RUN_COMMAND（无法追踪进程），随后轮询端口就绪。
      */
-    private fun launchRealTermux(context: Context, info: PluginInfo, port: Int, intent: android.content.Intent): Boolean {
+    private fun launchRealTermux(context: Context, info: PluginInfo, port: Int, intent: android.content.Intent, key: String): Boolean {
         try {
             if (!RealTermuxRuntime.startRunCommand(context, intent)) {
                 Logger.w(TAG, Str.get(R.string.real_termux_run_command_permission_denied))
@@ -640,6 +654,7 @@ object PluginBackendManager {
         pluginDir: File,
         port: Int,
         command: List<String>,
+        key: String,
         isProot: Boolean
     ): Boolean {
         val workDir = pluginDir
@@ -692,12 +707,12 @@ object PluginBackendManager {
 
             Logger.i(TAG, Str.get(R.string.starting_process))
             val process = processBuilder.start()
-            runningProcesses[info.pluginId] = process
-            startTimes[info.pluginId] = System.currentTimeMillis()
-            processPids[info.pluginId] = getProcessPid(process)
-            Logger.d(TAG, Str.get(R.string.process_started_pid_processpids_plug, processPids[info.pluginId]))
+            runningProcesses[key] = process
+            startTimes[key] = System.currentTimeMillis()
+            processPids[key] = getProcessPid(process)
+            Logger.d(TAG, Str.get(R.string.process_started_pid_processpids_plug, processPids[key]))
 
-            monitorOutput(info.pluginId, process, isProot)
+            monitorOutput(key, process, isProot)
 
             // proot 容器运行时冷启动较慢（proot-distro login + proot chroot + 链接转换 + 解释器），
             // 放宽就绪超时（至少 120s）
@@ -711,7 +726,7 @@ object PluginBackendManager {
             val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
 
             if (ready) {
-                Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, info.pluginId, port))
+                Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, key, port))
                 return true
             } else {
                 if (process.isAlive) {
@@ -720,16 +735,16 @@ object PluginBackendManager {
                 } else {
                     Logger.e(TAG, Str.get(R.string.backend_process_exited))
                     process.destroy()
-                    runningProcesses.remove(info.pluginId)
-                    runningPorts.remove(info.pluginId)
+                    runningProcesses.remove(key)
+                    runningPorts.remove(key)
                     return false
                 }
             }
 
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.backend_start_error_e_message, e.message), e)
-            runningProcesses.remove(info.pluginId)
-            runningPorts.remove(info.pluginId)
+            runningProcesses.remove(key)
+            runningPorts.remove(key)
             return false
         }
     }
@@ -748,8 +763,42 @@ object PluginBackendManager {
             startTimes.remove(pluginId)
             processPids.remove(pluginId)
             lastRequestTimes.remove(pluginId)
+            holdCounts.remove(pluginId)
             Logger.i(TAG, Str.get(R.string.stopping_backend_pluginid, pluginId))
         }
+    }
+
+    // ============================================================
+    // 共享端口模式下的引用计数
+    // （同一插件多实例共享一个后端进程，最后一个实例关闭时停止后端）
+    // ============================================================
+
+    /** 记录一个插件实例“持有”了共享后端（每次成功关联后端后调用一次）。 */
+    fun acquireHold(pluginId: String) {
+        synchronized(holdCounts) {
+            holdCounts[pluginId] = (holdCounts[pluginId] ?: 0) + 1
+        }
+        Logger.d(TAG, "acquireHold($pluginId) = ${holdCounts[pluginId]}")
+    }
+
+    /** 释放一个插件实例对共享后端的持有，归零时停止该后端。 */
+    fun releaseHold(pluginId: String) {
+        synchronized(holdCounts) {
+            val count = (holdCounts[pluginId] ?: 1) - 1
+            if (count <= 0) {
+                // 共享端口模式 + 保留会话：即使最后一个实例关闭，只要还留有
+                // 保留的 WebView（页面/会话），后端继续存活，由保留会话持有。
+                if (PluginManager.hasRetainedSharedWebView(pluginId)) {
+                    holdCounts[pluginId] = 1
+                } else {
+                    holdCounts.remove(pluginId)
+                    Thread { stopBackend(pluginId) }.start()
+                }
+            } else {
+                holdCounts[pluginId] = count
+            }
+        }
+        Logger.d(TAG, "releaseHold($pluginId) -> ${holdCounts[pluginId]}")
     }
 
     /** 向约定好的 HTTP /stop 端点发送请求，实现优雅退出（对实体 Termux 是唯一停止手段）。 */

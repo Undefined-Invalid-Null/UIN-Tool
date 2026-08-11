@@ -119,6 +119,16 @@ class PluginJSInterface(
 
     private fun hostActivity(): PluginHostActivity? = getActivity() as? PluginHostActivity
 
+    // ==================== 实例与外部打开数据 ====================
+
+    /** 当前插件宿主实例 ID（多开时每个实例不同） */
+    @JavascriptInterface
+    fun getInstanceId(): String? = hostActivity()?.currentInstanceId
+
+    /** 外部打开数据（系统「用…打开」传入的文件/文本/URL 的 JSON），无则返回 "{}" */
+    @JavascriptInterface
+    fun getOpenData(): String? = hostActivity()?.getOpenDataJson() ?: "{}"
+
     private fun ensureMigration() {
         if (isMigrated) return
         try {

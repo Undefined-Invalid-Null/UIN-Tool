@@ -454,8 +454,7 @@ class WidgetProvider : AppWidgetProvider() {
                     Logger.d(TAG, Str.get(R.string.time_file_size_iconfile_length_bytes, time, iconFile.length()))
                     
                     if (iconFile.exists()) {
-                        val options = BitmapFactory.Options().apply { inSampleSize = 2 }
-                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath, options)
+                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
                         if (bitmap != null) {
                             val scaled = Bitmap.createScaledBitmap(bitmap, 64, 64, true)
                             Logger.success(TAG, Str.get(R.string.time_icon_loaded_scaled_width_x_scal, time, scaled.width, scaled.height))
@@ -664,8 +663,7 @@ class Widget1x1Provider : AppWidgetProvider() {
                     val iconPath = if (plugin.icon.isNotEmpty()) plugin.icon else "icon.png"
                     val iconFile = File(pluginDir, iconPath)
                     if (iconFile.exists()) {
-                        val options = BitmapFactory.Options().apply { inSampleSize = 2 }
-                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath, options)
+                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
                         return bitmap?.let { Bitmap.createScaledBitmap(it, 48, 48, true) }
                     }
                 }

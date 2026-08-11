@@ -52,19 +52,49 @@ class PluginHostActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "PluginHostActivity"
         const val EXTRA_PLUGIN_ID = "plugin_id"
+        const val EXTRA_INSTANCE_ID = "instance_id"
+        /** 意图中转（openWith）传入的外部数据 JSON */
+        const val EXTRA_OPEN_DATA = "open_data"
         private const val KEY_PLUGIN_ID = "plugin_id"
+        private const val KEY_INSTANCE_ID = "instance_id"
         private const val KEY_WEBVIEW_STATE = "webview_state"
         private const val BACKEND_START_TIMEOUT = 15000L
         private const val BACKEND_START_TIMEOUT_PROOT = 90000L
         private const val REQUEST_CODE_PERMISSIONS = 1001
+
+        private var instanceCounter = 0L
+
+        /**
+         * 生成一个全局唯一的实例 ID，用于多开隔离。
+         * 同一插件可同时存在多个实例键（pluginId:instanceId）。
+         */
+        private fun generateInstanceId(pluginId: String): String {
+            instanceCounter++
+            return "inst-${System.currentTimeMillis()}-${instanceCounter}"
+        }
     }
 
     private lateinit var container: FrameLayout
     private var currentPluginId: String = ""
+    var currentInstanceId: String = ""
+    private var currentInstanceKey: String = ""
     private var webView: WebView? = null
     private lateinit var pluginManager: PluginManager
     private var pluginInfo: PluginInfo? = null
     private var isDestroyed = false
+
+    /** 意图中转传入的外部数据 JSON（openWith），供 JS / 原生插件读取 */
+    private var openDataJson: String? = null
+
+    /**
+     * 后端实例键：共享端口模式=插件 ID；独立端口模式=插件实例键。
+     * 决定后端进程/端口按插件共享还是按实例隔离。
+     */
+    private val backendKey: String
+        get() = if (pluginManager.isBackendMultiModeIndependent()) currentInstanceKey else currentPluginId
+
+    /** backend 实际被当前实例持有时为 true，用于在 destroy 时决定停止/释放 */
+    private var backendHeldByThisInstance = false
 
     private var pluginDialogRequest by mutableStateOf<PluginDialogRequest?>(null)
     private var dialogHost: ComposeView? = null
@@ -102,10 +132,16 @@ class PluginHostActivity : AppCompatActivity() {
 
         if (savedInstanceState != null) {
             currentPluginId = savedInstanceState.getString(KEY_PLUGIN_ID) ?: ""
+            currentInstanceId = savedInstanceState.getString(KEY_INSTANCE_ID) ?: ""
         }
         if (currentPluginId.isEmpty()) {
             currentPluginId = intent.getStringExtra(EXTRA_PLUGIN_ID) ?: ""
         }
+        if (currentInstanceId.isEmpty()) {
+            currentInstanceId = intent.getStringExtra(EXTRA_INSTANCE_ID) ?: ""
+        }
+        // 意图中转数据（系统「用…打开」传入的文件/文本/URL）
+        openDataJson = intent.getStringExtra(EXTRA_OPEN_DATA)
 
         Logger.i(TAG, "📦 currentPluginId: $currentPluginId")
 
@@ -115,6 +151,12 @@ class PluginHostActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        if (currentInstanceId.isEmpty()) {
+            currentInstanceId = generateInstanceId(currentPluginId)
+        }
+        currentInstanceKey = "$currentPluginId:$currentInstanceId"
+        Logger.i(TAG, "🔑 currentInstanceKey: $currentInstanceKey")
 
         pluginManager = ServiceLocator.getPluginManager()
         pluginInfo = pluginManager.getPluginInfo(currentPluginId)
@@ -145,8 +187,29 @@ class PluginHostActivity : AppCompatActivity() {
             return
         }
 
+        // ========== 多开保护 ==========
+        // 默认：web/cui 插件可多开；原生插件单实例（除非开发工具页开启原生多开）。
+        // 若原生插件已有一个存活实例，则不再新建，直接结束本次启动。
+        if (pluginInfo?.isNativePlugin() == true && !pluginManager.isNativeMultiInstanceEnabled()) {
+            if (pluginManager.isNativePluginActive(currentPluginId)) {
+                Logger.w(TAG, Str.get(R.string.native_plugin_already_running_single_ins, pluginInfo?.name))
+                Toast.makeText(
+                    this,
+                    Str.get(R.string.native_plugin_already_running_single_ins_2, pluginInfo?.name),
+                    Toast.LENGTH_SHORT
+                ).show()
+                finish()
+                return
+            }
+        }
+
         // 显示插件说明
         showPluginNoticeIfNeeded()
+
+        // 原生插件默认单实例：注册“已运行”标记，供二次打开去重
+        if (pluginInfo?.isNativePlugin() == true) {
+            pluginManager.onNativePluginStarted(currentPluginId, currentInstanceKey)
+        }
 
         if (pluginInfo?.isCui() == true) {
             // CUI 插件：在真实全屏终端（TermuxActivity）中运行 pre-command
@@ -210,13 +273,21 @@ class PluginHostActivity : AppCompatActivity() {
 
     private fun startBackendInternal() {
         showEnvProgress(Str.get(R.string.starting_backend_service_normal_runt))
-        pluginManager.startBackend(currentPluginId) { success, port, error ->
+        // 后端实例键：共享端口模式按插件共享；独立端口模式按实例隔离
+        val key = backendKey
+        Logger.i(TAG, "🔑 startBackendInternal backendKey: $key")
+        pluginManager.startBackendFor(currentPluginId, key) { success, port, error ->
             isBackendStarting = false
             dismissEnvProgress()
             Logger.i(TAG, Str.get(R.string.backend_start_callback_success_succe, success, port, error))
             if (success) {
                 backendPort = port
+                backendHeldByThisInstance = true
                 isBackendReady = true
+                // 共享端口模式：每个实例持有一次共享后端（最后一个实例关闭时后端才停止）
+                if (!pluginManager.isBackendMultiModeIndependent()) {
+                    pluginManager.acquireBackend(currentPluginId)
+                }
                 Logger.success(TAG, Str.get(R.string.backend_ready_port_port, port))
                 sendBackendReadyToWebView(port)
             } else {
@@ -259,13 +330,19 @@ class PluginHostActivity : AppCompatActivity() {
     private fun startBackendAfterEnv() {
         Logger.i(TAG, "🔍 startBackendAfterEnv()")
         showEnvProgress(Str.get(R.string.starting_backend_service))
-        pluginManager.startBackend(currentPluginId) { success, port, error ->
+        val key = backendKey
+        Logger.i(TAG, "🔑 startBackendAfterEnv backendKey: $key")
+        pluginManager.startBackendFor(currentPluginId, key) { success, port, error ->
             isBackendStarting = false
             dismissEnvProgress()
             Logger.i(TAG, Str.get(R.string.env_pipeline_backend_callback_succes, success, port, error))
             if (success) {
                 backendPort = port
+                backendHeldByThisInstance = true
                 isBackendReady = true
+                if (!pluginManager.isBackendMultiModeIndependent()) {
+                    pluginManager.acquireBackend(currentPluginId)
+                }
                 sendBackendReadyToWebView(port)
             } else {
                 Toast.makeText(this, Str.get(R.string.backend_start_failed_error_unknown_e, error ?: Str.get(R.string.unknown_error)), Toast.LENGTH_LONG).show()
@@ -283,6 +360,10 @@ class PluginHostActivity : AppCompatActivity() {
         if (!pluginId.isNullOrEmpty() && pluginId != currentPluginId) {
             currentPluginId = pluginId
             pluginInfo = pluginManager.getPluginInfo(pluginId)
+            currentInstanceId = intent.getStringExtra(EXTRA_INSTANCE_ID) ?: generateInstanceId(pluginId)
+            currentInstanceKey = "$currentPluginId:$currentInstanceId"
+            openDataJson = intent.getStringExtra(EXTRA_OPEN_DATA)
+            Logger.i(TAG, "🔑 onNewIntent instanceKey: $currentInstanceKey")
         }
     }
 
@@ -754,95 +835,46 @@ class PluginHostActivity : AppCompatActivity() {
             }
         }
 
-        webView = WebView(this).apply {
-            settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                allowFileAccess = true
+        // 共享端口模式 + 保留会话：复用上次关闭时保留的 WebView（页面/会话不重建）
+        val retained = if (shouldRetainSharedSession()) PluginManager.takeRetainedSharedWebView(currentPluginId) else null
+        if (retained != null) {
+            Logger.success(TAG, Str.get(R.string.retained_session_webview_reused))
+            (retained.parent as? ViewGroup)?.removeView(retained)
+            webView = retained
+            bindWebViewClients(retained)
+            injectJSInterface()
+            injectOpenData()
+            if (isBackendReady) sendBackendReadyToWebView(backendPort)
+            Logger.success(TAG, Str.get(R.string.retained_session_rebound_clients))
+        } else {
+            if (shouldRetainSharedSession() && PluginManager.hasRetainedSharedWebView(currentPluginId)) {
+                Logger.w(TAG, Str.get(R.string.retained_session_webview_missing_create_new))
+            }
+            val wv = WebView(this).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.allowFileAccess = true
                 @Suppress("DEPRECATION")
-                allowFileAccessFromFileURLs = true
+                settings.allowFileAccessFromFileURLs = true
                 @Suppress("DEPRECATION")
-                allowUniversalAccessFromFileURLs = true
-                setSupportZoom(true)
-                builtInZoomControls = true
-                displayZoomControls = false
-                defaultTextEncodingName = "UTF-8"
-                loadWithOverviewMode = true
-                useWideViewPort = true
+                settings.allowUniversalAccessFromFileURLs = true
+                settings.setSupportZoom(true)
+                settings.builtInZoomControls = true
+                settings.displayZoomControls = false
+                settings.defaultTextEncodingName = "UTF-8"
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
             }
+            webView = wv
 
             val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
-            addJavascriptInterface(jsInterface, "UINPlugin")
+            wv.addJavascriptInterface(jsInterface, "UINPlugin")
             Logger.success(TAG, Str.get(R.string.uinplugin_js_interface_injected))
 
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    Logger.success(TAG, Str.get(R.string.webview_load_complete_url, url))
-                    injectJSInterface()
-                    if (com.UIN.Tool.utils.UIConfig.isInitialized()) {
-                        view?.evaluateJavascript(com.UIN.Tool.utils.UIConfig.getThemeCssInjectionScript(), null)
-                    }
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        if (isBackendReady) {
-                            sendBackendReadyToWebView(backendPort)
-                        }
-                        webView?.evaluateJavascript(
-                            "if (window._onUINPluginReady) window._onUINPluginReady();",
-                            null
-                        )
-                    }, 300)
-                }
-
-                override fun onReceivedError(
-                    view: WebView?,
-                    errorCode: Int,
-                    description: String?,
-                    failingUrl: String?
-                ) {
-                    super.onReceivedError(view, errorCode, description, failingUrl)
-                    Logger.e(TAG, Str.get(R.string.webview_load_error_description_code_, description, errorCode, failingUrl))
-                }
-            }
-
-            webChromeClient = object : WebChromeClient() {
-                override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {
-                    Logger.d("WebView", "Console: ${consoleMessage.message()}")
-                    return true
-                }
-
-                override fun onJsAlert(
-                    view: WebView?,
-                    url: String?,
-                    message: String?,
-                    result: android.webkit.JsResult?
-                ): Boolean {
-                    showPluginInfoDialog(
-                        title = Str.get(R.string.notice),
-                        message = message ?: "",
-                        onDismiss = { result?.confirm() }
-                    )
-                    return true
-                }
-
-                override fun onJsConfirm(
-                    view: WebView?,
-                    url: String?,
-                    message: String?,
-                    result: android.webkit.JsResult?
-                ): Boolean {
-                    showPluginConfirmDialog(
-                        title = Str.get(R.string.confirm_2),
-                        message = message ?: "",
-                        onConfirm = { result?.confirm() },
-                        onDismiss = { result?.cancel() }
-                    )
-                    return true
-                }
-            }
+            bindWebViewClients(wv)
 
             val entryPath = if (pluginInfo!!.entry.isNotEmpty()) pluginInfo!!.entry else "web/index.html"
             val indexPath = "$pluginDir/$entryPath"
@@ -850,11 +882,11 @@ class PluginHostActivity : AppCompatActivity() {
             Logger.i(TAG, Str.get(R.string.file_exists_file_indexpath_exists, File(indexPath).exists()))
 
             if (File(indexPath).exists()) {
-                loadUrl("file://$indexPath")
+                wv.loadUrl("file://$indexPath")
                 Logger.success(TAG, Str.get(R.string.loading_web_plugin_indexpath_2, indexPath))
             } else {
                 val defaultHtml = createDefaultHtml(pluginInfo!!)
-                loadDataWithBaseURL("file://$pluginDir/", defaultHtml, "text/html", "UTF-8", null)
+                wv.loadDataWithBaseURL("file://$pluginDir/", defaultHtml, "text/html", "UTF-8", null)
                 Logger.w(TAG, Str.get(R.string.entry_file_not_found_using_default_p_2))
             }
         }
@@ -868,8 +900,87 @@ class PluginHostActivity : AppCompatActivity() {
             host.visibility = if (pluginDialogRequest != null) View.VISIBLE else View.GONE
             Logger.success(TAG, Str.get(R.string.compose_dialog_overlay_added_above_w) + (if (pluginDialogRequest != null) Str.get(R.string.show) else Str.get(R.string.hide)) + ")")
         }
-        PluginManager.putPluginWebView(currentPluginId, webView)
+        PluginManager.putPluginWebView(currentInstanceKey, webView)
         Logger.separator(TAG, Str.get(R.string.loadwebplugin_complete))
+    }
+
+    /**
+     * 共享端口模式 + 保留会话开关 + Web 插件时启用会话保留：
+     * 关闭插件时 WebView 不销毁，重开时复用页面/会话状态。
+     */
+    private fun shouldRetainSharedSession(): Boolean =
+        !pluginManager.isBackendMultiModeIndependent() &&
+            pluginManager.isSharedSessionRetainEnabled() &&
+            pluginInfo?.isWebPlugin() == true
+
+    /** 绑定 WebViewClient / WebChromeClient（绑定当前 Activity，供新建与复用共用） */
+    private fun bindWebViewClients(webView: WebView) {
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                Logger.success(TAG, Str.get(R.string.webview_load_complete_url, url))
+                injectJSInterface()
+                injectOpenData()
+                if (com.UIN.Tool.utils.UIConfig.isInitialized()) {
+                    view?.evaluateJavascript(com.UIN.Tool.utils.UIConfig.getThemeCssInjectionScript(), null)
+                }
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (isBackendReady) {
+                        sendBackendReadyToWebView(backendPort)
+                    }
+                    webView?.evaluateJavascript(
+                        "if (window._onUINPluginReady) window._onUINPluginReady();",
+                        null
+                    )
+                }, 300)
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                errorCode: Int,
+                description: String?,
+                failingUrl: String?
+            ) {
+                super.onReceivedError(view, errorCode, description, failingUrl)
+                Logger.e(TAG, Str.get(R.string.webview_load_error_description_code_, description, errorCode, failingUrl))
+            }
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {
+                Logger.d("WebView", "Console: ${consoleMessage.message()}")
+                return true
+            }
+
+            override fun onJsAlert(
+                view: WebView?,
+                url: String?,
+                message: String?,
+                result: android.webkit.JsResult?
+            ): Boolean {
+                showPluginInfoDialog(
+                    title = Str.get(R.string.notice),
+                    message = message ?: "",
+                    onDismiss = { result?.confirm() }
+                )
+                return true
+            }
+
+            override fun onJsConfirm(
+                view: WebView?,
+                url: String?,
+                message: String?,
+                result: android.webkit.JsResult?
+            ): Boolean {
+                showPluginConfirmDialog(
+                    title = Str.get(R.string.confirm_2),
+                    message = message ?: "",
+                    onConfirm = { result?.confirm() },
+                    onDismiss = { result?.cancel() }
+                )
+                return true
+            }
+        }
     }
 
     private fun loadNativePlugin() {
@@ -877,11 +988,23 @@ class PluginHostActivity : AppCompatActivity() {
         Logger.w(TAG, Str.get(R.string.loading_native_plugin_currentplugini, currentPluginId))
 
         try {
-            val view = pluginManager.getPluginViewSync(currentPluginId, this, container)
+            // 开发者选项开启原生多开时每次新建实例；否则复用（单实例）
+            val forceNewInstance = pluginManager.isNativeMultiInstanceEnabled()
+            val view = pluginManager.getPluginViewSync(currentPluginId, this, container, forceNewInstance)
             if (view != null) {
                 container.removeAllViews()
                 container.addView(view)
                 Logger.success(TAG, Str.get(R.string.native_plugin_loaded_plugininfo_name, pluginInfo?.name))
+
+                // 通知原生插件宿主事件：传入实例 ID（多开隔离）与外部打开数据
+                pluginManager.getPluginInstance(currentPluginId)?.onHostEvent(
+                    "host.open",
+                    android.os.Bundle().apply {
+                        putString("instanceId", currentInstanceId)
+                        putString("openDataJson", openDataJson)
+                        putBoolean("multiInstanceEnabled", forceNewInstance)
+                    }
+                )
             } else {
                 Logger.e(TAG, Str.get(R.string.native_plugin_load_failed))
                 Toast.makeText(this, Str.get(R.string.native_plugin_load_failed_2), Toast.LENGTH_SHORT).show()
@@ -1099,6 +1222,30 @@ class PluginHostActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 向 WebView 注入「外部打开数据」（系统「用…打开」传入的文件/文本/URL）。
+     * 宿主通过 JS 提供 window.UINOpenData / window.getOpenData() 供插件读取。
+     */
+    private fun injectOpenData() {
+        val data = openDataJson
+        if (data == null || data.isEmpty()) {
+            // 无数据时也提供空实现，避免插件未做空值判断报错
+            webView?.evaluateJavascript(
+                "window.getOpenData = window.getOpenData || function(){ return '{}' }; window.UINOpenData = window.UINOpenData || '{}';",
+                null
+            )
+            return
+        }
+        val json = data.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
+        webView?.evaluateJavascript(
+            "window.getOpenData = window.getOpenData || function(){ return '$json'; }; window.UINOpenData = window.UINOpenData || '$json';",
+            null
+        )
+    }
+
+    /** 获取外部打开数据 JSON（WebView 插件可通过 UINPlugin.getOpenData() 读取） */
+    fun getOpenDataJson(): String? = openDataJson
+
     fun evaluateJavascript(script: String) {
         webView?.evaluateJavascript(script, null)
     }
@@ -1125,7 +1272,7 @@ class PluginHostActivity : AppCompatActivity() {
         }
 
         // WebView 直连请求也刷新空闲回收计时
-        PluginBackendManager.markActivity(currentPluginId)
+        PluginBackendManager.markActivity(backendKey)
 
         Thread {
             try {
@@ -1301,25 +1448,49 @@ class PluginHostActivity : AppCompatActivity() {
 
         dismissEnvProgress()
 
-        val keepAlive = pluginInfo?.backendKeepAlive ?: false
-        if (!keepAlive && isBackendReady) {
-            pluginManager.stopBackend(currentPluginId)
+        // 原生插件单实例追踪注销
+        pluginManager.onNativePluginStopped(currentInstanceKey)
+
+        // 保留会话：共享端口模式 + 保留开关时，WebView 移入缓存（重开复用），不销毁。
+        // 必须先于后端释放：releaseHold 检测到存在保留 WebView 时不会停掉共享后端。
+        val retainSession = shouldRetainSharedSession() && webView != null
+        if (retainSession) {
+            webView?.let {
+                (it.parent as? ViewGroup)?.removeView(it)
+                PluginManager.retainSharedWebView(currentPluginId, it)
+                Logger.success(TAG, Str.get(R.string.retained_session_webview_cached))
+            }
         }
 
-        webView?.let {
-            it.loadUrl("about:blank")
-            it.clearHistory()
-            it.clearCache(true)
-            it.destroy()
+        // 后端生命周期：只在当前实例“持有”时才停止/释放
+        val keepAlive = pluginInfo?.backendKeepAlive ?: false
+        if (backendHeldByThisInstance && !keepAlive) {
+            if (pluginManager.isBackendMultiModeIndependent()) {
+                // 独立端口模式：本实例独享后端，直接停止
+                pluginManager.stopBackend(currentInstanceKey)
+            } else {
+                // 共享端口模式：释放本实例持有（归零时停止共享后端；保留会话时维持存活）
+                pluginManager.releaseBackend(currentPluginId)
+            }
+            backendHeldByThisInstance = false
+        }
+
+        if (!retainSession) {
+            webView?.let {
+                it.loadUrl("about:blank")
+                it.clearHistory()
+                it.clearCache(true)
+                it.destroy()
+            }
         }
         webView = null
-        PluginManager.removePluginWebView(currentPluginId)
-        pluginManager.onPluginDestroy(currentPluginId)
+        PluginManager.removePluginWebView(currentInstanceKey)
+        pluginManager.onPluginDestroy(currentInstanceKey)
     }
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (pluginManager.onPluginBackPressed(currentPluginId)) {
+        if (pluginManager.onPluginBackPressed(currentInstanceKey)) {
             return
         }
 
@@ -1335,6 +1506,7 @@ class PluginHostActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(KEY_PLUGIN_ID, currentPluginId)
+        outState.putString(KEY_INSTANCE_ID, currentInstanceId)
         webView?.saveState(outState.getBundle(KEY_WEBVIEW_STATE) ?: Bundle().also {
             outState.putBundle(KEY_WEBVIEW_STATE, it)
         })

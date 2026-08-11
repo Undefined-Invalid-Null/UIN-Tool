@@ -70,6 +70,10 @@ data class PluginInfo(
     var maxCpuTime: Int = 60,
     var maxConcurrentTasks: Int = 5,
 
+    // ==================== 意图中转（openWith） ====================
+    // 系统「分享 / 用其他应用打开」分发给插件的外部内容接收配置
+    var openWith: OpenWithConfig? = null,
+
     // ==================== 运行时状态 ====================
     var isBackendRunning: Boolean = false,
     var currentBackendPort: Int = 0,
@@ -78,6 +82,9 @@ data class PluginInfo(
 ) {
 
     fun hasBackend(): Boolean = backend.isNotEmpty() && backendAutoStart
+
+    /** 是否声明可接收外部内容（用于“用…打开”意图中转） */
+    fun hasOpenWith(): Boolean = openWith?.enabled == true
 
     /** 新式 web+后端 插件：通过启动命令（sh 执行插件内脚本）启动，而非语言解释器 */
     fun hasStartCommand(): Boolean = backendStartCommand.isNotBlank()
@@ -299,6 +306,16 @@ data class PluginInfo(
             put("maxMemory", maxMemory)
             put("maxCpuTime", maxCpuTime)
             put("maxConcurrentTasks", maxConcurrentTasks)
+            openWith?.let { ow ->
+                put("openWith", JSONObject().apply {
+                    put("enabled", ow.enabled)
+                    put("label", ow.label)
+                    put("mimeTypes", ow.mimeTypes.joinToString(","))
+                    put("acceptText", ow.acceptText)
+                    put("acceptUrl", ow.acceptUrl)
+                    put("acceptFile", ow.acceptFile)
+                })
+            }
         }.toString()
     }
 
@@ -347,7 +364,17 @@ data class PluginInfo(
                     backendJavaJar = obj.optString("backendJavaJar", ""),
                     maxMemory = obj.optInt("maxMemory", 512),
                     maxCpuTime = obj.optInt("maxCpuTime", 60),
-                    maxConcurrentTasks = obj.optInt("maxConcurrentTasks", 5)
+                    maxConcurrentTasks = obj.optInt("maxConcurrentTasks", 5),
+                    openWith = obj.optJSONObject("openWith")?.let { ow ->
+                        OpenWithConfig(
+                            enabled = ow.optBoolean("enabled", true),
+                            label = ow.optString("label", ""),
+                            mimeTypes = ow.optString("mimeTypes", "").split(",").filter { it.isNotEmpty() },
+                            acceptText = ow.optBoolean("acceptText", true),
+                            acceptUrl = ow.optBoolean("acceptUrl", true),
+                            acceptFile = ow.optBoolean("acceptFile", true)
+                        )
+                    }
                 )
                 info.migrateLegacyBackend()
                 info
@@ -355,5 +382,60 @@ data class PluginInfo(
                 null
             }
         }
+    }
+}
+
+/**
+ * 意图中转配置（plugin.json 中的 `openWith` 字段）
+ *
+ * 声明该插件可接收从系统“分享 / 用其他应用打开”传入的内容。
+ *
+ * ```json
+ * "openWith": {
+ *   "enabled": true,
+ *   "label": "编写助手",
+ *   "mimeTypes": "text/plain,application/pdf",
+ *   "acceptText": true,
+ *   "acceptUrl": true,
+ *   "acceptFile": true
+ * }
+ * ```
+ */
+data class OpenWithConfig(
+    /** 是否启用本插件接收外部内容 */
+    val enabled: Boolean = true,
+    /** 在“用…打开”中转页显示的名称（留空则使用插件名） */
+    val label: String = "",
+    /** 支持的 MIME 类型，支持通配形式（text 通配、全类型通配），留空表示接受任意 */
+    val mimeTypes: List<String> = emptyList(),
+    /** 是否接受纯文本（ACTION_SEND 的 EXTRA_TEXT） */
+    val acceptText: Boolean = true,
+    /** 是否接受 URL / 链接 */
+    val acceptUrl: Boolean = true,
+    /** 是否接受文件（content Uri / 本地文件） */
+    val acceptFile: Boolean = true
+) {
+
+    /** 判断是否匹配某次外部打开请求。kind ∈ {file, text, url} */
+    fun matches(mimeType: String?, kind: String): Boolean {
+        if (!enabled) return false
+        when (kind) {
+            "file" -> if (!acceptFile) return false
+            "text" -> if (!acceptText) return false
+            "url" -> if (!acceptUrl) return false
+            else -> return false
+        }
+        if (mimeType.isNullOrEmpty()) return true
+        if (mimeTypes.isEmpty() || mimeTypes.any { it.equals("*/*", ignoreCase = true) }) return true
+        val m = mimeType.lowercase()
+        return mimeTypes.any { rule -> matchesMime(rule.lowercase(), m) }
+    }
+
+    private fun matchesMime(rule: String, mime: String): Boolean {
+        if (rule == "*/*") return true
+        if (rule.endsWith("/*")) {
+            return mime.substringBefore('/').equals(rule.substringBefore('/'), ignoreCase = true)
+        }
+        return mime == rule
     }
 }

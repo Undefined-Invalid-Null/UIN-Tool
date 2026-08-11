@@ -2103,6 +2103,29 @@ Released: %3$s
     <string name="webview_load_complete_url">✅ WebView load complete: %1$s</string>
     <string name="webview_load_error_description">WebView load error: %1$s</string>
     <string name="webview_load_error_description_code_">❌ WebView load error: %1$s (code: %2$s), url: %3$s</string>
+    <string name="dev_native_plugin_multi_instance" formatted="false">Native plugin multi-instance (experimental)</string>
+    <string name="dev_native_plugin_multi_instance_desc" formatted="false">Allow opening the same native plugin repeatedly as independent instances; off by default</string>
+    <string name="dev_backend_independent_port" formatted="false">Independent backend ports per instance</string>
+    <string name="dev_backend_independent_port_desc" formatted="false">Each plugin instance runs its own backend process/port; off = instances share one backend</string>
+    <string name="native_plugin_already_running_single_ins" formatted="false">Native plugin \"%1$s\" is already running</string>
+    <string name="native_plugin_already_running_single_ins_2" formatted="false">This native plugin is already open (single instance). Close it first or enable multi-instance in Dev Tools.</string>
+    <string name="plugin_open_receiver_label" formatted="false">UIN Plugins</string>
+    <string name="open_data_collect_failed" formatted="false">Failed to parse the shared content</string>
+    <string name="no_open_data_received" formatted="false">No text, URL or file received</string>
+    <string name="no_plugin_for_open_with" formatted="false">No installed plugin can receive this content</string>
+    <string name="no_plugin_matches_open_data" formatted="false">No openWith plugin matches the shared content (kind=url/text/file)</string>
+    <string name="choose_plugin_to_receive" formatted="false">Choose a plugin</string>
+    <string name="opening_plugin_for_open_data" formatted="false">Opening plugin \"%1$s\" with shared content</string>
+    <string name="open_dispatch_failed" formatted="false">Failed to dispatch shared content</string>
+    <string name="open_with_choose_title" formatted="false">Choose a receiver plugin</string>
+    <string name="open_with_done" formatted="false">Done</string>
+    <string name="open_with_share_text" formatted="false">Text</string>
+    <string name="open_with_share_url" formatted="false">Link</string>
+    <string name="open_with_share_files" formatted="false">File(s)</string>
+    <string name="open_with_copy_failed" formatted="false">Failed to prepare incoming file: %1$s</string>
+    <string name="open_with_share_files_colon" formatted="false">%1$d files</string>
+    <string name="open_with_receiver_hint" formatted="false">Choose a plugin to receive this content</string>
+    <string name="failed_to_create_incoming_dir" formatted="false">Failed to create incoming directory</string>
     <string name="welcome_to_uin_tool" formatted="false">Welcome to UIN Tool</string>
     <string name="when_enabled_unsigned_plugins_can_be" formatted="false">When enabled, unsigned plugins can be installed, but this carries a security risk</string>
     <string name="widget" formatted="false">Widget</string>
@@ -2185,4 +2208,8 @@ Please import plugins in the app first</string>
     <string name="gradient_dir_top_right" formatted="false">Top right</string>
     <string name="gradient_dir_bottom_left" formatted="false">Bottom left</string>
     <string name="gradient_dir_bottom_right" formatted="false">Bottom right</string>
+    <string name="retained_session_webview_reused" formatted="false">Reusing retained WebView session</string>
+    <string name="retained_session_rebound_clients" formatted="false">Re-bound WebViewClient/JS interface to this activity</string>
+    <string name="retained_session_webview_missing_create_new" formatted="false">Retained session missing, creating new WebView</string>
+    <string name="retained_session_webview_cached" formatted="false">WebView session retained for next open</string>
 </resources>
