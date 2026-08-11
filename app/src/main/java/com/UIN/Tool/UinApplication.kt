@@ -391,6 +391,16 @@ class UinApplication : TermuxApplication() {
             }
         }
 
+        // 在共享存储工作目录创建 .nomedia，阻止 Android 媒体库扫描其中的文件（如插件资源、下载文件）
+        val noMediaFile = File(workDir, ".nomedia")
+        if (!noMediaFile.exists()) {
+            try {
+                noMediaFile.createNewFile()
+            } catch (_: Exception) {
+                Logger.w(TAG, "Failed to create .nomedia in ${workDir.absolutePath}")
+            }
+        }
+
         // 清理历史遗留的空 Termux 目录（usr/var/etc 等不属于本软件，仅删除空目录）。
         // 先删最深子目录，再删父目录，避免父目录因内含空子目录而被跳过。
         val staleTermuxDirs = listOf(

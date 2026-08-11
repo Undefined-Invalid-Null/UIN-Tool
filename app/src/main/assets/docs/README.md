@@ -1468,7 +1468,7 @@ UINPlugin.httpGet('https://example.com', callbackId);
 
 **外部内容接收（openWith，v5.4.0 新增）**
 
-从系统「分享 / 用其他应用打开」传给本插件的内容，可通过 `UINPlugin.getOpenData()` 读取（返回 **JSON 字符串**，无数据时返回 `{}`）。宿主同时注入 `window.UINOpenData`（同内容字符串）与 `window.getOpenData()`（等效函数）：
+从系统「分享 / 用其他应用打开」或第三方应用显式 intent 传给本插件的内容，可通过 `UINPlugin.getOpenData()` 读取（返回 **JSON 字符串**，无数据时返回 `{}`）。宿主同时注入 `window.UINOpenData`（同内容字符串）与 `window.getOpenData()`（等效函数）：
 
 ```javascript
 // 读取外部打开内容
@@ -1484,7 +1484,20 @@ if (openData.kind === 'url') {
 }
 ```
 
-字段说明见本文档 **12.3.4 外部内容接收（openWith）** 的「openData JSON 结构」表。
+字段结构（含 `kind` / `type` / `when` / `mime` / `url` / `text` / `uri` / `name` / `filePath` / `files` / `streamCount` 及「文本 vs 链接」判别、`.incoming/` 命名规则）、宿主各接收 Action/MIME 清单、以及第三方应用**跳过中转页直接唤起插件**（`plugin_id` / `instance_id` / `open_data` extras）的完整说明，见本文档 **12.3.4 外部内容接收（openWith）**。
+
+**向外发送 intent（v4.5.0 起）**
+
+Web 插件自身也可发起系统 intent，两处等价（`callHost` 与 `@JavascriptInterface` 直连方法均可用）：
+
+```javascript
+UINPlugin.callHost('openUrl', 'https://example.com'); // ACTION_VIEW，系统浏览器/应用打开链接
+UINPlugin.openUrl('https://example.com');             // 同上（@JavascriptInterface）
+UINPlugin.callHost('share', '分享内容');              // ACTION_SEND text/plain，弹出分享面板
+UINPlugin.share('分享内容');                          // 同上
+```
+
+> `openUrl` 参数为裸 URL（会自动用 `ACTION_VIEW` 打开）；`share` 参数为纯文本（`EXTRA_TEXT`）。意图中转（openWith）接收的外部内容与这些发送 API 相互独立。
 
 ### 11.2 存储 API
 
@@ -1964,9 +1977,12 @@ plugin.tpk
 | `acceptUrl` | boolean | `true` | ❌ | 是否接受 URL / 链接（自动识别 `http(s)`、`magnet:` 或 `Patterns.WEB_URL`）。 |
 | `acceptFile` | boolean | `true` | ❌ | 是否接受文件（`content://` / `file://`，含 `SEND_MULTIPLE` 多选）。 |
 
-**匹配规则**：中转页按「内容类型」（`file` / `text` / `url`）先过滤 `accept*` 开关，再按 MIME 精确/通配匹配。仅 1 个匹配插件时**自动打开**；无匹配时中转页提示「没有已安装的插件可以接收该内容」。
+**匹配规则**：中转页按「内容类型」（`file` / `text` / `url`）先过滤 `enabled` 与 `accept*` 开关，再按 MIME 精确/通配匹配（规则 `*/*` 恒匹配；`xxx/*` 按类别前缀匹配，大小写不敏感；否则精确匹配；传入 MIME 为空、规则列表为空或含 `*/*` 视为接受任意）。仅 1 个匹配插件时**自动打开**；无匹配时中转页提示「没有已安装的插件可以接收该内容」；多个匹配时展示可**实时搜索**（按 `label` / `pluginId` / `description` 过滤）的候选列表，用户点选后打开。
 
-**文件落地**：文件会自动复制进插件目录的 `.incoming/`，并在 openData JSON 中写入 `filePath`（本机绝对路径）与 `containerPath`（proot 容器内路径 `/plugins/<id>/.incoming/<文件名>`），插件后端可挂载后直接读取。
+**文件落地**：用户点选插件后，宿主才把分享的文件复制进插件目录的 `.incoming/`，并在 openData JSON 中写入 `filePath`（**复制后**本机绝对路径）、`incomingName`（复制后的文件名）与 `containerPath`（proot 容器内挂载路径 `/plugins/<id>/.incoming/<文件名>`），插件后端可挂载后直接读取。
+- **命名规则**：`<时间戳>_<消毒后原文件名>`；非法字符 `\ / : * ? " < > |` 及空白统一替换为 `_`，最长保留 120 字符，避免同名/含路径字符的文件互相覆盖。
+- `content://` 与 `file://` 来源都会被复制（`file://` 虽可直接读，也会复制一份到 `.incoming/`，`filePath` 指向该副本）。
+- 复制失败（URI 过期 / 无读取权限）时对应文件仍保留原始 `uri`，但无 `filePath` / `containerPath`。`.incoming/` **不会自动清理**：Web 插件的 JS `fs` API 被沙箱限制在插件 `data/` 目录，无法直接删除 `.incoming/` 内的文件，需由**后端进程**清理（proot 内容器内执行 `rm -f /plugins/<id>/.incoming/*`）；原生插件可用 `getPluginDir()` 访问并自行清理。
 
 **openData JSON 结构**（宿主注入，插件只读）：
 
@@ -1974,19 +1990,57 @@ plugin.tpk
 |----------|------|------|
 | `kind` / `type` | string | 内容类型：`file` / `text` / `url` |
 | `when` | long | 接收时间戳 |
-| `mime` | string | MIME 类型（若有） |
+| `mime` | string | 发送方 intent 声明的 MIME（来自 `intent.type`）；`kind=file` 且未声明时按文件名扩展名猜测 |
 | `url` | string | `kind=url` 时的链接 |
-| `text` | string | `kind=text` 时的文本 |
-| `uri` / `name` | string | `kind=file` 时的原始 Uri 与文件名 |
-| `filePath` / `incomingName` / `containerPath` | string | 复制进 `.incoming/` 后的路径信息（`kind=file`） |
-| `files` | array | 多文件时的数组，每项含 `uri` / `name` / `mime` / `filePath` / `incomingName` / `containerPath` |
+| `text` | string | `kind=text` 时的纯文本；`kind=url` 时若发送方在分享链接的同时还附带了 `EXTRA_TEXT`，也会带上 |
+| `uri` / `name` | string | `kind=file` 时的原始 Uri（字符串）与显示文件名 |
+| `filePath` | string | `kind=file` 时：来源为 `file://` 会在采集阶段写入本机路径；**选中插件复制进 `.incoming/` 后会被覆盖为该副本的绝对路径** |
+| `incomingName` / `containerPath` | string | 复制进 `.incoming/` 后的文件名与容器内路径（`kind=file`） |
+| `files` | array | 多文件（`SEND_MULTIPLE`）时的数组，每项含 `uri` / `name` / `mime` / `filePath` / `incomingName` / `containerPath` |
 | `streamCount` | int | 文件数量（多选时） |
 
-**读取方式**：
-- **Web 插件**：宿主注入 `window.UINOpenData`（原始 JSON 字符串）与 `window.getOpenData()`（返回 JSON 字符串，无数据时返回 `{}`）；也可调用 `UINPlugin.getOpenData()`（等效，字符串返回值），`JSON.parse()` 后读取
-- **原生插件**：`onHostEvent("host.open", Bundle)`，Bundle 含 `instanceId`、`openDataJson`、`multiInstanceEnabled`
+> **「文本 vs 链接」判别**：分享的纯文本若被识别为链接（`Patterns.WEB_URL` 全串匹配，或以 `http://` / `https://` / `magnet:` 开头），宿主会归为 `kind` / `type = url` 并把 `url` 字段设为该文本；否则归为 `kind=text`。即「分享的是链接」与「分享的是正文」在进入插件前已自动区分。
 
-> ⚠️ 宿主 `PluginOpenDispatchActivity` 仅在 `ACTION_SEND` / `SEND_MULTIPLE` / `VIEW` + `text/*`、`*/*` 及通用 MIME 的 intent-filter 下被系统唤起；其它应用调用时 UIN Tool 会显示为可接收分享的应用之一。
+**读取方式**：
+- **Web 插件**：宿主在 WebView 创建完成时注入 `window.UINOpenData`（JSON 字符串）与 `window.getOpenData()`（等效函数，返回 JSON 字符串）；无数据时两者均为 `'{}'`。也可调用 `UINPlugin.getOpenData()`（`@JavascriptInterface`，等价返回，无数据返回 `{}`），`JSON.parse()` 后读取。
+- **原生插件**：视图加载完成时宿主调用 `PluginInterface.onHostEvent("host.open", Bundle)`，Bundle 含 `instanceId`、`openDataJson`（JSON 字符串，可能为 null）、`multiInstanceEnabled`。
+- 数据只随**当前会话**传递，**不持久化**；重新打开插件（无新的 intent）时 `getOpenData()` 返回 `{}`。
+
+**宿主接收的 Intent-filter 一览**（`AndroidManifest.xml` 中 `PluginOpenDispatchActivity` 声明）：
+
+| Action | MIME | 场景 |
+|--------|------|------|
+| `ACTION_SEND` | `text/*` | 分享纯文本 / 链接 |
+| `ACTION_SEND` | `*/*` | 分享任意单文件 |
+| `ACTION_SEND_MULTIPLE` | `*/*` | 分享多文件 |
+| `ACTION_VIEW` | `application/*`、`audio/*`、`image/*`、`message/*`、`multipart/*`、`text/*`、`video/*` | 「用其他应用打开」文件 |
+
+> ⚠️ `ACTION_VIEW` 分支 **没有** `*/*` 通配，也不含 `font/*`、`model/*` 等类别；不属于上述清单的未知类型文件只能通过「分享」（`ACTION_SEND`）或外部显式 intent（见下）投递给 UIN Tool。
+
+**外部应用直接唤起插件（跳过中转页）**
+
+`PluginHostActivity` 声明为 `exported="true"`，任何应用都可向其发送显式 intent 直接打开某插件并投递数据，其结果等价于 openWith 中转完成后的打开：
+
+| Extra | 类型 | 说明 |
+|-------|------|------|
+| `plugin_id` | String | **必填**，要打开的插件 ID（`PluginHostActivity.EXTRA_PLUGIN_ID`） |
+| `instance_id` | String | 可选，实例 ID（多开时指定目标实例；缺省自动生成） |
+| `open_data` | String | 可选，openData JSON 字符串（结构见上表），插件侧用 `getOpenData()` / `onHostEvent("host.open")` 读取 |
+
+```kotlin
+// 第三方应用示例：无需中转页，直接把一段文本投递给支持 openWith 的插件
+val intent = Intent(Intent.ACTION_VIEW).apply {
+    setClassName("com.UIN.Tool", "com.UIN.Tool.plugin.PluginHostActivity")
+    putExtra("plugin_id", "com.example.editor")
+    putExtra("open_data",
+        """{"kind":"text","type":"text","when":1700000000000,"text":"来自第三方应用的内容"}"""
+    )
+    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
+context.startActivity(intent)
+```
+
+> 第三方应用也可以直接向 `PluginOpenDispatchActivity` 发起 `ACTION_SEND` + `text/*` / `*/*`（或 `SEND_MULTIPLE`），让用户从中转页选择插件，效果与系统分享面板一致。
 
 #### 12.3.5 资源限制字段
 
