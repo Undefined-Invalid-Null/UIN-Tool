@@ -239,12 +239,7 @@ fun PluginManageScreen(
                                     }
                                 }
 
-                                if (!SecurityUtils.verifyFileSignature(outFile, preferenceManager)) {
-                                    failCount++
-                                    failNames.add(Str.get(R.string.filename_signature_verification_fail, fileName))
-                                    continue
-                                }
-
+                                // 签名校验改由 installPlugin 内部按 pluginId 完成，这里不再重复校验
                                 val info = pluginManager.installPlugin(outFile, fileName)
                                 if (info != null) {
                                     successCount++

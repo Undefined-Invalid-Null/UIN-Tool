@@ -423,20 +423,24 @@ class PluginContext(
 
     // ==================== 权限状态管理 ====================
 
+    @Deprecated("Deprecated: use per-permission check via PluginPermissionManager instead")
     fun getPermissionState(): Int {
         return getInt("permission_state", 0)
     }
 
+    @Deprecated("Deprecated: use per-permission grant/block via PluginPermissionManager instead")
     fun setPermissionState(state: Int) {
         putInt("permission_state", state)
         putLong("permission_state_timestamp", System.currentTimeMillis())
         Logger.d(TAG, Str.get(R.string.permission_state_updated_state_plugi, state, getPluginId()))
     }
 
+    @Deprecated("Deprecated: use per-permission check via PluginPermissionManager instead")
     fun shouldShowPermissionDialog(): Boolean {
         return getPermissionState() == 0
     }
 
+    @Deprecated("Deprecated: use per-permission check via PluginPermissionManager instead")
     fun getPermissionStateDescription(): String {
         return when (getPermissionState()) {
             0 -> Str.get(R.string.not_granted)
@@ -446,6 +450,7 @@ class PluginContext(
         }
     }
 
+    @Deprecated("Deprecated: use per-permission grant/block via PluginPermissionManager instead")
     fun clearPermissionState() {
         remove("permission_state")
         remove("permission_state_timestamp")

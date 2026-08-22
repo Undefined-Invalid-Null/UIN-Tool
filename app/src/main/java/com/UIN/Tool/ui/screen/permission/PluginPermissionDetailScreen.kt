@@ -291,10 +291,19 @@ fun PluginPermissionDetailScreen(
                                 permission = permission,
                                 granted = granted,
                                 onRequest = {
-                                    if (!granted && !isRequesting) {
-                                        pluginManager.requestPluginPermissions(
-                                            plugin.pluginId
-                                        ) { _ ->
+                                    if (isRequesting) return@PermissionDetailItem
+                                    val pid = plugin.pluginId
+                                    // 已生效 → 撤销（插件层封禁）；未生效 → 解除封禁/发起授权
+                                    if (granted) {
+                                        PluginPermissionManager.setPermissionBlocked(context, pid, permission, true)
+                                        AppToast.info(context, Str.get(R.string.permission_revoked_permission, permission))
+                                        loadPermissions()
+                                    } else if (PluginPermissionManager.isPermissionBlocked(context, pid, permission)) {
+                                        PluginPermissionManager.setPermissionBlocked(context, pid, permission, false)
+                                        AppToast.info(context, Str.get(R.string.permission_unblocked_permission, permission))
+                                        loadPermissions()
+                                    } else {
+                                        pluginManager.requestPluginPermissions(pid) { _ ->
                                             loadPermissions()
                                         }
                                     }
@@ -318,6 +327,21 @@ fun PluginPermissionDetailScreen(
                         modifier = Modifier.weight(1f),
                         enabled = !allGranted && !isRequesting,
                         loading = isRequesting
+                    )
+
+                    UnifiedButton(
+                        text = Str.get(R.string.revoke_all_permissions),
+                        icon = Icons.Default.Close,
+                        onClick = {
+                            if (isRequesting) return@UnifiedButton
+                            val pid = plugin?.pluginId ?: return@UnifiedButton
+                            PluginPermissionManager.blockAllDeclaredPermissions(context, pid)
+                            AppToast.info(context, Str.get(R.string.all_permissions_revoked))
+                            loadPermissions()
+                        },
+                        modifier = Modifier.weight(0.6f),
+                        enabled = !isRequesting,
+                        variant = ButtonVariant.Destructive
                     )
 
                     UnifiedButton(

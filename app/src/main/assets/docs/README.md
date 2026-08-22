@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.4.0 |
-| 对应应用版本 | v5.4.0 (Build 20) |
-| 最后更新 | 2026年8月10日 |
+| 文档版本 | 5.5.0 |
+| 对应应用版本 | v5.5.0 (Build 21) |
+| 最后更新 | 2026年8月22日 |
 
 ---
 
@@ -43,7 +43,8 @@
   - [5.2.2 后端环境（仅实体 Termux）](#522-后端环境仅实体-termux)
   - [5.2.3 空闲自动回收](#523-空闲自动回收)
   - [5.2.4 实体 Termux 初始化命令](#524-实体-termux-初始化命令)
-  - [5.2.5 运行环境如何被使用](#525-运行环境如何被使用)
+  - [5.2.5 实体 Termux 共享 Supervisor](#525-实体-termux-共享-supervisor)
+  - [5.2.6 运行环境如何被使用](#526-运行环境如何被使用)
 - [5.3 启动命令与后端文件](#53-启动命令与后端文件)
 - [5.4 plugin.json 配置](#54-pluginjson-配置)
 - [5.5 前端与后端通信](#55-前端与后端通信)
@@ -66,8 +67,8 @@
 - [7.6 数据版本管理](#76-数据版本管理)
 
 ### 八、权限系统（v4.4.0 完善）
-- [8.1 权限状态管理](#81-权限状态管理)
-- [8.2 权限状态值](#82-权限状态值)
+- [8.1 权限交互模型](#81-权限交互模型)
+- [8.2 权限状态管理](#82-权限状态管理)
 - [8.3 权限请求的实际流程](#83-权限请求的实际流程)
 - [8.4 权限声明](#84-权限声明)
 - [8.5 权限类型](#85-权限类型)
@@ -151,17 +152,34 @@
 
 ### 1.2 配置插件信息
 
+向导「基本信息」页可配置以下字段（`plugin.json` 中均有对应字段）：
+
 | 字段 | 说明 | 示例 | 必填 |
 |------|------|------|------|
 | 插件ID | 唯一标识符，域名倒序格式 | com.example.myplugin | ✅ |
 | 插件名称 | 在列表中显示的名称 | 我的插件 | ✅ |
 | 作者 | 开发者名称 | 张三 | ❌ |
 | 描述 | 插件功能说明 | 这是一个示例插件 | ❌ |
-| 插件说明 | 首次打开显示的说明 | 欢迎使用！ | ❌ |
+| 插件说明 | 首次打开显示的说明（notice） | 欢迎使用！ | ❌ |
 | 版本号 | 数字版本，用于版本比较 | 1 | ✅ |
 | 版本名 | 显示版本号 | 1.0.0 | ✅ |
 | 主类名 | 入口类的完整路径（原生插件） | com.example.MainPlugin | ✅ |
 | 入口文件 | Web 插件入口（Web 插件） | web/index.html | ✅ |
+| 权限 | 插件声明的权限（弹窗多选） | 见 8.4 | ❌ |
+| 最低宿主版本 | 最低宿主版本号 | 1 | ❌ |
+| 分类 | 插件分类名 | 工具 | ❌ |
+| 更新地址 | 插件更新检测地址 | https://.../plugin.json | ❌ |
+| 后端启动命令 | Web+后端 插件的启动命令（`sh -lc` 执行） | sh scripts/start.sh | Web+后端✅ |
+| 后端超时 | 后端就绪等待超时（秒） | 30 | ❌ |
+| 健康检查路径 | 后端就绪探测端点 | /health | ❌ |
+| 接收外部内容 | 是否出现在系统分享 / 「用其他应用打开」选择中（openWith） | 关 | ❌ |
+| 接收者名称 | openWith 中转页显示名（留空用插件名） | 编写助手 | ❌ |
+| MIME 类型 | openWith 支持的文件类型（逗号分隔） | text/*,application/pdf | ❌ |
+| 接收类型 | openWith 接受文本 / 链接 / 文件 | 全开 | ❌ |
+
+> 图标、插件代码、资源文件在向导后续步骤中配置。`signature` 由宿主维护，勿手写。
+>
+> v5.5.0 起向导字段精简：不再提供「最大内存 / 最长 CPU 时间 / 最大并发任务数（资源限制）、依赖项、API 级别、后端保活」等输入项（这些字段不写向导生成的 plugin.json；`backendMaxRetries`/`backendLogLevel`/`backendEnv` 等为预留字段，见 12.3.3）。「插件说明（notice）」保留。
 
 ### 1.3 编写代码
 
@@ -433,11 +451,15 @@ pctx.markDataMigrated()                       // 标记已迁移
 val migrated = pctx.isDataMigrated()
 
 // ============ 权限状态管理 ============
-val state = pctx.getPermissionState()         // 0/1/2
-pctx.setPermissionState(1)  // 1=已授权
-pctx.shouldShowPermissionDialog()             // state==0 时 true
-pctx.getPermissionStateDescription()          // "未授权"/"已授权"/"已拒绝"
-pctx.clearPermissionState()                   // 重置为未授权
+// v5.5.0 起废弃 permission_state（0/1/2 单值）API，改为按权限逐一判断（授予 / 封禁）。
+// 旧接口保留兼容但不再驱动交互流程，请改用 PluginPermissionManager 的
+// checkPluginPermission / setPermissionBlocked / getPluginPermissionStatus。
+// 示例（旧接口，已废弃）：
+val state = pctx.getPermissionState()         // 0/1/2（@Deprecated）
+pctx.setPermissionState(1)  // 1=已授权（@Deprecated）
+pctx.shouldShowPermissionDialog()             // state==0 时 true（@Deprecated）
+pctx.getPermissionStateDescription()          // "未授权"/"已授权"/"已拒绝"（@Deprecated）
+pctx.clearPermissionState()                   // 重置为未授权（@Deprecated）
 ```
 
 ---
@@ -614,10 +636,11 @@ Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统�
 
 | 设置项 | 选项 | 说明 |
 |------|------|------|
-| **空闲回收超时** | 3 / 5 / 10 / 15 分钟（默认 5） | 后端空闲超过该时长自动停止，节省资源；活动请求会刷新计时 |
+| **空闲回收超时** | 3 / 5 / 10 / 15 分钟（默认 5）/ 无限 | 后端空闲超过该时长自动停止，节省资源；活动请求会刷新计时；支持自定义任意分钟数，选「无限」则永不自动回收 |
 
 - 停止时优先调用约定的 HTTP `/stop` 端点优雅退出（推荐在启动脚本里实现，见 5.6）
-- 实体 Termux 的进程宿主无法直接杀死，优雅退出**依赖** `/stop` 接口，因此后端脚本务必实现它
+- **内置 Termux**：额外按进程组 `SIGKILL` 终止
+- **实体 Termux**：空闲回收由共享 supervisor 统一管理（见 5.2.5），按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树，**不依赖插件实现 `/stop`**；宿主只做端口探测与状态清理
 
 #### 5.2.4 实体 Termux 初始化命令
 
@@ -633,7 +656,20 @@ mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.propert
 3. `termux-reload-settings` 重载配置
 > 启动失败时宿主会自动探测缺失项并给出对应引导（`allow-external-apps`、`termux-setup-storage`、`proot-distro install`、`RUN_COMMAND` 权限）。
 
-#### 5.2.5 运行环境如何被使用
+#### 5.2.5 实体 Termux 共享 Supervisor
+
+实体 Termux（proot 或本机模式）改用**单个常驻共享 supervisor**：容器/会话只初始化一次，所有插件后端作为 supervisor 的子进程运行，后续插件启动省掉 proot 初始化开销（冷启动约 5s）。内置 Termux（alpine，约 2s）保持不变（每插件独立 proot）。
+
+- 通信协议（控制目录 `<plugins根>/.uin/`）：`cmd/<key>.cmd`（启动命令）、`pid/<key>`（后端 PID）、`stop/<key>`（停止请求）、`idle/<key>`（空闲分钟数）、`idle/<key>.start`（启动时间戳）、`alive`（supervisor 存活标记）、`host_alive`（宿主心跳，每 30s touch，超时 300s supervisor 自退）、`shutdown`（退出标记）、`keep_alive`（后台保活标记）
+- proot 启动：`proot-distro login <container> --bind '<plugins根>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`
+- 本机启动：`sh '<plugins根>/.uin/supervisor.sh' '<plugins根>'`
+- 空闲回收：supervisor 按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树；`kill -0 $pid` 检测进程存活
+- 宿主存活期间 supervisor 常驻；宿主退出时写 `shutdown` 标记，supervisor 自退
+- 软件启动时后台自动预热 supervisor（`prewarm`），保存后端设置时同样触发
+- 后端设置页新增「共享调度器」状态卡（RUN_COMMAND 权限 + supervisor 存活状态）
+- **后台保活**（可选）：开启后 supervisor 不再因宿主进程被杀而退出，配合电池优化豁免 + 通知栏 + Shizuku/Dhizuku 权限保持后台存活
+
+#### 5.2.6 运行环境如何被使用
 
 插件打开后，宿主按全局设置选择执行路径：
 
@@ -827,10 +863,10 @@ function callBackend() {
 
 **后端生命周期**
 
-- 插件打开 → 宿主自动启动后端（`backendAutoStart: true`）
+- 插件打开 → 宿主自动启动后端（`backendAutoStart: true`）；实体 Termux 由共享 supervisor 统一管理（见 5.2.5），首次启动约 5s 初始化容器/会话，后续插件启动即时可用
 - 就绪判定：先做 TCP 端口探测（500ms 连接超时），端口打开后再发 **GET** 健康检查（不用 HEAD，避免 501），返回 200 即视为就绪；每 200ms 重试直到超时
-- 插件关闭 → 宿主调用 `GET http://127.0.0.1:<port>/stop` 优雅退出（内置 Termux 额外按进程组终止进程）
-- 空闲回收：后端超过「空闲回收超时」（全局设置，默认 5 分钟，可选 3/5/10/15 分钟）未被调用时自动停止；WebView 直连请求也会刷新计时，防止误回收
+- 插件关闭 → 宿主调用 `GET http://127.0.0.1:<port>/stop` 优雅退出（内置 Termux 额外按进程组终止进程；实体 Termux 由 supervisor 按 PID 递归杀进程树）
+- 空闲回收：后端超过「空闲回收超时」（全局设置，默认 5 分钟，预设 3/5/10/15 分钟或自定义任意分钟数；设为「无限」则永不自动回收）未被调用时自动停止；WebView 直连请求也会刷新计时，防止误回收。**实体 Termux**：由共享 supervisor 按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树（不依赖插件实现 `/stop`）；宿主只做端口探测与状态清理。「无限」时不写 idle 文件，后端只在主动停止时结束
 
 
 ## 六、CUI 终端插件开发（v4.5.0 新增）
@@ -1169,44 +1205,36 @@ val migrated = pctx.isDataMigrated()
 
 ## 八、权限系统
 
-### 8.1 权限状态管理
+### 8.1 权限交互模型
 
-权限状态持久化存储，一次授权永久生效：
+> v5.5.0 起，插件权限交互分为两类：**Web 插件**（有/无后端均可）与**原生插件**。
 
-```kotlin
-// 读取权限状态
-val state = pctx.getPermissionState()
+**Web 插件**（`uiType: "web"`，含 `web+后端`）：
+- 权限管理页可管理其全部声明权限（授予 / 撤销 / 封禁），**无刷新按钮**——授权 / 撤销后列表自动刷新；按钮行提供「**全部授权**」/「**全部撤销**」短文案按钮（v5.5.0 起改短，保证完整显示）。
+- 打开插件时，宿主**先弹权限提示框再打开插件**（弹窗使用**宿主统一风格**渲染）：列出**尚未授予**的权限，提供「确定」「不再提示」「管理权限」三个选项——「管理权限」直接跳转到该插件的权限管理页。
 
-// 设置权限状态
-pctx.setPermissionState(1)  // 1=已授权
-pctx.setPermissionState(2)  // 2=已拒绝
+**原生插件**（`uiType: "native"`）：
+- 原生插件是进程内 Android 代码，可直接调用系统 API，**权限由系统强制**（未授予时抛 `SecurityException`），宿主无法在应用层细粒度拦截或封禁。
+- 每次打开插件时，宿主**先弹权限提示框再打开插件**（弹窗使用**宿主统一风格**渲染）：列出插件声明（所需）的权限，提供「确定」「不再显示」两个选项。
+- 权限管理页**不列出**原生插件（原生权限由系统管理，应用层无法管控）。
 
-// 检查是否需要弹窗
-val shouldShow = pctx.shouldShowPermissionDialog()
-```
+> 「不再提示/不再显示」选择按插件持久化（`plugin_permission_prompts` 偏好项），选择后可重新在权限管理页或其他入口重新触发。
 
-### 8.2 权限状态值
+### 8.2 权限状态管理
 
-| 状态值 | 含义 | 行为 |
-|--------|------|------|
-| 0 | 未授权 | 显示权限弹窗 |
-| 1 | 已授权 | 直接进入插件 |
-| 2 | 已拒绝 | 直接进入插件（状态0或2都会检查实际权限） |
+> 说明：v5.5.0 起废弃旧版「按状态自动弹窗」的 `permission_state`（0/1/2 单值）API。权限状态改为**按权限逐一判断**（授予 / 封禁），不再使用单一状态值驱动弹窗逻辑。旧接口保留兼容但不再用于交互流程。
 
 ### 8.3 权限请求的实际流程
 
-> 说明：`shouldShowPermissionDialog()`/`setPermissionState()` 定义的「按状态自动弹窗」流程目前为**预留设计**（代码中尚无 UI 调用入口）。当前版本权限请求通过以下两条路径发生：
-
-1. **权限管理界面**：插件安装后，可在「插件管理 → 权限」中按分组请求插件声明的权限。
-2. **JS 运行时请求**：Web 插件调用 `UINPlugin.checkPermission()` / `UINPlugin.requestPermission()` / `UINPlugin.requestPermissions()`：
+1. **打开插件时的权限提示**（弹窗使用**宿主统一风格**渲染）：Web 插件列出未授予权限（确定 / 不再提示 / 管理权限）；原生插件列出所需权限（确定 / 不再显示）——**先弹窗再打开插件**。
+2. **权限管理界面**：插件安装后，可在「插件管理 → 权限」中按插件管理声明的权限（仅 Web 插件，**无刷新按钮**，授权 / 撤销后自动刷新）。按钮行提供「**全部授权**」/「**全部撤销**」两个短文案按钮（v5.5.0 起由原「一键授权/撤销所有权限」改短，保证完整显示），支持对整插件批量操作。
+3. **JS 运行时请求**：Web 插件调用 `UINPlugin.checkPermission()` / `UINPlugin.requestPermission()` / `UINPlugin.requestPermissions()`：
    - **普通权限**（相机、录音、定位等）：走系统运行时权限弹窗，结果经 callbackId 回传 `{"success","allGranted","results":{perm:bool}}`
    - **特殊权限**（悬浮窗、无障碍、安装未知应用等）：宿主弹对话框引导用户去**系统设置页**手动授权，授权结果需用户自行返回
 
-权限状态（`permission_state`）会被持久化到 KV 中，但「状态=0 自动弹窗」「状态=2 自动退出」等联动逻辑尚未接线。
-
 ### 8.4 权限声明
 
-**⚠️ 权限以逗号分隔的字符串声明**（宿主按 `,` 拆分；写成 JSON 数组会被解析为空列表）：
+**两种声明格式均兼容**（宿主按优先级解析：JSON 数组优先，逗号分隔字符串其次）：
 
 ```json
 {
@@ -1214,12 +1242,20 @@ val shouldShow = pctx.shouldShowPermissionDialog()
 }
 ```
 
+```json
+{
+    "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO", "android.permission.ACCESS_FINE_LOCATION"]
+}
+```
+
+> 说明：旧版宿主只认逗号分隔字符串、会忽略 JSON 数组；v5.5.0 起 `parseStringList()` 对「权限、依赖、MIME 类型」等列表字段同时兼容两种格式，且向导在「权限」字段以**弹窗多选**方式生成字符串。伪权限（`READ_CLIPBOARD` / `WRITE_CLIPBOARD`）与真实权限一样在 `permissions` 中声明，仅需声明即生效，无需运行时授权。
+
 ### 8.5 权限类型
 
 | 权限（简名） | 完整权限名 | 说明 | 类型 |
 |------|------|------|------|
-| READ_EXTERNAL_STORAGE | android.permission.READ_EXTERNAL_STORAGE | 读取存储 | 普通 |
-| WRITE_EXTERNAL_STORAGE | android.permission.WRITE_EXTERNAL_STORAGE | 写入存储 | 普通 |
+| READ_EXTERNAL_STORAGE | android.permission.READ_EXTERNAL_STORAGE | 读取外部存储 | 普通 |
+| WRITE_EXTERNAL_STORAGE | android.permission.WRITE_EXTERNAL_STORAGE | 写入外部存储 | 普通 |
 | INTERNET | android.permission.INTERNET | 访问网络 | 普通 |
 | CAMERA | android.permission.CAMERA | 相机 | 普通 |
 | RECORD_AUDIO | android.permission.RECORD_AUDIO | 录音 | 普通 |
@@ -1231,6 +1267,10 @@ val shouldShow = pctx.shouldShowPermissionDialog()
 | PACKAGE_USAGE_STATS | android.permission.PACKAGE_USAGE_STATS | 应用使用统计 | 特殊 |
 | ACCESSIBILITY | android.permission.ACCESSIBILITY | 无障碍服务 | 特殊 |
 | POST_NOTIFICATIONS | android.permission.POST_NOTIFICATIONS | 发送通知（Android 13+） | 特殊 |
+| READ_CLIPBOARD | （伪权限） | 读取剪贴板（`getClipboard`/`paste`/`clearClipboard`） | 伪权限 |
+| WRITE_CLIPBOARD | （伪权限） | 写入剪贴板（`setClipboard`/`copyToClipboard`） | 伪权限 |
+
+> 向导「权限」弹窗已包含全部常用权限（含 `READ_CLIPBOARD` / `WRITE_CLIPBOARD`）；权限管理页对伪权限只做「声明 + 封禁」控制，不发起运行时授权。
 
 ---
 
@@ -1398,6 +1438,8 @@ class MainPlugin : PluginInterface {
 | **独立端口** | 每个实例启动独立的后端进程与端口（`PluginBackendManager.startBackendInstance` 按实例键启动），实例互不干扰 | 「开发工具」→「每实例独立后端端口」**开启** |
 
 > 多开场景下若配置了独立端口模式，插件后端通过 `$PORT` 环境变量感知自己是哪个实例（`$PORT` 该实例独享）；共享端口模式下仅主实例持有后端，其余实例复用其 `$PORT`。
+
+**保留会话单窗口（v5.5.0）**：「关闭时保留会话」开关默认**开启**——默认启用单窗口去重（共享端口模式 + Web 插件时，同一插件**只保留一个后台窗口**，重复打开会把已有窗口带到前台并结束本次启动，不再多开实例，多任务窗口仅显示一个）。用户可在「开发工具」中显式关闭后，Web / CUI 插件每次打开都是独立实例（支持多开）。
 
 ---
 
@@ -1882,23 +1924,16 @@ plugin.tpk
     "icon": "icon.png",
     "mainClass": "com.example.MainPlugin",
     "updateUrl": "https://github.com/UIN-Tool-Plugins/myplugin",
-    "apiLevel": 21,
     "category": "工具",
     "uiType": "web",
     "entry": "web/index.html",
     "permissions": "android.permission.INTERNET",
-    "dependencies": "com.example.lib",
     "backend": "other",
     "backendStartCommand": "sh scripts/start.sh",
     "backendStartEntry": "scripts/start.sh",
     "backendAutoStart": true,
     "backendTimeout": 30,
     "backendHealthCheck": "/health",
-    "backendMaxRetries": 3,
-    "backendLogLevel": "info",
-    "maxMemory": 512,
-    "maxCpuTime": 60,
-    "maxConcurrentTasks": 5,
     "openWith": {
         "enabled": true,
         "label": "我的接收器",
@@ -1909,6 +1944,8 @@ plugin.tpk
     }
 }
 ```
+
+> 以上为**向导生成的完整字段**（v5.5.0 起不再包含 `apiLevel`/`dependencies`/`backendKeepAlive`/`backendMaxRetries`/`backendLogLevel`/`maxMemory`/`maxCpuTime`/`maxConcurrentTasks`，这些字段仍可手动写入 plugin.json，见 12.3.3 / 12.3.5）。
 
 #### 12.3.2 基础信息字段
 
@@ -1930,13 +1967,13 @@ plugin.tpk
 | `signature` | string | `""` | ❌ | 插件签名（宿主安装时写入并校验，防篡改）。一般由宿主维护，勿手写。 |
 | `uiType` | string | `native` | ✅ | 前端类型：`native`（原生 View）、`web`（WebView）、`cui`（全屏终端）。决定宿主的加载分支。 |
 | `entry` | string | `web/index.html` | Web✅ | Web 插件入口页面（相对插件根目录，宿主用 `file://<pluginDir>/<entry>` 加载）。CUI 留空。必须指向 HTML 页面；v5.1.0 向导已正确生成，旧版生成的插件若 `entry` 指向脚本路径需手动改回。 |
-| `permissions` | string | `""` | ❌ | 所需权限列表，**逗号分隔字符串**（如 `android.permission.INTERNET,android.permission.VIBRATE`）。⚠️ 宿主按 `,` 拆分解析，写成 JSON 数组会被忽略。 |
-| `dependencies` | string | `""` | ❌ | 依赖插件 ID 列表，**逗号分隔字符串**（宿主按 `,` 拆分；JSON 数组形式会被忽略）。宿主启动前检查依赖是否存在。 |
+| `permissions` | string | `""` | ❌ | 所需权限列表。**两种格式均可**：逗号分隔字符串（如 `android.permission.INTERNET,android.permission.VIBRATE`）或 JSON 数组。v5.5.0 起 `parseStringList()` 兼容两种格式；旧版只认逗号分隔字符串。含伪权限（`READ_CLIPBOARD`/`WRITE_CLIPBOARD`）。向导「权限」弹窗多选生成。 |
+| `dependencies` | string | `""` | ❌ | 依赖插件 ID 列表。**两种格式均可**（逗号分隔字符串或 JSON 数组）。宿主启动前检查依赖是否存在。 |
 | `frontendConfig` | object | `{}` | ❌ | **预留字段**。模型已声明（`Map<String, Any>`），但当前版本不参与 JSON 读写、无任何消费者，勿在 plugin.json 中填写。 |
 
 #### 12.3.3 后端配置字段
 
-> v5.1.0 起后端统一为「启动命令」模式（`backendStartCommand`），旧式按语言启动字段（`backendPort`/`backendEntry`/`backendBinary`/`backendPreCommand` 等）不再用于新式流程，插件加载时由 `migrateLegacyBackend()` 自动转换为 `backendStartCommand`。运行环境在「管理」页的「后端运行设置」中全局配置。
+> v5.1.0 起后端统一为「启动命令」模式（`backendStartCommand`），旧式按语言启动字段（`backendPort`/`backendEntry`/`backendBinary`/`backendPreCommand` 等）不再用于新式流程，插件加载时由 `migrateLegacyBackend()` 自动转换为 `backendStartCommand`。运行环境在「管理」页的「后端运行设置」中全局配置。向导可配置 `backendStartCommand`、`backendTimeout`、`backendHealthCheck`（v5.5.0 起向导精简，不再提供「后端保活」输入项）。
 
 | 字段 | 类型 | 默认值 | 必填 | 详细说明 |
 |------|------|--------|------|----------|
@@ -1955,7 +1992,7 @@ plugin.tpk
 
 #### 12.3.4 外部内容接收（openWith，v5.4.0 新增）
 
-`openWith`（意图中转）声明本插件可接收从系统「分享 / 用其他应用打开」传入的**文本、链接、文件**。声明后，插件会出现在系统分享面板的「UIN Tool」入口与应用内「选择接收插件」中转页中。
+`openWith`（意图中转）声明本插件可接收从系统「分享 / 用其他应用打开」传入的**文本、链接、文件**。声明后，插件会出现在系统分享面板的「UIN Tool」入口与应用内「选择接收插件」中转页中。**v5.5.0 起向导「基本信息」页可直接配置**（开关 + 接收者名称 + MIME 类型 + 文本/链接/文件接收开关）。
 
 ```json
 "openWith": {
@@ -1972,7 +2009,7 @@ plugin.tpk
 |------|------|--------|------|----------|
 | `enabled` | boolean | `true` | ❌ | 是否启用接收外部内容。`false` 时插件不出现在中转页与系统分享入口。 |
 | `label` | string | `""` | ❌ | 在中转页显示的接收名称（留空则用插件 `name`）。 |
-| `mimeTypes` | string | `""` | ❌ | 支持的文件 MIME 类型，**逗号分隔字符串**（如 `"text/*,application/pdf"`）。⚠️ 宿主用 `optString().split(",")` 解析，**写成 JSON 数组会被忽略/解析错误**。匹配规则：规则为 `*/*` 恒匹配；规则以 `/*` 结尾（如 `text/*`）则按类型前缀比较（大小写不敏感，规则值会转小写）；否则精确匹配；传入 MIME 为空或规则列表为空/含 `*/*` 表示接受任意。 |
+| `mimeTypes` | string | `""` | ❌ | 支持的文件 MIME 类型，**逗号分隔字符串或 JSON 数组均可**（如 `"text/*,application/pdf"`；v5.5.0 起 `parseStringList()` 兼容两种格式，旧版只认逗号串）。匹配规则：规则为 `*/*` 恒匹配；规则以 `/*` 结尾（如 `text/*`）则按类型前缀比较（大小写不敏感，规则值会转小写）；否则精确匹配；传入 MIME 为空或规则列表为空/含 `*/*` 表示接受任意。 |
 | `acceptText` | boolean | `true` | ❌ | 是否接受纯文本（`ACTION_SEND` 的 `EXTRA_TEXT`）。 |
 | `acceptUrl` | boolean | `true` | ❌ | 是否接受 URL / 链接（自动识别 `http(s)`、`magnet:` 或 `Patterns.WEB_URL`）。 |
 | `acceptFile` | boolean | `true` | ❌ | 是否接受文件（`content://` / `file://`，含 `SEND_MULTIPLE` 多选）。 |
@@ -2044,11 +2081,13 @@ context.startActivity(intent)
 
 #### 12.3.5 资源限制字段
 
+> **预留字段**：模型声明并随 JSON 读写，但宿主当前未强制执行。v5.5.0 起开发向导**不再提供**这些输入项，也不写入向导生成的 plugin.json；手动编写 plugin.json 时仍可保留。
+
 | 字段 | 类型 | 默认值 | 详细说明 |
 |------|------|--------|----------|
-| `maxMemory` | int | `512` | 后端内存上限（MB）。 |
-| `maxCpuTime` | int | `60` | 后端 CPU 时间上限（秒）。 |
-| `maxConcurrentTasks` | int | `5` | 并发任务数上限。 |
+| `maxMemory` | int | `512` | 后端内存上限（MB，预留，暂不强制）。 |
+| `maxCpuTime` | int | `60` | 后端 CPU 时间上限（秒，预留，暂不强制）。 |
+| `maxConcurrentTasks` | int | `5` | 并发任务数上限（预留，暂不强制）。 |
 
 #### 12.3.6 各类型最小配置
 
@@ -2122,9 +2161,9 @@ context.startActivity(intent)
 | `com.example.termuxtest.tpk` | Termux 后端插件示例（Python 后端） |
 | `com.test.allapi.tpk` | 全接口测试插件 |
 | `com.test.storage.tpk` | 存储测试插件 |
-| `web_plugin_template.tpk` | Web 纯前端插件模板（无后端） |
+| `com.uin.compression.tpk` | 文件压缩工具插件示例（Web + 后端） |
 | `NativeTestPlugin.tpk` | 原生插件示例 |
-| `web_plugin_template.tpk` | Web 插件模板（纯前端） |
+| `web_plugin_template.tpk` | Web 纯前端插件模板（无后端，无 `plugin.dex`/`src/`） |
 
 ---
 
@@ -2322,9 +2361,9 @@ Q11: 如何清除插件数据？
 
 Web 插件可使用 UINPlugin.clearStorage() 和 UINPlugin.clearCache()。
 
-Q12: 如何重置插件权限状态？
+Q12: 如何重置插件权限？
 
-在 PluginContext 中调用 clearPermissionState() 方法，或在设备上清除应用数据。
+v5.5.0 起权限状态按权限逐一管理（授予 / 封禁），可在「插件管理 → 权限」页面为 Web 插件重置权限（授予 / 撤销 / 封禁）或解除「不再提示/不再显示」设置；原生插件权限由系统管理。旧版 `clearPermissionState()`（permission_state 单值）接口已废弃。
 
 Q13: CUI 插件脚本如何获取插件 ID 和目录？
 
@@ -2395,9 +2434,9 @@ Q15: 导出模板一直显示「导出中...」？
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.4.0 |
-| 对应应用版本 | v5.4.0 (Build 20) |
-| 最后更新 | 2026年8月10日 |
+| 文档版本 | 5.5.0 |
+| 对应应用版本 | v5.5.0 (Build 21) |
+| 最后更新 | 2026年8月22日 |
 
 ---
 

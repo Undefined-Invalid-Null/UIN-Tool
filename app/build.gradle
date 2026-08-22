@@ -18,8 +18,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 20
-        versionName "5.4.0"
+        versionCode 21
+        versionName "5.5.0"
 
         multiDexEnabled true
         multiDexKeepProguard file('multidex-config.pro')
@@ -82,6 +82,9 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+            // 接口默认方法编译为真正的 JVM default 方法（而非 abstract + DefaultImpls），
+            // 使旧版编译的插件 dex 即便不重写 onHostEvent 等方法也不会抛 AbstractMethodError。
+            freeCompilerArgs.add("-Xjvm-default=all")
         }
     }
 

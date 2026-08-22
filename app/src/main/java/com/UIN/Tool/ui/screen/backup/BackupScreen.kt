@@ -4,6 +4,7 @@ package com.UIN.Tool.ui.screen.backup
 import com.UIN.Tool.R
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +37,8 @@ import com.UIN.Tool.ui.components.unified.UnifiedButton
 import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
 import com.UIN.Tool.ui.components.unified.UnifiedCard
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
+import com.UIN.Tool.ui.components.unified.UnifiedDialog
+import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.components.unified.UnifiedLinearProgressIndicator
 import com.UIN.Tool.ui.components.unified.UnifiedTitleText
 import com.UIN.Tool.ui.components.unified.ButtonVariant
@@ -47,6 +51,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+
+enum class RestoreMode { MERGE, REPLACE }
 
 private fun addFileToZip(
     zos: java.util.zip.ZipOutputStream,
@@ -110,6 +116,7 @@ fun BackupScreen() {
     var deleteTarget by remember { mutableStateOf<BackupInfo?>(null) }
     var restoreTarget by remember { mutableStateOf<BackupInfo?>(null) }
     var showRestoreConfirm by remember { mutableStateOf(false) }
+    var restoreMode by remember { mutableStateOf(RestoreMode.MERGE) }
 
     var includeUiConfig by remember { mutableStateOf(true) }
     var includeSettings by remember { mutableStateOf(true) }
@@ -181,9 +188,13 @@ fun BackupScreen() {
                     if (includeUiConfig) {
                         progressValue = 0.4f
                         progressMessage = Str.get(R.string.backing_up_ui_config)
-                        val uiConfigFile = File(context.filesDir, "ui_config.json")
-                        if (uiConfigFile.exists()) {
-                            addFileToZip(zos, uiConfigFile, "config/ui_config.json")
+                        // ✅ 直接序列化 UIConfig.config（实际存储为 SharedPreferences，
+                        //    原先备份 filesDir/ui_config.json 从不存在的双轨不一致问题）
+                        if (UIConfig.isInitialized()) {
+                            val tempUiConfig = File(context.cacheDir, "temp_ui_config.json")
+                            tempUiConfig.writeText(UIConfig.getInstance().getConfig().toString(4))
+                            addFileToZip(zos, tempUiConfig, "config/ui_config.json")
+                            tempUiConfig.delete()
                             AppLog.d("Backup", Str.get(R.string.ui_config_backed_up))
                         } else {
                             AppLog.w("Backup", Str.get(R.string.ui_config_file_does_not_exist))
@@ -271,7 +282,7 @@ fun BackupScreen() {
         }
     }
 
-    fun restoreBackup(backup: BackupInfo) {
+    fun restoreBackup(backup: BackupInfo, mode: RestoreMode = RestoreMode.MERGE) {
         scope.launch {
             try {
                 AppLog.i("Backup", Str.get(R.string.start_restoring_backup))
@@ -312,7 +323,7 @@ fun BackupScreen() {
                     progressValue = 0.4f
                     progressMessage = Str.get(R.string.restoring_plugins)
                     val pluginDir = File(Constants.PLUGIN_DIR)
-                    if (pluginDir.exists()) {
+                    if (mode == RestoreMode.REPLACE && pluginDir.exists()) {
                         FileUtils.deleteRecursively(pluginDir)
                     }
                     pluginDir.mkdirs()
@@ -324,81 +335,13 @@ fun BackupScreen() {
                 if (uiConfigBackup.exists()) {
                     progressValue = 0.6f
                     progressMessage = Str.get(R.string.restoring_ui_config)
-                    val destUiConfig = File(context.filesDir, "ui_config.json")
-                    uiConfigBackup.copyTo(destUiConfig, overwrite = true)
 
                     val uiConfig = UIConfig.getInstance()
                     try {
-                        val configJson = destUiConfig.readText()
-                        val obj = org.json.JSONObject(configJson)
-                        val theme = obj.optJSONObject("theme")
-                        if (theme != null) {
-                            val keys = theme.keys()
-                            while (keys.hasNext()) {
-                                val key = keys.next()
-                                val value = theme.getString(key)
-                                when (key) {
-                                    "primary" -> uiConfig.updateColor("primary", value)
-                                    "primary_dark" -> uiConfig.updateColor("primary_dark", value)
-                                    "primary_light" -> uiConfig.updateColor("primary_light", value)
-                                    "accent" -> uiConfig.updateColor("accent", value)
-                                    "success" -> uiConfig.updateColor("success", value)
-                                    "warning" -> uiConfig.updateColor("warning", value)
-                                    "error" -> uiConfig.updateColor("error", value)
-                                    "info" -> uiConfig.updateColor("info", value)
-                                    "text_primary" -> uiConfig.updateColor("text_primary", value)
-                                    "text_secondary" -> uiConfig.updateColor("text_secondary", value)
-                                    "text_hint" -> uiConfig.updateColor("text_hint", value)
-                                    "text_primary_inverse" -> uiConfig.updateColor("text_primary_inverse", value)
-                                    "background" -> uiConfig.updateColor("background", value)
-                                    "surface" -> uiConfig.updateColor("surface", value)
-                                    "surface_variant" -> uiConfig.updateColor("surface_variant", value)
-                                    "divider" -> uiConfig.updateColor("divider", value)
-                                    "glass_background" -> uiConfig.updateColor("glass_background", value)
-                                    "disabled" -> uiConfig.updateColor("disabled", value)
-                                }
-                            }
-                        }
-                        val shape = obj.optJSONObject("shape")
-                        if (shape != null) {
-                            uiConfig.updateShape("cornerRadiusSmall", shape.optInt("cornerRadiusSmall", 8))
-                            uiConfig.updateShape("cornerRadiusMedium", shape.optInt("cornerRadiusMedium", 12))
-                            uiConfig.updateShape("cornerRadiusLarge", shape.optInt("cornerRadiusLarge", 16))
-                            uiConfig.updateShape("cornerRadiusExtraLarge", shape.optInt("cornerRadiusExtraLarge", 24))
-                            uiConfig.updateShape("buttonCornerRadius", shape.optInt("buttonCornerRadius", 12))
-                            uiConfig.updateShape("cardCornerRadius", shape.optInt("cardCornerRadius", 16))
-                            uiConfig.updateShape("dialogCornerRadius", shape.optInt("dialogCornerRadius", 20))
-                            uiConfig.updateShape("inputCornerRadius", shape.optInt("inputCornerRadius", 8))
-                        }
-                        val size = obj.optJSONObject("size")
-                        if (size != null) {
-                            uiConfig.updateSize("buttonHeight", size.optInt("buttonHeight", 44))
-                            uiConfig.updateSize("buttonMinWidth", size.optInt("buttonMinWidth", 80))
-                            uiConfig.updateSize("buttonElevation", size.optInt("buttonElevation", 2))
-                            uiConfig.updateSize("cardElevation", size.optInt("cardElevation", 4))
-                            uiConfig.updateSize("cardPadding", size.optInt("cardPadding", 16))
-                            uiConfig.updateSize("spacingSmall", size.optInt("spacingSmall", 4))
-                            uiConfig.updateSize("spacingMedium", size.optInt("spacingMedium", 8))
-                            uiConfig.updateSize("spacingLarge", size.optInt("spacingLarge", 16))
-                            uiConfig.updateSize("iconSizeSmall", size.optInt("iconSizeSmall", 16))
-                            uiConfig.updateSize("iconSizeMedium", size.optInt("iconSizeMedium", 20))
-                            uiConfig.updateSize("iconSizeLarge", size.optInt("iconSizeLarge", 24))
-                            uiConfig.updateSize("progressHeight", size.optInt("progressHeight", 4))
-                            uiConfig.updateSize("titleTextSize", size.optInt("titleTextSize", 20))
-                            uiConfig.updateSize("bodyTextSize", size.optInt("bodyTextSize", 14))
-                            uiConfig.updateSize("captionTextSize", size.optInt("captionTextSize", 12))
-                            uiConfig.updateSize("sectionTitleTextSize", size.optInt("sectionTitleTextSize", 18))
-                        }
-                        val experimental = obj.optJSONObject("experimental")
-                        if (experimental != null) {
-                            uiConfig.updateBoolean("enableGlassEffect", experimental.optBoolean("enableGlassEffect", true))
-                            uiConfig.updateBoolean("enableRipple", experimental.optBoolean("enableRipple", true))
-                        }
-                        val font = obj.optJSONObject("font")
-                        if (font != null) {
-                            uiConfig.updateBoolean("enableBold", font.optBoolean("enableBold", true))
-                        }
-                        uiConfig.saveConfig()
+                        // ✅ 一次性反序列化 + applyJson 原子写入，
+                        //    替代原先逐 key update* 全量序列化 + 半途失败配置残缺
+                        val obj = org.json.JSONObject(uiConfigBackup.readText())
+                        uiConfig.applyJson(obj)
                         AppLog.success("Backup", Str.get(R.string.ui_config_restore_complete))
                     } catch (e: Exception) {
                         AppLog.e("Backup", Str.get(R.string.failed_to_restore_ui_config), e)
@@ -684,16 +627,115 @@ fun BackupScreen() {
     }
 
     if (showRestoreConfirm && restoreTarget != null) {
-        UnifiedConfirmDialog(
-            title = Str.get(R.string.confirm_restore),
-            message = Str.get(R.string.restoring_will_overwrite_existing_pl),
-            onConfirm = {
-                restoreTarget?.let { restoreBackup(it) }
-                restoreTarget = null
-            },
-            onDismiss = {
+        UnifiedDialog(
+            onDismissRequest = {
                 showRestoreConfirm = false
                 restoreTarget = null
+            },
+            title = Str.get(R.string.confirm_restore),
+            content = {
+                Text(
+                    text = Str.get(R.string.restoring_will_overwrite_existing_pl),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(AppDimens.spacingLarge))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(AppDimens.radiusLarge))
+                        .background(
+                            if (restoreMode == RestoreMode.MERGE) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            }
+                        )
+                        .clickable { restoreMode = RestoreMode.MERGE }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = restoreMode == RestoreMode.MERGE,
+                        onClick = { restoreMode = RestoreMode.MERGE }
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = Str.get(R.string.restore_mode_merge_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = Str.get(R.string.restore_mode_merge_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(AppDimens.radiusLarge))
+                        .background(
+                            if (restoreMode == RestoreMode.REPLACE) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            }
+                        )
+                        .clickable { restoreMode = RestoreMode.REPLACE }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = restoreMode == RestoreMode.REPLACE,
+                        onClick = { restoreMode = RestoreMode.REPLACE }
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = Str.get(R.string.restore_mode_replace_title),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = Str.get(R.string.restore_mode_replace_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        restoreTarget?.let { restoreBackup(it, restoreMode) }
+                        restoreTarget = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = RoundedCornerShape(AppDimens.radiusLarge)
+                ) {
+                    Text(Str.get(R.string.confirm_restore))
+                }
+            },
+            dismissButton = {
+                UnifiedDialogTextButton(
+                    onClick = {
+                        showRestoreConfirm = false
+                        restoreTarget = null
+                    }
+                ) {
+                    Text(Str.get(R.string.cancel))
+                }
             }
         )
     }
@@ -710,38 +752,50 @@ fun BackupItemCardCompact(
         shape = RoundedCornerShape(AppDimens.cardCornerRadius),
         elevation = 0.5.dp
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
+            Text(
+                text = backup.name,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = AppDimens.bodyTextSize.sp
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = backup.name,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = AppDimens.bodyTextSize.sp
+                    text = backup.getFormattedDate(),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = AppDimens.captionTextSize.sp
                     )
                 )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = backup.getFormattedDate(),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = AppDimens.captionTextSize.sp
-                        )
+                Text(
+                    text = "•",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = AppDimens.captionTextSize.sp
                     )
+                )
+                Text(
+                    text = backup.getFormattedSize(),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = AppDimens.captionTextSize.sp
+                    )
+                )
+                if (backup.pluginCount > 0) {
                     Text(
                         text = "•",
                         style = MaterialTheme.typography.bodySmall.copy(
@@ -750,50 +804,32 @@ fun BackupItemCardCompact(
                         )
                     )
                     Text(
-                        text = backup.getFormattedSize(),
+                        text = Str.get(R.string.backup_plugincount, backup.pluginCount),
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = AppDimens.captionTextSize.sp
                         )
                     )
-                    if (backup.pluginCount > 0) {
-                        Text(
-                            text = "•",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = AppDimens.captionTextSize.sp
-                            )
-                        )
-                        Text(
-                            text = Str.get(R.string.backup_plugincount, backup.pluginCount),
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = AppDimens.captionTextSize.sp
-                            )
-                        )
-                    }
                 }
             }
 
+            // 按钮放最下方一行，不与文件名/元信息同一行
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 UnifiedButton(
                     text = Str.get(R.string.restore),
                     onClick = onRestore,
-                    modifier = Modifier
-                        .height(28.dp)
-                        .width(48.dp),
+                    modifier = Modifier.weight(1f),
                     variant = ButtonVariant.Primary,
                     size = ButtonSize.Small
                 )
-
                 UnifiedButton(
                     text = Str.get(R.string.delete),
                     onClick = onDelete,
-                    modifier = Modifier
-                        .height(28.dp)
-                        .width(48.dp),
+                    modifier = Modifier.weight(1f),
                     variant = ButtonVariant.Destructive,
                     size = ButtonSize.Small
                 )

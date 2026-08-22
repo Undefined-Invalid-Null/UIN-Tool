@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    仅备份非敏感的 UI 主题配置；不再包含 plugins/（含插件用户数据、凭证、
+    .incoming/ 共享文件）、uin_tool_prefs.xml（可能含 token）、logs/（路径/token）。
+    插件备份请走应用内备份功能（用户显式触发、生成可见的 .zip）。
+-->
 <full-backup-content>
-    <include domain="file" path="plugins/" />
-    <include domain="sharedpref" path="uin_tool_prefs.xml" />
-    <include domain="file" path="logs/" />
     <include domain="file" path="ui_config.json" />
 </full-backup-content>

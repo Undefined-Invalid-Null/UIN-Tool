@@ -24,6 +24,9 @@ object PermissionUtils {
                     android.os.Environment.isExternalStorageManager()
                 } else true
             }
+            "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE" -> {
+                hasSpecialPermission(context, "MANAGE_EXTERNAL_STORAGE")
+            }
             "SYSTEM_ALERT_WINDOW" -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     Settings.canDrawOverlays(context)
@@ -182,6 +185,8 @@ object PermissionUtils {
             "PACKAGE_USAGE_STATS" -> Str.get(R.string.usage_access)
             "android.permission.KILL_BACKGROUND_PROCESSES" -> Str.get(R.string.kill_background_processes)
             "android.permission.READ_LOGS" -> Str.get(R.string.read_logs)
+            "READ_CLIPBOARD" -> Str.get(R.string.read_clipboard)
+            "WRITE_CLIPBOARD" -> Str.get(R.string.write_clipboard)
             "ROOT" -> Str.get(R.string.root_access)
             "SHIZUKU" -> "Shizuku"
             "DHIZUKU" -> "Dhizuku"

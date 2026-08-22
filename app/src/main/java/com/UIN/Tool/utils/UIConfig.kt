@@ -77,14 +77,14 @@ object UIConfig {
     /**
      * 为旧版本配置补齐缺失的区块（如 theme_dark），保证升级后深色模式仍有默认配色。
      */
-    private fun ensureDefaultSections() {
+    private fun ensureDefaultSections(target: JSONObject = config) {
         val def = getDefaultConfig()
         val sections = listOf("theme", "theme_dark", "shape", "size", "font", "experimental", "gradient")
         for (section in sections) {
-            val current = config.optJSONObject(section)
+            val current = target.optJSONObject(section)
             val defaultSection = def.optJSONObject(section) ?: continue
             if (current == null) {
-                config.put(section, defaultSection)
+                target.put(section, defaultSection)
             } else {
                 val keys = defaultSection.keys()
                 while (keys.hasNext()) {
@@ -166,6 +166,27 @@ object UIConfig {
         }.apply()
         _configVersion.value += 1
         Logger.d(TAG, Str.get(R.string.config_saved))
+    }
+
+    /**
+     * 批量原子写入整份配置：
+     * - 单次序列化 + 单次 SharedPreferences 写入（替代逐色 update* 每次全量序列化）
+     * - 写入前校验必须是合法 JSON 对象，避免半途失败写入残缺配置
+     */
+    fun applyJson(json: JSONObject) {
+        if (!isInitialized) return
+        try {
+            val validated = JSONObject(json.toString())
+            if (validated.length() == 0) {
+                Logger.w(TAG, "applyJson rejected: empty config")
+                return
+            }
+            ensureDefaultSections(validated)
+            config = validated
+            saveConfig()
+        } catch (e: Exception) {
+            Logger.e(TAG, Str.get(R.string.failed_to_apply_config), e)
+        }
     }
     
     fun getConfig(): JSONObject = config

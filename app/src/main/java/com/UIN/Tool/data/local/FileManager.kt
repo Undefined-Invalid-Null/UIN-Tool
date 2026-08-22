@@ -128,10 +128,19 @@ class FileManager(private val context: Context) {
     fun unzipFile(zipFile: File, destDir: File): Boolean {
         return try {
             destDir.mkdirs()
+            val destCanonical = destDir.canonicalPath
             ZipInputStream(FileInputStream(zipFile)).use { zis ->
                 var entry: ZipEntry? = zis.nextEntry
                 while (entry != null) {
+                    if (!isSafeZipEntry(entry.name)) {
+                        Logger.e(TAG, Str.get(R.string.failed_to_unzip_zipfile_absolutepath, zipFile.absolutePath))
+                        return false
+                    }
                     val targetFile = File(destDir, entry.name)
+                    if (!targetFile.canonicalPath.startsWith(destCanonical + File.separator)) {
+                        Logger.e(TAG, Str.get(R.string.failed_to_unzip_zipfile_absolutepath, zipFile.absolutePath))
+                        return false
+                    }
                     if (entry.isDirectory) {
                         targetFile.mkdirs()
                     } else {
@@ -148,6 +157,14 @@ class FileManager(private val context: Context) {
             Logger.e(TAG, Str.get(R.string.failed_to_unzip_zipfile_absolutepath, zipFile.absolutePath), e)
             false
         }
+    }
+
+    private fun isSafeZipEntry(entryName: String): Boolean {
+        if (entryName.isEmpty()) return true
+        if (entryName.contains("..")) return false
+        if (entryName.startsWith("/") || entryName.startsWith("\\")) return false
+        if (entryName.matches(Regex("[A-Za-z]:.*"))) return false
+        return true
     }
 
     fun getFileSize(file: File): Long {

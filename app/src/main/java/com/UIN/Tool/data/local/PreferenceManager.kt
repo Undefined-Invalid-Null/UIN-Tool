@@ -202,28 +202,24 @@ class PreferenceManager(private val context: Context) {
         prefs.edit().putBoolean(Constants.KEY_NATIVE_MULTI_INSTANCE, enabled).apply()
     }
 
-    /** 同一插件多实例的后端端口模式：shared=共享端口 / independent=独立端口 */
-    fun getBackendMultiMode(): String {
-        return prefs.getString(
-            Constants.KEY_BACKEND_MULTI_MODE,
-            Constants.BACKEND_MULTI_MODE_SHARED
-        ) ?: Constants.BACKEND_MULTI_MODE_SHARED
-    }
-
-    fun isBackendMultiModeIndependent(): Boolean =
-        getBackendMultiMode() == Constants.BACKEND_MULTI_MODE_INDEPENDENT
-
-    fun setBackendMultiMode(mode: String) {
-        prefs.edit().putString(Constants.KEY_BACKEND_MULTI_MODE, mode).apply()
-    }
-
-    /** 共享端口模式下关闭插件时是否保留页面/后端会话（重开直接复用，不重新走环境流水线） */
+    /** 共享端口模式下关闭插件时是否保留页面/后端会话（重开直接复用，不重新走环境流水线）。
+     * 默认开启：默认启用「关闭时保留会话」（同一 Web 插件只保留一个后台窗口，不默认多开）；
+     * 用户显式关闭后才允许多开。 */
     fun isSharedSessionRetainEnabled(): Boolean {
         return prefs.getBoolean(Constants.KEY_SHARED_SESSION_RETAIN, true)
     }
 
     fun setSharedSessionRetainEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(Constants.KEY_SHARED_SESSION_RETAIN, enabled).apply()
+    }
+
+    /** 开发者选项：忽略签名验证（默认关闭；开启后安装/更新插件跳过签名校验） */
+    fun isDevIgnoreSignatureEnabled(): Boolean {
+        return prefs.getBoolean(Constants.KEY_DEV_IGNORE_SIGNATURE, false)
+    }
+
+    fun setDevIgnoreSignatureEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(Constants.KEY_DEV_IGNORE_SIGNATURE, enabled).apply()
     }
 
     // ==================== UI配置 ====================

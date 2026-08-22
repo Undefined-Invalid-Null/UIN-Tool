@@ -6,6 +6,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
@@ -44,24 +45,32 @@ object PluginPermissionManager {
     fun getPluginPermissionStatus(context: Context, pluginId: String): Map<String, Boolean> {
         val declared = getPluginDeclaredPermissions(context, pluginId)
         return declared.associateWith { permission ->
-            checkPermission(context, permission)
+            checkPluginPermission(context, pluginId, permission)
         }
     }
 
     fun checkPermission(context: Context, permission: String): Boolean {
+        // 伪权限（如剪贴板 READ_CLIPBOARD/WRITE_CLIPBOARD）只需插件声明即可，
+        // 不是真实 Android 权限，无运行时授权概念 → 恒为已授权
+        if (isPseudoPermission(permission)) return true
         return PermissionUtils.hasPermission(context, permission) ||
                 PermissionUtils.hasSpecialPermission(context, permission)
+    }
+
+    /** 伪权限：非真实 Android 权限，仅要求插件在 plugin.json 中声明即可 */
+    fun isPseudoPermission(permission: String): Boolean {
+        return permission == "READ_CLIPBOARD" || permission == "WRITE_CLIPBOARD"
     }
 
     fun areAllPermissionsGranted(context: Context, pluginId: String): Boolean {
         val permissions = getPluginDeclaredPermissions(context, pluginId)
         if (permissions.isEmpty()) return true
-        return permissions.all { checkPermission(context, it) }
+        return permissions.all { checkPluginPermission(context, pluginId, it) }
     }
 
     fun getMissingPermissions(context: Context, pluginId: String): List<String> {
         val permissions = getPluginDeclaredPermissions(context, pluginId)
-        return permissions.filter { !checkPermission(context, it) }
+        return permissions.filter { !checkPluginPermission(context, pluginId, it) }
     }
 
     fun isSpecialPermission(permission: String): Boolean {
@@ -100,6 +109,8 @@ object PluginPermissionManager {
             Manifest.permission.VIBRATE -> Str.get(R.string.for_the_plugin_s_vibration_feedback)
             Manifest.permission.INTERNET -> Str.get(R.string.for_the_plugin_s_network_requests)
             Manifest.permission.ACCESS_NETWORK_STATE -> Str.get(R.string.for_checking_network_status)
+            "READ_CLIPBOARD" -> Str.get(R.string.for_reading_the_system_clipboard)
+            "WRITE_CLIPBOARD" -> Str.get(R.string.for_writing_to_the_system_clipboard)
             else -> Str.get(R.string.permissions_required_by_the_plugin)
         }
     }
@@ -121,21 +132,25 @@ object PluginPermissionManager {
 
     // ==================== 权限状态管理（持久化） ====================
 
+    @Deprecated("Deprecated: use per-permission check via getPluginPermissionStatus/checkPluginPermission instead")
     fun getPermissionState(context: Context, pluginId: String): Int {
         val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
         return prefs.getInt("permission_state", 0)
     }
 
+    @Deprecated("Deprecated: use per-permission grant/block via setPermissionBlocked/blockAllDeclaredPermissions instead")
     fun setPermissionState(context: Context, pluginId: String, state: Int) {
         val prefs = context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
         prefs.edit().putInt("permission_state", state).apply()
         Logger.d(TAG, Str.get(R.string.permission_state_updated_pluginid_st, pluginId, state))
     }
 
+    @Deprecated("Deprecated: use per-permission check via getMissingPermissions instead")
     fun shouldShowPermissionDialog(context: Context, pluginId: String): Boolean {
         return getPermissionState(context, pluginId) == 0
     }
 
+    @Deprecated("Deprecated: use per-permission check via getMissingPermissions instead")
     fun getPermissionStateDescription(state: Int): String {
         return when (state) {
             0 -> Str.get(R.string.not_granted)
@@ -143,6 +158,45 @@ object PluginPermissionManager {
             2 -> Str.get(R.string.denied)
             else -> Str.get(R.string.unknown)
         }
+    }
+
+    // ==================== 每插件权限封禁（撤销） ====================
+    // 撤销 ≠ 系统回收运行时授权（Android 无法在代码里回收已授予权限），
+    // 而是在插件层记入「封禁集合」：即使宿主已授予，该插件也被视为无权使用。
+    // JS 桥的 checkCapability / hasPluginPermission / checkPermission 统一查询此集合。
+
+    private fun getPluginPrefs(context: Context, pluginId: String): SharedPreferences =
+        context.getSharedPreferences("${Constants.PREF_PLUGIN_DATA_PREFIX}$pluginId", Context.MODE_PRIVATE)
+
+    fun getBlockedPermissions(context: Context, pluginId: String): Set<String> {
+        return getPluginPrefs(context, pluginId).getStringSet("blocked_permissions", emptySet()) ?: emptySet()
+    }
+
+    fun isPermissionBlocked(context: Context, pluginId: String, permission: String): Boolean {
+        return permission in getBlockedPermissions(context, pluginId)
+    }
+
+    fun setPermissionBlocked(context: Context, pluginId: String, permission: String, blocked: Boolean) {
+        val prefs = getPluginPrefs(context, pluginId)
+        val current = getBlockedPermissions(context, pluginId).toMutableSet()
+        if (blocked) current.add(permission) else current.remove(permission)
+        prefs.edit().putStringSet("blocked_permissions", current).apply()
+        Logger.d(TAG, Str.get(R.string.permission_state_updated_pluginid_st, pluginId, permission))
+    }
+
+    fun blockAllDeclaredPermissions(context: Context, pluginId: String) {
+        val declared = getPluginDeclaredPermissions(context, pluginId)
+        getPluginPrefs(context, pluginId).edit().putStringSet("blocked_permissions", declared.toSet()).apply()
+    }
+
+    fun unblockAllDeclaredPermissions(context: Context, pluginId: String) {
+        getPluginPrefs(context, pluginId).edit().remove("blocked_permissions").apply()
+    }
+
+    /** 插件级有效授权：伪权限需声明且未封禁；真实权限需宿主已授予且未封禁 */
+    fun checkPluginPermission(context: Context, pluginId: String, permission: String): Boolean {
+        if (isPermissionBlocked(context, pluginId, permission)) return false
+        return checkPermission(context, permission)
     }
 
     // ==================== 权限请求（仅用于Activity，不包含UI） ====================
@@ -182,7 +236,7 @@ object PluginPermissionManager {
         if (permissions.isEmpty()) {
             return PermissionStatusSummary(0, 0, 0, true, false)
         }
-        val granted = permissions.count { checkPermission(context, it) }
+        val granted = permissions.count { checkPluginPermission(context, pluginId, it) }
         val denied = permissions.size - granted
         return PermissionStatusSummary(
             total = permissions.size,

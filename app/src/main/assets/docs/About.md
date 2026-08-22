@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-5.4.0-blue)
-![Build](https://img.shields.io/badge/build-20-green)
+![Version](https://img.shields.io/badge/version-5.5.0-blue)
+![Build](https://img.shields.io/badge/build-21-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -58,19 +58,58 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v5.4.0 (Build 20)
+### 当前版本：v5.5.0 (Build 21)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 5.4.0 |
-| 版本代码 | 20 |
-| 更新日期 | 2026年8月10日 |
+| 版本号 | 5.5.0 |
+| 版本代码 | 21 |
+| 更新日期 | 2026年8月22日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 14 (API 34) |
 | 编译 SDK 版本 | 35 (Android 15) |
 | 架构 | arm64-v8a |
 
 ### 版本历史
+
+#### v5.5.0 (Build 21) - 🧱 兼容性修复、实体 Termux 架构升级与开发向导补全
+
+**🐛 原生插件崩溃修复：**
+- 修复原生插件 `AbstractMethodError` 崩溃（`-Xjvm-default=all` + 重建 host-sdk.jar + 重新打包 plugin.dex + 宿主反射守卫）
+- CUI 插件 proot 容器内启动脚本路径错误修复
+- 崩溃后日志页不跳转修复
+- 修复 MarkdownRenderer `appendReplacement` 崩溃（`$` 被当作组引用）
+- 修复 DocViewerScreen 闪退 + 背景色与宿主不一致
+
+**🔐 剪贴板伪权限：**
+- 新增伪权限 `READ_CLIPBOARD` / `WRITE_CLIPBOARD`，仅需声明即生效
+
+**🧙 开发向导补全：**
+- 后端（`backendStartCommand`/`backendTimeout`/`backendHealthCheck`）、openWith、全部权限弹窗多选；保留插件说明（notice）
+- 向导回读 plugin.json 时 `permissions`/`dependencies` 同时兼容 JSON 数组与逗号串
+- 插件模板按类型（原生/Web/Web+后端/CUI）分别渲染 README
+- **字段精简**：去掉最大内存 / 最长 CPU 时间 / 最大并发任务数、依赖项、API 级别、后端保活输入项（不再写入向导生成的 plugin.json）
+- 修复代码编辑器始终显示默认 MainPlugin.java 的问题（主类名变更后同步重新生成入口文件）
+
+**⚖️ 打开插件前的权限提示：**
+- Web 插件提示未授予权限（确定/不再提示/管理权限）；原生插件提示所需权限（确定/不再显示），**先弹窗再打开插件**
+- 权限弹窗使用宿主统一风格渲染；权限管理页移除刷新按钮，按钮文案改为「全部授权」/「全部撤销」
+
+**📥 保留会话单窗口：**
+- 「关闭时保留会话」**默认开启**（默认单窗口去重：同一 Web 插件只保留一个后台窗口）；用户显式关闭后支持多开
+
+**🏗️ 实体 Termux 共享 Supervisor：**
+- 实体 Termux 改用单个常驻共享 supervisor，容器/会话只初始化一次，所有插件后端作为子进程运行，冷启动省掉 ~5s 初始化开销
+- 通信协议（`<plugins根>/.uin/`）：cmd/pid/stop/idle/idle.start/alive/host_alive/shutdown/keep_alive
+- 空闲回收：supervisor 按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树，`kill -0 $pid` 检测进程存活
+- 性能：热启动 ~0.5s、温重启 ~2s、冷启动 ~4s（去掉 probeRealTermux、轮询 200ms、host_alive 超时 300s）
+
+**🚀 启动环境自动安装：**
+- 软件启动时后台自动检测并安装 Termux bootstrap + Alpine 容器（仅内置模式）
+- bootstrap 安装完成后立即解除终端阻塞，终端不再黑屏
+
+**📱 静态桌面快捷方式：**
+- 4 个常用页面静态快捷方式：文档、终端、后端设置、UI 个性化
 
 #### v5.4.0 (Build 20) - 📥 主动能力扩展：插件接收外部内容（openWith 中转）+ 插件多开
 

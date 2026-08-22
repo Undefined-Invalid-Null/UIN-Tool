@@ -59,6 +59,9 @@ fun DocViewerScreen() {
             if (isLoading) {
                 UnifiedLoadingIndicator(message = Str.get(R.string.loading_document))
             } else {
+                val bgColor = try {
+                    com.UIN.Tool.utils.UIConfig.getBackgroundColor()
+                } catch (_: Exception) { 0xFFF5F5F5.toInt() }
                 AndroidView(
                     factory = { ctx ->
                         WebView(ctx).apply {
@@ -66,9 +69,15 @@ fun DocViewerScreen() {
                             settings.builtInZoomControls = true
                             settings.displayZoomControls = false
                             webViewClient = WebViewClient()
+                            setBackgroundColor(bgColor)
 
-                            val html = MarkdownRenderer.toHtml(content)
-                            loadDataWithBaseURL("file:///android_asset/", html, "text/html", "UTF-8", null)
+                            try {
+                                val html = MarkdownRenderer.toHtml(content)
+                                loadDataWithBaseURL("file:///android_asset/", html, "text/html", "UTF-8", null)
+                            } catch (e: Exception) {
+                                AppLog.e("DocViewer", Str.get(R.string.failed_to_load_document_e_message, e.message), e)
+                                loadDataWithBaseURL(null, "<html><body><p>${Str.get(R.string.failed_to_load_document_e_message, e.message)}</p></body></html>", "text/html", "UTF-8", null)
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxSize()

@@ -320,6 +320,35 @@ data class PluginInfo(
     }
 
     companion object {
+        /**
+         * 解析字符串列表字段，兼容两种声明格式：
+         * - JSON 数组：`"permissions": ["a", "b"]`
+         * - 逗号分隔字符串：`"permissions": "a,b"`
+         * 原实现只调 optString().split(",")，遇到数组格式会解析出带引号/方括号的错误项，
+         * 导致插件声明的权限永远匹配不上 → 权限管理页误报"权限被拒绝"。
+         */
+        private fun parseStringList(obj: JSONObject, key: String): List<String> {
+            return try {
+                val raw = obj.opt(key)
+                when (raw) {
+                    is org.json.JSONArray -> {
+                        val list = mutableListOf<String>()
+                        for (i in 0 until raw.length()) {
+                            val v = raw.optString(i, "")
+                            if (v.isNotEmpty()) list.add(v)
+                        }
+                        list
+                    }
+                    else -> obj.optString(key, "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        /** 公开版本：供向导回读 plugin.json 时复用同一套兼容解析（JSON 数组 / 逗号字符串）。 */
+        fun parseStringListCompat(obj: JSONObject, key: String): List<String> = parseStringList(obj, key)
+
         fun fromJson(json: String): PluginInfo? {
             return try {
                 val obj = JSONObject(json)
@@ -339,8 +368,8 @@ data class PluginInfo(
                     signature = obj.optString("signature", ""),
                     uiType = obj.optString("uiType", "native"),
                     entry = obj.optString("entry", "web/index.html"),
-                    permissions = obj.optString("permissions", "").split(",").filter { it.isNotEmpty() },
-                    dependencies = obj.optString("dependencies", "").split(",").filter { it.isNotEmpty() },
+                    permissions = parseStringList(obj, "permissions"),
+                    dependencies = parseStringList(obj, "dependencies"),
                     notice = obj.optString("notice", ""),
                     backend = obj.optString("backend", ""),
                     backendRuntime = obj.optString("backendRuntime", ""),
@@ -355,7 +384,7 @@ data class PluginInfo(
                     backendHealthCheck = obj.optString("backendHealthCheck", "/health"),
                     backendMaxRetries = obj.optInt("backendMaxRetries", 3),
                     backendLogLevel = obj.optString("backendLogLevel", "info"),
-                    backendArgs = obj.optString("backendArgs", "").split(",").filter { it.isNotEmpty() },
+                    backendArgs = parseStringList(obj, "backendArgs"),
                     backendBinary = obj.optString("backendBinary", ""),
                     backendInstallCmd = obj.optString("backendInstallCmd", ""),
                     backendCheckCmd = obj.optString("backendCheckCmd", ""),
@@ -369,7 +398,7 @@ data class PluginInfo(
                         OpenWithConfig(
                             enabled = ow.optBoolean("enabled", true),
                             label = ow.optString("label", ""),
-                            mimeTypes = ow.optString("mimeTypes", "").split(",").filter { it.isNotEmpty() },
+                            mimeTypes = parseStringList(ow, "mimeTypes"),
                             acceptText = ow.optBoolean("acceptText", true),
                             acceptUrl = ow.optBoolean("acceptUrl", true),
                             acceptFile = ow.optBoolean("acceptFile", true)

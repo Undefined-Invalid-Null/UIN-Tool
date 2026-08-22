@@ -92,7 +92,10 @@ class MainActivity : ComponentActivity() {
     private val configRepository: IConfigRepository by lazy { ServiceLocator.getConfigRepository() }
     
     private lateinit var preferenceManager: PreferenceManager
-    private var selectedTab = 1
+    private var selectedTab by mutableStateOf(1)
+
+    /** 每次外部 intent 导航（onNewIntent）自增，驱动已有组合响应，避免重建 setContent */
+    private var tabSignal by mutableStateOf(0)
     
     // ✅ 使用 mutableStateOf 管理退出对话框状态
     private var showExitDialog by mutableStateOf(false)
@@ -164,10 +167,12 @@ class MainActivity : ComponentActivity() {
             UINToolTheme {
                 MainContent(
                     initialTab = selectedTab,
+                    tabSignal = tabSignal,
                     checkUpdate = intent.getBooleanExtra(EXTRA_CHECK_UPDATE, false),
                     showExitDialog = showExitDialog,
                     onExitConfirm = { 
                         showExitDialog = false
+                        com.UIN.Tool.plugin.SharedSupervisor.onHostExit()
                         finishAffinity()
                     },
                     onExitDismiss = { 
@@ -189,6 +194,9 @@ class MainActivity : ComponentActivity() {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             checkPermissions()
         }, 1000)
+
+        // 实体 Termux 模式：后台预热共享 supervisor（容器只初始化一次，后续插件启动更快）
+        com.UIN.Tool.plugin.SharedSupervisor.prewarm(applicationContext)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -216,23 +224,8 @@ class MainActivity : ComponentActivity() {
         handleShortcutIntent(intent)
         selectedTab = getTabFromIntent(intent)
         showExitDialog = false
-        
-        setContent {
-            UINToolTheme {
-                MainContent(
-                    initialTab = selectedTab,
-                    checkUpdate = intent.getBooleanExtra(EXTRA_CHECK_UPDATE, false),
-                    showExitDialog = showExitDialog,
-                    onExitConfirm = { 
-                        showExitDialog = false
-                        finishAffinity()
-                    },
-                    onExitDismiss = { 
-                        showExitDialog = false
-                    }
-                )
-            }
-        }
+        // 通过 tabSignal 驱动已有组合响应导航，不再重建 setContent（避免丢失组合内状态）
+        tabSignal++
     }
 
     private fun closeAllPluginActivities() {
@@ -499,6 +492,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        com.UIN.Tool.plugin.SharedSupervisor.onHostExit()
         AppLog.i(TAG, Str.get(R.string.app_exit))
     }
 
@@ -536,6 +530,7 @@ private const val MAIN_CONTENT_TAG = "MainContent"
 @Composable
 fun MainContent(
     initialTab: Int = 1,
+    tabSignal: Int = 0,
     checkUpdate: Boolean = false,
     showExitDialog: Boolean = false,
     onExitConfirm: () -> Unit = {},
@@ -556,6 +551,11 @@ fun MainContent(
         }
     }
 
+    // 外部 intent 导航（onNewIntent）通过 tabSignal 驱动切换，保持组合内状态不丢失
+    LaunchedEffect(tabSignal) {
+        selectedTab = initialTab
+    }
+
     // ==================== 静默更新检测（每天一次） ====================
     val context = LocalContext.current
     val preferenceManager = ServiceLocator.getPreferenceManager()
@@ -566,16 +566,18 @@ fun MainContent(
 
     LaunchedEffect(Unit) {
         try {
-            // 仅当今天尚未静默检测过才执行，避免重复弹窗
+            // 仅当今天尚未静默检测过才执行，避免重复弹窗。
+            // 注意：日期在联网成功后才写入（onCheckSuccess/onNoUpdate），
+            // 避免离线时白白消耗当日额度。
             val today = LocalDate.now().toEpochDay()
             if (preferenceManager.getLastUpdateCheckDay() == today) return@LaunchedEffect
-            preferenceManager.setLastUpdateCheckDay(today)
 
             val checker = UpdateChecker(context, preferenceManager)
             checker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
                 override fun onCheckStart() {}
 
                 override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
+                    preferenceManager.setLastUpdateCheckDay(today)
                     if (!hasNewer || releases.isEmpty()) return
                     val latest = releases.first()
                     if (!forceUpdate && latest.versionName == preferenceManager.getIgnoredVersion()) return
@@ -586,7 +588,9 @@ fun MainContent(
 
                 override fun onCheckFailed(error: String) {}
 
-                override fun onNoUpdate(currentVersion: String) {}
+                override fun onNoUpdate(currentVersion: String) {
+                    preferenceManager.setLastUpdateCheckDay(today)
+                }
             })
             checker.checkUpdate()
         } catch (e: Exception) {
@@ -622,7 +626,7 @@ fun MainContent(
                         AppToast.error(context, Str.get(R.string.download_failed_error, error))
                     }
                 })
-                downloader.startDownload(silentTarget.downloadUrl, silentTarget.versionName)
+                downloader.startDownload(silentTarget.downloadUrl, silentTarget.versionName, silentTarget.sha256)
             },
             onManualDownload = {
                 silentUpdate = null

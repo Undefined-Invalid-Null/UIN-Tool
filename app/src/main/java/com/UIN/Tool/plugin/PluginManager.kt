@@ -3,11 +3,7 @@ package com.UIN.Tool.plugin
 import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ShortcutInfo
-import android.content.pm.ShortcutManager
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.drawable.Icon
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +16,7 @@ import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.SecurityUtils
+import com.UIN.Tool.utils.isValidPluginId
 import dalvik.system.DexClassLoader
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,7 +33,6 @@ class PluginManager private constructor(
     companion object {
         private const val TAG = "PluginManager"
         private var instance: PluginManager? = null
-        private var ignoreSignatureWarning = false
 
         /**
          * WebView 缓存，键为「插件实例键」（pluginId[:instanceId]），
@@ -57,15 +53,6 @@ class PluginManager private constructor(
             }
             return instance!!
         }
-
-        @JvmStatic
-        fun setIgnoreSignatureWarning(ignore: Boolean) {
-            ignoreSignatureWarning = ignore
-            Logger.i(TAG, Str.get(R.string.signature_verification_ignored_ignor, ignore))
-        }
-
-        @JvmStatic
-        fun isIgnoreSignatureWarning(): Boolean = ignoreSignatureWarning
 
         @JvmStatic
         fun putPluginWebView(instanceKey: String, webView: WebView?) {
@@ -135,6 +122,35 @@ class PluginManager private constructor(
     /** 原生插件当前存活宿主 Activity 的实例，用于默认单实例去重（pluginId -> instanceKey） */
     private val activeNativeInstances = mutableMapOf<String, String>()
 
+    /** 存活（未销毁）的 PluginHostActivity，键为插件 ID。
+     *  用于「保留会话开启时同一插件只保留一个窗口（多任务仅显示一个）」的去重。 */
+    private val livePluginHosts = mutableMapOf<String, WeakReference<PluginHostActivity>>()
+
+    fun registerLivePluginHost(pluginId: String, activity: PluginHostActivity) {
+        livePluginHosts[pluginId] = WeakReference(activity)
+    }
+
+    fun unregisterLivePluginHost(pluginId: String, activity: PluginHostActivity) {
+        val ref = livePluginHosts[pluginId]
+        if (ref?.get() === activity) {
+            livePluginHosts.remove(pluginId)
+        }
+    }
+
+    /** 该插件当前是否已有存活窗口（保留会话单窗口去重）。 */
+    fun getLivePluginHost(pluginId: String): PluginHostActivity? {
+        val ref = livePluginHosts[pluginId] ?: return null
+        val host = ref.get()
+        if (host == null || host.isFinishing || host.isDestroyed) {
+            livePluginHosts.remove(pluginId)
+            return null
+        }
+        return host
+    }
+
+    /** 原生插件实例表（兼容旧字段 pluginInstances）：按「实例键」隔离，多开各实例独立销毁 */
+    private val pluginInstancesByKey = mutableMapOf<String, WeakReference<PluginInterface>>()
+
     private val _plugins = MutableStateFlow<List<PluginInfo>>(emptyList())
     val plugins: StateFlow<List<PluginInfo>> = _plugins.asStateFlow()
 
@@ -147,6 +163,9 @@ class PluginManager private constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private var lastRefreshTime = 0L
+    private val refreshDebounceMs = 500L
+
     init {
         refreshPlugins()
     }
@@ -154,6 +173,9 @@ class PluginManager private constructor(
     // ==================== 插件列表管理 ====================
 
     fun refreshPlugins() {
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshTime < refreshDebounceMs) return
+        lastRefreshTime = now
         Logger.enter(TAG, "refreshPlugins")
         _isLoading.value = true
         _error.value = null
@@ -184,7 +206,6 @@ class PluginManager private constructor(
 
             _plugins.value = pluginList
             _installedPluginIds.value = pluginList.map { it.pluginId }.toSet()
-            refreshAllPluginShortcuts()
 
             Logger.i(TAG, Str.get(R.string.loaded_pluginlist_size_plugin_s, pluginList.size))
         } catch (e: Exception) {
@@ -206,6 +227,24 @@ class PluginManager private constructor(
 
     // ==================== 插件安装 ====================
 
+    /**
+     * 只读读取 tpk 内的 plugin.json，返回 pluginId，用于签名校验（按 pluginId 存哈希）。
+     */
+    private fun readPluginIdFromTpk(file: File): String? {
+        return try {
+            java.util.zip.ZipFile(file).use { zf ->
+                val entry = zf.getEntry(Constants.PLUGIN_CONFIG_FILE) ?: return null
+                val jsonContent = zf.getInputStream(entry).bufferedReader().use { it.readText() }
+                val info = PluginInfo.fromJson(jsonContent)
+                val pluginId = info?.pluginId ?: ""
+                if (pluginId.isEmpty() || !pluginId.isValidPluginId()) null else pluginId
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, Str.get(R.string.invalid_plugin_json), e)
+            null
+        }
+    }
+
     private suspend fun installPluginInternal(file: File, fileName: String): PluginInfo? {
         val tempDir = File(Constants.TEMP_DIR, "plugin_install_${System.currentTimeMillis()}")
         tempDir.mkdirs()
@@ -226,6 +265,11 @@ class PluginManager private constructor(
             val info = PluginInfo.fromJson(jsonContent)
             if (info == null || info.pluginId.isEmpty()) {
                 Logger.e(TAG, Str.get(R.string.invalid_plugin_json))
+                return null
+            }
+
+            if (!info.pluginId.isValidPluginId()) {
+                Logger.e(TAG, Str.get(R.string.invalid_plugin_id_format_pluginid, info.pluginId))
                 return null
             }
 
@@ -310,7 +354,15 @@ class PluginManager private constructor(
         Logger.param(TAG, Str.get(R.string.file), file.absolutePath)
 
         return try {
-            if (!SecurityUtils.verifyFileSignature(file, preferenceManager)) {
+            val pluginId = readPluginIdFromTpk(file)
+            if (pluginId == null) {
+                Logger.e(TAG, Str.get(R.string.invalid_plugin_json))
+                _error.value = Str.get(R.string.invalid_plugin_json)
+                return null
+            }
+
+            if (!preferenceManager.isDevIgnoreSignatureEnabled() &&
+                !SecurityUtils.verifyFileSignature(pluginId, file, preferenceManager)) {
                 Logger.e(TAG, Str.get(R.string.plugin_signature_verification_failed))
                 _error.value = Str.get(R.string.plugin_signature_verification_failed_2)
                 return null
@@ -321,7 +373,6 @@ class PluginManager private constructor(
             if (info != null) {
                 checkPluginDependencies(info)
                 refreshPlugins()
-                createPluginDynamicShortcut(info)
                 notifyWidgetsRefresh()
                 Logger.success(TAG, Str.get(R.string.plugin_installed_info_name, info.name))
             }
@@ -369,6 +420,11 @@ class PluginManager private constructor(
     suspend fun uninstallPlugin(pluginId: String): Boolean {
         Logger.action(TAG, Str.get(R.string.uninstall_plugin), pluginId)
 
+        if (!pluginId.isValidPluginId()) {
+            Logger.e(TAG, Str.get(R.string.invalid_plugin_id_format_pluginid, pluginId))
+            return false
+        }
+
         if (isBackendRunning(pluginId)) {
             stopBackend(pluginId)
         }
@@ -391,8 +447,8 @@ class PluginManager private constructor(
             if (result) {
                 classLoaders.remove(pluginId)
                 pluginInstances.remove(pluginId)
+                pluginInstancesByKey.entries.removeAll { pluginIdOfInstance(it.key) == pluginId }
                 removePluginWebViewsOf(pluginId)
-                removePluginDynamicShortcut(pluginId)
                 preferenceManager.removePluginSignature(pluginId)
                 refreshPlugins()
                 notifyWidgetsRefresh()
@@ -418,13 +474,92 @@ class PluginManager private constructor(
 
     // ==================== 插件更新 ====================
 
+    /**
+     * 原子更新插件：先把旧目录改名暂存，新包安装到正式目录，成功后再清理旧目录；
+     * 任一步失败立即回滚旧目录，避免「先卸载后安装」导致的插件永久丢失。
+     * 用户数据（<plugins>/<id>/data）在更新中保留。
+     */
     suspend fun updatePlugin(pluginId: String, newPluginFile: File): Boolean {
-        if (!uninstallPlugin(pluginId)) {
-            Logger.e(TAG, Str.get(R.string.failed_to_uninstall_old_version))
+        if (!pluginId.isValidPluginId()) {
+            Logger.e(TAG, Str.get(R.string.invalid_plugin_id_format_pluginid, pluginId))
             return false
         }
-        val info = installPlugin(newPluginFile, newPluginFile.name)
-        return info != null
+
+        val newPluginId = readPluginIdFromTpk(newPluginFile)
+        if (newPluginId == null || newPluginId != pluginId) {
+            Logger.e(TAG, Str.get(R.string.plugin_update_id_mismatch_expected_pluginid, pluginId, newPluginId ?: ""))
+            _error.value = Str.get(R.string.plugin_update_id_mismatch_expected_pluginid, pluginId, newPluginId ?: "")
+            return false
+        }
+
+        if (!preferenceManager.isDevIgnoreSignatureEnabled() &&
+                !SecurityUtils.verifyFileSignature(pluginId, newPluginFile, preferenceManager)) {
+            Logger.e(TAG, Str.get(R.string.plugin_signature_verification_failed))
+            _error.value = Str.get(R.string.plugin_signature_verification_failed_2)
+            return false
+        }
+
+        val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
+        val backupDir = File(Constants.PLUGIN_DIR, ".$pluginId.backup.${System.currentTimeMillis()}")
+
+        if (pluginDir.exists() && !pluginDir.renameTo(backupDir)) {
+            Logger.e(TAG, Str.get(R.string.failed_to_stage_old_plugin_for_update))
+            return false
+        }
+
+        val info = try {
+            installPluginInternal(newPluginFile, newPluginFile.name)
+        } catch (e: Exception) {
+            Logger.e(TAG, Str.get(R.string.plugin_install_error), e)
+            null
+        }
+
+        if (info == null || info.pluginId != pluginId) {
+            // 回滚：清理可能残留的新目录，恢复旧目录
+            fileManager.deleteRecursively(pluginDir)
+            if (backupDir.exists()) backupDir.renameTo(pluginDir)
+            Logger.e(TAG, Str.get(R.string.plugin_update_failed_rolled_back))
+            _error.value = Str.get(R.string.plugin_update_failed_rolled_back)
+            return false
+        }
+
+        // 更新成功：保留用户数据（data 目录），清除运行缓存以加载新 dex
+        preserveUserData(backupDir, pluginDir)
+        fileManager.deleteRecursively(backupDir)
+
+        // 清除旧 dex / WebView 缓存，下次打开加载新版本
+        classLoaders.remove(pluginId)
+        pluginInstances.remove(pluginId)
+        pluginInstancesByKey.entries.removeAll { pluginIdOfInstance(it.key) == pluginId }
+        removePluginWebViewsOf(pluginId)
+
+        checkPluginDependencies(info)
+        refreshPlugins()
+        notifyWidgetsRefresh()
+        Logger.success(TAG, Str.get(R.string.plugin_updated_info_name_info_versi, info.name, info.version))
+        return true
+    }
+
+    /** 把旧插件目录中的用户数据（data）合并进新目录。 */
+    private fun preserveUserData(oldDir: File, newDir: File) {
+        try {
+            val oldData = File(oldDir, "data")
+            val newData = File(newDir, "data")
+            if (oldData.exists()) {
+                if (!newData.exists()) newData.mkdirs()
+                oldData.listFiles()?.forEach { file ->
+                    val target = File(newData, file.name)
+                    if (file.isDirectory) {
+                        fileManager.copyDirectory(file, target)
+                    } else {
+                        file.copyTo(target, overwrite = true)
+                    }
+                }
+                Logger.d(TAG, Str.get(R.string.user_data_preserved_during_update))
+            }
+        } catch (e: Exception) {
+            Logger.w(TAG, Str.get(R.string.failed_to_preserve_user_data_e_me, e.message))
+        }
     }
 
     fun hasPluginUpdate(pluginId: String, newVersion: Int): Boolean {
@@ -435,6 +570,10 @@ class PluginManager private constructor(
     // ==================== 插件导出 ====================
 
     suspend fun exportPlugin(pluginId: String, destFile: File): Boolean {
+        if (!pluginId.isValidPluginId()) {
+            Logger.e(TAG, Str.get(R.string.invalid_plugin_id_format_pluginid, pluginId))
+            return false
+        }
         val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
         if (!pluginDir.exists()) {
             Logger.e(TAG, Str.get(R.string.plugin_dir_not_found))
@@ -473,7 +612,7 @@ class PluginManager private constructor(
 
     // ==================== 插件视图加载（原生插件） ====================
 
-    fun getPluginViewSync(pluginId: String, context: Context, container: ViewGroup?, forceNewInstance: Boolean = false): View? {
+    fun getPluginViewSync(pluginId: String, context: Context, container: ViewGroup?, forceNewInstance: Boolean = false, instanceKey: String? = null): View? {
         Logger.enter(TAG, "getPluginViewSync")
         Logger.param(TAG, "pluginId", pluginId)
 
@@ -508,18 +647,21 @@ class PluginManager private constructor(
                 Logger.success(TAG, Str.get(R.string.dexclassloader_created))
             }
 
-            var plugin = pluginInstances[pluginId]?.get()
+            // 多开时每个实例键有独立 PluginInterface；默认单实例复用 pluginId 实例
+            val instanceLookupKey = if (instanceKey != null) instanceKey else pluginId
+            var plugin = pluginInstancesByKey[instanceLookupKey]?.get()
 
-            if (forceNewInstance) {
+            if (forceNewInstance || plugin == null) {
                 // 开发者选项开启的「原生插件多开」：每次新建 PluginInterface 实例。
                 // classLoader 保持共享，实例与 View 相互独立。
                 val clazz = classLoader.loadClass(info.mainClass)
                 plugin = clazz.newInstance() as PluginInterface
-            } else if (plugin == null) {
-                val clazz = classLoader.loadClass(info.mainClass)
-                plugin = clazz.newInstance() as PluginInterface
-                pluginInstances[pluginId] = WeakReference(plugin)
+                pluginInstancesByKey[instanceLookupKey] = WeakReference(plugin)
                 Logger.success(TAG, Str.get(R.string.plugin_instantiated))
+            }
+            // 兼容旧调用：无 instanceKey（单实例）时同步更新旧 pluginInstances 表
+            if (instanceKey == null) {
+                pluginInstances[pluginId] = WeakReference(plugin)
             }
 
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
@@ -548,6 +690,11 @@ class PluginManager private constructor(
 
     fun getPluginInstance(pluginId: String): PluginInterface? {
         return pluginInstances[pluginId]?.get()
+    }
+
+    /** 按「实例键」获取原生插件实例（多开隔离）。无实例键时回退到 pluginId 共享实例。 */
+    fun getPluginInstanceByKey(instanceKey: String): PluginInterface? {
+        return pluginInstancesByKey[instanceKey]?.get() ?: pluginInstances[pluginIdOfInstance(instanceKey)]?.get()
     }
 
     fun getPluginDirFile(pluginId: String): File? {
@@ -616,137 +763,7 @@ class PluginManager private constructor(
 
     // ==================== 动态快捷方式 ====================
 
-    @Suppress("DEPRECATION")
-    private fun createPluginDynamicShortcut(plugin: PluginInfo): Boolean {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                val shortcutManager = context.getSystemService(ShortcutManager::class.java) ?: return false
-                val dynamicShortcuts = shortcutManager.dynamicShortcuts
-                if (dynamicShortcuts.size >= shortcutManager.maxShortcutCountPerActivity) {
-                    dynamicShortcuts.firstOrNull { it.id.startsWith("plugin_") }?.let {
-                        shortcutManager.removeDynamicShortcuts(listOf(it.id))
-                    }
-                }
-
-                val intent = Intent(context, PluginHostActivity::class.java).apply {
-                    putExtra(PluginHostActivity.EXTRA_PLUGIN_ID, plugin.pluginId)
-                    action = Intent.ACTION_VIEW
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-
-                val icon = getPluginIconForShortcut(plugin)
-                if (icon != null) {
-                    val shortcut = ShortcutInfo.Builder(context, "plugin_${plugin.pluginId}")
-                        .setShortLabel(plugin.name)
-                        .setLongLabel(plugin.description.ifEmpty { plugin.name })
-                        .setIcon(icon)
-                        .setIntent(intent)
-                        .build()
-                    shortcutManager.addDynamicShortcuts(listOf(shortcut))
-                    Logger.success(TAG, Str.get(R.string.creating_dynamic_shortcut_plugin_nam, plugin.name))
-                    return true
-                }
-            } else {
-                createShortcutForOldVersions(plugin)
-                return true
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_create_shortcut), e)
-        }
-        return false
-    }
-
-    @Suppress("DEPRECATION")
-    private fun createShortcutForOldVersions(plugin: PluginInfo) {
-        try {
-            val shortcutIntent = Intent(context, PluginHostActivity::class.java).apply {
-                putExtra(PluginHostActivity.EXTRA_PLUGIN_ID, plugin.pluginId)
-                action = Intent.ACTION_VIEW
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            }
-
-            val addIntent = Intent().apply {
-                putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent)
-                putExtra(Intent.EXTRA_SHORTCUT_NAME, plugin.name)
-                action = "com.android.launcher.action.INSTALL_SHORTCUT"
-            }
-
-            val bitmap = getPluginIconBitmap(plugin)
-            if (bitmap != null) {
-                addIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, bitmap)
-            } else {
-                addIntent.putExtra(
-                    Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
-                    Intent.ShortcutIconResource.fromContext(context, R.drawable.ic_extension)
-                )
-            }
-            context.sendBroadcast(addIntent)
-            Logger.success(TAG, Str.get(R.string.creating_legacy_shortcut_plugin_name, plugin.name))
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_create_legacy_shortcut), e)
-        }
-    }
-
-    private fun removePluginDynamicShortcut(pluginId: String) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                val shortcutManager = context.getSystemService(ShortcutManager::class.java)
-                shortcutManager?.removeDynamicShortcuts(listOf("plugin_$pluginId"))
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_remove_shortcut), e)
-        }
-    }
-
-    private fun refreshAllPluginShortcuts() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-            try {
-                val shortcutManager = context.getSystemService(ShortcutManager::class.java) ?: return
-                val pluginShortcutIds = shortcutManager.dynamicShortcuts
-                    .filter { it.id.startsWith("plugin_") }
-                    .map { it.id }
-                if (pluginShortcutIds.isNotEmpty()) {
-                    shortcutManager.removeDynamicShortcuts(pluginShortcutIds)
-                }
-                val max = shortcutManager.maxShortcutCountPerActivity
-                var added = 0
-                for (plugin in _plugins.value) {
-                    if (added >= max) break
-                    if (createPluginDynamicShortcut(plugin)) added++
-                    else break
-                }
-                Logger.i(TAG, Str.get(R.string.dynamic_shortcuts_refreshed))
-            } catch (e: Exception) {
-                Logger.e(TAG, Str.get(R.string.failed_to_refresh_shortcuts), e)
-            }
-        }
-    }
-
-    private fun getPluginIconForShortcut(plugin: PluginInfo): Icon? {
-        val bitmap = getPluginIconBitmap(plugin)
-        return if (bitmap != null) {
-            val scaled = Bitmap.createScaledBitmap(bitmap, 72, 72, true)
-            Icon.createWithBitmap(scaled)
-        } else {
-            Icon.createWithResource(context, R.drawable.ic_extension)
-        }
-    }
-
-    private fun getPluginIconBitmap(plugin: PluginInfo): Bitmap? {
-        try {
-            val pluginDir = File(Constants.PLUGIN_DIR, plugin.pluginId)
-            if (pluginDir.exists()) {
-                val iconPath = if (plugin.icon.isNotEmpty()) plugin.icon else "icon.png"
-                val iconFile = File(pluginDir, iconPath)
-                if (iconFile.exists()) {
-                    return BitmapFactory.decodeFile(iconFile.absolutePath)
-                }
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_get_plugin_icon), e)
-        }
-        return null
-    }
+        // ==================== 动态快捷方式已移除，改为 shortcuts.xml 静态快捷方式 ====================
 
     // ==================== 小部件刷新 ====================
 
@@ -774,8 +791,7 @@ class PluginManager private constructor(
      * 原生插件实例仍以插件 ID 共享（默认单实例；开发者选项开启后由宿主自行创建新实例）。
      */
     fun onPluginResume(instanceKey: String) {
-        val pluginId = pluginIdOfInstance(instanceKey)
-        getPluginInstance(pluginId)?.onResume()
+        getPluginInstanceByKey(instanceKey)?.onResume()
         getPluginWebView(instanceKey)?.let {
             it.evaluateJavascript("if(window.dispatchEvent) window.dispatchEvent(new Event('resume'));", null)
             it.onResume()
@@ -784,8 +800,7 @@ class PluginManager private constructor(
     }
 
     fun onPluginPause(instanceKey: String) {
-        val pluginId = pluginIdOfInstance(instanceKey)
-        getPluginInstance(pluginId)?.onPause()
+        getPluginInstanceByKey(instanceKey)?.onPause()
         getPluginWebView(instanceKey)?.let {
             it.evaluateJavascript("if(window.dispatchEvent) window.dispatchEvent(new Event('pause'));", null)
             it.onPause()
@@ -795,7 +810,12 @@ class PluginManager private constructor(
 
     fun onPluginDestroy(instanceKey: String) {
         val pluginId = pluginIdOfInstance(instanceKey)
-        getPluginInstance(pluginId)?.onDestroy()
+        // 仅销毁当前实例键对应的原生实例，不影响同插件其他多开实例
+        pluginInstancesByKey.remove(instanceKey)?.get()?.onDestroy()
+        if (pluginInstancesByKey.keys.none { pluginIdOfInstance(it) == pluginId }) {
+            getPluginInstance(pluginId)?.onDestroy()
+            pluginInstances.remove(pluginId)
+        }
         getPluginWebView(instanceKey)?.let {
             it.evaluateJavascript("if(window.dispatchEvent) window.dispatchEvent(new Event('destroy'));", null)
             it.loadUrl("about:blank")
@@ -804,13 +824,15 @@ class PluginManager private constructor(
             it.destroy()
         }
         removePluginWebView(instanceKey)
-        pluginInstances.remove(pluginId)
-        classLoaders.remove(pluginId)
+        // classLoader 在最后一个实例销毁后才回收（同一 dex 可被多开实例共享）
+        if (pluginInstancesByKey.keys.none { pluginIdOfInstance(it) == pluginId }) {
+            classLoaders.remove(pluginId)
+        }
     }
 
     fun onPluginBackPressed(instanceKey: String): Boolean {
         val pluginId = pluginIdOfInstance(instanceKey)
-        val plugin = getPluginInstance(pluginId)
+        val plugin = getPluginInstanceByKey(instanceKey)
         if (plugin?.onBackPressed() == true) return true
         getPluginWebView(instanceKey)?.let {
             if (it.canGoBack()) {
@@ -843,14 +865,17 @@ class PluginManager private constructor(
         return PluginPermissionManager.getPermissionStatusSummary(context, pluginId)
     }
 
+    @Deprecated("Deprecated: use per-permission check via PluginPermissionManager instead")
     fun getPermissionState(pluginId: String): Int {
         return PluginPermissionManager.getPermissionState(context, pluginId)
     }
 
+    @Deprecated("Deprecated: use per-permission grant/block via PluginPermissionManager instead")
     fun setPermissionState(pluginId: String, state: Int) {
         PluginPermissionManager.setPermissionState(context, pluginId, state)
     }
 
+    @Deprecated("Deprecated: use per-permission check via PluginPermissionManager instead")
     fun shouldShowPermissionDialog(pluginId: String): Boolean {
         return PluginPermissionManager.shouldShowPermissionDialog(context, pluginId)
     }
@@ -1109,6 +1134,18 @@ class PluginManager private constructor(
         prefs.edit().clear().apply()
     }
 
+    // ==================== 权限提示忽略管理 ====================
+
+    fun isPluginPermissionPromptIgnored(pluginId: String): Boolean {
+        val prefs = context.getSharedPreferences("plugin_permission_prompts", Context.MODE_PRIVATE)
+        return prefs.getBoolean("prompt_$pluginId", false)
+    }
+
+    fun setPluginPermissionPromptIgnored(pluginId: String, ignored: Boolean) {
+        val prefs = context.getSharedPreferences("plugin_permission_prompts", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("prompt_$pluginId", ignored).apply()
+    }
+
     // ==================== 清理 ====================
 
     fun clearAllPlugins() {
@@ -1134,18 +1171,16 @@ class PluginManager private constructor(
         preferenceManager.setNativeMultiInstanceEnabled(enabled)
     }
 
-    fun isBackendMultiModeIndependent(): Boolean = preferenceManager.isBackendMultiModeIndependent()
-
-    fun getBackendMultiMode(): String = preferenceManager.getBackendMultiMode()
-
-    fun setBackendMultiMode(mode: String) {
-        preferenceManager.setBackendMultiMode(mode)
-    }
-
     fun isSharedSessionRetainEnabled(): Boolean = preferenceManager.isSharedSessionRetainEnabled()
 
     fun setSharedSessionRetainEnabled(enabled: Boolean) {
         preferenceManager.setSharedSessionRetainEnabled(enabled)
+    }
+
+    fun isDevIgnoreSignatureEnabled(): Boolean = preferenceManager.isDevIgnoreSignatureEnabled()
+
+    fun setDevIgnoreSignatureEnabled(enabled: Boolean) {
+        preferenceManager.setDevIgnoreSignatureEnabled(enabled)
     }
 
     // ==================== 原生插件活动实例追踪 ====================

@@ -354,6 +354,7 @@ private fun buildTemplateReadme(files: List<String>): String {
         "com.example.termuxtest.tpk" to Str.get(R.string.termux_backend_plugin_example_python),
         "com.test.allapi.tpk" to Str.get(R.string.full_api_test_plugin),
         "com.test.storage.tpk" to Str.get(R.string.storage_test_plugin),
+        "com.uin.compression.tpk" to Str.get(R.string.compression_plugin_example),
         "NativeTestPlugin.tpk" to Str.get(R.string.native_plugin_example),
         "web_plugin_template.tpk" to Str.get(R.string.web_plugin_template_frontend_only)
     )

@@ -44,7 +44,7 @@ fun RepoScreen() {
     val pullRefreshState = rememberPullToRefreshState()
 
     LaunchedEffect(Unit) {
-        repoViewModel.init(context)
+        repoViewModel.init(context.applicationContext)
         repoViewModel.loadPlugins()
         AppLog.i(TAG, Str.get(R.string.start_loading_plugin_list))
     }

@@ -85,12 +85,17 @@ class UpdateChecker(
                 // 检查是否有新版本
                 var hasNewer = false
                 var forceUpdate = false
+                val ignoredForceTag = preferenceManager.getForceUpdateIgnored()
 
                 for (release in releases) {
-                    val versionCode = release.versionCode.toIntOrNull() ?: 0
-                    if (versionCode > currentVersionCode) {
+                    if (isReleaseNewer(release, currentVersionCode, currentVersionName)) {
                         hasNewer = true
                         forceUpdate = release.forceUpdate
+                        // 用户曾忽略强更：忽略的是 tagName，命中则降级为非强更
+                        if (forceUpdate && ignoredForceTag.isNotEmpty() && release.tagName == ignoredForceTag) {
+                            forceUpdate = false
+                            Logger.i(TAG, Str.get(R.string.force_update_ignored_tagname, ignoredForceTag))
+                        }
 
                         // 应用镜像到下载链接
                         currentMirror?.let { mirror ->
@@ -233,14 +238,17 @@ class UpdateChecker(
                 forceFlag = parts.getOrNull(2) ?: "0"
                 forceUpdate = forceFlag == "1"
 
+                // 解析发布正文中声明的 SHA-256（形如 "SHA256: <64hex>" / "sha256=<64hex>" / "<64hex>" 独立行）
+                sha256 = extractSha256(releaseNotes)
+
                 val assets = release.optJSONArray("assets")
                 if (assets != null) {
                     for (j in 0 until assets.length()) {
                         val asset = assets.getJSONObject(j)
-                        if (asset.getString("name").endsWith(".apk")) {
+                        val name = asset.getString("name")
+                        if (name.endsWith(".apk")) {
                             downloadUrl = asset.getString("browser_download_url")
                             apkSize = asset.getLong("size")
-                            break
                         }
                     }
                 }
@@ -253,9 +261,100 @@ class UpdateChecker(
             releases.add(info)
         }
 
-        releases.sortByDescending { it.versionCode.toIntOrNull() ?: 0 }
+        releases.sortWith(compareByDescending { it.toComparableVersion() })
+
+        // SHA-256 只需对最新一个 release 拉取即可（下载对话框固定用 releases.first()），
+        // 逐条拉取会让每次更新检查都产生 N 次网络请求，导致「点击检查更新」迟迟不弹窗。
+        // 正文已声明哈希的 release 保留正文哈希，无需额外请求。
+        if (releases.isNotEmpty() && releases.first().sha256.isEmpty()) {
+            val first = releases.first()
+            if (first.downloadUrl.endsWith(".apk")) {
+                first.sha256 = fetchSha256Asset(first.downloadUrl)
+            }
+        }
 
         return releases
+    }
+
+    /**
+     * 判断 release 是否比当前版本新。
+     * 优先用 versionCode（整型）比较；versionCode 缺失或非数字（如 tag 只有版本名）
+     * 时回退到版本号三元组比较，避免"无前缀 tag 一律为 0 → 漏算新版"。
+     */
+    private fun isReleaseNewer(release: ReleaseInfo, currentCode: Int, currentName: String): Boolean {
+        val releaseCode = release.versionCode.toIntOrNull()
+        if (releaseCode != null) {
+            return releaseCode > currentCode
+        }
+        return compareVersionTriplets(release.versionName, currentName) > 0
+    }
+
+    /**
+     * 提取可比较的版本数值。
+     * 注意两套刻度不能混排：带 versionCode 的 tag（如 `20-5.4.0-1`）code 是单调小整数，
+     * 而旧版无 code 的 tag（如 `V2.6.0`）按三元组能拼出百万级大数。
+     * 若直接返回原始值，`V2.6.0`(≈2,006,000) 会排在 `20-5.4.0-1`(code=20) 之上，
+     * 导致「最新版本」误判为 v2.6.0。修复：带 code 的 release 统一加 1e9 基线上移，
+     * 保证任何旧 tag 的三元组（<1e9）都排在其下。
+     */
+    private fun ReleaseInfo.toComparableVersion(): Long {
+        val code = versionCode.toIntOrNull()
+        if (code != null) return code.toLong() + 1_000_000_000L
+        val parts = versionName
+            .trim()
+            .trimStart('v', 'V')
+            .split('.')
+            .map { it.toIntOrNull() ?: 0 }
+        // 三元组拼成 大数：major*1000000 + minor*1000 + patch
+        return (parts.getOrNull(0) ?: 0) * 1_000_000L +
+            (parts.getOrNull(1) ?: 0) * 1_000L +
+            (parts.getOrNull(2) ?: 0)
+    }
+
+    /** 版本号三元组比较：a > b 返回正数，a < b 返回负数，相等返回 0 */
+    private fun compareVersionTriplets(a: String, b: String): Int {
+        val pa = a.trim().trimStart('v', 'V').split('.').map { it.toIntOrNull() ?: 0 }
+        val pb = b.trim().trimStart('v', 'V').split('.').map { it.toIntOrNull() ?: 0 }
+        val len = maxOf(pa.size, pb.size)
+        for (i in 0 until len) {
+            val x = pa.getOrNull(i) ?: 0
+            val y = pb.getOrNull(i) ?: 0
+            if (x != y) return x.compareTo(y)
+        }
+        return 0
+    }
+
+    /**
+     * 从 release 正文提取 64 位十六进制 SHA-256（小写归一）。
+     * 支持格式：`SHA256: <hex>`、`sha256=<hex>`、`SHA-256 <hex>`、独立 `hex` 行。
+     */
+    private fun extractSha256(body: String): String {
+        if (body.isBlank()) return ""
+        val hexRegex = Regex("[0-9a-fA-F]{64}")
+        val match = hexRegex.find(body) ?: return ""
+        return match.value.lowercase()
+    }
+
+    /**
+     * 拉取 `.sha256` 资产内容（纯文本，形如 "<hex>  filename" 或仅 "<hex>"）。
+     * 仅在获取 release 列表时对最新几个 release 调用，失败静默返回空。
+     */
+    private fun fetchSha256Asset(apkUrl: String): String {
+        return try {
+            val shaUrl = apkUrl + ".sha256"
+            val request = Request.Builder()
+                .url(shaUrl)
+                .header("User-Agent", "UIN-Tool-Android")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return ""
+                val text = response.body?.string() ?: return ""
+                extractSha256(text)
+            }
+        } catch (e: Exception) {
+            Logger.d(TAG, "fetchSha256Asset failed: ${e.message}")
+            ""
+        }
     }
 
     private fun getCurrentVersionCode(): Int {

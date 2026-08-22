@@ -288,7 +288,6 @@ class WidgetConfigureActivity : ComponentActivity() {
                                     // ✅ 强制刷新小部件
                                     val appWidgetManager = AppWidgetManager.getInstance(this@WidgetConfigureActivity)
                                     WidgetProvider.updateWidget(this@WidgetConfigureActivity, appWidgetManager, appWidgetId)
-                                    appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
                                     WidgetProvider.sendRefreshIntent(this@WidgetConfigureActivity)
                                     
                                     Logger.success(TAG, Str.get(R.string.widget_configured_and_refreshed))
@@ -351,7 +350,6 @@ class WidgetConfigureActivity : ComponentActivity() {
         try {
             Logger.d(TAG, Str.get(R.string.refreshing_widget_appwidgetid, appWidgetId))
             WidgetProvider.updateWidget(this, appWidgetManager, appWidgetId)
-            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list)
             Logger.success(TAG, Str.get(R.string.widget_refreshed_appwidgetid, appWidgetId))
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.failed_to_refresh_widget_e_message, e.message), e)
@@ -366,7 +364,6 @@ class WidgetConfigureActivity : ComponentActivity() {
             if (appWidgetIds.isNotEmpty()) {
                 appWidgetIds.forEach { widgetId ->
                     WidgetProvider.updateWidget(this, appWidgetManager, widgetId)
-                    appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list)
                 }
                 Logger.success(TAG, Str.get(R.string.all_widgets_refreshed_appwidgetids_s, appWidgetIds.size))
             } else {

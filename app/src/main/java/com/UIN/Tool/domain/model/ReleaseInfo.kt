@@ -16,7 +16,9 @@ data class ReleaseInfo(
     var releaseNotes: String = "",
     var downloadUrl: String = "",
     var apkSize: Long = 0,
-    var isPreRelease: Boolean = false
+    var isPreRelease: Boolean = false,
+    // 发布方在 release 正文/资产中声明的 APK SHA-256（小写十六进制），空表示未发布
+    var sha256: String = ""
 ) {
     
     fun getFormattedDate(): String {

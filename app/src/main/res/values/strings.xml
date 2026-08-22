@@ -91,6 +91,9 @@
     <string name="alpine_container_restored" formatted="false">Alpine container restored</string>
     <string name="alpine_container_setup_failed" formatted="false">❌ Alpine container setup failed</string>
     <string name="alpine_not_installed_starting_offlin" formatted="false">Alpine not installed, starting offline restore...</string>
+    <string name="environment_init_notice" formatted="false">To save time, bootstrap and Alpine are being installed in the background. Alpine container takes about 1 minute to complete. Please do not exit the app during this period to avoid incomplete installation.</string>
+    <string name="alpine_installing_do_not_exit" formatted="false">Alpine container is installing, please do not exit the app</string>
+    <string name="alpine_install_complete" formatted="false">Alpine container installation complete</string>
     <string name="alpine_ready_processing_pre_command" formatted="false">✅ Alpine ready, processing pre-command...</string>
     <string name="an_exception_occurred" formatted="false">An exception occurred</string>
     <string name="android_version" formatted="false">Android version</string>
@@ -135,13 +138,33 @@
     <string name="builtin_termux_is_a_simplified_li" formatted="false">Built-in Termux: a simplified Linux environment bundled with this app (Proot Alpine container). No extra install needed.</string>
     <string name="proot_container_name" formatted="false">Proot Container Name</string>
     <string name="run_proot_distro_list_in_termux_t" formatted="false">Run "proot-distro list" in Termux to check your container name.</string>
-    <string name="idle_recycle_timeout_minutes" formatted="false">Idle Recycle Timeout (minutes)</string>
+    <string name="idle_recycle_timeout_minutes" formatted="false">Idle Recycle Timeout</string>
     <string name="min_" formatted="false">min</string>
-    <string name="backend_will_be_stopped_after_being_i" formatted="false">Backend is automatically stopped after being idle for this long. Configure a /stop endpoint in your start script for a clean shutdown.</string>
+    <string name="idle_infinite" formatted="false">Infinite</string>
+    <string name="idle_infinite_desc" formatted="false">Never recycle automatically</string>
+    <string name="idle_custom_minutes" formatted="false">Custom (minutes)</string>
+    <string name="backend_will_be_stopped_after_being_i" formatted="false">Backend is automatically stopped after being idle for this long. Choose Infinite to keep it running until you stop it. Enter any number of minutes for a custom timeout.</string>
     <string name="reminder" formatted="false">Reminder</string>
     <string name="real_termux_requires_allow_external" formatted="false">Real Termux requires the following to be configured in Termux before it can start plugin backends:</string>
     <string name="backend_settings_saved" formatted="false">Backend settings saved</string>
     <string name="start_backend" formatted="false">Start backend</string>
+    <string name="start_backend_supervisor" formatted="false">Start backend supervisor</string>
+    <string name="supervisor_alive_check_timeout" formatted="false">Timed out waiting for the shared backend supervisor to become ready</string>
+    <string name="supervisor_start_failed" formatted="false">Failed to start the shared backend supervisor</string>
+    <string name="shared_supervisor_desc" formatted="false">Real Termux plugins now run inside one shared supervisor (Termux local or a single proot container). The container is started once and kept alive while the app is open, so later plugin starts skip the proot initialization overhead.</string>
+    <string name="run_command_permission_status" formatted="false">RUN_COMMAND permission: </string>
+    <string name="permission_status_granted" formatted="false">Granted</string>
+    <string name="permission_status_denied" formatted="false">Not granted</string>
+    <string name="supervisor_status" formatted="false">Shared supervisor: </string>
+    <string name="supervisor_status_running" formatted="false">Running</string>
+    <string name="supervisor_status_stopped" formatted="false">Not running</string>
+    <string name="keep_alive_title" formatted="false">Background Keep-Alive</string>
+    <string name="keep_alive" formatted="false">Keep alive in background</string>
+    <string name="keep_alive_desc" formatted="false">Keep the shared supervisor (and proot container) alive even when this app is killed in the background, so the next plugin start is instant. Uses battery-optimization exemption, a notification, and Shizuku/Dhizuku privileges when available.</string>
+    <string name="keep_alive_privilege_status" formatted="false">Privilege: </string>
+    <string name="keep_alive_privilege_shizuku" formatted="false">Shizuku available</string>
+    <string name="keep_alive_privilege_dhizuku" formatted="false">Dhizuku available</string>
+    <string name="keep_alive_privilege_none" formatted="false">None (only battery-optimization exemption + notification)</string>
     <string name="real_termux_probe_failed_error" formatted="false">Real Termux not ready: %1$s</string>
     <string name="real_termux_command_started" formatted="false">Backend command sent to Real Termux, waiting for ready</string>
     <string name="real_termux_start_failed_e_message" formatted="false">Failed to start command in Real Termux: %1$s</string>
@@ -152,8 +175,8 @@
     <string name="real_termux_not_ready" formatted="false">Real Termux Not Ready</string>
     <string name="setup_code_copied_to_clipboard" formatted="false">Run the following commands in Termux to fix it (already copied to clipboard):</string>
     <string name="real_termux_not_installed" formatted="false">Termux (com.termux) is not installed</string>
-    <string name="real_termux_run_command_permission_denied" formatted="false">UIN Tool is missing the com.termux.permission.RUN_COMMAND permission. Grant it in Settings -> Apps -> UIN Tool -> Permissions (Run commands in Termux environment).</string>
-    <string name="real_termux_run_command_permission_grant_guide" formatted="false">To run commands in Real Termux, UIN Tool needs the "com.termux.permission.RUN_COMMAND" permission.\n\nOpen Settings -> Apps -> UIN Tool -> Permissions, then enable "Run commands in Termux environment".\n\nAlso make sure "allow-external-apps=true" is set in ~/.termux/termux.properties.</string>
+    <string name="real_termux_run_command_permission_denied" formatted="false">UIN Tool was denied the com.termux.permission.RUN_COMMAND permission (declared by Termux, not UIN Tool). Open the Termux app: Termux Settings -> "Allow external apps" / "Run commands", then retry.</string>
+    <string name="real_termux_run_command_permission_grant_guide" formatted="false">To run commands in Real Termux, UIN Tool needs the "com.termux.permission.RUN_COMMAND" permission.\n\nThis permission is declared by the Termux app itself, not by UIN Tool, so grant it from inside Termux:\n1. Open the Termux app.\n2. Long-press the terminal area -> More -> Allow external apps (or Termux Settings -> Allow external apps).\n3. Confirm "Allow run commands" when prompted, then return and retry.\n\nAlso make sure "allow-external-apps=true" is set in ~/.termux/termux.properties.</string>
     <string name="failed_to_start_real_termux_probe_e" formatted="false">Failed to probe Real Termux: %1$s</string>
     <string name="allow_external_apps_not_enabled" formatted="false">allow-external-apps is not enabled. Add "allow-external-apps=true" to ~/.termux/termux.properties</string>
     <string name="real_termux_not_initialized" formatted="false">Termux bootstrap not initialized. Open Termux once and let it install the base packages</string>
@@ -348,8 +371,7 @@ Note: these permissions are only used when your installed plugins need them.</st
     <string name="compose_dialog_overlay_added_above_w" formatted="false">✅ Compose dialog overlay added above WebView (initially </string>
     <string name="conditions_met_calling_pluginbackend" formatted="false">✅ Conditions met, calling PluginBackendManager.startBackend()</string>
     <string name="conditions_met_starting_backend" formatted="false">✅ Conditions met, starting backend</string>
-    <string name="conditions_not_met_skipping_backend_" formatted="false">❌ Conditions not met, skipping backend start</string>
-    <string name="config_exported" formatted="false">Config exported</string>
+    <string name="conditions_not_met_skipping_backend_" formatted="false">Conditions not met, skipping backend start</string>    <string name="config_exported" formatted="false">Config exported</string>
     <string name="config_imported" formatted="false">Config imported</string>
     <string name="config_loaded" formatted="false">Config loaded</string>
     <string name="config_reset" formatted="false">Config reset</string>
@@ -505,6 +527,7 @@ Plugin data will be cleared and cannot be recovered.</string>
     <string name="download_and_install_failed" formatted="false">Download and install failed</string>
     <string name="download_app_updates" formatted="false">Download app updates</string>
     <string name="download_cancelled" formatted="false">Download cancelled</string>
+    <string name="apk_sha256_mismatch" formatted="false">APK SHA-256 mismatch. Expected %1$s, got %2$s. Download rejected.</string>
     <string name="download_complete_file_absolutepath">Download complete: %1$s</string>
     <string name="download_failed" formatted="false">Download failed</string>
     <string name="download_failed_error">Download failed: %1$s</string>
@@ -708,6 +731,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="failed_to_open_widget_config" formatted="false">Failed to open widget config</string>
     <string name="failed_to_parse_app_settings" formatted="false">Failed to parse app settings</string>
     <string name="failed_to_parse_config_using_default" formatted="false">Failed to parse config, using defaults</string>
+    <string name="failed_to_apply_config" formatted="false">Failed to apply config: %s</string>
     <string name="failed_to_parse_json_key">Failed to parse JSON: %1$s</string>
     <string name="failed_to_parse_mirror_config" formatted="false">Failed to parse mirror config</string>
     <string name="failed_to_parse_mirror_line_line">Failed to parse mirror line: %1$s</string>
@@ -742,6 +766,12 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="failed_to_start_terminal_e_message_2">❌ Failed to start terminal: %1$s</string>
     <string name="failed_to_test_mirrors" formatted="false">Failed to test mirrors</string>
     <string name="failed_to_uninstall_old_version" formatted="false">Failed to uninstall old version</string>
+    <string name="plugin_update_id_mismatch_expected_pluginid" formatted="false">Plugin ID mismatch when updating: expected %1$s, got %2$s</string>
+    <string name="failed_to_stage_old_plugin_for_update" formatted="false">Failed to stage old plugin for update</string>
+    <string name="plugin_update_failed_rolled_back" formatted="false">Plugin update failed, old version restored</string>
+    <string name="plugin_updated_info_name_info_versi" formatted="false">Plugin updated: %1$s (version %2$s)</string>
+    <string name="user_data_preserved_during_update" formatted="false">User data preserved during update</string>
+    <string name="failed_to_preserve_user_data_e_me" formatted="false">Failed to preserve user data: %1$s</string>
     <string name="failed_to_unregister_broadcast_recei" formatted="false">Failed to unregister broadcast receiver</string>
     <string name="failed_to_unzip_zipfile_absolutepath">Failed to unzip: %1$s</string>
     <string name="failed_to_update_boolean" formatted="false">Failed to update boolean</string>
@@ -781,7 +811,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="filename_signature_verification_fail">%1$s (signature verification failed)</string>
     <string name="fill_in_the_plugin_basic_configurati" formatted="false">Fill in the plugin basic configuration</string>
     <string name="view_field_overview" formatted="false">View field overview</string>
-    <string name="plugin_basic_info_overview" formatted="false">Here is a brief introduction to each field:\n\n• Plugin ID: unique identifier, in reversed domain format, e.g. com.example.myplugin, immutable after creation.\n• Plugin Name: display name, e.g. My Plugin.\n• Author: developer name.\n• Description: brief functionality description.\n• Version Code / Version Name: integer code and readable version for updates.\n• Main Class: entry point class for native plugins, must include the package.\n• Entry File: the script/class loaded at startup.\n• Plugin Notice: description shown in the plugin list.\n• Permissions: permissions the plugin declares, shown to the user before enabling.\n• Dependencies: comma-separated plugin IDs this plugin relies on.\n• Min Host Version / API Level: minimum host version and Android API level required.\n• Category: plugin category.\n• Update URL: remote address for plugin update checks.</string>
+    <string name="plugin_basic_info_overview" formatted="false">Here is a brief introduction to each field:\n\n• Plugin ID: unique identifier, in reversed domain format, e.g. com.example.myplugin, immutable after creation.\n• Plugin Name: display name, e.g. My Plugin.\n• Author: developer name.\n• Description: brief functionality description.\n• Version Code / Version Name: integer code and readable version for updates.\n• Main Class: entry point class for native plugins, must include the package.\n• Entry File: the script/class loaded at startup.\n• Plugin Notice: description shown in the plugin list.\n• Permissions: permissions the plugin declares, shown to the user before enabling.\n• Dependencies: comma-separated plugin IDs this plugin relies on.\n• Min Host Version / API Level: minimum host version and Android API level required.\n• Category: plugin category.\n• Update URL: remote address for plugin update checks.\n• Backend (web + backend): start command, keep-alive, timeout, health check path.\n• Resource limits: max memory / CPU time / concurrent tasks (reserved, not enforced).\n• External content (openWith): share-menu / open-with receiver for text, links and files.</string>
     <string name="filteredplugins_size_plugin_s_in_tot">%1$s plugin(s) in total</string>
     <string name="finish" formatted="false">Finish</string>
     <string name="first_import_recording_signature_fil">First import, recording signature: %1$s</string>
@@ -819,8 +849,10 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="found_via_which_python3_result">✅ Found via which python3: %1$s</string>
     <string name="found_via_which_result">✅ Found via which: %1$s</string>
     <string name="full_api_test_plugin" formatted="false">Full-API test plugin</string>
+    <string name="compression_plugin_example" formatted="false">File compression utility plugin example (Web + backend)</string>
     <string name="full_color_picker" formatted="false">Color Picker</string>
     <string name="full_replace_new_length_fulltext_len">Full replace, new length: %1$s</string>
+    <string name="content_change_event_action_name">Content change: %1$s</string>
     <string name="generate_project_files" formatted="false">Generate Project Files</string>
     <string name="generate_project_files_and_package_a" formatted="false">Generate project files and package as TPK</string>
     <string name="generate_the_project_structure_and_p" formatted="false">Generate the project structure and package as TPK</string>
@@ -854,7 +886,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="grant_2" formatted="false">Grant</string>
     <string name="grant_all" formatted="false">Grant All</string>
     <string name="grant_all_2" formatted="false">Grant All</string>
-    <string name="grant_all_permissions" formatted="false">Grant All Permissions</string>
+    <string name="grant_all_permissions" formatted="false">Grant All</string>
     <string name="granted" formatted="false">Granted</string>
     <string name="granted_2" formatted="false">Granted</string>
     <string name="granted_grantedcount_totalcount_n_n">Granted: %1$s / %2$s\n\n</string>
@@ -882,6 +914,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="ignore_signature_verification_dev_on" formatted="false">Ignore signature verification (dev only)</string>
     <string name="ignore_version_versionname">Ignore version: %1$s</string>
     <string name="ignoring_force_update_tagname">Ignoring force update: %1$s</string>
+    <string name="force_update_ignored_tagname">Force update ignored (tag): %1$s</string>
     <string name="implement_the_plugininterface" formatted="false">Implement the PluginInterface</string>
     <string name="import_action" formatted="false">Import</string>
     <string name="import_existing_web_project_zip" formatted="false">Import existing Web project (ZIP)</string>
@@ -924,6 +957,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="invalid_file_path_filename_2">Invalid file path: %1$s</string>
     <string name="invalid_json" formatted="false">Invalid JSON</string>
     <string name="invalid_plugin_id_it_should_be_a_rev" formatted="false">Invalid plugin ID; it should be a reversed domain name</string>
+    <string name="invalid_plugin_id_format_pluginid" formatted="false">Invalid plugin ID format: %1$s</string>
     <string name="invalid_plugin_json" formatted="false">Invalid plugin.json</string>
     <string name="invalid_port" formatted="false">Invalid port</string>
     <string name="invalid_url_e_message">Invalid URL: %1$s</string>
@@ -1025,6 +1059,15 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="mirror_settings_saved" formatted="false">Mirror settings saved</string>
     <string name="missing_dependencies_missingdeps_joi">Missing dependencies: %1$s</string>
     <string name="missing_plugin_json" formatted="false">Missing plugin.json</string>
+    <string name="failed_to_read_backup_manifest" formatted="false">Failed to read backup manifest</string>
+    <string name="validating_backup_content" formatted="false">Validating backup content…</string>
+    <string name="backup_contains_no_plugins" formatted="false">Backup contains no plugins</string>
+    <string name="backup_contains_invalid_plugin_id_pluginid" formatted="false">Backup contains invalid plugin ID: %1$s</string>
+    <string name="backup_plugin_missing_config_pluginid" formatted="false">Plugin %1$s is missing plugin.json</string>
+    <string name="backup_plugin_config_invalid_pluginid" formatted="false">Plugin %1$s has invalid plugin.json</string>
+    <string name="failed_to_stage_backup_content" formatted="false">Failed to stage backup content</string>
+    <string name="failed_to_atomically_swap_plugin_dir" formatted="false">Failed to atomically replace plugin directory</string>
+    <string name="failed_to_rollback_restore" formatted="false">Failed to rollback restore</string>
     <string name="missing_pluginid" formatted="false">Missing pluginId</string>
     <string name="missing_targetplugin_or_method" formatted="false">Missing targetPlugin or method</string>
     <string name="modified" formatted="false">Modified</string>
@@ -1054,6 +1097,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="native_plugin_load_error_2" formatted="false">Native plugin load error</string>
     <string name="native_plugin_load_failed" formatted="false">❌ Native plugin load failed</string>
     <string name="native_plugin_load_failed_2" formatted="false">Native plugin load failed</string>
+    <string name="failed_to_reflect_plugin_method_m_n" formatted="false">Failed to reflect plugin method %1$s: %2$s</string>
     <string name="native_plugin_loaded_plugininfo_name">✅ Native plugin loaded: %1$s</string>
     <string name="native_plugin_missing_plugin_dex" formatted="false">Native plugin missing plugin.dex</string>
     <string name="native_ui_android_view" formatted="false">Native UI (Android View)</string>
@@ -1177,6 +1221,8 @@ New features, improvements and fixes are ready!</string>
     <string name="pendingintent_result_callback_attach" formatted="false">📬 PendingIntent result callback attached</string>
     <string name="permission_camera_mic_title" formatted="false">Camera/Microphone permission</string>
     <string name="permission_denied" formatted="false">Permission denied</string>
+    <string name="plugin_not_declared_permission_pluginid" formatted="false">Plugin %1$s did not declare permission: %2$s</string>
+    <string name="plugin_capability_denied_pluginid_method" formatted="false">Plugin %1$s denied bridge method %2$s (missing declared permission)</string>
     <string name="permission_description" formatted="false">Permission Description</string>
     <string name="permission_details" formatted="false">Permission Details</string>
     <string name="permission_details_plugin_name">Permission Details - %1$s</string>
@@ -1382,7 +1428,7 @@ Dependencies: %1$s
     <string name="read_logs" formatted="false">Read logs</string>
     <string name="read_phone_status" formatted="false">Read phone status</string>
     <string name="read_sms" formatted="false">Read SMS</string>
-    <string name="read_storage" formatted="false">Read storage</string>
+    <string name="read_storage" formatted="false">Read external storage</string>
     <string name="receive_sms" formatted="false">Receive SMS</string>
     <string name="received_event_eventtype">📡 Received event: %1$s</string>
     <string name="received_message_message_action_from">📨 Received message: %1$s from %2$s</string>
@@ -1428,6 +1474,10 @@ Changelog:
     <string name="res_dir" formatted="false">  ✅ res/ dir</string>
     <string name="reset" formatted="false">Reset</string>
     <string name="reset_all_ui_config_to_defaults_this" formatted="false">Reset all UI config to defaults? This cannot be undone.</string>
+    <string name="revoke_all_permissions" formatted="false">Revoke All</string>
+    <string name="permission_revoked_permission">Permission revoked: %1$s</string>
+    <string name="permission_unblocked_permission">Permission unblocked: %1$s</string>
+    <string name="all_permissions_revoked" formatted="false">All permissions revoked</string>
     <string name="reset_config" formatted="false">Reset Config</string>
     <string name="reset_mirrors" formatted="false">Reset mirrors</string>
     <string name="reset_settings" formatted="false">Reset settings</string>
@@ -1451,11 +1501,19 @@ Changelog:
     <string name="restoring_will_overwrite_existing_pl" formatted="false">Restoring will overwrite existing plugins, config and UI theme!
 
 Continue?</string>
+    <string name="restore_mode_merge_title" formatted="false">Merge restore</string>
+    <string name="restore_mode_merge_desc" formatted="false">Overwrite matching files, keep extra plugins/files not in the backup</string>
+    <string name="restore_mode_replace_title" formatted="false">Full replace</string>
+    <string name="restore_mode_replace_desc" formatted="false">Delete current plugins/files first, then restore the backup</string>
     <string name="restoring_work_directory_config" formatted="false">Restoring work directory config...</string>
     <string name="result" formatted="false">Result</string>
     <string name="retry" formatted="false">Retry</string>
     <string name="ripple_effect" formatted="false">Ripple Effect</string>
     <string name="root_access" formatted="false">Root access</string>
+    <string name="read_clipboard" formatted="false">Read clipboard</string>
+    <string name="write_clipboard" formatted="false">Write clipboard</string>
+    <string name="for_reading_the_system_clipboard" formatted="false">For the plugin to read the system clipboard</string>
+    <string name="for_writing_to_the_system_clipboard" formatted="false">For the plugin to write to the system clipboard</string>
     <string name="run" formatted="false">Run</string>
     <string name="run_now" formatted="false">Run now</string>
     <string name="running_offline_restore_cmd">Running offline restore: %1$s</string>
@@ -1555,6 +1613,14 @@ Continue?</string>
     <string name="shortcut_removed" formatted="false">Shortcut removed</string>
     <string name="shortcut_tools" formatted="false">Tools</string>
     <string name="shortcut_tools_long" formatted="false">Open Tools page</string>
+    <string name="shortcut_open_docs" formatted="false">Documents</string>
+    <string name="shortcut_open_docs_long" formatted="false">Open document browser</string>
+    <string name="shortcut_open_terminal" formatted="false">Terminal</string>
+    <string name="shortcut_open_terminal_long" formatted="false">Open terminal session</string>
+    <string name="shortcut_open_backend_settings" formatted="false">Backend</string>
+    <string name="shortcut_open_backend_settings_long" formatted="false">Open backend settings</string>
+    <string name="shortcut_open_ui_config" formatted="false">UI Theme</string>
+    <string name="shortcut_open_ui_config_long" formatted="false">Open UI personalization</string>
     <string name="show" formatted="false">Show</string>
     <string name="show_password" formatted="false">Show password</string>
     <string name="showing_next_plugin_dialog_plugindia">🖼 Showing next plugin dialog: %1$s</string>
@@ -1651,6 +1717,7 @@ Continue?</string>
     <string name="step4_run_installed_plugins_on_the_tools" formatted="false">4. Run installed plugins on the "Tools" page</string>
     <string name="stopping_backend_pluginid">🛑 Stopping backend: %1$s</string>
     <string name="stopping_sensor" formatted="false">Stopping sensor</string>
+    <string name="failed_to_stop_sensor_on_destroy" formatted="false">Failed to stop sensor on destroy: %1$s</string>
     <string name="storage" formatted="false">Storage</string>
     <string name="storage_permission" formatted="false">Storage Permission</string>
     <string name="storage_permission_denied" formatted="false">Storage permission denied</string>
@@ -2107,6 +2174,11 @@ Released: %3$s
     <string name="dev_native_plugin_multi_instance_desc" formatted="false">Allow opening the same native plugin repeatedly as independent instances; off by default</string>
     <string name="dev_backend_independent_port" formatted="false">Independent backend ports per instance</string>
     <string name="dev_backend_independent_port_desc" formatted="false">Each plugin instance runs its own backend process/port; off = instances share one backend</string>
+    <string name="dev_shared_session_retain" formatted="false">Retain session on close</string>
+    <string name="dev_shared_session_retain_desc" formatted="false">Keep the WebView/backend session after closing a plugin so reopening reuses it directly (shared-port mode)</string>
+    <string name="dev_ignore_signature_verification" formatted="false">Ignore signature verification (dev only)</string>
+    <string name="dev_ignore_signature_verification_desc" formatted="false">Skip the TOFU signature check when installing/updating plugins; only for debugging, security risk</string>
+    <string name="dev_options_saved" formatted="false">Developer options saved</string>
     <string name="native_plugin_already_running_single_ins" formatted="false">Native plugin \"%1$s\" is already running</string>
     <string name="native_plugin_already_running_single_ins_2" formatted="false">This native plugin is already open (single instance). Close it first or enable multi-instance in Dev Tools.</string>
     <string name="plugin_open_receiver_label" formatted="false">UIN Plugins</string>
@@ -2122,10 +2194,27 @@ Released: %3$s
     <string name="open_with_share_text" formatted="false">Text</string>
     <string name="open_with_share_url" formatted="false">Link</string>
     <string name="open_with_share_files" formatted="false">File(s)</string>
+    <string name="backend_keep_alive" formatted="false">Keep backend running</string>
+    <string name="backend_keep_alive_desc" formatted="false">Keep the backend running after the plugin is closed</string>
+    <string name="backend_timeout" formatted="false">Backend timeout (s)</string>
+    <string name="backend_health_check" formatted="false">Health check path</string>
+    <string name="resource_limits" formatted="false">Resource limits</string>
+    <string name="resource_limits_desc" formatted="false">Reserved fields: currently read and stored in plugin.json but not enforced</string>
+    <string name="max_memory" formatted="false">Max memory (MB)</string>
+    <string name="max_cpu_time" formatted="false">Max CPU time (s)</string>
+    <string name="max_concurrent_tasks" formatted="false">Max tasks</string>
+    <string name="receive_external_content" formatted="false">Receive external content</string>
+    <string name="receive_external_content_desc" formatted="false">Let this plugin appear in the system share menu / open-with picker</string>
+    <string name="receiver_label_optional" formatted="false">Receiver label (optional)</string>
+    <string name="receiver_label_placeholder" formatted="false">Leaves the plugin name as default</string>
+    <string name="mime_types" formatted="false">MIME types (comma-separated)</string>
+    <string name="accept" formatted="false">Accept</string>
     <string name="open_with_copy_failed" formatted="false">Failed to prepare incoming file: %1$s</string>
     <string name="open_with_share_files_colon" formatted="false">%1$d files</string>
     <string name="open_with_receiver_hint" formatted="false">Choose a plugin to receive this content</string>
     <string name="failed_to_create_incoming_dir" formatted="false">Failed to create incoming directory</string>
+    <string name="open_with_copy_limit_reached" formatted="false">Too many incoming files, some were skipped</string>
+    <string name="open_with_copy_file_too_large" formatted="false">Incoming file too large, skipped</string>
     <string name="welcome_to_uin_tool" formatted="false">Welcome to UIN Tool</string>
     <string name="when_enabled_unsigned_plugins_can_be" formatted="false">When enabled, unsigned plugins can be installed, but this carries a security risk</string>
     <string name="widget" formatted="false">Widget</string>
@@ -2176,7 +2265,7 @@ Please import plugins in the app first</string>
     <string name="write_calendar" formatted="false">Write calendar</string>
     <string name="write_contacts" formatted="false">Write contacts</string>
     <string name="write_plugin_code" formatted="false">Write Plugin Code</string>
-    <string name="write_storage" formatted="false">Write storage</string>
+    <string name="write_storage" formatted="false">Write external storage</string>
     <string name="writing_file_filename_content_length">Writing file: %1$s, %2$s chars</string>
     <string name="writing_file_filename_data_size_byte">Writing file: %1$s, %2$s bytes</string>
     <string name="yes" formatted="false">Yes</string>
@@ -2211,5 +2300,20 @@ Please import plugins in the app first</string>
     <string name="retained_session_webview_reused" formatted="false">Reusing retained WebView session</string>
     <string name="retained_session_rebound_clients" formatted="false">Re-bound WebViewClient/JS interface to this activity</string>
     <string name="retained_session_webview_missing_create_new" formatted="false">Retained session missing, creating new WebView</string>
+    <string name="custom_permission_open_plugin_label" formatted="false">Open plugin host</string>
+    <string name="custom_permission_open_plugin_description" formatted="false">Allows this app to open the plugin host activity</string>
+    <string name="custom_permission_run_command_label" formatted="false">Run plugin commands</string>
+    <string name="custom_permission_run_command_description" formatted="false">Allows running commands in the built-in plugin runtime</string>
+    <string name="custom_permission_granted" formatted="false">Custom permission granted</string>
+    <string name="custom_permission_request_failed" formatted="false">Custom permission request failed: %1$s</string>
+    <string name="global_crash_handler_installed" formatted="false">Global crash handler installed</string>
     <string name="retained_session_webview_cached" formatted="false">WebView session retained for next open</string>
+    <string name="permission_gate_title" formatted="false">Permissions</string>
+    <string name="permission_gate_native_message" formatted="false">This plugin requires the following permissions:</string>
+    <string name="permission_gate_web_message" formatted="false">This plugin needs the following permissions that are not granted yet:</string>
+    <string name="permission_gate_manage" formatted="false">Manage permissions</string>
+    <string name="permission_gate_never_show" formatted="false">Never show again</string>
+    <string name="no_web_plugins_manageable" formatted="false">No web plugins to manage</string>
+    <string name="only_web_plugins_can_be_managed" formatted="false">Only web plugins can be managed here. Native plugins are controlled by the system.</string>
+    <string name="retain_session_single_window_reuse" formatted="false">Retain session on: reusing existing window for this plugin</string>
 </resources>

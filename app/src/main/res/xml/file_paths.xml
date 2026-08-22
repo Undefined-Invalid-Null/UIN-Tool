@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <cache-path name="cache" path="/" />
-    <files-path name="files" path="/" />
-    <external-path name="external" path="." />
-    <external-files-path name="external_files" path="/" />
+    <!-- 仅暴露应用自身可控的目录，禁止 root-path 全文件系统与 external 全存储 -->
+    <cache-path name="cache" path="." />
+    <files-path name="files" path="." />
     <external-path name="downloads" path="UIN_Tool/downloads/" />
-    <root-path name="root" path="/" />
+    <external-path name="backups" path="UIN_Tool/backups/" />
+    <external-path name="plugins" path="UIN_Tool/plugins/" />
+    <external-path name="temp" path="UIN_Tool/temp/" />
+    <external-path name="tpk" path="UIN_Tool/tpk/" />
 </paths>

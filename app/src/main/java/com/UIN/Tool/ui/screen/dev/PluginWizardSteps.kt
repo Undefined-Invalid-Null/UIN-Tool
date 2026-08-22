@@ -36,9 +36,19 @@ import com.UIN.Tool.utils.formatFileSize
 import java.io.File
 import com.UIN.Tool.ui.theme.AppDimens
 
-private fun loadBitmapFromFile(path: String): Bitmap? {
+private fun loadBitmapFromFile(path: String, maxSize: Int = 512): Bitmap? {
     return try {
-        BitmapFactory.decodeFile(path)
+        // 先读边界，再按目标尺寸降采样，避免全分辨率解码导致内存飙升/OOM
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, opts)
+        var sample = 1
+        val longest = maxOf(opts.outWidth, opts.outHeight)
+        while (longest / (sample * 2) >= maxSize) {
+            sample *= 2
+        }
+        BitmapFactory.decodeFile(path, BitmapFactory.Options().apply {
+            inSampleSize = sample
+        })
     } catch (e: Exception) {
         null
     }
@@ -101,18 +111,30 @@ fun PluginConfigStep(
     onBackendPreCommandChange: (String) -> Unit = {},
     backendStartCommand: String = "",
     onBackendStartCommandChange: (String) -> Unit = {},
-    permissions: List<String> = emptyList(),
+permissions: List<String> = emptyList(),
     onPermissionsChange: (List<String>) -> Unit = {},
-    dependencies: String = "",
-    onDependenciesChange: (String) -> Unit = {},
     minHostVersion: String = "1",
     onMinHostVersionChange: (String) -> Unit = {},
-    apiLevel: String = "21",
-    onApiLevelChange: (String) -> Unit = {},
     category: String = "",
     onCategoryChange: (String) -> Unit = {},
     updateUrl: String = "",
-    onUpdateUrlChange: (String) -> Unit = {}
+    onUpdateUrlChange: (String) -> Unit = {},
+    backendTimeout: String = "30",
+    onBackendTimeoutChange: (String) -> Unit = {},
+    backendHealthCheck: String = "/health",
+    onBackendHealthCheckChange: (String) -> Unit = {},
+    openWithEnabled: Boolean = false,
+    onOpenWithEnabledChange: (Boolean) -> Unit = {},
+    openWithLabel: String = "",
+    onOpenWithLabelChange: (String) -> Unit = {},
+    openWithMimeTypes: String = "",
+    onOpenWithMimeTypesChange: (String) -> Unit = {},
+    openWithAcceptText: Boolean = true,
+    onOpenWithAcceptTextChange: (Boolean) -> Unit = {},
+    openWithAcceptUrl: Boolean = true,
+    onOpenWithAcceptUrlChange: (Boolean) -> Unit = {},
+    openWithAcceptFile: Boolean = true,
+    onOpenWithAcceptFileChange: (Boolean) -> Unit = {}
 ) {
     var showPermissionDialog by remember { mutableStateOf(false) }
 
@@ -221,33 +243,15 @@ error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // ==================== 版本 / 分类 / 更新地址 ====================
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ConfigFieldRow(
-                modifier = Modifier.weight(1f)
-            ) {
-                UnifiedTextField(
-                    value = minHostVersion,
-                    onValueChange = onMinHostVersionChange,
-                    label = Str.get(R.string.min_host_version),
-                    placeholder = "1",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            ConfigFieldRow(
-                modifier = Modifier.weight(1f)
-            ) {
-                UnifiedTextField(
-                    value = apiLevel,
-                    onValueChange = onApiLevelChange,
-                    label = Str.get(R.string.api_level),
-                    placeholder = "21",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+        // ==================== 最低宿主版本 ====================
+        ConfigFieldRow {
+            UnifiedTextField(
+                value = minHostVersion,
+                onValueChange = onMinHostVersionChange,
+                label = Str.get(R.string.min_host_version),
+                placeholder = "1",
+                modifier = Modifier.fillMaxWidth()
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -268,17 +272,6 @@ error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
                 onValueChange = onUpdateUrlChange,
                 label = Str.get(R.string.update_url),
                 placeholder = "https://example.com/plugin.json",
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = dependencies,
-                onValueChange = onDependenciesChange,
-                label = Str.get(R.string.dependencies),
-                placeholder = Str.get(R.string.comma_separated_plugin_ids),
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -347,6 +340,133 @@ error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
                 Str.get(R.string.the_plugin_opens_a_fullscreen_termin),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
+        }
+
+        if (uiType == "web" && backendType.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ConfigFieldRow(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    UnifiedTextField(
+                        value = backendTimeout,
+                        onValueChange = onBackendTimeoutChange,
+                        label = Str.get(R.string.backend_timeout),
+                        placeholder = "30",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                ConfigFieldRow(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    UnifiedTextField(
+                        value = backendHealthCheck,
+                        onValueChange = onBackendHealthCheckChange,
+                        label = Str.get(R.string.backend_health_check),
+                        placeholder = "/health",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ==================== 外部内容接收（openWith） ====================
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                UnifiedBodyText(Str.get(R.string.receive_external_content))
+                UnifiedCaptionText(
+                    Str.get(R.string.receive_external_content_desc),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+            UnifiedSwitch(
+                checked = openWithEnabled,
+                onCheckedChange = onOpenWithEnabledChange
+            )
+        }
+
+        if (openWithEnabled) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ConfigFieldRow {
+                UnifiedTextField(
+                    value = openWithLabel,
+                    onValueChange = onOpenWithLabelChange,
+                    label = Str.get(R.string.receiver_label_optional),
+                    placeholder = Str.get(R.string.receiver_label_placeholder),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ConfigFieldRow {
+                UnifiedTextField(
+                    value = openWithMimeTypes,
+                    onValueChange = onOpenWithMimeTypesChange,
+                    label = Str.get(R.string.mime_types),
+                    placeholder = "text/*,application/pdf",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    Str.get(R.string.accept),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    UnifiedSwitch(
+                        checked = openWithAcceptText,
+                        onCheckedChange = onOpenWithAcceptTextChange
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        Str.get(R.string.open_with_share_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    UnifiedSwitch(
+                        checked = openWithAcceptUrl,
+                        onCheckedChange = onOpenWithAcceptUrlChange
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        Str.get(R.string.open_with_share_url),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    UnifiedSwitch(
+                        checked = openWithAcceptFile,
+                        onCheckedChange = onOpenWithAcceptFileChange
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        Str.get(R.string.open_with_share_files),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 
@@ -514,6 +634,8 @@ private val KNOWN_PERMISSIONS = listOf(
     "PACKAGE_USAGE_STATS",
     "android.permission.KILL_BACKGROUND_PROCESSES",
     "android.permission.READ_LOGS",
+    "READ_CLIPBOARD",
+    "WRITE_CLIPBOARD",
     "ROOT",
     "SHIZUKU",
     "DHIZUKU"
@@ -534,10 +656,13 @@ fun PluginIconStep(
         }
     }
 
-    val bitmap = if (iconPath.isNotEmpty() && File(iconPath).exists()) {
-        loadBitmapFromFile(iconPath)
-    } else {
-        null
+    // 用 remember 缓存解码结果，避免重组时反复全量解码
+    val bitmap = remember(iconPath) {
+        if (iconPath.isNotEmpty() && File(iconPath).exists()) {
+            loadBitmapFromFile(iconPath)
+        } else {
+            null
+        }
     }
 
     Column(

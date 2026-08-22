@@ -47,6 +47,120 @@ object ProotContainerManager {
     /** 是否已安装 Termux 基础环境 */
     fun isTermuxReady(): Boolean = File(PREFIX, "bin").exists()
 
+    /**
+     * 无界面后台安装 bootstrap（Application 层调用，不弹进度框）。
+     * 完全复用 TermuxInstaller 的安装逻辑，仅去掉 ProgressDialog 和 ErrorDialog。
+     * 成功后 isTermuxReady() == true。
+     */
+    fun installBootstrapHeadless(context: Context): Boolean {
+        try {
+            if (isTermuxReady()) {
+                Logger.i(TAG, "installBootstrapHeadless: already ready, skipping")
+                return true
+            }
+            Logger.i(TAG, "installBootstrapHeadless: starting")
+
+            val filesDir = context.filesDir
+            val stagingDir = File(filesDir, "usr-staging")
+            val prefixDir = File(PREFIX)
+
+            // ① 确保 files 目录可访问（与 TermuxApplication.onCreate 一致）
+            val error = com.UIN.Tool.shared.termux.file.TermuxFileUtils.isTermuxFilesDirectoryAccessible(context, true, true)
+            if (error != null) {
+                Logger.e(TAG, "installBootstrapHeadless: files dir not accessible: $error")
+                return false
+            }
+            Logger.i(TAG, "installBootstrapHeadless: files dir OK")
+
+            // ② 清理旧目录
+            com.UIN.Tool.shared.file.FileUtils.deleteFile("termux prefix staging directory", stagingDir.absolutePath, true)
+            com.UIN.Tool.shared.file.FileUtils.deleteFile("termux prefix directory", prefixDir.absolutePath, true)
+            Logger.i(TAG, "installBootstrapHeadless: old dirs cleaned")
+
+            // ③ 创建 staging 目录（prefix 不创建，rename 会自动创建）
+            com.UIN.Tool.shared.termux.file.TermuxFileUtils.isTermuxPrefixStagingDirectoryAccessible(true, true)
+            Logger.i(TAG, "installBootstrapHeadless: staging dir ready")
+
+            // ④ 确定架构
+            val arch = when (android.os.Build.CPU_ABI) {
+                "arm64-v8a" -> "aarch64"
+                "armeabi-v7a", "armeabi" -> "arm"
+                "x86_64" -> "x86_64"
+                "x86" -> "i686"
+                else -> "aarch64"
+            }
+            Logger.i(TAG, "installBootstrapHeadless: arch=$arch")
+
+            // ⑤ 复制 assets（与原版 TermuxInstaller 完全一致）
+            val decompressedName = "bootstrap-$arch.tar"
+            val compressedName = "$decompressedName.xz"
+            val xzName = "xz-$arch/xz"
+            val liblzmaName = "xz-$arch/liblzma.so.5"
+
+            val decompressedFile = File(filesDir, decompressedName)
+            val compressedFile = File(filesDir, compressedName)
+            val xzFile = File(filesDir, "xz")
+            val liblzmaFile = File(filesDir, "liblzma.so.5")
+
+            // 原版用 filenames[] + filePaths[] 对应复制
+            val assetNames = arrayOf(compressedName, xzName, liblzmaName)
+            val destFiles = arrayOf(compressedFile, xzFile, liblzmaFile)
+
+            for (i in assetNames.indices) {
+                Logger.i(TAG, "installBootstrapHeadless: copying ${assetNames[i]}")
+                context.assets.open(assetNames[i]).use { input ->
+                    java.io.FileOutputStream(destFiles[i]).use { output ->
+                        val buf = ByteArray(8096)
+                        var n: Int
+                        while (input.read(buf).also { n = it } != -1) {
+                            output.write(buf, 0, n)
+                        }
+                        output.flush()
+                    }
+                }
+                Logger.i(TAG, "installBootstrapHeadless: copied ${destFiles[i].name} (${destFiles[i].length()} bytes)")
+            }
+
+            // ⑥ 解压（与原版命令完全一致）
+            Logger.i(TAG, "installBootstrapHeadless: chmod +x xz")
+            runEarlyCommand(context, "/system/bin/chmod +x ${xzFile.absolutePath}")
+
+            Logger.i(TAG, "installBootstrapHeadless: xz -d")
+            runEarlyCommand(context, "${xzFile.absolutePath} -d ${compressedFile.absolutePath}")
+            Logger.i(TAG, "installBootstrapHeadless: decompressed exists=${decompressedFile.exists()}, size=${if (decompressedFile.exists()) decompressedFile.length() else 0}")
+
+            Logger.i(TAG, "installBootstrapHeadless: tar -xf")
+            runEarlyCommand(context, "/system/bin/tar -xf ${decompressedFile.absolutePath} -C ${stagingDir.absolutePath}")
+
+            // 原版用一条 rm 删三个文件
+            Logger.i(TAG, "installBootstrapHeadless: rm temp files")
+            runEarlyCommand(context, "/system/bin/rm ${xzFile.absolutePath} ${liblzmaFile.absolutePath} ${decompressedFile.absolutePath}")
+
+            // 检查 staging 内容
+            val stagingContents = stagingDir.listFiles()?.map { it.name } ?: emptyList()
+            Logger.i(TAG, "installBootstrapHeadless: staging contents=$stagingContents")
+            if (stagingContents.isEmpty()) {
+                Logger.e(TAG, "installBootstrapHeadless: staging is EMPTY after extraction!")
+                return false
+            }
+
+            // ⑦ staging → prefix（用 shell mv，Java renameTo 在 Android 上对目录不可靠）
+            Logger.i(TAG, "installBootstrapHeadless: staging -> prefix")
+            runEarlyCommand(context, "/system/bin/rm -rf ${prefixDir.absolutePath}")
+            runEarlyCommand(context, "/system/bin/mv ${stagingDir.absolutePath} ${prefixDir.absolutePath}")
+            if (!isTermuxReady()) {
+                Logger.e(TAG, "installBootstrapHeadless: prefix/bin not found after mv")
+                return false
+            }
+
+            Logger.success(TAG, "installBootstrapHeadless: bootstrap installed OK")
+            return true
+        } catch (e: Exception) {
+            Logger.e(TAG, "installBootstrapHeadless failed: ${e.message}", e)
+            return false
+        }
+    }
+
     /** 是否已安装 Alpine 共享容器 */
     fun isAlpineInstalled(): Boolean {
         if (!File(ALPINE_ROOTFS_DIR).isDirectory) return false
@@ -155,11 +269,39 @@ object ProotContainerManager {
      * @param status 阶段状态回调（在主线程执行，用于 UI 提示当前在做什么）
      * @param onResult 恢复结果回调
      */
+    @Volatile
+    private var _isAlpineInstalling = false
+    @Volatile
+    private var _alpineInstallResult: Boolean? = null
+
     fun ensureAlpine(context: Context, status: ((String) -> Unit)? = null, onResult: (Boolean) -> Unit) {
         if (isAlpineInstalled()) {
             Logger.i(TAG, Str.get(R.string.alpine_container_ready))
             onResult(true)
             return
+        }
+
+        if (_isAlpineInstalling) {
+            Logger.i(TAG, "ensureAlpine: another install in progress, waiting...")
+            Thread {
+                while (_isAlpineInstalling) { try { Thread.sleep(300) } catch (_: InterruptedException) {} }
+                val result = _alpineInstallResult ?: false
+                Logger.i(TAG, "ensureAlpine: waited, result=$result")
+                postMain(onResult, result)
+            }.start()
+            return
+        }
+
+        synchronized(this) {
+            if (_isAlpineInstalling) {
+                Thread {
+                    while (_isAlpineInstalling) { try { Thread.sleep(300) } catch (_: InterruptedException) {} }
+                    postMain(onResult, _alpineInstallResult ?: false)
+                }.start()
+                return
+            }
+            _isAlpineInstalling = true
+            _alpineInstallResult = null
         }
 
         Logger.i(TAG, Str.get(R.string.alpine_not_installed_starting_offlin))
@@ -169,6 +311,7 @@ object ProotContainerManager {
                 val assetName = findAlpineAsset(context)
                 if (assetName == null) {
                     postStatus(status, Str.get(R.string.no_offline_package_found_assets_alpi))
+                    _alpineInstallResult = false; _isAlpineInstalling = false
                     postMain(onResult, false)
                     return@Thread
                 }
@@ -190,6 +333,7 @@ object ProotContainerManager {
                 if (assetPath == null) {
                     Logger.e(TAG, Str.get(R.string.alpine_backup_resource_unavailable))
                     postStatus(status, Str.get(R.string.failed_to_copy_offline_package))
+                    _alpineInstallResult = false; _isAlpineInstalling = false
                     postMain(onResult, false)
                     return@Thread
                 }
@@ -207,7 +351,7 @@ object ProotContainerManager {
                 val result = runInTermuxSync(context, cmd)
                 Logger.i(TAG, Str.get(R.string.proot_distro_restore_exit_code_resul, result.exitCode))
                 if (result.stdout.isNotBlank()) Logger.d(TAG, "restore stdout: ${result.stdout.trim()}")
-                if (result.stderr.isNotBlank()) Logger.e(TAG, "restore stderr: ${result.stderr.trim()}")
+                if (result.stderr.isNotBlank()) Logger.d(TAG, "restore stderr: ${result.stderr.trim()}")
 
                 val success = result.exitCode == 0 && isAlpineInstalled()
                 if (success) {
@@ -215,10 +359,12 @@ object ProotContainerManager {
                 } else {
                     Logger.e(TAG, Str.get(R.string.alpine_container_restore_failed_resu, result.stderr.trim()))
                 }
+                _alpineInstallResult = success; _isAlpineInstalling = false
                 postMain(onResult, success)
             } catch (e: Exception) {
                 Logger.e(TAG, Str.get(R.string.alpine_container_restore_error_e_mes, e.message), e)
                 postStatus(status, Str.get(R.string.alpine_container_restore_error_e_mes, e.message))
+                _alpineInstallResult = false; _isAlpineInstalling = false
                 postMain(onResult, false)
             }
         }.start()
@@ -233,6 +379,27 @@ object ProotContainerManager {
     private fun postMain(onResult: (Boolean) -> Unit, value: Boolean) {
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             onResult(value)
+        }
+    }
+
+    /**
+     * 早期命令执行（bootstrap 安装用）。
+     */
+    private fun runEarlyCommand(context: Context, cmd: String) {
+        try {
+            val execCommand = com.UIN.Tool.shared.shell.command.ExecutionCommand(
+                -1, "/system/bin/sh", null, "$cmd\n", "/",
+                com.UIN.Tool.shared.shell.command.ExecutionCommand.Runner.APP_SHELL.getName(), true
+            )
+            execCommand.commandLabel = "ProotContainerManager Early Command"
+            execCommand.backgroundCustomLogLevel = 0
+            com.UIN.Tool.shared.shell.command.runner.app.AppShell.execute(
+                context, execCommand, null,
+                com.UIN.Tool.shared.termux.shell.command.environment.TermuxShellEnvironment(),
+                null, true
+            )
+        } catch (e: Exception) {
+            Logger.e(TAG, "runEarlyCommand failed: $cmd - ${e.message}", e)
         }
     }
 

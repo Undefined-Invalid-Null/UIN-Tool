@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    云备份仅含非敏感的 UI 主题配置；plugins/（插件数据/凭证/.incoming/）、
+    宿主 prefs（token）等一律不参与云备份。
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="file" path="plugins/" />
-        <include domain="sharedpref" path="uin_tool_prefs.xml" />
+        <include domain="file" path="ui_config.json" />
     </cloud-backup>
 </data-extraction-rules>

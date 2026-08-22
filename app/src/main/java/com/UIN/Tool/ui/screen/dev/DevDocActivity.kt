@@ -11,7 +11,7 @@ class DevDocActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             UINToolTheme {
-                DevDocScreen()
+                com.UIN.Tool.ui.screen.docs.DocViewerScreen()
             }
         }
     }

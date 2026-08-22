@@ -443,6 +443,30 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTermuxService.isTermuxSessionsEmpty()) {
             if (mIsVisible) {
+                // 若后台正在安装环境，等待完成后再创建 session，避免并发安装冲突
+                if (com.UIN.Tool.UinApplication.isEnvironmentInstalling()) {
+                    new Thread(() -> {
+                        while (com.UIN.Tool.UinApplication.isEnvironmentInstalling()) {
+                            try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+                        }
+                        runOnUiThread(() -> {
+                            if (mTermuxService == null) return;
+                            TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
+                                if (mTermuxService == null) return;
+                                try {
+                                    boolean launchFailsafe = false;
+                                    if (intent != null && intent.getExtras() != null) {
+                                        launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
+                                    }
+                                    mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
+                                } catch (WindowManager.BadTokenException e) {
+                                    // Activity finished - ignore.
+                                }
+                            });
+                        });
+                    }).start();
+                    return;
+                }
                 TermuxInstaller.setupBootstrapIfNeeded(TermuxActivity.this, () -> {
                     if (mTermuxService == null) return; // Activity might have been destroyed.
                     try {

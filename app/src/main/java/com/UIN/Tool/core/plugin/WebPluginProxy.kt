@@ -26,7 +26,13 @@ class WebPluginProxy(
     private var context: Context? = null
     private var webView: WebView? = null
     private var isWebViewReady = false
-    private val entryFile: String = pluginInfo.entry.ifEmpty { Constants.PLUGIN_WEB_INDEX }
+    private val entryFile: String = when {
+        pluginInfo.entry.isEmpty() -> Constants.PLUGIN_WEB_INDEX
+        pluginInfo.entry.startsWith("/") || pluginInfo.entry.startsWith("\\") ||
+            pluginInfo.entry.contains("..") || pluginInfo.entry.matches(Regex("[A-Za-z]:.*")) ->
+            Constants.PLUGIN_WEB_INDEX
+        else -> pluginInfo.entry
+    }
     
     override fun onCreateView(
         context: Context,
@@ -40,18 +46,36 @@ class WebPluginProxy(
                 javaScriptEnabled = true
                 domStorageEnabled = true
                 allowFileAccess = true
-                allowFileAccessFromFileURLs = true
-                allowUniversalAccessFromFileURLs = true
                 setSupportZoom(true)
                 builtInZoomControls = true
                 displayZoomControls = false
                 loadWithOverviewMode = true
                 useWideViewPort = true
                 defaultTextEncodingName = "UTF-8"
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                }
             }
             
             // 设置 WebViewClient
             webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                    if (url.startsWith("file://$pluginDir/") || url.startsWith("file://") &&
+                        url.substringAfter("file://", "").startsWith(pluginDir)
+                    ) {
+                        return false
+                    }
+                    // 插件自身内容以外的链接交给系统浏览器，避免 JS 桥外泄
+                    if (url.startsWith("http://") || url.startsWith("https://")) {
+                        runCatching {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        }
+                    }
+                    return true
+                }
+
                 override fun onPageFinished(view: WebView, url: String) {
                     super.onPageFinished(view, url)
                     isWebViewReady = true

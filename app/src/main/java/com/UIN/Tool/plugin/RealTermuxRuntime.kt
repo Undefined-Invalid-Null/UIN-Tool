@@ -11,8 +11,11 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_SERVICE
 import com.UIN.Tool.utils.PermissionUtils
 import com.UIN.Tool.utils.Str
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -26,6 +29,21 @@ import java.util.concurrent.atomic.AtomicReference
 object RealTermuxRuntime {
 
     private const val TAG = "RealTermuxRuntime"
+
+    /** 探测请求自增序号，保证并发探测的 PendingIntent requestCode 与回调不冲突 */
+    private val requestIdCounter = AtomicInteger(0)
+
+    /** 上次探测成功的时间戳（毫秒），用于短缓存避免每次启动重复探测往返 */
+    private val lastProbeOkAt = AtomicLong(0)
+
+    /** 探测成功缓存有效期：期间内重复探测直接视为就绪（权限/初始化短期内不会变化） */
+    private const val PROBE_CACHE_MS = 60_000L
+
+    /** 上次预热时间戳（毫秒），节流避免每次启动宿主都重复预热 */
+    private val lastPrewarmAt = AtomicLong(0)
+
+    /** 预热节流：同一时刻内只预热一次，避免短时间内反复拉起容器 */
+    private const val PREWARM_COOLDOWN_MS = 30_000L
 
     val SH_PATH: String = "${BackendConfig.REAL_TERMUX_PREFIX}/bin/sh"
     val BASH_PATH: String = "${BackendConfig.REAL_TERMUX_PREFIX}/bin/bash"
@@ -67,6 +85,52 @@ object RealTermuxRuntime {
     /** 探测回调 Action，与 RealTermuxProbeReceiver 配对 */
     const val PROBE_ACTION = "com.UIN.Tool.REAL_TERMUX_PROBE_RESULT"
 
+    /** 探测请求唯一标识 extra，用于回调按请求区分，避免并发探测互相覆盖 */
+    const val EXTRA_PROBE_REQUEST_ID = "com.UIN.Tool.REAL_TERMUX_PROBE_REQUEST_ID"
+
+    /**
+     * 通过 RUN_COMMAND 在 Termux 自身 UID 下执行 pkill，杀掉该插件启动的后端进程。
+     *
+     * 宿主跨应用沙箱无法直接 kill com.termux 启动的进程，但 RUN_COMMAND 在
+     * Termux 自己的 UID 下执行，等同于“Termux 自己杀自己”，可以命中后端进程树。
+     *
+     * 匹配方式：启动命令 `sh -lc "export ... PLUGIN_ID=<id> ..."` 的 cmdline 内含
+     * `PLUGIN_ID=<id>`（proot 模式外层为 proot-distro login 进程，同样含该串）。
+     * 用 `[P]LUGIN_ID` 正则技巧排除本次 kill 命令自身（自身 cmdline 含字面 `[P]LUGIN_ID`
+     * 而非 `PLUGIN_ID`），再取进程组 PGID 用 `kill -9 -- -PGID` 连带杀掉子进程
+     * （`start.sh` 里 `exec python3` 后 python 仍是该组子进程）。
+     *
+     * @param pluginId 插件 ID（按字面匹配，正则点号已转义避免误杀兄弟插件）
+     */
+    fun killBackend(context: Context, pluginId: String): Boolean {
+        if (!isRunCommandPermissionGranted(context)) {
+            Logger.e(TAG, Str.get(R.string.real_termux_run_command_permission_denied))
+            return false
+        }
+        val escaped = pluginId.replace(".", "\\.")
+        val killCmd =
+            "P=\$(pgrep -f '[P]LUGIN_ID=$escaped' | head -n1); " +
+                "if [ -n \"\$P\" ]; then " +
+                "G=\$(ps -o pgid= -p \$P | tr -d ' '); " +
+                "[ -n \"\$G\" ] && kill -9 -- -\$G 2>/dev/null; " +
+                "kill -9 \$P 2>/dev/null; " +
+                "fi; true"
+        try {
+            val intent = buildRunCommandIntent(
+                commandPath = BASH_PATH,
+                arguments = arrayOf("-lc", killCmd),
+                workDir = "/",
+                shellName = "uin-kill",
+                commandLabel = "kill-backend",
+                background = true
+            )
+            return startRunCommand(context, intent)
+        } catch (e: Exception) {
+            Logger.e(TAG, "failed to send kill command for $pluginId: ${e.message}", e)
+            return false
+        }
+    }
+
     // ==================== 状态检测 ====================
 
     /** 是否已安装 com.termux */
@@ -96,7 +160,7 @@ object RealTermuxRuntime {
      *
      * @param timeoutMs 探测超时（毫秒），超时视为未知（不做阻断）
      */
-    fun probe(context: Context, timeoutMs: Long = 4000): ProbeResult {
+    fun probe(context: Context, timeoutMs: Long = 1500): ProbeResult {
         if (!isTermuxInstalled(context)) return ProbeResult(false, Str.get(R.string.real_termux_not_installed))
         if (!isRunCommandPermissionGranted(context)) {
             return ProbeResult(
@@ -106,10 +170,17 @@ object RealTermuxRuntime {
             )
         }
 
+        // 短缓存：刚探测成功过就跳过往返，直接视为就绪（权限/初始化短期内不会变化）
+        val now = System.currentTimeMillis()
+        if (lastProbeOkAt.get() != 0L && now - lastProbeOkAt.get() < PROBE_CACHE_MS) {
+            return ProbeResult(true)
+        }
+
         val latch = CountDownLatch(1)
         val result = AtomicReference<ProbeResult?>(null)
+        val requestId = requestIdCounter.incrementAndGet()
 
-        RealTermuxProbeReceiver.pending = object : ProbeCallback {
+        RealTermuxProbeReceiver.pendingCallbacks[requestId] = object : ProbeCallback {
             override fun onResult(probe: ProbeResult) {
                 result.set(probe)
                 latch.countDown()
@@ -119,8 +190,8 @@ object RealTermuxRuntime {
         try {
             val pi = PendingIntent.getBroadcast(
                 context,
-                0xBEEF,
-                Intent(PROBE_ACTION).setPackage(context.packageName),
+                requestId,
+                Intent(PROBE_ACTION).setPackage(context.packageName).putExtra(EXTRA_PROBE_REQUEST_ID, requestId),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             val intent = buildRunCommandIntent(
@@ -134,7 +205,7 @@ object RealTermuxRuntime {
             startRunCommand(context, intent)
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.failed_to_start_real_termux_probe_e, e.message), e)
-            RealTermuxProbeReceiver.pending = null
+            RealTermuxProbeReceiver.pendingCallbacks.remove(requestId)
             return ProbeResult(false, e.message ?: "")
         }
 
@@ -143,10 +214,78 @@ object RealTermuxRuntime {
         } catch (_: InterruptedException) {
             false
         }
-        RealTermuxProbeReceiver.pending = null
+        RealTermuxProbeReceiver.pendingCallbacks.remove(requestId)
 
         val probe = result.get()
-        return probe ?: ProbeResult(true, "") // 超时无回调 → 未知，不阻断
+        val final = probe ?: ProbeResult(true, "") // 超时无回调 → 未知，不阻断
+        if (final.ok) lastProbeOkAt.set(System.currentTimeMillis())
+        return final
+    }
+
+    /**
+     * 探测 Termux 中 proot-distro 和指定容器是否可用。
+     */
+    fun probeProotDistro(context: Context, container: String, timeoutMs: Long = 30_000): ProbeResult {
+        if (!isTermuxInstalled(context)) return ProbeResult(false, "Termux not installed")
+        if (!isRunCommandPermissionGranted(context)) return ProbeResult(false, "Run-command permission denied")
+
+        // 快速检查：proot-distro 命令是否存在（超时视为存在，不阻断）
+        Logger.d(TAG, "probeProotDistro: checking 'which proot-distro'")
+        val whichResult = sendProbeCommand(context, arrayOf("which", "proot-distro"), 5_000)
+        Logger.d(TAG, "probeProotDistro: which result=$whichResult")
+        // 超时无回调 → 假定可用（与原始 probe 一致，不阻断启动）
+        if (whichResult != null && whichResult.ok == false) return ProbeResult(false, "proot-distro not installed in Termux (run: pkg install proot-distro)")
+
+        // 慢检查：容器 login 是否可用（冷启动可能需要较长时间）
+        Logger.d(TAG, "probeProotDistro: checking 'proot-distro login $container'")
+        val loginResult = sendProbeCommand(context, arrayOf("proot-distro", "login", container, "--", "echo", "ok"), timeoutMs)
+        Logger.d(TAG, "probeProotDistro: login result=$loginResult")
+        // 超时 → 报错（login 超时说明容器可能未安装）
+        return loginResult
+            ?: ProbeResult(false, "probe timeout (container '$container' may not be installed, run: proot-distro install $container)")
+    }
+
+    private fun sendProbeCommand(context: Context, command: Array<String>, timeoutMs: Long = 5_000): ProbeResult? {
+        val latch = CountDownLatch(1)
+        val result = AtomicReference<ProbeResult?>(null)
+        val requestId = requestIdCounter.incrementAndGet()
+        val cmdStr = command.joinToString(" ")
+        Logger.d(TAG, "sendProbeCommand: '$cmdStr' requestId=$requestId timeout=${timeoutMs}ms")
+
+        RealTermuxProbeReceiver.pendingCallbacks[requestId] = object : ProbeCallback {
+            override fun onResult(probe: ProbeResult) {
+                Logger.d(TAG, "sendProbeCommand callback: requestId=$requestId ok=${probe.ok} error=${probe.error}")
+                result.set(probe)
+                latch.countDown()
+            }
+        }
+
+        try {
+            val pi = PendingIntent.getBroadcast(
+                context, requestId,
+                Intent(PROBE_ACTION).setPackage(context.packageName).putExtra(EXTRA_PROBE_REQUEST_ID, requestId),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val intent = buildRunCommandIntent(
+                commandPath = SH_PATH,
+                arguments = arrayOf("-lc", cmdStr),
+                workDir = "/",
+                shellName = "uin-probe",
+                commandLabel = "probe",
+                pendingIntent = pi
+            )
+            val sent = startRunCommand(context, intent)
+            Logger.d(TAG, "sendProbeCommand: startRunCommand sent=$sent")
+        } catch (e: Exception) {
+            Logger.e(TAG, "sendProbeCommand exception: ${e.message}")
+            RealTermuxProbeReceiver.pendingCallbacks.remove(requestId)
+            return ProbeResult(false, e.message ?: "probe exception")
+        }
+
+        val received = try { latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { false }
+        RealTermuxProbeReceiver.pendingCallbacks.remove(requestId)
+        if (!received) Logger.d(TAG, "sendProbeCommand: TIMEOUT after ${timeoutMs}ms for '$cmdStr'")
+        return result.get()
     }
 
     // ==================== RUN_COMMAND 构建 ====================
@@ -220,7 +359,12 @@ class RealTermuxProbeReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "RealTermuxProbeReceiver"
-        var pending: ProbeCallback? = null
+
+        /**
+         * 按请求 ID 存放待处理回调，支持并发探测互不覆盖。
+         * 回调对象在 onResult 中取回后由本类移除；发起方超时/失败也会移除。
+         */
+        val pendingCallbacks = ConcurrentHashMap<Int, ProbeCallback>()
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -228,15 +372,18 @@ class RealTermuxProbeReceiver : BroadcastReceiver() {
         val exitCode = resultBundle?.getInt(TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_EXIT_CODE, -1) ?: -1
         val errmsg = resultBundle?.getString(TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_ERRMSG) ?: ""
 
+        val requestId = intent.getIntExtra(RealTermuxRuntime.EXTRA_PROBE_REQUEST_ID, -1)
+        val callback = pendingCallbacks.remove(requestId)
+
         if (errmsg.contains("allow-external-apps", ignoreCase = true)) {
-            pending?.onResult(RealTermuxRuntime.ProbeResult(false, Str.get(R.string.allow_external_apps_not_enabled)))
+            callback?.onResult(RealTermuxRuntime.ProbeResult(false, Str.get(R.string.allow_external_apps_not_enabled)))
             return
         }
 
         if (exitCode == 0) {
-            pending?.onResult(RealTermuxRuntime.ProbeResult(true))
+            callback?.onResult(RealTermuxRuntime.ProbeResult(true))
         } else {
-            pending?.onResult(
+            callback?.onResult(
                 RealTermuxRuntime.ProbeResult(
                     false,
                     errmsg.ifBlank { Str.get(R.string.real_termux_not_initialized) }

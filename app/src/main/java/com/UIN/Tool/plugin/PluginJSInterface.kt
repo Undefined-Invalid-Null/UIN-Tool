@@ -68,6 +68,45 @@ class PluginJSInterface(
         private const val TAG = "PluginJSInterface"
         private const val NOTIFICATION_CHANNEL_ID = "plugin_notification_channel"
         private val NOTIFICATION_CHANNEL_NAME = Str.get(R.string.plugin_notification)
+
+        /**
+         * 声明式能力注册表：桥方法名 → 所需的插件声明权限（任一满足即可放行）。
+         * 作为中央 allowlist 的唯一真源，敏感接口统一经 [checkCapability] 校验，
+         * 避免各方法自行散落 if 判断、漏查或前后不一致。
+         * 未收录的方法视为非敏感，不做限制。
+         */
+        private val CAPABILITY_MAP: Map<String, List<String>> = mapOf(
+            // 设备标识（READ_PHONE_STATE）
+            "getDeviceId" to listOf(Manifest.permission.READ_PHONE_STATE),
+            "getSerialNumber" to listOf(Manifest.permission.READ_PHONE_STATE),
+            "getMacAddress" to listOf(Manifest.permission.READ_PHONE_STATE, Manifest.permission.ACCESS_WIFI_STATE),
+            "getAndroidId" to listOf(Manifest.permission.READ_PHONE_STATE),
+            "getOperatorInfo" to listOf(Manifest.permission.READ_PHONE_STATE),
+            // 位置
+            "getLocation" to listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            "getAddress" to listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            // Wi-Fi / 网络
+            "getWifiInfo" to listOf(Manifest.permission.ACCESS_WIFI_STATE, Manifest.permission.ACCESS_NETWORK_STATE),
+            "getSignalStrength" to listOf(Manifest.permission.ACCESS_WIFI_STATE),
+            "getIpAddress" to listOf(Manifest.permission.ACCESS_NETWORK_STATE),
+            // 剪贴板（读写均需插件声明相应自定义权限，杜绝未声明插件读剪贴板）
+            "getClipboard" to listOf("READ_CLIPBOARD"),
+            "paste" to listOf("READ_CLIPBOARD"),
+            "clearClipboard" to listOf("READ_CLIPBOARD"),
+            "setClipboard" to listOf("WRITE_CLIPBOARD"),
+            "copyToClipboard" to listOf("WRITE_CLIPBOARD"),
+            // HTTP / 下载（需声明 INTERNET）
+            "httpGet" to listOf(Manifest.permission.INTERNET),
+            "httpPost" to listOf(Manifest.permission.INTERNET),
+            "httpPut" to listOf(Manifest.permission.INTERNET),
+            "httpDelete" to listOf(Manifest.permission.INTERNET),
+            "downloadFile" to listOf(Manifest.permission.INTERNET),
+            // 存储 / 文件（需声明存储权限；撤销/封禁后拒绝读写）
+            "storage" to listOf(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+        )
     }
 
     private val pendingPermissionCallbacks = mutableMapOf<String, String>()
@@ -76,6 +115,20 @@ class PluginJSInterface(
     private var activeSensorListener: SensorEventListener? = null
     private var activeSensorType = ""
     private var activeSensorCallbackId = ""
+
+    /**
+     * 每插件实例缓存一个 PluginContext，避免每次存储/文件调用都新建
+     * （每次新建都会触发反射 + 老数据迁移重复执行）。
+     */
+    private val cachedPluginContext: PluginContext? by lazy {
+        try {
+            val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
+            PluginContext(context, pluginDir.absolutePath)
+        } catch (e: Exception) {
+            Logger.e(TAG, Str.get(R.string.failed_to_get_plugincontext), e)
+            null
+        }
+    }
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -105,15 +158,7 @@ class PluginJSInterface(
         }
     }
 
-    private fun getPluginContext(): PluginContext? {
-        return try {
-            val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
-            PluginContext(context, pluginDir.absolutePath)
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_get_plugincontext), e)
-            null
-        }
-    }
+    private fun getPluginContext(): PluginContext? = cachedPluginContext
 
     private fun getActivity(): Activity? = context as? Activity
 
@@ -196,6 +241,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getDeviceId(): String {
+        if (!hasPluginPermission(Manifest.permission.READ_PHONE_STATE)) return "permission_denied"
         return try {
             val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -214,6 +260,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getAndroidId(): String {
+        if (!checkCapability("getAndroidId")) return "permission_denied"
         return try {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown"
         } catch (e: Exception) {
@@ -223,6 +270,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getSerialNumber(): String {
+        if (!hasPluginPermission(Manifest.permission.READ_PHONE_STATE)) return "permission_denied"
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 Build.getSerial() ?: "unknown"
@@ -236,6 +284,9 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getMacAddress(): String {
+        if (!hasPluginPermission(Manifest.permission.READ_PHONE_STATE) &&
+            !hasPluginPermission(Manifest.permission.ACCESS_WIFI_STATE)
+        ) return "permission_denied"
         return try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
             while (interfaces.hasMoreElements()) {
@@ -566,10 +617,23 @@ class PluginJSInterface(
         Logger.i(TAG, Str.get(R.string.stopping_sensor))
     }
 
+    /** 宿主销毁时调用：注销活动传感器，防止监听器泄漏导致 CPU/电量消耗。 */
+    fun destroy() {
+        try {
+            stopSensor()
+        } catch (e: Exception) {
+            Logger.w(TAG, Str.get(R.string.failed_to_stop_sensor_on_destroy, e.message ?: ""))
+        }
+        pendingPermissionCallbacks.clear()
+    }
+
     // ==================== 4. 位置 ====================
 
     @JavascriptInterface
     fun getLocation(): String {
+        if (!hasPluginPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
+            !hasPluginPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+        ) return "permission_denied"
         return try {
             val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             val providers = lm.getProviders(true)
@@ -598,6 +662,9 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getAddress(lat: Double, lng: Double): String {
+        if (!hasPluginPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
+            !hasPluginPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+        ) return "permission_denied"
         return try {
             val geocoder = android.location.Geocoder(context)
             val addresses = geocoder.getFromLocation(lat, lng, 1)
@@ -868,6 +935,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getIpAddress(): String {
+        if (!checkCapability("getIpAddress")) return "0.0.0.0"
         return try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
             while (interfaces.hasMoreElements()) {
@@ -891,6 +959,9 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getWifiInfo(): String {
+        if (!hasPluginPermission(Manifest.permission.ACCESS_WIFI_STATE) &&
+            !hasPluginPermission(Manifest.permission.ACCESS_NETWORK_STATE)
+        ) return "permission_denied"
         return try {
             val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val wifiInfo = wm.connectionInfo
@@ -914,6 +985,9 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getSignalStrength(): Int {
+        if (!hasPluginPermission(Manifest.permission.ACCESS_WIFI_STATE) &&
+            !hasPluginPermission(Manifest.permission.ACCESS_NETWORK_STATE)
+        ) return -100
         return try {
             val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val wifiInfo = wm.connectionInfo
@@ -925,6 +999,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getOperatorInfo(): String {
+        if (!hasPluginPermission(Manifest.permission.READ_PHONE_STATE)) return "permission_denied"
         return try {
             val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
             JSONObject().apply {
@@ -1135,6 +1210,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun setStorage(key: String, value: String) {
+        if (storageDenied()) return
+
         if (key.isEmpty()) return
         ensureMigration()
         getPluginContext()?.putString(key, value)
@@ -1142,6 +1219,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorage(key: String): String {
+        if (storageDenied()) return ""
+
         if (key.isEmpty()) return ""
         ensureMigration()
         return getPluginContext()?.getString(key, "") ?: ""
@@ -1149,6 +1228,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun setStorageInt(key: String, value: Int) {
+        if (storageDenied()) return
+
         if (key.isEmpty()) return
         ensureMigration()
         getPluginContext()?.putInt(key, value)
@@ -1156,6 +1237,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageInt(key: String, defaultValue: Int): Int {
+        if (storageDenied()) return defaultValue
+
         if (key.isEmpty()) return defaultValue
         ensureMigration()
         return getPluginContext()?.getInt(key, defaultValue) ?: defaultValue
@@ -1163,6 +1246,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun setStorageLong(key: String, value: Long) {
+        if (storageDenied()) return
+
         if (key.isEmpty()) return
         ensureMigration()
         getPluginContext()?.putLong(key, value)
@@ -1170,6 +1255,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageLong(key: String, defaultValue: Long): Long {
+        if (storageDenied()) return defaultValue
+
         if (key.isEmpty()) return defaultValue
         ensureMigration()
         return getPluginContext()?.getLong(key, defaultValue) ?: defaultValue
@@ -1177,6 +1264,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun setStorageBool(key: String, value: Boolean) {
+        if (storageDenied()) return
+
         if (key.isEmpty()) return
         ensureMigration()
         getPluginContext()?.putBoolean(key, value)
@@ -1184,6 +1273,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageBool(key: String, defaultValue: Boolean): Boolean {
+        if (storageDenied()) return defaultValue
+
         if (key.isEmpty()) return defaultValue
         ensureMigration()
         return getPluginContext()?.getBoolean(key, defaultValue) ?: defaultValue
@@ -1191,6 +1282,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun setStorageFloat(key: String, value: Float) {
+        if (storageDenied()) return
+
         if (key.isEmpty()) return
         ensureMigration()
         getPluginContext()?.putFloat(key, value)
@@ -1198,6 +1291,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageFloat(key: String, defaultValue: Float): Float {
+        if (storageDenied()) return defaultValue
+
         if (key.isEmpty()) return defaultValue
         ensureMigration()
         return getPluginContext()?.getFloat(key, defaultValue) ?: defaultValue
@@ -1205,6 +1300,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun setStorageJSON(key: String, json: String) {
+        if (storageDenied()) return
+
         if (key.isEmpty()) return
         ensureMigration()
         try {
@@ -1217,6 +1314,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageJSON(key: String): String {
+        if (storageDenied()) return "{}"
+
         if (key.isEmpty()) return "{}"
         ensureMigration()
         return getPluginContext()?.getJSON(key)?.toString() ?: "{}"
@@ -1224,6 +1323,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun removeStorage(key: String) {
+        if (storageDenied()) return
+
         if (key.isEmpty()) return
         ensureMigration()
         getPluginContext()?.remove(key)
@@ -1231,12 +1332,16 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun clearStorage() {
+        if (storageDenied()) return
+
         ensureMigration()
         getPluginContext()?.clearAll()
     }
 
     @JavascriptInterface
     fun containsStorageKey(key: String): Boolean {
+        if (storageDenied()) return false
+
         if (key.isEmpty()) return false
         ensureMigration()
         return getPluginContext()?.contains(key) ?: false
@@ -1244,6 +1349,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getAllStorage(): String {
+        if (storageDenied()) return "{}"
+
         ensureMigration()
         val pctx = getPluginContext() ?: return "{}"
         return try {
@@ -1255,6 +1362,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageKeys(): String {
+        if (storageDenied()) return "[]"
+
         ensureMigration()
         val pctx = getPluginContext() ?: return "[]"
         return try {
@@ -1273,6 +1382,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun setStorageBatch(jsonData: String): Boolean {
+        if (storageDenied()) return false
+
         ensureMigration()
         return try {
             val obj = JSONObject(jsonData)
@@ -1292,6 +1403,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageBatch(keys: String): String {
+        if (storageDenied()) return "{}"
+
         ensureMigration()
         return try {
             val keyArray = JSONArray(keys)
@@ -1311,6 +1424,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getStorageStats(): String {
+        if (storageDenied()) return "{}"
+
         ensureMigration()
         val pctx = getPluginContext() ?: return "{}"
         return try {
@@ -1330,6 +1445,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getPluginDataSize(): String {
+        if (storageDenied()) return "0"
+
         ensureMigration()
         val pctx = getPluginContext() ?: return "0"
         return try {
@@ -1342,6 +1459,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun clearAllPluginData() {
+        if (storageDenied()) return
+
         ensureMigration()
         getPluginContext()?.deleteAllPluginData()
         Logger.i(TAG, Str.get(R.string.all_plugin_data_cleared))
@@ -1349,12 +1468,16 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getDataVersion(): Int {
+        if (storageDenied()) return 0
+
         ensureMigration()
         return getPluginContext()?.getDataVersion() ?: 0
     }
 
     @JavascriptInterface
     fun exportData(): String {
+        if (storageDenied()) return "{}"
+
         ensureMigration()
         val pctx = getPluginContext() ?: return "{}"
         return try {
@@ -1372,6 +1495,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun importData(jsonData: String): Boolean {
+        if (storageDenied()) return false
+
         ensureMigration()
         return try {
             val obj = JSONObject(jsonData)
@@ -1410,6 +1535,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun writeFile(fileName: String, content: String): Boolean {
+        if (storageDenied()) return false
+
         if (fileName.isEmpty()) return false
         ensureMigration()
         return getPluginContext()?.writeFile(fileName, content) ?: false
@@ -1417,6 +1544,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun readFile(fileName: String): String? {
+        if (storageDenied()) return null
+
         if (fileName.isEmpty()) return null
         ensureMigration()
         return getPluginContext()?.readFile(fileName)
@@ -1424,6 +1553,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun deleteFile(fileName: String): Boolean {
+        if (storageDenied()) return false
+
         if (fileName.isEmpty()) return false
         ensureMigration()
         return getPluginContext()?.deletePluginFile(fileName) ?: false
@@ -1431,6 +1562,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun fileExists(fileName: String): Boolean {
+        if (storageDenied()) return false
+
         if (fileName.isEmpty()) return false
         ensureMigration()
         return getPluginContext()?.fileExists(fileName) ?: false
@@ -1438,6 +1571,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun listFiles(): String {
+        if (storageDenied()) return "[]"
+
         ensureMigration()
         val pctx = getPluginContext() ?: return "[]"
         return try {
@@ -1449,6 +1584,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getFileSize(fileName: String): Long {
+        if (storageDenied()) return 0L
+
         if (fileName.isEmpty()) return 0L
         ensureMigration()
         return getPluginContext()?.getPluginFileSize(fileName) ?: 0L
@@ -1456,6 +1593,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getFileInfo(fileName: String): String {
+        if (storageDenied()) return "{}"
+
         if (fileName.isEmpty()) return "{}"
         ensureMigration()
         val file = getSafeFile(fileName) ?: return "{}"
@@ -1479,6 +1618,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun getFileList(directory: String): String {
+        if (storageDenied()) return "[]"
+
         ensureMigration()
         val pctx = getPluginContext() ?: return "[]"
         val dir = if (directory.isEmpty()) pctx.getPluginDataDir() else getSafeFile(directory)
@@ -1503,6 +1644,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun createDir(dirName: String): Boolean {
+        if (storageDenied()) return false
+
         if (dirName.isEmpty()) return false
         ensureMigration()
         val dir = getSafeFile(dirName) ?: return false
@@ -1511,6 +1654,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun deleteDir(dirName: String): Boolean {
+        if (storageDenied()) return false
+
         if (dirName.isEmpty()) return false
         ensureMigration()
         val dir = getSafeFile(dirName) ?: return false
@@ -1519,6 +1664,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun isDirectory(fileName: String): Boolean {
+        if (storageDenied()) return false
+
         if (fileName.isEmpty()) return false
         ensureMigration()
         val file = getSafeFile(fileName) ?: return false
@@ -1527,6 +1674,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun renameFile(oldName: String, newName: String): Boolean {
+        if (storageDenied()) return false
+
         if (oldName.isEmpty() || newName.isEmpty()) return false
         ensureMigration()
         val oldFile = getSafeFile(oldName) ?: return false
@@ -1536,6 +1685,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun copyFile(srcName: String, dstName: String): Boolean {
+        if (storageDenied()) return false
+
         if (srcName.isEmpty() || dstName.isEmpty()) return false
         ensureMigration()
         val src = getSafeFile(srcName) ?: return false
@@ -1545,6 +1696,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun moveFile(srcName: String, dstName: String): Boolean {
+        if (storageDenied()) return false
+
         if (srcName.isEmpty() || dstName.isEmpty()) return false
         ensureMigration()
         val src = getSafeFile(srcName) ?: return false
@@ -1554,6 +1707,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun exists(path: String): Boolean {
+        if (storageDenied()) return false
+
         if (path.isEmpty()) return false
         ensureMigration()
         val file = getSafeFile(path) ?: return false
@@ -1562,6 +1717,8 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun clearCache() {
+        if (storageDenied()) return
+
         ensureMigration()
         getPluginContext()?.clearPluginCache()
     }
@@ -1588,7 +1745,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun httpGet(url: String, callbackId: String) {
-        if (!hasPermission(Manifest.permission.INTERNET)) {
+        if (!checkCapability("httpGet")) {
             sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
@@ -1624,7 +1781,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun httpPost(url: String, jsonBody: String, callbackId: String) {
-        if (!hasPermission(Manifest.permission.INTERNET)) {
+        if (!checkCapability("httpPost")) {
             sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
@@ -1662,7 +1819,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun httpPut(url: String, jsonBody: String, callbackId: String) {
-        if (!hasPermission(Manifest.permission.INTERNET)) {
+        if (!checkCapability("httpPut")) {
             sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
@@ -1700,7 +1857,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun httpDelete(url: String, callbackId: String) {
-        if (!hasPermission(Manifest.permission.INTERNET)) {
+        if (!checkCapability("httpDelete")) {
             sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
@@ -1736,7 +1893,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun downloadFile(url: String, fileName: String, callbackId: String) {
-        if (!hasPermission(Manifest.permission.INTERNET)) {
+        if (!checkCapability("downloadFile")) {
             sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
             return
         }
@@ -1750,36 +1907,37 @@ class PluginJSInterface(
                     .url(url)
                     .header("User-Agent", "UIN-Tool-WebPlugin/$pluginId")
                     .build()
-                val response = httpClient.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    sendCallback(callbackId, errJson("HTTP ${response.code}"))
-                    return@Thread
-                }
-                val body = response.body ?: run {
-                    sendCallback(callbackId, Str.get(R.string.success_false_error_empty_response_b))
-                    return@Thread
-                }
-                val pctx = getPluginContext()
-                if (pctx == null) {
-                    sendCallback(callbackId, Str.get(R.string.success_false_error_could_not_get_st))
-                    return@Thread
-                }
-                val safeFile = getSafeFile(fileName)
-                if (safeFile == null) {
-                    sendCallback(callbackId, Str.get(R.string.success_false_error_invalid_file_nam))
-                    return@Thread
-                }
-                safeFile.parentFile?.mkdirs()
-                FileOutputStream(safeFile).use { fos ->
-                    body.byteStream().use { input ->
-                        input.copyTo(fos)
+                httpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        sendCallback(callbackId, errJson("HTTP ${response.code}"))
+                        return@Thread
                     }
+                    val body = response.body ?: run {
+                        sendCallback(callbackId, Str.get(R.string.success_false_error_empty_response_b))
+                        return@Thread
+                    }
+                    val pctx = getPluginContext()
+                    if (pctx == null) {
+                        sendCallback(callbackId, Str.get(R.string.success_false_error_could_not_get_st))
+                        return@Thread
+                    }
+                    val safeFile = getSafeFile(fileName)
+                    if (safeFile == null) {
+                        sendCallback(callbackId, Str.get(R.string.success_false_error_invalid_file_nam))
+                        return@Thread
+                    }
+                    safeFile.parentFile?.mkdirs()
+                    FileOutputStream(safeFile).use { fos ->
+                        body.byteStream().use { input ->
+                            input.copyTo(fos)
+                        }
+                    }
+                    sendCallback(callbackId, JSONObject().apply {
+                        put("success", true)
+                        put("file", safeFile.absolutePath)
+                        put("size", safeFile.length())
+                    }.toString())
                 }
-                sendCallback(callbackId, JSONObject().apply {
-                    put("success", true)
-                    put("file", safeFile.absolutePath)
-                    put("size", safeFile.length())
-                }.toString())
             } catch (e: Exception) {
                 sendCallback(callbackId, errJson(e.message))
             }
@@ -1791,8 +1949,13 @@ class PluginJSInterface(
     @JavascriptInterface
     fun checkPermission(permission: String): Boolean {
         if (permission.isEmpty()) return false
-        return PermissionUtils.hasPermission(context, permission) ||
-                PermissionUtils.hasSpecialPermission(context, permission)
+        // 伪权限（剪贴板）仅需声明且未被撤销即可
+        if (isPseudoPermission(permission)) {
+            return pluginInfo.permissions.contains(permission) && !isBlocked(permission)
+        }
+        return !isBlocked(permission) &&
+                (PermissionUtils.hasPermission(context, permission) ||
+                        PermissionUtils.hasSpecialPermission(context, permission))
     }
 
     @JavascriptInterface
@@ -1801,8 +1964,18 @@ class PluginJSInterface(
             sendCallback(callbackId, Str.get(R.string.success_false_error_permission_name_))
             return
         }
+        if (!pluginInfo.permissions.contains(permission)) {
+            Logger.w(TAG, Str.get(R.string.plugin_not_declared_permission_pluginid, pluginId, permission))
+            sendCallback(callbackId, permissionDeniedJson())
+            return
+        }
         if (checkPermission(permission)) {
             sendCallback(callbackId, Str.get(R.string.success_true_message_permission_gran))
+            return
+        }
+        // 已被权限管理撤销（封禁）：不发起系统请求，直接拒绝
+        if (isBlocked(permission)) {
+            sendCallback(callbackId, permissionDeniedJson())
             return
         }
         if (PermissionUtils.isSpecialPermission(permission)) {
@@ -1836,6 +2009,13 @@ class PluginJSInterface(
             val permList = mutableListOf<String>()
             for (i in 0 until permArray.length()) {
                 val perm = permArray.getString(i)
+                // 仅允许请求插件已声明的权限
+                if (!pluginInfo.permissions.contains(perm)) {
+                    Logger.w(TAG, Str.get(R.string.plugin_not_declared_permission_pluginid, pluginId, perm))
+                    continue
+                }
+                // 已被权限管理撤销（封禁）：不发起系统请求
+                if (isBlocked(perm)) continue
                 if (!checkPermission(perm)) permList.add(perm)
             }
             if (permList.isEmpty()) {
@@ -2010,6 +2190,7 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun copyToClipboard(text: String) {
+        if (!checkCapability("copyToClipboard")) return
         if (text.isEmpty()) {
             showToast(Str.get(R.string.content_is_empty))
             return
@@ -2026,10 +2207,19 @@ class PluginJSInterface(
     }
 
     @JavascriptInterface
-    fun setClipboard(text: String) = copyToClipboard(text)
+    fun setClipboard(text: String): Boolean {
+        if (!checkCapability("setClipboard")) return false
+        return try {
+            copyToClipboard(text)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     @JavascriptInterface
     fun getClipboard(): String {
+        if (!checkCapability("getClipboard")) return ""
         return try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             val clip = clipboard.primaryClip
@@ -2044,10 +2234,11 @@ class PluginJSInterface(
     }
 
     @JavascriptInterface
-    fun paste(): String = getClipboard()
+    fun paste(): String = if (checkCapability("paste")) getClipboard() else ""
 
     @JavascriptInterface
     fun clearClipboard() {
+        if (!checkCapability("clearClipboard")) return
         try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
@@ -2513,4 +2704,63 @@ fun dnsLookup(host: String): String {
         return PermissionUtils.hasPermission(context, permission) ||
                 PermissionUtils.hasSpecialPermission(context, permission)
     }
+
+    /** 该插件是否在权限管理中对该权限执行了撤销（封禁） */
+    private fun isBlocked(permission: String): Boolean {
+        return PluginPermissionManager.isPermissionBlocked(context, pluginId, permission)
+    }
+
+    /**
+     * 严格 allowlist：敏感接口必须同时满足：
+     * 1) 插件在 plugin.json 中声明了该权限；
+     * 2) 宿主已实际授权（运行时/特殊权限）；
+     * 3) 未被权限管理撤销（封禁）。
+     * 未声明、被撤销或未授权一律拒绝，返回 denied。
+     */
+    private fun hasPluginPermission(permission: String): Boolean {
+        if (permission.isEmpty()) return false
+        if (isBlocked(permission)) {
+            Logger.w(TAG, Str.get(R.string.plugin_not_declared_permission_pluginid, pluginId, permission))
+            return false
+        }
+        if (!pluginInfo.permissions.contains(permission)) {
+            Logger.w(TAG, Str.get(R.string.plugin_not_declared_permission_pluginid, pluginId, permission))
+            return false
+        }
+        return hasPermission(permission)
+    }
+
+    /**
+     * 伪权限：非真实 Android 权限（如剪贴板 READ_CLIPBOARD/WRITE_CLIPBOARD），
+     * 仅要求插件在 plugin.json 中声明即可，无需宿主运行时授权。
+     */
+    private fun isPseudoPermission(permission: String): Boolean {
+        return permission == "READ_CLIPBOARD" || permission == "WRITE_CLIPBOARD"
+    }
+
+    /**
+     * 声明式能力中央校验：按 [CAPABILITY_MAP] 查表。
+     * - 未收录的方法：非敏感，直接放行 true。
+     * - 已收录的方法：要求插件声明了列表中的任一权限；
+     *   真实 Android 权限还需宿主运行时已授权，伪权限仅需声明；
+     *   且该权限未被权限管理撤销（封禁）。
+     */
+    private fun checkCapability(method: String): Boolean {
+        val required = CAPABILITY_MAP[method] ?: return true
+        for (permission in required) {
+            if (!pluginInfo.permissions.contains(permission)) continue
+            if (isBlocked(permission)) continue
+            if (isPseudoPermission(permission)) return true
+            if (hasPermission(permission)) return true
+        }
+        Logger.w(TAG, Str.get(R.string.plugin_capability_denied_pluginid_method, pluginId, method))
+        return false
+    }
+
+    /** 权限被拒时的统一 JSON 响应 */
+    private fun permissionDeniedJson(): String =
+        "{\"success\":false,\"error\":\"permission_denied\"}"
+
+    /** 存储/文件类 API 是否被拒（插件未声明存储权限或该权限已被撤销/封禁） */
+    private fun storageDenied(): Boolean = !checkCapability("storage")
 }

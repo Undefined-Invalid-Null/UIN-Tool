@@ -8,6 +8,8 @@ import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.constants.AppConstants as Constants
+import com.UIN.Tool.utils.CrashLogUtils
+import com.UIN.Tool.plugin.SharedSupervisor
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
@@ -31,6 +33,13 @@ class UinApplication : TermuxApplication() {
 
         @JvmStatic
         fun getAppContext(): Context = instance.applicationContext
+
+        /** 后台环境安装进行中标志，避免与 PluginHostActivity 的安装流程冲突 */
+        @Volatile
+        private var _isEnvironmentInstalling = false
+
+        @JvmStatic
+        fun isEnvironmentInstalling(): Boolean = _isEnvironmentInstalling
     }
 
     override fun attachBaseContext(base: Context) {
@@ -41,6 +50,8 @@ class UinApplication : TermuxApplication() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        installGlobalCrashHandler()
 
         try {
             UIConfig.init(this)
@@ -64,6 +75,31 @@ class UinApplication : TermuxApplication() {
         }
 
         try {
+            cleanupOnVersionUpgrade()
+        } catch (e: Exception) {
+            Logger.e(TAG, "cleanupOnVersionUpgrade failed", e)
+        }
+
+        try {
+            SharedSupervisor.killStaleProcesses()
+            Logger.i(TAG, "stale supervisor processes cleaned")
+        } catch (e: Exception) {
+            Logger.e(TAG, "killStaleProcesses failed", e)
+        }
+
+        try {
+            clearOldDynamicShortcuts()
+        } catch (e: Exception) {
+            Logger.e(TAG, "clearOldDynamicShortcuts failed", e)
+        }
+
+        try {
+            autoInstallEnvironment()
+        } catch (e: Exception) {
+            Logger.e(TAG, "autoInstallEnvironment failed", e)
+        }
+
+        try {
             initTextMate()
             Logger.i(TAG, Str.get(R.string.textmate_initialized))
         } catch (e: Exception) {
@@ -71,6 +107,120 @@ class UinApplication : TermuxApplication() {
         }
 
         Logger.i(TAG, Str.get(R.string.uin_tool_app_startup_complete))
+    }
+
+    /**
+     * 全局未捕获异常处理：把任何线程（含原生插件后台线程）的崩溃写入日志目录，
+     * 避免「闪退到桌面但日志里没有任何记录」。仅主线程崩溃交给系统默认处理（进程终止），
+     * 非主线程崩溃仅记录，不让单个插件后台线程把整个宿主进程带走。
+     */
+    private fun installGlobalCrashHandler() {
+        try {
+            val previous = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                try {
+                    val isMain = thread === android.os.Looper.getMainLooper().thread
+                    if (isMain) {
+                        // 主线程崩溃：进程随即终止。标记「下次启动直达日志页」（commit 同步落盘），
+                        // 再交给系统默认处理走闪退流程。
+                        CrashLogUtils.logExceptionAndNavigate(this, throwable, "Uncaught-${thread.name}")
+                        previous?.uncaughtException(thread, throwable)
+                            ?: android.os.Process.killProcess(android.os.Process.myPid())
+                    } else {
+                        CrashLogUtils.logException(this, throwable, "Uncaught-${thread.name}")
+                        Logger.e(TAG, "后台线程崩溃已记录（不终止进程）: ${thread.name} - ${throwable.message}")
+                    }
+                } catch (e: Exception) {
+                    previous?.uncaughtException(thread, throwable)
+                }
+            }
+            Logger.i(TAG, Str.get(R.string.global_crash_handler_installed))
+        } catch (e: Exception) {
+            Logger.e(TAG, "installGlobalCrashHandler failed", e)
+        }
+    }
+
+    /**
+     * 清除旧版动态插件快捷方式（已改为 shortcuts.xml 静态快捷方式）。
+     */
+    private fun clearOldDynamicShortcuts() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N_MR1) {
+            try {
+                val sm = getSystemService(android.content.pm.ShortcutManager::class.java) ?: return
+                val oldIds = sm.dynamicShortcuts
+                    .filter { it.id.startsWith("plugin_") }
+                    .map { it.id }
+                if (oldIds.isNotEmpty()) {
+                    sm.removeDynamicShortcuts(oldIds)
+                    Logger.i(TAG, "Cleared ${oldIds.size} old dynamic plugin shortcuts")
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, "clearOldDynamicShortcuts error: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * 后台自动检测并安装 Termux bootstrap 和 Alpine 容器。
+     * 仅在内置 Termux 模式下执行；Real Termux 模式跳过。
+     * 安装前设置 [isEnvironmentInstalling] 标志，PluginHostActivity 检测到后跳过自身安装，避免冲突。
+     */
+    private fun autoInstallEnvironment() {
+        val ctx = applicationContext
+        // 仅内置模式需要 bootstrap + alpine；Real Termux 模式由外部 Termux 管理
+        if (!com.UIN.Tool.plugin.BackendConfig.isBuiltin(ctx)) return
+
+        Thread {
+            try {
+                _isEnvironmentInstalling = true
+                Logger.i(TAG, "autoInstallEnvironment: checking bootstrap & alpine")
+
+                // 1. 确保 Termux bootstrap 就绪（复用 PluginHostActivity 的检测逻辑）
+                if (!com.UIN.Tool.plugin.ProotContainerManager.isTermuxReady()) {
+                    Logger.i(TAG, "autoInstallEnvironment: bootstrap not ready, installing")
+                    com.UIN.Tool.plugin.ProotContainerManager.installBootstrapHeadless(ctx)
+                    if (!com.UIN.Tool.plugin.ProotContainerManager.isTermuxReady()) {
+                        Logger.e(TAG, "autoInstallEnvironment: bootstrap install failed")
+                        _isEnvironmentInstalling = false
+                        return@Thread
+                    }
+                    // 写入环境变量文件（与 TermuxInstaller 安装后一致）
+                    try {
+                        com.UIN.Tool.shared.termux.shell.command.environment.TermuxShellEnvironment.writeEnvironmentToFile(ctx)
+                        Logger.i(TAG, "autoInstallEnvironment: environment file written")
+                    } catch (e: Exception) {
+                        Logger.e(TAG, "autoInstallEnvironment: writeEnvironmentToFile failed: ${e.message}")
+                    }
+                    Logger.success(TAG, "autoInstallEnvironment: bootstrap installed")
+                }
+
+                // bootstrap 就绪即可创建终端会话，不再阻塞
+                _isEnvironmentInstalling = false
+
+                // 2. 确保 Alpine 容器已安装（异步，不阻塞终端）
+                if (!com.UIN.Tool.plugin.ProotContainerManager.isAlpineInstalled()) {
+                    Logger.i(TAG, "autoInstallEnvironment: Alpine not installed, installing in background")
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        android.widget.Toast.makeText(ctx, ctx.getString(com.UIN.Tool.R.string.alpine_installing_do_not_exit), android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    com.UIN.Tool.plugin.ProotContainerManager.ensureAlpine(ctx, null) { success ->
+                        if (success) {
+                            Logger.success(TAG, "autoInstallEnvironment: Alpine installed successfully")
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                android.widget.Toast.makeText(ctx, ctx.getString(com.UIN.Tool.R.string.alpine_install_complete), android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Logger.e(TAG, "autoInstallEnvironment: Alpine install failed")
+                        }
+                    }
+                } else {
+                    Logger.i(TAG, "autoInstallEnvironment: environment ready")
+                }
+            } catch (e: Exception) {
+                _isEnvironmentInstalling = false
+                Logger.e(TAG, "autoInstallEnvironment error: ${e.message}", e)
+            }
+        }.start()
     }
 
     private fun initTextMate() {
@@ -372,6 +522,32 @@ class UinApplication : TermuxApplication() {
             "dark_modern", "dark_plus", "dark_vs", "hc_black"
         )
         return darkThemes.contains(themeName)
+    }
+
+    private fun cleanupOnVersionUpgrade() {
+        val prefs = getSharedPreferences("uin_prefs", Context.MODE_PRIVATE)
+        val lastVersion = prefs.getInt("last_version_code", 0)
+        val currentVersion = try {
+            packageManager.getPackageInfo(packageName, 0).longVersionCode.toInt()
+        } catch (_: Exception) { 0 }
+        if (lastVersion != 0 && lastVersion != currentVersion) {
+            Logger.i(TAG, "version upgraded: $lastVersion -> $currentVersion, cleaning .uin dirs")
+            val pluginsDir = File(Constants.PLUGIN_DIR)
+            pluginsDir.listFiles()?.filter { it.isDirectory }?.forEach { pluginDir ->
+                val uinDir = File(pluginDir, ".uin")
+                if (uinDir.exists()) {
+                    uinDir.deleteRecursively()
+                    Logger.d(TAG, "deleted ${uinDir.absolutePath}")
+                }
+            }
+            // 也清理共享 .uin（宿主根目录下）
+            val sharedUin = File(pluginsDir, ".uin")
+            if (sharedUin.exists()) {
+                sharedUin.deleteRecursively()
+                Logger.d(TAG, "deleted shared ${sharedUin.absolutePath}")
+            }
+        }
+        prefs.edit().putInt("last_version_code", currentVersion).apply()
     }
 
     private fun initWorkDirectory() {

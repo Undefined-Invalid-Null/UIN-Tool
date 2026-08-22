@@ -217,6 +217,32 @@ fun OnboardingScreen(
                                     text = Str.get(R.string.onboarding_terminal_notice),
                                     color = Color(0xFFBF360C)
                                 )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 0.dp),
+                                    color = Color(0xFF2E7D32).copy(alpha = 0.15f)
+                                )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFF2E7D32),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    UnifiedSectionTitle(
+                                        text = Str.get(R.string.environment_init_notice),
+                                        color = Color(0xFF1B5E20)
+                                    )
+                                }
                             }
                         }
 

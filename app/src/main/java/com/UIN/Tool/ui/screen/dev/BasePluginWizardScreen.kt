@@ -18,12 +18,17 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.UIN.Tool.core.compiler.JavaToDexCompiler
+import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.AppLog
@@ -46,18 +51,27 @@ fun BasePluginWizardScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val viewModel = remember {
-        PluginWizardViewModel(context, uiType, backendType)
-    }
+    // ✅ 使用 viewModel() 让 ViewModel 在 Activity 重建（旋转）时保留，
+    //    并用 applicationContext 避免持有 Activity 引用导致泄漏。
+    val appContext = context.applicationContext
+    val viewModel: PluginWizardViewModel = viewModel(
+        key = "plugin_wizard_${uiType}_$backendType",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return PluginWizardViewModel(appContext, uiType, backendType) as T
+            }
+        }
+    )
 
-    var currentStep by remember { mutableStateOf(0) }
+    var currentStep by rememberSaveable { mutableStateOf(0) }
 
     // 编辑 JSON 对话框状态
-    var showJsonEditor by remember { mutableStateOf(false) }
-    var jsonDraft by remember { mutableStateOf("") }
+    var showJsonEditor by rememberSaveable { mutableStateOf(false) }
+    var jsonDraft by rememberSaveable { mutableStateOf("") }
 
     // 配置页字段总览说明对话框
-    var showStepOverview by remember { mutableStateOf(false) }
+    var showStepOverview by rememberSaveable { mutableStateOf(false) }
     
     val hasBackend = backendType.isNotEmpty()
     
@@ -131,11 +145,9 @@ fun BasePluginWizardScreen(
                 put("description", viewModel.pluginDescription.value)
                 put("icon", "icon.png")
                 put("mainClass", if (uiType == "native") viewModel.mainClass.value else "")
-                put("apiLevel", viewModel.apiLevel.value.toIntOrNull() ?: 21)
                 put("uiType", uiType)
                 put("entry", if (uiType == "web") viewModel.entryPath.value else "")
                 put("permissions", viewModel.permissions.value.joinToString(","))
-                put("dependencies", viewModel.dependencies.value.split(",").map { it.trim() }.filter { it.isNotEmpty() }.joinToString(","))
                 put("notice", viewModel.pluginNotice.value)
                 put("category", viewModel.category.value)
                 put("updateUrl", viewModel.updateUrl.value)
@@ -144,8 +156,18 @@ fun BasePluginWizardScreen(
                     put("backendStartCommand", viewModel.backendStartCommand.value.trim().ifBlank { "sh scripts/start.sh" })
                     put("backendStartEntry", "scripts/start.sh")
                     put("backendAutoStart", true)
-                    put("backendTimeout", 30)
-                    put("backendHealthCheck", "/health")
+                    put("backendTimeout", viewModel.backendTimeout.value.toIntOrNull() ?: 30)
+                    put("backendHealthCheck", viewModel.backendHealthCheck.value.ifBlank { "/health" })
+                }
+                if (viewModel.openWithEnabled.value) {
+                    put("openWith", org.json.JSONObject().apply {
+                        put("enabled", true)
+                        put("label", viewModel.openWithLabel.value)
+                        put("mimeTypes", viewModel.openWithMimeTypes.value)
+                        put("acceptText", viewModel.openWithAcceptText.value)
+                        put("acceptUrl", viewModel.openWithAcceptUrl.value)
+                        put("acceptFile", viewModel.openWithAcceptFile.value)
+                    })
                 }
                 if (uiType == "cui") {
                     put("backendRuntime", viewModel.backendRuntime.value.ifEmpty { "termux" })
@@ -171,16 +193,23 @@ fun BasePluginWizardScreen(
             viewModel.entryPath.value = json.optString("entry", viewModel.entryPath.value)
             viewModel.pluginNotice.value = json.optString("notice", viewModel.pluginNotice.value)
             viewModel.minHostVersion.value = json.optInt("minHostVersion", viewModel.minHostVersion.value.toIntOrNull() ?: 1).toString()
-            viewModel.apiLevel.value = json.optInt("apiLevel", viewModel.apiLevel.value.toIntOrNull() ?: 21).toString()
             viewModel.category.value = json.optString("category", viewModel.category.value)
             viewModel.updateUrl.value = json.optString("updateUrl", viewModel.updateUrl.value)
-            viewModel.dependencies.value = json.optString("dependencies", viewModel.dependencies.value)
-            val parsedPermissions = json.optString("permissions", "")
-                .split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            val parsedPermissions = PluginInfo.parseStringListCompat(json, "permissions")
             viewModel.permissions.value = parsedPermissions.ifEmpty { viewModel.permissions.value }
             viewModel.backendRuntime.value = json.optString("backendRuntime", viewModel.backendRuntime.value)
             viewModel.backendPreCommand.value = json.optString("backendPreCommand", viewModel.backendPreCommand.value)
             viewModel.backendStartCommand.value = json.optString("backendStartCommand", viewModel.backendStartCommand.value)
+            viewModel.backendTimeout.value = json.optInt("backendTimeout", viewModel.backendTimeout.value.toIntOrNull() ?: 30).toString()
+            viewModel.backendHealthCheck.value = json.optString("backendHealthCheck", viewModel.backendHealthCheck.value)
+            json.optJSONObject("openWith")?.let { ow ->
+                viewModel.openWithEnabled.value = ow.optBoolean("enabled", true)
+                viewModel.openWithLabel.value = ow.optString("label", "")
+                viewModel.openWithMimeTypes.value = ow.optString("mimeTypes", "")
+                viewModel.openWithAcceptText.value = ow.optBoolean("acceptText", true)
+                viewModel.openWithAcceptUrl.value = ow.optBoolean("acceptUrl", true)
+                viewModel.openWithAcceptFile.value = ow.optBoolean("acceptFile", true)
+            }
             true
         } catch (e: Exception) {
             AppToast.error(context, Str.get(R.string.json_parse_failed_e_message, e.message))
@@ -530,7 +559,7 @@ fun BasePluginWizardScreen(
                         pluginVersionName = viewModel.pluginVersionName.value,
                         onPluginVersionNameChange = { viewModel.pluginVersionName.value = it },
                         mainClass = viewModel.mainClass.value,
-                        onMainClassChange = { viewModel.mainClass.value = it },
+                        onMainClassChange = { viewModel.setMainClass(it) },
                         entryPath = viewModel.entryPath.value,
                         onEntryPathChange = { viewModel.entryPath.value = it },
                         pluginNotice = viewModel.pluginNotice.value,
@@ -543,16 +572,28 @@ fun BasePluginWizardScreen(
                         onBackendStartCommandChange = { viewModel.backendStartCommand.value = it },
                         permissions = viewModel.permissions.value,
                         onPermissionsChange = { viewModel.permissions.value = it },
-                        dependencies = viewModel.dependencies.value,
-                        onDependenciesChange = { viewModel.dependencies.value = it },
                         minHostVersion = viewModel.minHostVersion.value,
                         onMinHostVersionChange = { viewModel.minHostVersion.value = it },
-                        apiLevel = viewModel.apiLevel.value,
-                        onApiLevelChange = { viewModel.apiLevel.value = it },
                         category = viewModel.category.value,
                         onCategoryChange = { viewModel.category.value = it },
                         updateUrl = viewModel.updateUrl.value,
-                        onUpdateUrlChange = { viewModel.updateUrl.value = it }
+                        onUpdateUrlChange = { viewModel.updateUrl.value = it },
+                        backendTimeout = viewModel.backendTimeout.value,
+                        onBackendTimeoutChange = { viewModel.backendTimeout.value = it },
+                        backendHealthCheck = viewModel.backendHealthCheck.value,
+                        onBackendHealthCheckChange = { viewModel.backendHealthCheck.value = it },
+                        openWithEnabled = viewModel.openWithEnabled.value,
+                        onOpenWithEnabledChange = { viewModel.openWithEnabled.value = it },
+                        openWithLabel = viewModel.openWithLabel.value,
+                        onOpenWithLabelChange = { viewModel.openWithLabel.value = it },
+                        openWithMimeTypes = viewModel.openWithMimeTypes.value,
+                        onOpenWithMimeTypesChange = { viewModel.openWithMimeTypes.value = it },
+                        openWithAcceptText = viewModel.openWithAcceptText.value,
+                        onOpenWithAcceptTextChange = { viewModel.openWithAcceptText.value = it },
+                        openWithAcceptUrl = viewModel.openWithAcceptUrl.value,
+                        onOpenWithAcceptUrlChange = { viewModel.openWithAcceptUrl.value = it },
+                        openWithAcceptFile = viewModel.openWithAcceptFile.value,
+                        onOpenWithAcceptFileChange = { viewModel.openWithAcceptFile.value = it }
                     )
                     1 -> PluginIconStep(
                         iconPath = viewModel.iconPath.value,

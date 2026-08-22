@@ -1,7 +1,6 @@
 package com.UIN.Tool.utils
 
 import com.UIN.Tool.R
-import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.log.Logger
 import java.io.File
@@ -12,25 +11,24 @@ object SecurityUtils {
 
     private const val TAG = "SecurityUtils"
 
-    fun verifyFileSignature(file: File, preferenceManager: PreferenceManager): Boolean {
-        if (PluginManager.isIgnoreSignatureWarning()) {
-            Logger.w(TAG, Str.get(R.string.signature_verification_ignored_2))
-            return true
-        }
-
+    /**
+     * 按 pluginId 校验插件包签名。首次安装记录哈希，后续安装比对同一 pluginId 的哈希，
+     * 不再依赖文件名，避免重命名/同名文件绕过。
+     */
+    fun verifyFileSignature(pluginId: String, file: File, preferenceManager: PreferenceManager): Boolean {
         val fileHash = calculateFileHash(file) ?: return false
-        val expectedHash = preferenceManager.getPluginSignature(file.name)
+        val expectedHash = preferenceManager.getPluginSignature(pluginId)
 
         return if (expectedHash.isNullOrEmpty()) {
-            preferenceManager.savePluginSignature(file.name, fileHash)
-            Logger.i(TAG, Str.get(R.string.first_import_recording_signature_fil, file.name))
+            preferenceManager.savePluginSignature(pluginId, fileHash)
+            Logger.i(TAG, Str.get(R.string.first_import_recording_signature_fil, pluginId))
             true
         } else {
             val verified = expectedHash == fileHash
             if (!verified) {
-                Logger.e(TAG, Str.get(R.string.signature_verification_failed_file_m, file.name))
+                Logger.e(TAG, Str.get(R.string.signature_verification_failed_file_m, pluginId))
             } else {
-                Logger.success(TAG, Str.get(R.string.signature_verification_passed_file_n, file.name))
+                Logger.success(TAG, Str.get(R.string.signature_verification_passed_file_n, pluginId))
             }
             verified
         }

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <!-- 默认禁止明文流量，仅允许 127.0.0.1 / localhost 环回地址（插件后端本地端口） -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    
+
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">api.github.com</domain>
-        <domain includeSubdomains="true">github.com</domain>
-        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
     </domain-config>
 </network-security-config>

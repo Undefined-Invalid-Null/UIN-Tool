@@ -30,8 +30,17 @@ object Logger {
     private var logFile: File? = null
     private var isInitialized = false
     private var currentLevel = Level.INFO
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
-    private val logDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    // ✅ SimpleDateFormat 非线程安全，多线程写日志用 ThreadLocal 隔离
+    private val dateFormat = ThreadLocal.withInitial {
+        SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
+    }
+    private val logDateFormat = ThreadLocal.withInitial {
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    }
+    private val rotateDateFormat = ThreadLocal.withInitial {
+        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+    }
 
     fun init(logDir: String, level: Level = if (BuildConfig.DEBUG) Level.DEBUG else Level.INFO) {
         if (isInitialized) return
@@ -41,7 +50,7 @@ object Logger {
             if (!dir.exists()) {
                 dir.mkdirs()
             }
-            val date = logDateFormat.format(Date())
+            val date = logDateFormat.get().format(Date())
             logFile = File(dir, "uin_tool_$date.log")
             if (!logFile!!.exists()) {
                 logFile!!.createNewFile()
@@ -84,7 +93,7 @@ object Logger {
             val name = logFile?.nameWithoutExtension ?: return
             val ext = logFile?.extension ?: "log"
 
-            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val timestamp = rotateDateFormat.get().format(Date())
             val newFile = File(dir, "${name}_${timestamp}.$ext")
             logFile?.renameTo(newFile)
 
@@ -117,7 +126,7 @@ object Logger {
     }
 
     private fun formatMessage(level: Level, tag: String, message: String): String {
-        return "${dateFormat.format(Date())} [${level.tag}] [$tag] $message"
+        return "${dateFormat.get().format(Date())} [${level.tag}] [$tag] $message"
     }
 
     private fun write(level: Level, tag: String, message: String) {

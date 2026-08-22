@@ -7,6 +7,9 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.constants.AppConstants as Constants
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.util.concurrent.TimeUnit
 
 class MirrorManager(
@@ -23,8 +26,11 @@ class MirrorManager(
         .build()
 
     suspend fun testMirrors(mirrors: List<MirrorItem>): List<MirrorItem> {
-        return mirrors.map { mirror ->
-            mirror.copy(reachable = testMirrorReachable(mirror.url))
+        // ✅ 并发探测所有镜像（原来逐个串行最多 5s×N），整体耗时从 N×5s 降到约 5s
+        return coroutineScope {
+            mirrors.map { mirror ->
+                async { mirror.copy(reachable = testMirrorReachable(mirror.url)) }
+            }.awaitAll()
         }
     }
 
@@ -44,26 +50,44 @@ class MirrorManager(
     }
 
     fun getMirrorUrl(mirror: String, originalUrl: String): String {
+        val safeMirror = forceHttps(mirror)
         return when {
-            mirror.contains("ghproxy") -> "$mirror/$originalUrl"
-            mirror.contains("fastgit") -> originalUrl.replace(
+            safeMirror.contains("ghproxy") -> "$safeMirror/$originalUrl"
+            safeMirror.contains("fastgit") -> originalUrl.replace(
                 "https://api.github.com",
-                "$mirror/api.github.com"
+                "$safeMirror/api.github.com"
             )
-            mirror.contains("moeyy") -> "$mirror/$originalUrl"
-            else -> "$mirror/$originalUrl"
+            safeMirror.contains("moeyy") -> "$safeMirror/$originalUrl"
+            else -> "$safeMirror/$originalUrl"
         }
     }
 
     fun getDownloadMirrorUrl(mirror: String, originalUrl: String, useCdn: Boolean): String {
         if (!useCdn || mirror.isEmpty()) return originalUrl
+        val safeMirror = forceHttps(mirror)
         return when {
-            mirror.contains("ghproxy") -> "$mirror/$originalUrl"
-            mirror.contains("fastgit") -> originalUrl.replace(
+            safeMirror.contains("ghproxy") -> "$safeMirror/$originalUrl"
+            safeMirror.contains("fastgit") -> originalUrl.replace(
                 "https://github.com",
-                "$mirror/github.com"
+                "$safeMirror/github.com"
             )
             else -> originalUrl
+        }
+    }
+
+    /** 镜像地址强制使用 https：http 直接升级，禁止明文传输。 */
+    private fun forceHttps(url: String): String {
+        if (url.isBlank()) return url
+        return if (url.startsWith("http://")) "https://" + url.removePrefix("http://") else url
+    }
+
+    /** 解析时统一为 https：http 升级，无协议时补全 https。 */
+    private fun normalizeScheme(url: String): String {
+        val trimmed = url.trim()
+        return when {
+            trimmed.startsWith("http://") -> "https://" + trimmed.removePrefix("http://")
+            trimmed.startsWith("https://") -> trimmed
+            else -> "https://$trimmed"
         }
     }
 
@@ -92,7 +116,7 @@ class MirrorManager(
                 val remark = if (parts.size > 2) parts[2].trim() else ""
                 return MirrorItem(
                     name = name,
-                    url = if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url",
+                    url = normalizeScheme(url),
                     remark = remark,
                     isDefault = false
                 )
@@ -102,7 +126,7 @@ class MirrorManager(
                 val url = line.trim()
                 return MirrorItem(
                     name = url.substringAfter("//").substringBefore("."),
-                    url = if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url",
+                    url = normalizeScheme(url),
                     isDefault = false
                 )
             }

@@ -50,7 +50,12 @@ object PluginBroadcastReceiver {
             addAction(Intent.ACTION_PACKAGE_REMOVED)
             addDataScheme("package")
         }
-        context.registerReceiver(receiver, filter)
+        // 仅接收本应用广播，不向外部应用暴露（Android 13+ 需显式 NOT_EXPORTED）
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
         registered = true
         Logger.d(TAG, Str.get(R.string.broadcast_receiver_registered))
     }
@@ -71,6 +76,7 @@ object PluginBroadcastReceiver {
      */
     fun sendBroadcast(pluginId: String? = null, eventType: String, data: Map<String, Any>? = null) {
         val intent = Intent(ACTION_PLUGIN_BROADCAST).apply {
+            setPackage(context.packageName)
             pluginId?.let { putExtra("plugin_id", it) }
             putExtra("event_type", eventType)
             data?.let {

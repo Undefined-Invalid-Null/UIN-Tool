@@ -112,6 +112,15 @@ class SplashActivity : ComponentActivity() {
         checkPermissionAfterReturn()
     }
 
+    /** 自定义危险权限需运行时申请（本次新增 OPEN_PLUGIN / RUN_COMMAND 权限，便于本应用自启插件宿主） */
+    private val customPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        if (it[Constants.OPEN_PLUGIN_PERMISSION] == true || it[Constants.RUN_COMMAND_PERMISSION] == true) {
+            AppLog.i(TAG, Str.get(R.string.custom_permission_granted))
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -231,6 +240,25 @@ class SplashActivity : ComponentActivity() {
         if (permissions.isNotEmpty()) {
             requestPermissionLauncher.launch(permissions.toTypedArray())
         }
+        requestCustomPermissionIfNeeded()
+    }
+
+    /** 请求本应用自定义危险权限（OPEN_PLUGIN / RUN_COMMAND），授予与否不影响后续流程，仅门禁显式启动。 */
+    private fun requestCustomPermissionIfNeeded() {
+        try {
+            val pending = mutableListOf<String>()
+            if (checkSelfPermission(Constants.OPEN_PLUGIN_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+                pending.add(Constants.OPEN_PLUGIN_PERMISSION)
+            }
+            if (checkSelfPermission(Constants.RUN_COMMAND_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+                pending.add(Constants.RUN_COMMAND_PERMISSION)
+            }
+            if (pending.isNotEmpty()) {
+                customPermissionLauncher.launch(pending.toTypedArray())
+            }
+        } catch (e: Exception) {
+            AppLog.w(TAG, Str.get(R.string.custom_permission_request_failed, e.message ?: ""))
+        }
     }
 
     private fun createWorkDirectory() {
@@ -297,7 +325,7 @@ class SplashActivity : ComponentActivity() {
             }
         })
 
-        updateDownloader?.startDownload(releaseInfo.downloadUrl, releaseInfo.versionName)
+        updateDownloader?.startDownload(releaseInfo.downloadUrl, releaseInfo.versionName, releaseInfo.sha256)
     }
 
     private fun navigateToNext() {

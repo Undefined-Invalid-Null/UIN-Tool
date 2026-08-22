@@ -53,15 +53,15 @@ fun DevToolsScreen(
     val pullRefreshState = rememberPullToRefreshState()
 
     var showCrashMessage by remember { mutableStateOf(CrashLogUtils.shouldNavigateToLogs(context)) }
-    var ignoreSignature by remember {
-        mutableStateOf(PluginManager.isIgnoreSignatureWarning())
-    }
     val pluginManager = com.UIN.Tool.core.di.ServiceLocator.getPluginManager()
     var nativeMultiInstance by remember {
         mutableStateOf(pluginManager.isNativeMultiInstanceEnabled())
     }
-    var backendIndependent by remember {
-        mutableStateOf(pluginManager.isBackendMultiModeIndependent())
+    var retainSession by remember {
+        mutableStateOf(pluginManager.isSharedSessionRetainEnabled())
+    }
+    var ignoreSignature by remember {
+        mutableStateOf(pluginManager.isDevIgnoreSignatureEnabled())
     }
 
     fun loadLogs() {
@@ -120,16 +120,10 @@ fun DevToolsScreen(
     }
 
     fun saveDeveloperOptions() {
-        PluginManager.setIgnoreSignatureWarning(ignoreSignature)
         pluginManager.setNativeMultiInstanceEnabled(nativeMultiInstance)
-        pluginManager.setBackendMultiMode(
-            if (backendIndependent) Constants.BACKEND_MULTI_MODE_INDEPENDENT
-            else Constants.BACKEND_MULTI_MODE_SHARED
-        )
-        AppToast.info(
-            context,
-            if (ignoreSignature) Str.get(R.string.signature_verification_ignored) else Str.get(R.string.signature_verification_enabled)
-        )
+        pluginManager.setSharedSessionRetainEnabled(retainSession)
+        pluginManager.setDevIgnoreSignatureEnabled(ignoreSignature)
+        AppToast.info(context, Str.get(R.string.dev_options_saved))
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -194,31 +188,7 @@ fun DevToolsScreen(
                             .padding(horizontal = 8.dp)
                     ) {
                         UnifiedSectionTitle(Str.get(R.string.developer_options))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Checkbox(
-                                checked = ignoreSignature,
-                                onCheckedChange = { ignoreSignature = it },
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = MaterialTheme.colorScheme.primary,
-                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                            Text(
-                                text = Str.get(R.string.ignore_signature_verification_dev_on),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = Str.get(R.string.when_enabled_unsigned_plugins_can_be),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
 
                         // 原生插件多开（实验性）
                         Row(
@@ -246,27 +216,53 @@ fun DevToolsScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // 后端独立端口模式（多实例各自独立后端）
+                        // 关闭时保留会话（共享端口模式）
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Checkbox(
-                                checked = backendIndependent,
-                                onCheckedChange = { backendIndependent = it },
+                                checked = retainSession,
+                                onCheckedChange = { retainSession = it },
                                 colors = CheckboxDefaults.colors(
                                     checkedColor = MaterialTheme.colorScheme.primary,
                                     uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             )
                             Text(
-                                text = Str.get(R.string.dev_backend_independent_port),
+                                text = Str.get(R.string.dev_shared_session_retain),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Text(
-                            text = Str.get(R.string.dev_backend_independent_port_desc),
+                            text = Str.get(R.string.dev_shared_session_retain_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // 忽略签名验证（仅开发用）
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = ignoreSignature,
+                                onCheckedChange = { ignoreSignature = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                            Text(
+                                text = Str.get(R.string.dev_ignore_signature_verification),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = Str.get(R.string.dev_ignore_signature_verification_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

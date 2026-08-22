@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.core.update.UpdateChecker
 import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
@@ -71,8 +72,6 @@ fun ManageScreen(
 
     var showUpdateDialog by remember { mutableStateOf(false) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
-    var updateChecker by remember { mutableStateOf<UpdateChecker?>(null) }
-    var updateDownloader by remember { mutableStateOf<UpdateDownloader?>(null) }
     var showProgressDialog by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf("") }
     var downloadTarget by remember { mutableStateOf<ReleaseInfo?>(null) }
@@ -80,15 +79,14 @@ fun ManageScreen(
     var hasCheckedUpdate by remember { mutableStateOf(false) }
     var hasNewVersion by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        updateChecker = UpdateChecker(context, preferenceManager)
-        updateDownloader = UpdateDownloader(context)
-    }
+    // ✅ 复用 App 级单例，避免每次进入页面重建检查器/下载器（并发下载 + 回调死 State 泄漏）
+    val updateChecker = remember { ServiceLocator.getUpdateChecker() }
+    val updateDownloader = remember { ServiceLocator.getUpdateDownloader() }
 
     fun performCheckUpdate(showNoUpdateToast: Boolean = false) {
         if (isCheckingUpdate) return
         isCheckingUpdate = true
-        updateChecker?.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
+        updateChecker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
             override fun onCheckStart() {}
 
             override fun onCheckSuccess(
@@ -137,7 +135,7 @@ fun ManageScreen(
             }
         })
 
-        updateChecker?.checkUpdate()
+        updateChecker.checkUpdate()
     }
 
     LaunchedEffect(checkUpdate) {
@@ -151,7 +149,7 @@ fun ManageScreen(
         showProgressDialog = true
         progressMessage = Str.get(R.string.downloading_release_versionname, release.versionName)
 
-        updateDownloader?.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
+        updateDownloader.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
             override fun onStart() {}
 
             override fun onProgress(progress: Int, downloaded: Long, total: Long) {
@@ -160,7 +158,7 @@ fun ManageScreen(
 
             override fun onSuccess(file: File) {
                 showProgressDialog = false
-                updateDownloader?.installApk(file)
+                updateDownloader.installApk(file)
             }
 
             override fun onFailed(error: String) {
@@ -169,7 +167,7 @@ fun ManageScreen(
             }
         })
 
-        updateDownloader?.startDownload(release.downloadUrl, release.versionName)
+        updateDownloader.startDownload(release.downloadUrl, release.versionName, release.sha256)
     }
 
     fun openWidgetConfig() {
@@ -385,7 +383,7 @@ fun ManageScreen(
             message = progressMessage,
             onCancel = {
                 showProgressDialog = false
-                updateDownloader?.cancelDownload()
+                updateDownloader.cancelDownload()
             }
         )
     }

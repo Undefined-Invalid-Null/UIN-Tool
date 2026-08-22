@@ -72,7 +72,7 @@ class UpdateDownloader(
         }
     }
 
-    fun startDownload(downloadUrl: String, versionName: String) {
+    fun startDownload(downloadUrl: String, versionName: String, expectedSha256: String = "") {
         if (isDownloading) {
             Logger.w(TAG, Str.get(R.string.download_in_progress))
             return
@@ -98,6 +98,11 @@ class UpdateDownloader(
 
         Logger.i(TAG, Str.get(R.string.starting_download_downloadurl, downloadUrl))
         Logger.param(TAG, Str.get(R.string.save_path), file.absolutePath)
+        if (expectedSha256.isNotEmpty()) {
+            Logger.param(TAG, "expectedSha256", expectedSha256)
+        } else {
+            Logger.w(TAG, "no SHA-256 published in release, integrity check skipped")
+        }
 
         // 显示通知
         showNotification(versionName)
@@ -149,6 +154,17 @@ class UpdateDownloader(
                     }
                 }
 
+                // ✅ 下载完成：若发布方声明了 SHA-256，则校验文件哈希，不匹配即拒绝安装
+                if (expectedSha256.isNotEmpty()) {
+                    val actual = computeSha256(file)
+                    if (actual.isEmpty() || !actual.equals(expectedSha256, ignoreCase = true)) {
+                        Logger.e(TAG, Str.get(R.string.apk_sha256_mismatch, expectedSha256, actual))
+                        file.delete()
+                        throw Exception(Str.get(R.string.apk_sha256_mismatch, expectedSha256, actual))
+                    }
+                    Logger.success(TAG, "SHA-256 verified: $actual")
+                }
+
                 Logger.success(TAG, Str.get(R.string.download_complete_file_absolutepath, file.absolutePath))
 
                 notificationManager.cancel(NOTIFICATION_ID)
@@ -157,6 +173,11 @@ class UpdateDownloader(
 
             } catch (e: Exception) {
                 Logger.e(TAG, Str.get(R.string.download_failed), e)
+                // 失败/中断时删除半包，避免残留损坏 APK
+                try {
+                    if (file.exists()) file.delete()
+                } catch (_: Exception) {
+                }
                 notificationManager.cancel(NOTIFICATION_ID)
                 isDownloading = false
                 onDownloadListener?.onFailed(e.message ?: Str.get(R.string.download_failed))
@@ -164,6 +185,27 @@ class UpdateDownloader(
         }
 
         downloadThread?.start()
+    }
+
+    /**
+     * 计算文件 SHA-256（小写十六进制），失败返回空串。
+     */
+    private fun computeSha256(file: File): String {
+        return try {
+            java.security.MessageDigest.getInstance("SHA-256").let { digest ->
+                file.inputStream().use { input ->
+                    val buffer = ByteArray(8192)
+                    var read: Int
+                    while (input.read(buffer).also { read = it } != -1) {
+                        digest.update(buffer, 0, read)
+                    }
+                }
+                digest.digest().joinToString("") { "%02x".format(it) }
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "computeSha256 failed: ${e.message}", e)
+            ""
+        }
     }
 
     fun cancelDownload() {

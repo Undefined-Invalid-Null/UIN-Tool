@@ -12,6 +12,103 @@
 
 ---
 
+## [5.5.0] - 2026-08-22
+
+> 本版本聚焦**原生插件兼容性修复、实体 Termux 架构升级与开发向导补全**：修复原生插件因接口默认方法字节码不兼容导致的崩溃（`-Xjvm-default=all` + 重建 host-sdk.jar + 重新打包 plugin.dex）、CUI 插件 proot 容器内启动脚本路径错误、崩溃后日志页不跳转、MarkdownRenderer `appendReplacement` 崩溃、DocViewerScreen 闪退等问题；补齐剪贴板伪权限声明（`READ_CLIPBOARD`/`WRITE_CLIPBOARD`）；**开发向导补全所有插件字段**并同步更新内置文档。新增**打开插件前的权限提示**、**实体 Termux 共享 Supervisor**（单个常驻进程管理所有插件后端，冷启动省掉 ~5s 初始化开销）、**启动环境自动安装**（bootstrap + Alpine 后台预装）、**4 个静态桌面快捷方式**替换动态插件快捷方式。
+
+### 🐛 原生插件崩溃修复
+
+- 原生插件 `AbstractMethodError` 崩溃：插件 `plugin.dex` 按旧 host-sdk.jar 编译（无 `onHostEvent` 等默认方法），运行时 Kotlin 默认方法以抽象方法形式存在 → 调用崩溃。修复：build.gradle 开启 `-Xjvm-default=all`（真实 JVM default 方法）、重建 host-sdk.jar（Java 镜像，默认方法签名与运行时一致）、按模板重新打包 plugin.dex、宿主增加反射守卫
+- CUI 插件 proot 容器 `scripts/script.py` 找不到：proot 会将工作目录重置为 `/root`，启动命令现改为 `cd /plugins/<id> && <启动命令>`
+
+### 🔐 剪贴板权限（伪权限）
+
+- 新增伪权限 `READ_CLIPBOARD` / `WRITE_CLIPBOARD`：仅需在 plugin.json `permissions` 中声明即生效，无需运行时授权
+- 开发向导「权限」弹窗已包含这两个伪权限；权限管理页对伪权限只做「声明 + 封禁」控制
+
+### 🧙 开发向导字段补全
+
+- 后端：`backendStartCommand`、`backendTimeout`、`backendHealthCheck`
+- 外部内容接收（openWith）：开关 + 接收者名称 + MIME 类型 + 文本/链接/文件接收开关
+- 权限：弹窗多选已覆盖全部常用权限（含伪权限）
+- 插件说明（notice）保留
+- **字段精简（v5.5.0 后期）**：不再提供「资源限制（最大内存/最长 CPU 时间/最大并发任务数）、依赖项、API 级别、后端保活」等输入项（不写向导生成的 plugin.json，见 12.3）；**修复代码编辑器始终显示默认 MainPlugin.java**——主类名变更后同步重新生成入口文件
+
+### ⚖️ 打开插件前的权限提示
+
+- **Web 插件**（有/无后端均可）：打开前弹窗列出**尚未授予**的权限，提供「确定」「不再提示」「管理权限」——「管理权限」直接跳转到该插件的权限管理页
+- **原生插件**：每次打开都提示所需（声明）权限，提供「确定」「不再显示」——**先弹窗再打开插件**（原生权限由系统强制，应用层不拦截/不封禁）
+- 权限管理页仅管理 **Web 插件** 权限（原生/CUI 插件不再显示）
+- 权限中文显示名完善：如 `android.permission.READ_EXTERNAL_STORAGE` → 读取外部存储、`WRITE_EXTERNAL_STORAGE` → 写入外部存储
+- 权限提示弹窗改用**宿主统一风格**（`UnifiedDialog`）渲染，与其它系统弹窗视觉一致
+- 权限管理页移除**刷新按钮**，列表在授权/撤销后自动刷新
+
+### 📥 保留会话单窗口
+
+- 「关闭时保留会话」开关默认**开启**：默认启用单窗口去重（共享端口模式 + Web 插件时，同一插件**只保留一个后台窗口**——重复打开时把已有窗口带到前台，不再多开实例，多任务窗口仅显示一个）
+- 用户在「开发工具」中显式关闭后，Web / CUI 插件每次打开独立实例（支持多开）
+
+### 🧹 实体 Termux 后端自动回收
+
+- 实体 Termux 的进程由 com.termux 自己的 UID 启动，宿主跨应用沙箱无法直接 kill；现改为**共享 supervisor 统一管理**：supervisor 每轮通过 `kill -0 $pid` 检查各插件进程是否存活，死了直接清理；空闲回收通过 `idle/<key>.start` 记录启动时间戳 + `idle/<key>` 超时分钟数判断（0=无限），超时即递归 SIGKILL 杀掉后端进程树，**不依赖插件实现 `/stop`**
+- 空闲回收时长支持**自定义任意分钟数**（设置页「自定义（分钟）」输入框），也可选预设 3 / 5 / 10 / 15 分钟（默认 5）或「**无限**」（永不自动回收，仅主动停止时结束；不写 idle 文件）
+- 宿主不再轮询判空闲，只做端口探测与状态清理；supervisor 负责实际杀进程
+- 配合「后端运行设置」中的空闲回收超时，用户退出插件满设定时长后后端自动被杀，无需手动进 Termux 敲命令
+
+### 🧾 权限按钮文案改短
+
+- 权限管理页「一键授权/撤销所有权限」按钮改为短文案「**全部授权**」/「**全部撤销**」（en：`Grant All` / `Revoke All`），布局 `weight(1f)` 下完整显示不截断
+
+### 🧱 插件模板按类型完善
+
+- `README.md.tmpl` 重写为**类型化渲染**：根据插件类型（原生 / Web / Web+后端 / CUI）分别生成对应的目录树、开发指南、打包步骤与打包文件说明，修复原模板中 `{{MAIN_CLASS_PATH}}`/`{{WEB_SECTION}}`/`{{DEVELOPMENT_GUIDE}}` 等从未传入的占位符与 `{{PLUGIN_ID}` 拼写错误
+- Web 模板变量补充 `PLUGIN_DESCRIPTION`，空白首页随插件描述渲染
+
+### 📄 文档与兼容
+
+- `permissions` / `dependencies` / MIME 等列表字段**同时兼容逗号分隔字符串与 JSON 数组**两种格式（向导回读 plugin.json 同样复用兼容解析）
+- 测试插件 `plugin.json` 精简：移除 `signature`/`updateUrl`/`notice`/`backendRuntime`/`backendPort`/`backendEntry`/`backendPreCommand`/`backendMaxRetries`/`backendLogLevel`/`backendArgs` 等不必要或遗留字段，仅保留真实生效字段；`web_plugin_template` 改为纯前端（无 `plugin.dex`/`src/`）
+- 内置文档（README / Help / CHANGELOG）同步更新；版本号升至 **5.5.0（Build 21）**
+
+### 🏗️ 实体 Termux 共享 Supervisor
+
+- 实体 Termux（proot 或本机模式）改用**单个常驻共享 supervisor**：容器/会话只初始化一次，所有插件后端作为 supervisor 的子进程运行，后续插件启动省掉 proot 初始化开销（冷启动约 5s）
+- 内置 Termux（alpine，约 2s）保持不变（每插件独立 proot）
+- 通信协议（控制目录 `<plugins根>/.uin/`）：`cmd/<key>.cmd`（启动命令）、`pid/<key>`（后端 PID）、`stop/<key>`（停止请求）、`idle/<key>`（空闲分钟数，0=无限）、`idle/<key>.start`（启动时间戳）、`alive`（supervisor 存活标记）、`host_alive`（宿主心跳，每 30s touch，超时 300s supervisor 自退）、`shutdown`（退出标记）、`keep_alive`（后台保活标记）
+- proot 启动：`proot-distro login <container> --bind '<plugins根>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`；本机：`sh '<plugins根>/.uin/supervisor.sh' '<plugins根>'`
+- 空闲回收：supervisor 按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树；`kill -0 $pid` 检测进程存活
+- 宿主存活期间 supervisor 常驻（即使所有后端回收完）；宿主退出时写 `shutdown` 标记，supervisor 自退（容器随之退出）
+- 软件启动时后台自动预热 supervisor（`prewarm`），保存后端设置时同样触发
+- 后端设置页新增「共享调度器」状态卡（RUN_COMMAND 权限 + supervisor 存活状态）
+- 性能：去掉 probeRealTermux（省 1.5~4s）、轮询间隔 200ms、host_alive 超时 300s；热启动 ~0.5s、温重启 ~2s、冷启动 ~4s
+
+### 🔋 后台保活
+
+- 新增「后台保活」开关（后端设置页 → 实体 Termux 区块）
+- 开启后：写入 `keep_alive` 标记，supervisor 不再因宿主进程被杀而退出（仅凭显式 `shutdown` 退出）；配合**电池优化豁免**（`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`）+ 通知栏保活 + **Shizuku/Dhizuku** 权限保持后台存活
+- 显示当前 Shizuku/Dhizuku 权限状态（可用/不可用）
+
+### 🐛 崩溃修复与体验优化
+
+- 修复 MarkdownRenderer `appendReplacement` 崩溃：替换字符串中含 `$` 时被当作组引用导致 `IllegalArgumentException`，三处 `appendReplacement` 全部改用 `Matcher.quoteReplacement()` 转义
+- 修复 DocViewerScreen 闪退：`MarkdownRenderer.toHtml()` 异常未捕获导致整个 Activity 崩溃，新增 try-catch 显示错误信息
+- 修复 DocViewerScreen 背景色与宿主不一致：CSS body background 由硬编码 `#f5f5f5` 改为 `transparent`，WebView 通过 `UIConfig.getBackgroundColor()` 设置背景色
+
+### 🚀 启动环境自动安装
+
+- 软件启动时后台自动检测并安装 Termux bootstrap + Alpine 容器（仅内置模式），无需用户手动操作
+- bootstrap 安装完成后立即解除终端阻塞（`_isEnvironmentInstalling = false`），终端黑屏问题修复
+- Alpine 安装完全异步，不阻塞终端创建；安装期间有 Toast 提示
+- `ensureAlpine` 加入 `_isAlpineInstalling` 锁，防止并发 restore 导致 "container is busy"
+- 安装 bootstrap 后自动写入环境变量文件（`writeEnvironmentToFile`），确保终端 bash 有正确环境
+
+### 📱 静态桌面快捷方式
+
+- 动态插件快捷方式替换为 **4 个常用页面静态快捷方式**：文档（DocBrowserActivity）、终端（TermuxActivity）、后端设置（BackendSettingsActivity）、UI 个性化（UIConfigActivity）
+- 移除 `PluginManager` 中动态快捷方式的创建/刷新/删除逻辑，不再因频繁刷新超限
+
+---
+
 ## [5.4.0] - 2026-08-10
 
 > 本版本是**主动能力扩展（capability）**：新增**插件接收外部内容**（系统「分享 / 用其他应用打开」→ 中转页选择插件）与**插件多开**（同一插件同时运行多个独立实例），并新增「用…打开」中转页搜索与插件管理页「新增桌面快捷方式」入口。
@@ -711,9 +808,9 @@ v4.0.0 是一次重大重构，升级前请注意：
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.4.0 |
-| 最后更新 | 2026年8月10日 |
-| 对应应用版本 | v5.4.0 (Build 20) |
+| 文档版本 | 5.5.0 |
+| 最后更新 | 2026年8月22日 |
+| 对应应用版本 | v5.5.0 (Build 21) |
 
 ---
 

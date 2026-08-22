@@ -103,6 +103,12 @@ class WidgetProvider : AppWidgetProvider() {
         private const val TAG = "WidgetProvider"
         const val ACTION_REFRESH_WIDGET = "com.UIN.Tool.REFRESH_WIDGET"
         private const val MAX_PLUGINS = 9
+        // 小部件图标目标尺寸（主网格）
+        private const val ICON_SIZE = 64
+
+        // ✅ Widget 更新涉及磁盘 I/O（refreshPlugins、图标解码），
+        //    AppWidget 回调运行在主线程 → 移到后台单线程执行器，避免 ANR
+        private val widgetExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
         @JvmStatic
         fun getPendingIntentFlags(): Int {
@@ -156,15 +162,23 @@ class WidgetProvider : AppWidgetProvider() {
 
         @JvmStatic
         fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
-            val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
-            
             if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                Logger.w(TAG, Str.get(R.string.time_updatewidget_invalid_appwidgeti, time))
+                Logger.w(TAG, Str.get(R.string.time_updatewidget_invalid_appwidgeti, "HH:mm:ss.SSS"))
                 return
             }
 
             Logger.enter(TAG, "updateWidget")
             Logger.param(TAG, "appWidgetId", appWidgetId)
+
+            // ✅ 整体工作（refreshPlugins + 图标解码 + RemoteViews 构建）移到后台线程
+            widgetExecutor.execute {
+                doUpdateWidget(context, appWidgetManager, appWidgetId)
+            }
+        }
+
+        private fun doUpdateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+            val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+
             Logger.i(TAG, "[$time] ══════════════════════════════════════════════════")
             Logger.i(TAG, Str.get(R.string.time_updating_widget_id_appwidgetid, time, appWidgetId))
             
@@ -454,9 +468,22 @@ class WidgetProvider : AppWidgetProvider() {
                     Logger.d(TAG, Str.get(R.string.time_file_size_iconfile_length_bytes, time, iconFile.length()))
                     
                     if (iconFile.exists()) {
-                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
+                        // ✅ 先读边界计算 inSampleSize 降采样，避免全尺寸解码 OOM/大内存
+                        val bounds = BitmapFactory.Options().apply {
+                            inJustDecodeBounds = true
+                        }
+                        BitmapFactory.decodeFile(iconFile.absolutePath, bounds)
+                        var sample = 1
+                        while (bounds.outWidth / (sample * 2) >= ICON_SIZE &&
+                            bounds.outHeight / (sample * 2) >= ICON_SIZE
+                        ) {
+                            sample *= 2
+                        }
+                        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath, opts)
                         if (bitmap != null) {
-                            val scaled = Bitmap.createScaledBitmap(bitmap, 64, 64, true)
+                            val scaled = Bitmap.createScaledBitmap(bitmap, ICON_SIZE, ICON_SIZE, true)
+                            if (scaled != bitmap) bitmap.recycle()
                             Logger.success(TAG, Str.get(R.string.time_icon_loaded_scaled_width_x_scal, time, scaled.width, scaled.height))
                             return scaled
                         } else {
@@ -562,6 +589,11 @@ class Widget1x1Provider : AppWidgetProvider() {
     companion object {
         private const val TAG = "Widget1x1Provider"
         const val ACTION_REFRESH_WIDGET_1x1 = "com.UIN.Tool.REFRESH_WIDGET_1x1"
+        // 1x1 小部件图标目标尺寸
+        private const val ICON_SIZE_1X1 = 48
+
+        // ✅ 同主 Widget：磁盘 I/O 移到后台线程，避免主线程 ANR
+        private val widgetExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
 
         @JvmStatic
         fun refresh1x1Widgets(context: Context) {
@@ -595,11 +627,19 @@ class Widget1x1Provider : AppWidgetProvider() {
 
         @JvmStatic
         fun update1x1Widget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
-            val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return
 
             Logger.enter(TAG, "update1x1Widget")
             Logger.param(TAG, "appWidgetId", appWidgetId)
+
+            // ✅ 移到后台线程
+            widgetExecutor.execute {
+                doUpdate1x1Widget(context, appWidgetManager, appWidgetId)
+            }
+        }
+
+        private fun doUpdate1x1Widget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+            val time = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             Logger.i(TAG, Str.get(R.string.time_updating_1x1_widget_id_appwidge, time, appWidgetId))
             
             try {
@@ -663,8 +703,24 @@ class Widget1x1Provider : AppWidgetProvider() {
                     val iconPath = if (plugin.icon.isNotEmpty()) plugin.icon else "icon.png"
                     val iconFile = File(pluginDir, iconPath)
                     if (iconFile.exists()) {
-                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
-                        return bitmap?.let { Bitmap.createScaledBitmap(it, 48, 48, true) }
+                        // ✅ 降采样避免全尺寸解码
+                        val bounds = BitmapFactory.Options().apply {
+                            inJustDecodeBounds = true
+                        }
+                        BitmapFactory.decodeFile(iconFile.absolutePath, bounds)
+                        var sample = 1
+                        while (bounds.outWidth / (sample * 2) >= ICON_SIZE_1X1 &&
+                            bounds.outHeight / (sample * 2) >= ICON_SIZE_1X1
+                        ) {
+                            sample *= 2
+                        }
+                        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+                        val bitmap = BitmapFactory.decodeFile(iconFile.absolutePath, opts)
+                        return bitmap?.let {
+                            val scaled = Bitmap.createScaledBitmap(it, ICON_SIZE_1X1, ICON_SIZE_1X1, true)
+                            if (scaled != it) it.recycle()
+                            scaled
+                        }
                     }
                 }
             } catch (e: Exception) {

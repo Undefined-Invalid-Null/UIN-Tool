@@ -54,6 +54,10 @@ class PluginOpenDispatchActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "PluginOpenDispatch"
+        /** 单次接收的单个文件大小上限（100MB） */
+        private const val MAX_INCOMING_FILE_SIZE = 100L * 1024 * 1024
+        /** 单次接收的最大文件个数 */
+        private const val MAX_INCOMING_FILES = 50
     }
 
     private val pluginManager by lazy { ServiceLocator.getPluginManager() }
@@ -113,9 +117,7 @@ class PluginOpenDispatchActivity : AppCompatActivity() {
                 } == true
             }
 
-            if (candidates.size == 1) {
-                openPlugin(candidates.first(), data)
-            } else if (candidates.isEmpty()) {
+            if (candidates.isEmpty()) {
                 Logger.w(TAG, Str.get(R.string.no_plugin_matches_open_data))
             }
         } catch (e: Exception) {
@@ -303,6 +305,10 @@ class PluginOpenDispatchActivity : AppCompatActivity() {
 
             fun copyOne(uriStr: String, name: String, target: JSONObject) {
                 try {
+                    if (copied >= MAX_INCOMING_FILES) {
+                        Logger.w(TAG, Str.get(R.string.open_with_copy_limit_reached))
+                        return
+                    }
                     val uri = Uri.parse(uriStr)
                     val safeName = sanitizeFileName(name.ifEmpty { "file" })
                     if (safeName.isEmpty()) return
@@ -310,6 +316,11 @@ class PluginOpenDispatchActivity : AppCompatActivity() {
                     val input = contentResolver.openInputStream(uri) ?: return
                     input.use { ins ->
                         dest.outputStream().use { out -> ins.copyTo(out) }
+                    }
+                    if (dest.length() > MAX_INCOMING_FILE_SIZE) {
+                        dest.delete()
+                        Logger.w(TAG, Str.get(R.string.open_with_copy_file_too_large))
+                        return
                     }
                     target.put("filePath", dest.absolutePath)
                     target.put("incomingName", dest.name)

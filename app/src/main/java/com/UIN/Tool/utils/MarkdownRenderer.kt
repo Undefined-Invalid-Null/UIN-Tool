@@ -2,6 +2,7 @@ package com.UIN.Tool.utils
 
 import com.UIN.Tool.R
 import android.text.TextUtils
+import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 /**
@@ -69,7 +70,7 @@ object MarkdownRenderer {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; 
                 line-height: 1.6; 
                 color: #333; 
-                background: #f5f5f5; 
+                background: transparent; 
                 padding: 16px; 
                 margin: 0;
                 -webkit-tap-highlight-color: transparent;
@@ -704,7 +705,7 @@ object MarkdownRenderer {
         var matcher = codePattern.matcher(result)
         val sb = StringBuffer()
         while (matcher.find()) {
-            matcher.appendReplacement(sb, "<code>" + matcher.group(1) + "</code>")
+            matcher.appendReplacement(sb, Matcher.quoteReplacement("<code>" + matcher.group(1) + "</code>"))
         }
         matcher.appendTail(sb)
         result = sb.toString()
@@ -716,7 +717,8 @@ object MarkdownRenderer {
         while (matcher.find()) {
             val alt = matcher.group(1)
             val src = matcher.group(2)
-            matcher.appendReplacement(sb2, "<img src='$src' alt='$alt'>")
+            val safeSrc = sanitizeLink(src, allowImage = true)
+            matcher.appendReplacement(sb2, Matcher.quoteReplacement("<img src='$safeSrc' alt='$alt'>"))
         }
         matcher.appendTail(sb2)
         result = sb2.toString()
@@ -728,12 +730,32 @@ object MarkdownRenderer {
         while (matcher.find()) {
             val text2 = matcher.group(1)
             val url = matcher.group(2)
-            matcher.appendReplacement(sb3, "<a href='$url'>$text2</a>")
+            val safeUrl = sanitizeLink(url, allowImage = false)
+            matcher.appendReplacement(sb3, Matcher.quoteReplacement("<a href='$safeUrl'>$text2</a>"))
         }
         matcher.appendTail(sb3)
         result = sb3.toString()
 
         return result
+    }
+
+    /**
+     * 链接 scheme 白名单：仅允许 http/https/mailto/#/data(仅图片)。
+     * 拦截 javascript:、vbscript:、file: 等可执行 scheme，并转义单引号防属性逃逸。
+     */
+    private fun sanitizeLink(raw: String, allowImage: Boolean): String {
+        val url = raw.trim()
+        val lower = url.lowercase()
+        val allowed = when {
+            lower.startsWith("http://") || lower.startsWith("https://") -> true
+            lower.startsWith("mailto:") -> true
+            lower.startsWith("#") -> true
+            allowImage && lower.startsWith("data:image/") -> true
+            allowImage && lower.startsWith("data:") -> true
+            else -> false
+        }
+        if (!allowed) return "#"
+        return url.replace("'", "&#39;").replace("\"", "&quot;")
     }
 
     private fun escapeHtml(text: String): String {

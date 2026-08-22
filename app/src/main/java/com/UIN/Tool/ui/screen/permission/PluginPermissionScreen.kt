@@ -40,7 +40,7 @@ private const val TAG = "PluginPermissionScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PluginPermissionScreen() {
+fun PluginPermissionScreen(initialPluginId: String? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     val pluginManager = ServiceLocator.getPluginManager()
@@ -57,8 +57,7 @@ fun PluginPermissionScreen() {
     fun loadPluginPermissions(pluginId: String) {
         val perms = PluginPermissionManager.getPluginDeclaredPermissions(context, pluginId)
         val status = perms.associateWith { permission ->
-            PermissionUtils.hasPermission(context, permission) ||
-                    PermissionUtils.hasSpecialPermission(context, permission)
+            PluginPermissionManager.checkPluginPermission(context, pluginId, permission)
         }
         pluginPermissions = status
     }
@@ -83,6 +82,15 @@ fun PluginPermissionScreen() {
         )
     }
 
+    // ✅ 批量授权用 RequestMultiplePermissions 驱动，结果回调即时刷新列表，
+    //    替代原先 ActivityCompat.requestPermissions(1001) 无回调、UI 停在旧状态的问题
+    val multiPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        isLoading = false
+        refreshPermissions()
+    }
+
     /**
      * 请求所有缺失权限
      */
@@ -93,9 +101,12 @@ fun PluginPermissionScreen() {
                 AppToast.error(context, Str.get(R.string.failed_to_get_activity))
                 return
             }
-            
+
             isLoading = true
-            
+
+            // 批量授权前先解除全部封禁（撤销），否则被封禁权限仍被视为缺失
+            PluginPermissionManager.unblockAllDeclaredPermissions(context, pluginId)
+
             val missing = PluginPermissionManager.getMissingPermissions(context, pluginId)
             if (missing.isEmpty()) {
                 isLoading = false
@@ -103,41 +114,58 @@ fun PluginPermissionScreen() {
                 AppToast.info(context, Str.get(R.string.all_permissions_granted))
                 return
             }
-            
+
             // 分离普通权限和特殊权限
             val normal = missing.filter { !PluginPermissionManager.isSpecialPermission(it) }
             val special = missing.filter { PluginPermissionManager.isSpecialPermission(it) }
-            
-            // 请求普通权限
+
+            // 请求普通权限（走 launcher，回调里统一刷新）
             if (normal.isNotEmpty()) {
-                PluginPermissionManager.requestPermissions(
-                    activity,
-                    normal.toTypedArray(),
-                    1001
-                )
+                multiPermissionLauncher.launch(normal.toTypedArray())
+            } else {
+                isLoading = false
+                refreshPermissions()
             }
-            
+
             // 引导特殊权限
             if (special.isNotEmpty()) {
                 PluginPermissionManager.openAppSettings(activity)
                 AppToast.info(context, Str.get(R.string.enable_special_permissions_manually_))
             }
-            
-            isLoading = false
-            refreshPermissions()
         }
     }
 
     /**
-     * 切换单个权限
+     * 切换单个权限：支持授权与撤销（封禁）。
+     * - 已生效（granted=true）→ 撤销：写入插件层封禁，插件即失去使用能力；
+     * - 未生效且已封禁 → 解除封禁（并按需发起真实运行时请求）；
+     * - 未生效且未封禁 → 走原授权流程。
      */
-    fun togglePermission(permission: String) {
+    fun togglePermission(pluginId: String, permission: String) {
         val activity = context as? Activity
         if (activity == null) {
             AppToast.error(context, Str.get(R.string.failed_to_get_activity))
             return
         }
-        
+        val currentlyGranted = PluginPermissionManager.checkPluginPermission(context, pluginId, permission)
+        if (currentlyGranted) {
+            PluginPermissionManager.setPermissionBlocked(context, pluginId, permission, true)
+            AppToast.info(context, Str.get(R.string.permission_revoked_permission, permission))
+            refreshPermissions()
+            return
+        }
+        // 已封禁 → 先解除封禁
+        if (PluginPermissionManager.isPermissionBlocked(context, pluginId, permission)) {
+            PluginPermissionManager.setPermissionBlocked(context, pluginId, permission, false)
+            AppToast.info(context, Str.get(R.string.permission_unblocked_permission, permission))
+            refreshPermissions()
+            return
+        }
+        // 伪权限无需运行时授权，仅声明即可 → 解除封禁后即为已授权
+        if (PluginPermissionManager.isPseudoPermission(permission)) {
+            refreshPermissions()
+            return
+        }
         if (PermissionUtils.isSpecialPermission(permission)) {
             PermissionUtils.requestSpecialPermission(
                 activity,
@@ -149,12 +177,24 @@ fun PluginPermissionScreen() {
         permissionLauncher.launch(permission)
     }
 
+    /**
+     * 批量撤销：一键封禁该插件声明的全部权限
+     */
+    fun revokeAllPermissions() {
+        val pluginId = selectedPluginId ?: return
+        PluginPermissionManager.blockAllDeclaredPermissions(context, pluginId)
+        AppToast.info(context, Str.get(R.string.all_permissions_revoked))
+        refreshPermissions()
+    }
+
     LaunchedEffect(Unit) {
         pluginManager.refreshPlugins()
-        plugins = pluginManager.plugins.value
+        // 权限管理页仅管理 Web 插件（有/无后端均可）；原生/CUI 插件不受权限管理页管控
+        plugins = pluginManager.plugins.value.filter { it.uiType == "web" }
+        val target = initialPluginId?.takeIf { id -> plugins.any { it.pluginId == id } }
         if (plugins.isNotEmpty()) {
-            selectedPluginId = plugins.first().pluginId
-            loadPluginPermissions(plugins.first().pluginId)
+            selectedPluginId = target ?: plugins.first().pluginId
+            loadPluginPermissions(selectedPluginId ?: return@LaunchedEffect)
         }
     }
 
@@ -221,8 +261,8 @@ fun PluginPermissionScreen() {
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            UnifiedBodyText(Str.get(R.string.no_installed_plugins))
-                            UnifiedCaptionText(Str.get(R.string.import_plugins_on_the_manage_page_fi))
+                            UnifiedBodyText(Str.get(R.string.no_web_plugins_manageable))
+                            UnifiedCaptionText(Str.get(R.string.only_web_plugins_can_be_managed))
                         }
                     }
                 }
@@ -305,11 +345,12 @@ fun PluginPermissionScreen() {
                         loading = isLoading
                     )
                     UnifiedButton(
-                        text = Str.get(R.string.refresh),
-                        icon = Icons.Default.Refresh,
-                        onClick = { refreshPermissions() },
-                        modifier = Modifier.weight(0.5f),
-                        variant = ButtonVariant.Outlined
+                        text = Str.get(R.string.revoke_all_permissions),
+                        icon = Icons.Default.Close,
+                        onClick = { revokeAllPermissions() },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading && selectedPluginId != null,
+                        variant = ButtonVariant.Destructive
                     )
                 }
             }
@@ -367,8 +408,8 @@ fun PluginPermissionScreen() {
                 else -> items(pluginPermissions.entries.toList()) { (permission, granted) ->
                     UnifiedCard(
                         onClick = {
-                            if (!granted) {
-                                togglePermission(permission)
+                            if (!isLoading) {
+                                togglePermission(selectedPluginId ?: return@UnifiedCard, permission)
                             }
                         }
                     ) {
@@ -399,8 +440,8 @@ fun PluginPermissionScreen() {
                             Checkbox(
                                 checked = granted,
                                 onCheckedChange = {
-                                    if (!granted) {
-                                        togglePermission(permission)
+                                    if (!isLoading) {
+                                        togglePermission(selectedPluginId ?: return@Checkbox, permission)
                                     }
                                 },
                                 colors = CheckboxDefaults.colors(

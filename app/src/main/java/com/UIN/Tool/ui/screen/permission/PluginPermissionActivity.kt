@@ -9,10 +9,15 @@ import com.UIN.Tool.ui.theme.UINToolTheme
 class PluginPermissionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val pluginId = intent.getStringExtra(EXTRA_PLUGIN_ID)
         setContent {
             UINToolTheme {
-                PluginPermissionScreen()
+                PluginPermissionScreen(initialPluginId = pluginId)
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_PLUGIN_ID = "extra_plugin_id"
     }
 }

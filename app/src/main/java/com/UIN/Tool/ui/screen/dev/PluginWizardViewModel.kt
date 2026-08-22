@@ -36,15 +36,23 @@ class PluginWizardViewModel(
     var backendRuntime = mutableStateOf("termux")
     var backendPreCommand = mutableStateOf("")
     var backendStartCommand = mutableStateOf("")
+    var backendTimeout = mutableStateOf("30")
+    var backendHealthCheck = mutableStateOf("/health")
+
+    // ==================== 外部内容接收（openWith） ====================
+    var openWithEnabled = mutableStateOf(false)
+    var openWithLabel = mutableStateOf("")
+    var openWithMimeTypes = mutableStateOf("")
+    var openWithAcceptText = mutableStateOf(true)
+    var openWithAcceptUrl = mutableStateOf(true)
+    var openWithAcceptFile = mutableStateOf(true)
 
     // ==================== 插件说明 ====================
     var pluginNotice = mutableStateOf("")
 
     // ==================== 扩展配置 ====================
     var permissions = mutableStateOf<List<String>>(emptyList())
-    var dependencies = mutableStateOf("")
     var minHostVersion = mutableStateOf("1")
-    var apiLevel = mutableStateOf("21")
     var category = mutableStateOf("")
     var updateUrl = mutableStateOf("")
 
@@ -124,7 +132,8 @@ class PluginWizardViewModel(
                 "PLUGIN_ID" to pluginId.value,
                 "PLUGIN_VERSION" to pluginVersion.value,
                 "PLUGIN_VERSION_NAME" to pluginVersionName.value,
-                "PLUGIN_AUTHOR" to pluginAuthor.value
+                "PLUGIN_AUTHOR" to pluginAuthor.value,
+                "PLUGIN_DESCRIPTION" to pluginDescription.value
             )
             val files = TemplateUtils.generateWebTemplates(
                 context,
@@ -228,6 +237,21 @@ class PluginWizardViewModel(
         fileContents.value = contents
     }
 
+    /** 更新主类名并重新生成原生入口文件，避免代码编辑器始终停留在默认的 MainPlugin.java。 */
+    fun setMainClass(value: String) {
+        mainClass.value = value
+        if (uiType == "native" && value.isNotBlank()) {
+            val className = value.substringAfterLast('.')
+            val packageName = value.substringBeforeLast('.')
+            val packagePath = packageName.replace('.', '/')
+            val expected = "src/$packagePath/$className.java"
+            // 仅当当前文件列表不包含与主类名对应的入口文件时才重新生成（避免覆盖用户已编辑内容）
+            if (fileList.value.none { it == expected }) {
+                generateNativeCode()
+            }
+        }
+    }
+
     suspend fun generateProjectFiles(workDir: File): Boolean {
         return try {
             workDir.mkdirs()
@@ -281,11 +305,9 @@ class PluginWizardViewModel(
             put("description", pluginDescription.value)
             put("icon", "icon.png")
             put("mainClass", if (uiType == "native") mainClass.value else "")
-            put("apiLevel", apiLevel.value.toIntOrNull() ?: 21)
             put("uiType", uiType)
             put("entry", if (uiType == "web") entryPath.value else "")
             put("permissions", permissions.value.joinToString(","))
-            put("dependencies", dependencies.value.split(",").map { it.trim() }.filter { it.isNotEmpty() }.joinToString(","))
             put("notice", pluginNotice.value)
             put("category", category.value)
             put("updateUrl", updateUrl.value)
@@ -296,8 +318,20 @@ class PluginWizardViewModel(
                 put("backendStartCommand", backendStartCommand.value.trim().ifBlank { "sh scripts/start.sh" })
                 put("backendStartEntry", "scripts/start.sh")
                 put("backendAutoStart", true)
-                put("backendTimeout", 30)
-                put("backendHealthCheck", "/health")
+                put("backendTimeout", backendTimeout.value.toIntOrNull() ?: 30)
+                put("backendHealthCheck", backendHealthCheck.value.ifBlank { "/health" })
+            }
+
+            // 外部内容接收（openWith）
+            if (openWithEnabled.value) {
+                put("openWith", JSONObject().apply {
+                    put("enabled", true)
+                    put("label", openWithLabel.value)
+                    put("mimeTypes", openWithMimeTypes.value)
+                    put("acceptText", openWithAcceptText.value)
+                    put("acceptUrl", openWithAcceptUrl.value)
+                    put("acceptFile", openWithAcceptFile.value)
+                })
             }
 
             // CUI 插件：无后端，打开终端时执行 pre-command 进入脚本
@@ -311,17 +345,109 @@ class PluginWizardViewModel(
 
     private fun generateReadme(workDir: File) {
         try {
+            val uiTypeLabel = when (uiType) {
+                "web" -> "WebView"
+                "cui" -> Str.get(R.string.cui_terminal)
+                else -> Str.get(R.string.native_code)
+            }
+
+            val directoryTree: String
+            val devGuide: String
+            val buildSteps: String
+            val packageFiles: String
+
+            when {
+                // 原生插件：Java 源码 + 编译打包
+                uiType == "native" -> {
+                    val mainClassPath = mainClass.value.replace('.', '/') + ".java"
+                    directoryTree = "├── src/                 # Java 源码目录\n    └── $mainClassPath"
+                    devGuide = """## 开发说明
+
+1. 编辑 `src/` 下的 Java 源码，实现 `PluginInterface` 接口。
+2. `onCreateView` 返回插件主界面（原生 View）。
+3. 调用宿主能力（日志、存储、HTTP 等）需先在该插件的权限管理页授权。
+4. 打包前先在「管理 -> 运行日志」确认无编译错误。"""
+                    buildSteps = """### 环境要求
+
+- JDK 8 或更高版本
+- Android SDK（包含 d8 工具）
+- host-sdk.jar（从 UIN Tool 导出模板时附带）
+
+### 编译命令
+
+```bash
+# 1. 编译 Java 源码
+javac -source 8 -target 8 -cp host-sdk.jar -d . $(find src -name '*.java')
+
+# 2. 打包为 JAR
+jar cvf plugin.jar $(find . -name '*.class')
+
+# 3. 转换为 DEX
+d8 --release --lib android.jar --min-api 21 --output . plugin.jar
+
+# 4. 重命名为 plugin.dex
+mv classes.dex plugin.dex
+```"""
+                    packageFiles = "├── plugin.dex\n├── plugin.json\n└── icon.png"
+                }
+
+                // CUI 插件：终端脚本，无编译
+                uiType == "cui" -> {
+                    directoryTree = "├── scripts/             # 终端脚本目录\n    └── script.py"
+                    devGuide = """## 开发说明
+
+1. 编辑 `scripts/script.py`，宿主持环境变量 `PLUGIN_ID`、`PLUGIN_DIR`。
+2. 插件在终端中运行，脚本内可用 `print` 输出，退出 `exit` 或 `Ctrl+D` 结束。
+3. 运行环境由用户在软件的全局设定中选择（Termux 或 proot 容器）。"""
+                    buildSteps = """### 无需编译
+
+CUI 插件为脚本型插件，无需 Java 编译，直接打包即可。"""
+                    packageFiles = "├── scripts/script.py\n├── plugin.json\n└── icon.png"
+                }
+
+                // Web 插件 + 后端：前端页面 + 后端启动脚本
+                uiType == "web" && backendType.isNotEmpty() -> {
+                    directoryTree = "├── web/                 # 前端页面目录（index.html 等）\n├── scripts/             # 后端启动脚本与示例\n    ├── start.sh\n    └── backend/server.py"
+                    devGuide = """## 开发说明
+
+1. 编辑 `web/index.html` 编写前端页面，通过 `UINPlugin` 调用宿主能力。
+2. 后端由 `scripts/start.sh` 启动（读取宿主导入的 `PORT` 环境变量），
+   `scripts/backend/server.py` 为示例服务（含 `/health` 健康检查）。
+3. 前端调用后端统一走 `UINPlugin.callBackendApi(path, method, body)`，无需关心端口。
+4. 调用宿主能力（剪贴板、存储、HTTP 等）需先在该插件的权限管理页授权。"""
+                    buildSteps = """### 无需编译
+
+前端 + 脚本后端无需 Java 编译，直接打包即可。"""
+                    packageFiles = "├── web/                 # 前端页面\n├── scripts/             # 后端启动脚本与示例\n├── plugin.json\n└── icon.png"
+                }
+
+                // Web 插件（无后端）：纯前端页面
+                else -> {
+                    directoryTree = "├── web/                 # 前端页面目录（index.html 等）"
+                    devGuide = """## 开发说明
+
+1. 编辑 `web/index.html` 编写前端页面，通过 `UINPlugin` 调用宿主能力。
+2. 调用宿主能力（剪贴板、存储、HTTP 等）需先在该插件的权限管理页授权。
+3. 无需后端时，前端直接调用 `UINPlugin` 的 JS 桥方法即可。"""
+                    buildSteps = """### 无需编译
+
+纯前端插件无需 Java 编译，直接打包即可。"""
+                    packageFiles = "├── web/                 # 前端页面\n├── plugin.json\n└── icon.png"
+                }
+            }
+
             val vars = mapOf(
                 "PLUGIN_NAME" to pluginName.value,
                 "PLUGIN_ID" to pluginId.value,
                 "PLUGIN_VERSION" to pluginVersion.value,
                 "PLUGIN_VERSION_NAME" to pluginVersionName.value,
                 "PLUGIN_AUTHOR" to pluginAuthor.value,
-                "UI_TYPE" to when (uiType) {
-                    "web" -> "WebView"
-                    "cui" -> Str.get(R.string.cui_terminal)
-                    else -> Str.get(R.string.native_code)
-                }
+                "PLUGIN_DESCRIPTION" to pluginDescription.value,
+                "UI_TYPE" to uiTypeLabel,
+                "DIRECTORY_TREE" to directoryTree,
+                "DEV_GUIDE" to devGuide,
+                "BUILD_STEPS" to buildSteps,
+                "PACKAGE_FILES" to packageFiles
             )
             val readme = TemplateUtils.generateReadme(context, vars)
             File(workDir, "README.md").writeText(readme)

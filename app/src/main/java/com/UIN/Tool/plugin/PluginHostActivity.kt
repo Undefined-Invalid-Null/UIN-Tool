@@ -1,6 +1,7 @@
 package com.UIN.Tool.plugin
 
 import com.UIN.Tool.R
+import com.UIN.Tool.utils.PermissionUtils
 import com.UIN.Tool.utils.Str
 import android.app.Activity
 import android.content.Intent
@@ -37,6 +38,7 @@ import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.ui.screen.permission.PluginPermissionActivity
 import com.UIN.Tool.constants.AppConstants as Constants
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -79,6 +81,8 @@ class PluginHostActivity : AppCompatActivity() {
     var currentInstanceId: String = ""
     private var currentInstanceKey: String = ""
     private var webView: WebView? = null
+    /** 实际注入到 WebView 的 JS 桥实例（每次注入时更新），权限回调等路由到该实例 */
+    private var injectedJsInterface: PluginJSInterface? = null
     private lateinit var pluginManager: PluginManager
     private var pluginInfo: PluginInfo? = null
     private var isDestroyed = false
@@ -86,12 +90,11 @@ class PluginHostActivity : AppCompatActivity() {
     /** 意图中转传入的外部数据 JSON（openWith），供 JS / 原生插件读取 */
     private var openDataJson: String? = null
 
-    /**
-     * 后端实例键：共享端口模式=插件 ID；独立端口模式=插件实例键。
-     * 决定后端进程/端口按插件共享还是按实例隔离。
-     */
-    private val backendKey: String
-        get() = if (pluginManager.isBackendMultiModeIndependent()) currentInstanceKey else currentPluginId
+/**
+ * 后端实例键：始终使用插件 ID（多实例共享同一后端端口/进程）。
+ */
+private val backendKey: String
+    get() = currentPluginId
 
     /** backend 实际被当前实例持有时为 true，用于在 destroy 时决定停止/释放 */
     private var backendHeldByThisInstance = false
@@ -129,6 +132,10 @@ class PluginHostActivity : AppCompatActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT
         )
         setContentView(container)
+
+        // 统一对话框宿主（Compose 覆盖层）：在 onCreate 即创建，
+        // 使权限门（加载前弹窗）也能使用宿主统一风格；自身透明且不拦截触摸。
+        setupDialogHost()
 
         if (savedInstanceState != null) {
             currentPluginId = savedInstanceState.getString(KEY_PLUGIN_ID) ?: ""
@@ -203,14 +210,106 @@ class PluginHostActivity : AppCompatActivity() {
             }
         }
 
-        // 显示插件说明
-        showPluginNoticeIfNeeded()
-
         // 原生插件默认单实例：注册“已运行”标记，供二次打开去重
         if (pluginInfo?.isNativePlugin() == true) {
             pluginManager.onNativePluginStarted(currentPluginId, currentInstanceKey)
         }
 
+        // 保留会话单窗口：共享端口模式 + 保留会话开启 + web 插件时，
+        // 同一插件只保留一个后台窗口（多任务仅显示一个）；重复打开时把
+        // 已有窗口带到前台并结束本次启动，避免多任务出现多个实例。
+        if (shouldRetainSharedSession()) {
+            val existing = pluginManager.getLivePluginHost(currentPluginId)
+            if (existing != null && existing !== this) {
+                Logger.w(TAG, Str.get(R.string.retain_session_single_window_reuse))
+                try {
+                    val am = getSystemService(ACTIVITY_SERVICE) as? android.app.ActivityManager
+                    am?.moveTaskToFront(existing.taskId, 0)
+                } catch (e: Exception) {
+                    Logger.w(TAG, "bring existing window to front failed: ${e.message}")
+                }
+                finish()
+                return
+            }
+            pluginManager.registerLivePluginHost(currentPluginId, this)
+        }
+
+        // 权限门：加载插件前先弹权限提示（原生=所需权限；web=缺失权限）。
+        // 必须先于插件说明入队，确保权限弹窗先显示。
+        maybeShowPermissionGateBeforeLoad()
+
+        // 显示插件说明（在权限门之后入队）
+        showPluginNoticeIfNeeded()
+    }
+
+    /**
+     * 权限门：先弹窗再打开插件（使用宿主统一风格弹窗）。
+     * - 原生插件：每次打开都提示所需（声明）权限，用户可「确定」或「不再显示」；
+     * - web 插件：提示尚未授予的权限，用户可「确定」「不再提示」或「管理权限」（跳转该插件权限管理页）；
+     * - CUI 插件：终端场景，跳过权限门。
+     */
+    private fun maybeShowPermissionGateBeforeLoad() {
+        val info = pluginInfo ?: run { proceedToLoadAfterGate(); return }
+        if (info.isCui()) {
+            proceedToLoadAfterGate()
+            return
+        }
+
+        val isNative = info.isNativePlugin()
+        val declared = PluginPermissionManager.getPluginDeclaredPermissions(this, currentPluginId)
+        if (declared.isEmpty()) {
+            proceedToLoadAfterGate()
+            return
+        }
+
+        // web 插件只提示尚未授予的权限；若全部已授权则直接打开
+        val shown = if (isNative) {
+            declared
+        } else {
+            PluginPermissionManager.getMissingPermissions(this, currentPluginId).filter { it in declared }
+        }
+        if (shown.isEmpty()) {
+            proceedToLoadAfterGate()
+            return
+        }
+        if (pluginManager.isPluginPermissionPromptIgnored(currentPluginId)) {
+            proceedToLoadAfterGate()
+            return
+        }
+
+        val names = shown.joinToString("\n") { PermissionUtils.getPermissionDisplayName(it) }
+        val message = (if (isNative) Str.get(R.string.permission_gate_native_message) else Str.get(R.string.permission_gate_web_message)) +
+                "\n\n" + names
+
+        Logger.i(TAG, "permissionGate: showing dialog for pluginId=$currentPluginId uiType=${info.uiType}")
+        enqueuePluginDialog(
+            PluginDialogRequest.Permission(
+                message = message,
+                showManage = !isNative,
+                onConfirm = { proceedToLoadAfterGate() },
+                onManage = {
+                    try {
+                        startActivity(
+                            Intent(this, PluginPermissionActivity::class.java)
+                                .putExtra(PluginPermissionActivity.EXTRA_PLUGIN_ID, currentPluginId)
+                        )
+                    } catch (e: Exception) {
+                        Logger.e(TAG, "jump to PluginPermissionActivity failed", e)
+                    }
+                    finish()
+                },
+                onNever = {
+                    pluginManager.setPluginPermissionPromptIgnored(currentPluginId, true)
+                    proceedToLoadAfterGate()
+                }
+            )
+        )
+    }
+
+    /**
+     * 通过权限门后的真正加载逻辑（保持原 CUI / 普通分支语义）。
+     */
+    private fun proceedToLoadAfterGate() {
         if (pluginInfo?.isCui() == true) {
             // CUI 插件：在真实全屏终端（TermuxActivity）中运行 pre-command
             Logger.i(TAG, Str.get(R.string.cui_plugin_loading_placeholder_view))
@@ -249,7 +348,7 @@ class PluginHostActivity : AppCompatActivity() {
         
         val info = pluginInfo
         if (info == null || !info.hasBackend() || isBackendReady) {
-            Logger.e(TAG, Str.get(R.string.conditions_not_met_skipping_backend_))
+            Logger.i(TAG, Str.get(R.string.conditions_not_met_skipping_backend_))
             if (info == null) Logger.i(TAG, Str.get(R.string.plugininfo_is_null_2))
             if (info != null && !info.hasBackend()) Logger.i(TAG, Str.get(R.string.hasbackend_returns_false))
             if (isBackendReady) Logger.i(TAG, Str.get(R.string.isbackendready_is_true))
@@ -285,9 +384,7 @@ class PluginHostActivity : AppCompatActivity() {
                 backendHeldByThisInstance = true
                 isBackendReady = true
                 // 共享端口模式：每个实例持有一次共享后端（最后一个实例关闭时后端才停止）
-                if (!pluginManager.isBackendMultiModeIndependent()) {
-                    pluginManager.acquireBackend(currentPluginId)
-                }
+                pluginManager.acquireBackend(currentPluginId)
                 Logger.success(TAG, Str.get(R.string.backend_ready_port_port, port))
                 sendBackendReadyToWebView(port)
             } else {
@@ -307,6 +404,21 @@ class PluginHostActivity : AppCompatActivity() {
     private fun runEnvironmentPipeline() {
         val info = pluginInfo ?: return
         Logger.i(TAG, "🔍 runEnvironmentPipeline()")
+
+        // 若后台正在安装 Alpine，等待完成后再继续
+        if (com.UIN.Tool.UinApplication.isEnvironmentInstalling()) {
+            Logger.i(TAG, "runEnvironmentPipeline: waiting for background env install...")
+            showEnvProgress(Str.get(R.string.initializing_termux_base_environment))
+            Thread {
+                while (com.UIN.Tool.UinApplication.isEnvironmentInstalling()) {
+                    Thread.sleep(300)
+                }
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    runEnvironmentPipeline()
+                }
+            }.start()
+            return
+        }
 
         ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
             Logger.success(TAG, Str.get(R.string.termux_ready_checking_alpine))
@@ -340,9 +452,7 @@ class PluginHostActivity : AppCompatActivity() {
                 backendPort = port
                 backendHeldByThisInstance = true
                 isBackendReady = true
-                if (!pluginManager.isBackendMultiModeIndependent()) {
-                    pluginManager.acquireBackend(currentPluginId)
-                }
+                pluginManager.acquireBackend(currentPluginId)
                 sendBackendReadyToWebView(port)
             } else {
                 Toast.makeText(this, Str.get(R.string.backend_start_failed_error_unknown_e, error ?: Str.get(R.string.unknown_error)), Toast.LENGTH_LONG).show()
@@ -466,6 +576,19 @@ class PluginHostActivity : AppCompatActivity() {
             val onConfirm: () -> Unit,
             val onDismiss: () -> Unit,
             val onNeutral: () -> Unit
+        ) : PluginDialogRequest
+
+        /**
+         * 权限门弹窗：加载插件前提示所需权限。
+         * - 原生插件：确认 / 不再显示；
+         * - web 插件：确认 / 管理权限 / 不再提示。
+         */
+        data class Permission(
+            val message: String,
+            val showManage: Boolean,
+            val onConfirm: () -> Unit,
+            val onManage: () -> Unit,
+            val onNever: () -> Unit
         ) : PluginDialogRequest
 
         data class Prompt(
@@ -716,6 +839,53 @@ class PluginHostActivity : AppCompatActivity() {
                 }
             )
 
+            is PluginDialogRequest.Permission -> UnifiedDialog(
+                onDismissRequest = {
+                    dismissPluginDialog()
+                    r.onConfirm()
+                },
+                title = Str.get(R.string.permission_gate_title),
+                content = {
+                    Text(
+                        text = r.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            dismissPluginDialog()
+                            r.onConfirm()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(AppDimens.radiusLarge)
+                    ) { Text(Str.get(R.string.ok_2)) }
+                },
+                dismissButton = {
+                    Row {
+                        if (r.showManage) {
+                            UnifiedDialogTextButton(
+                                onClick = {
+                                    dismissPluginDialog()
+                                    r.onManage()
+                                }
+                            ) { Text(Str.get(R.string.permission_gate_manage)) }
+                            Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
+                        }
+                        UnifiedDialogTextButton(
+                            onClick = {
+                                dismissPluginDialog()
+                                r.onNever()
+                            }
+                        ) { Text(if (r.showManage) Str.get(R.string.don_t_ask_again) else Str.get(R.string.permission_gate_never_show)) }
+                    }
+                }
+            )
+
             is PluginDialogRequest.Prompt -> {
                 var value by remember { mutableStateOf("") }
                 UnifiedDialog(
@@ -808,6 +978,27 @@ class PluginHostActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 创建统一对话框宿主（Compose 覆盖层）并加入 container。
+     * 在 onCreate 即创建，使权限门（加载前弹窗）也能使用宿主统一风格；
+     * 插件加载流程中若已存在则复用，避免重复创建。
+     */
+    private fun setupDialogHost() {
+        if (dialogHost != null) return
+        dialogHost = ComposeView(this).apply {
+            setContent {
+                UINToolTheme(fillBackground = false) {
+                    PluginDialogHost()
+                }
+            }
+        }
+        container.addView(
+            dialogHost,
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        )
+        dialogHost?.visibility = View.GONE
+    }
+
     private fun loadWebPlugin() {
         Logger.separator(TAG, "loadWebPlugin")
 
@@ -827,12 +1018,9 @@ class PluginHostActivity : AppCompatActivity() {
         // 统一对话框宿主（Compose 覆盖层，置于 WebView 之上；自身透明且不拦截触摸，
         // 弹窗通过独立窗口浮于最上）。fillBackground=false 使覆盖层不再绘制不透明背景，
         // 否则会盖住插件 WebView 内容（背景只剩纯色而无控件）。
-        dialogHost = ComposeView(this).apply {
-            setContent {
-                UINToolTheme(fillBackground = false) {
-                    PluginDialogHost()
-                }
-            }
+        // 已在 onCreate 创建则复用（权限门弹窗依赖它），无需重建。
+        if (dialogHost == null) {
+            setupDialogHost()
         }
 
         // 共享端口模式 + 保留会话：复用上次关闭时保留的 WebView（页面/会话不重建）
@@ -854,10 +1042,6 @@ class PluginHostActivity : AppCompatActivity() {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.allowFileAccess = true
-                @Suppress("DEPRECATION")
-                settings.allowFileAccessFromFileURLs = true
-                @Suppress("DEPRECATION")
-                settings.allowUniversalAccessFromFileURLs = true
                 settings.setSupportZoom(true)
                 settings.builtInZoomControls = true
                 settings.displayZoomControls = false
@@ -865,18 +1049,19 @@ class PluginHostActivity : AppCompatActivity() {
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 }
             }
             webView = wv
 
             val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
+            injectedJsInterface = jsInterface
             wv.addJavascriptInterface(jsInterface, "UINPlugin")
             Logger.success(TAG, Str.get(R.string.uinplugin_js_interface_injected))
 
             bindWebViewClients(wv)
 
-            val entryPath = if (pluginInfo!!.entry.isNotEmpty()) pluginInfo!!.entry else "web/index.html"
+            val entryPath = if (pluginInfo!!.entry.isNotEmpty() && isSafePluginRelativePath(pluginInfo!!.entry)) pluginInfo!!.entry else "web/index.html"
             val indexPath = "$pluginDir/$entryPath"
             Logger.i(TAG, Str.get(R.string.entry_path_indexpath, indexPath))
             Logger.i(TAG, Str.get(R.string.file_exists_file_indexpath_exists, File(indexPath).exists()))
@@ -909,18 +1094,33 @@ class PluginHostActivity : AppCompatActivity() {
      * 关闭插件时 WebView 不销毁，重开时复用页面/会话状态。
      */
     private fun shouldRetainSharedSession(): Boolean =
-        !pluginManager.isBackendMultiModeIndependent() &&
-            pluginManager.isSharedSessionRetainEnabled() &&
+        pluginManager.isSharedSessionRetainEnabled() &&
             pluginInfo?.isWebPlugin() == true
 
     /** 绑定 WebViewClient / WebChromeClient（绑定当前 Activity，供新建与复用共用） */
     private fun bindWebViewClients(webView: WebView) {
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (url == null) return false
+                if (isAllowedPluginUrl(url)) return false
+                // 插件自身内容以外的链接（http/https/mailto 等）交给系统浏览器，避免 JS 桥外泄
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    runCatching {
+                        startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                }
+                return true
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 Logger.success(TAG, Str.get(R.string.webview_load_complete_url, url))
-                injectJSInterface()
-                injectOpenData()
+                if (url == null || isPluginOwnOrigin(url)) {
+                    injectJSInterface()
+                    injectOpenData()
+                }
                 if (com.UIN.Tool.utils.UIConfig.isInitialized()) {
                     view?.evaluateJavascript(com.UIN.Tool.utils.UIConfig.getThemeCssInjectionScript(), null)
                 }
@@ -990,21 +1190,24 @@ class PluginHostActivity : AppCompatActivity() {
         try {
             // 开发者选项开启原生多开时每次新建实例；否则复用（单实例）
             val forceNewInstance = pluginManager.isNativeMultiInstanceEnabled()
-            val view = pluginManager.getPluginViewSync(currentPluginId, this, container, forceNewInstance)
+            val view = pluginManager.getPluginViewSync(currentPluginId, this, container, forceNewInstance, currentInstanceKey)
             if (view != null) {
                 container.removeAllViews()
                 container.addView(view)
                 Logger.success(TAG, Str.get(R.string.native_plugin_loaded_plugininfo_name, pluginInfo?.name))
 
                 // 通知原生插件宿主事件：传入实例 ID（多开隔离）与外部打开数据
-                pluginManager.getPluginInstance(currentPluginId)?.onHostEvent(
-                    "host.open",
-                    android.os.Bundle().apply {
-                        putString("instanceId", currentInstanceId)
-                        putString("openDataJson", openDataJson)
-                        putBoolean("multiInstanceEnabled", forceNewInstance)
-                    }
-                )
+                val pluginInstance = pluginManager.getPluginInstanceByKey(currentInstanceKey)
+                if (pluginInstance != null && pluginImplementsMethod(pluginInstance, "onHostEvent")) {
+                    pluginInstance.onHostEvent(
+                        "host.open",
+                        android.os.Bundle().apply {
+                            putString("instanceId", currentInstanceId)
+                            putString("openDataJson", openDataJson)
+                            putBoolean("multiInstanceEnabled", forceNewInstance)
+                        }
+                    )
+                }
             } else {
                 Logger.e(TAG, Str.get(R.string.native_plugin_load_failed))
                 Toast.makeText(this, Str.get(R.string.native_plugin_load_failed_2), Toast.LENGTH_SHORT).show()
@@ -1014,6 +1217,24 @@ class PluginHostActivity : AppCompatActivity() {
             Logger.e(TAG, Str.get(R.string.native_plugin_load_error), e)
             Toast.makeText(this, Str.get(R.string.plugin_load_error_e_message, e.message), Toast.LENGTH_LONG).show()
             finish()
+        }
+    }
+
+    /**
+     * 反射判断插件实现类是否真正提供了指定接口方法。
+     *
+     * 兼容旧版编译的插件 dex：它们按早期 PluginInterface 编译，接口中可能没有
+     * onHostEvent 等新增默认方法，宿主直接调用会抛 AbstractMethodError。
+     * 若插件类未实现该方法（新方法由宿主接口默认实现兜底），则跳过调用，
+     * 避免旧插件打开即崩溃。
+     */
+    private fun pluginImplementsMethod(pluginInstance: Any, methodName: String): Boolean {
+        return try {
+            val declared = pluginInstance.javaClass.declaredMethods
+            declared.any { it.name == methodName }
+        } catch (e: Exception) {
+            Logger.w(TAG, Str.get(R.string.failed_to_reflect_plugin_method_m_n, methodName, e.message))
+            false
         }
     }
 
@@ -1161,14 +1382,17 @@ class PluginHostActivity : AppCompatActivity() {
         val intent = if (isProot) {
             val container = BackendConfig.getContainer(this)
             val bind = "${pluginDir.absolutePath}:/plugins/${info.pluginId}"
+            // proot login 会把 cwd 重置为容器内 HOME（/root），相对路径脚本会解析失败，
+            // 因此先 cd 到绑定到容器内的插件目录 /plugins/<id> 再执行。
+            val inner = if (preCmd.isNotEmpty()) "cd /plugins/${info.pluginId} && $preCmd" else ""
             RealTermuxRuntime.buildRunCommandIntent(
                 commandPath = RealTermuxRuntime.PROOT_DISTRO_PATH,
                 arguments = buildList {
                     add("login"); add(container)
                     add("--bind"); add(bind)
                     add("--"); add("sh")
-                    if (preCmd.isNotEmpty()) {
-                        add("-lc"); add(preCmd)
+                    if (inner.isNotEmpty()) {
+                        add("-lc"); add(inner)
                     } else {
                         add("-l")
                     }
@@ -1213,10 +1437,43 @@ class PluginHostActivity : AppCompatActivity() {
     // JS 接口
     // ============================================================
 
+    /** 插件自身目录的 file:// 前缀（用于 origin 校验） */
+    private fun pluginFileRoot(): String {
+        val pluginDir = File(Constants.PLUGIN_DIR, currentPluginId)
+        return "file://${pluginDir.absolutePath}/"
+    }
+
+    /** 当前页面是否属于插件自身 file:// 目录 */
+    private fun isPluginOwnOrigin(url: String?): Boolean {
+        if (url == null) return false
+        if (url.startsWith("file://")) {
+            return url.startsWith(pluginFileRoot())
+        }
+        // loadDataWithBaseURL 注入的数据 URL 视作插件自身内容
+        return url.startsWith("data:") || url.startsWith("about:blank")
+    }
+
+    /** 是否允许在 WebView 内加载（仅插件自身 file:// 内容；其余一律交由外部打开） */
+    private fun isAllowedPluginUrl(url: String?): Boolean {
+        if (url == null) return false
+        if (isPluginOwnOrigin(url)) return true
+        // 插件调用 loadUrl 的自身文件（含子资源）放行；其它 scheme 全部拦截
+        return false
+    }
+
+    /** 校验插件的相对路径（entry/icon 等）不会越出插件目录 */
+    private fun isSafePluginRelativePath(path: String): Boolean {
+        if (path.isEmpty() || path.startsWith("/") || path.startsWith("\\")) return false
+        if (path.contains("..")) return false
+        if (path.matches(Regex("[A-Za-z]:.*"))) return false
+        return true
+    }
+
     private fun injectJSInterface() {
         webView?.let {
             it.removeJavascriptInterface("UINPlugin")
             val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
+            injectedJsInterface = jsInterface
             it.addJavascriptInterface(jsInterface, "UINPlugin")
             Logger.success(TAG, Str.get(R.string.uinplugin_js_interface_re_injected))
         }
@@ -1236,9 +1493,13 @@ class PluginHostActivity : AppCompatActivity() {
             )
             return
         }
-        val json = data.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
+        // 使用 JSONObject.quote 生成合法的 JS 字符串字面量（处理 \、引号、\n、\r 等）。
+        // 旧版 Android 的 org.json 不转义 U+2028/U+2029（合法但会让 JS 语法出错），手动补上。
+        val json = org.json.JSONObject.quote(data)
+            .replace("\u2028", "\\u2028")
+            .replace("\u2029", "\\u2029")
         webView?.evaluateJavascript(
-            "window.getOpenData = window.getOpenData || function(){ return '$json'; }; window.UINOpenData = window.UINOpenData || '$json';",
+            "window.getOpenData = window.getOpenData || function(){ return $json; }; window.UINOpenData = window.UINOpenData || $json;",
             null
         )
     }
@@ -1451,6 +1712,11 @@ class PluginHostActivity : AppCompatActivity() {
         // 原生插件单实例追踪注销
         pluginManager.onNativePluginStopped(currentInstanceKey)
 
+        // 保留会话单窗口：注销存活窗口标记
+        if (shouldRetainSharedSession()) {
+            pluginManager.unregisterLivePluginHost(currentPluginId, this)
+        }
+
         // 保留会话：共享端口模式 + 保留开关时，WebView 移入缓存（重开复用），不销毁。
         // 必须先于后端释放：releaseHold 检测到存在保留 WebView 时不会停掉共享后端。
         val retainSession = shouldRetainSharedSession() && webView != null
@@ -1465,13 +1731,8 @@ class PluginHostActivity : AppCompatActivity() {
         // 后端生命周期：只在当前实例“持有”时才停止/释放
         val keepAlive = pluginInfo?.backendKeepAlive ?: false
         if (backendHeldByThisInstance && !keepAlive) {
-            if (pluginManager.isBackendMultiModeIndependent()) {
-                // 独立端口模式：本实例独享后端，直接停止
-                pluginManager.stopBackend(currentInstanceKey)
-            } else {
-                // 共享端口模式：释放本实例持有（归零时停止共享后端；保留会话时维持存活）
-                pluginManager.releaseBackend(currentPluginId)
-            }
+            // 共享端口模式：释放本实例持有（归零时停止共享后端；保留会话时维持存活）
+            pluginManager.releaseBackend(currentPluginId)
             backendHeldByThisInstance = false
         }
 
@@ -1486,6 +1747,14 @@ class PluginHostActivity : AppCompatActivity() {
         webView = null
         PluginManager.removePluginWebView(currentInstanceKey)
         pluginManager.onPluginDestroy(currentInstanceKey)
+
+        // 注销 JS 桥的传感器监听与挂起回调，防止泄漏
+        try {
+            injectedJsInterface?.destroy()
+            injectedJsInterface = null
+        } catch (e: Exception) {
+            // 忽略
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -1520,7 +1789,8 @@ class PluginHostActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        val plugin = pluginManager.getPluginInstance(currentPluginId)
+        // 路由到当前实例键对应的原生插件实例（多开隔离）
+        val plugin = pluginManager.getPluginInstanceByKey(currentInstanceKey)
         plugin?.onActivityResult(requestCode, resultCode, data)
     }
 
@@ -1530,11 +1800,12 @@ class PluginHostActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        val plugin = pluginManager.getPluginInstance(currentPluginId)
+        // 路由到当前实例键对应的原生插件实例（多开隔离）
+        val plugin = pluginManager.getPluginInstanceByKey(currentInstanceKey)
         plugin?.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // 路由到实际注入的 JS 桥实例（而非新建），确保 WebView 中同一对象收到回调
         try {
-            val jsInterface = PluginJSInterface(this, currentPluginId, pluginInfo!!)
-            jsInterface.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            injectedJsInterface?.onRequestPermissionsResult(requestCode, permissions, grantResults)
         } catch (e: Exception) {
             // 忽略
         }

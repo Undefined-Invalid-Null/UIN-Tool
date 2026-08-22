@@ -10,7 +10,7 @@ import android.content.SharedPreferences
  * 用户在插件管理页设置，对所有插件生效：
  * - 后端实现：内置简化版 Termux（默认，强制 proot Alpine 容器） / 实体 Termux（com.termux）
  * - 实体 Termux 的后端环境：Termux 本机 / Proot 容器（需填容器名）
- * - 空闲自动回收时长（分钟，默认 5）
+ * - 空闲自动回收时长（分钟，默认 5；0 = 无限时长永不回收；支持自定义分钟数）
  */
 object BackendConfig {
 
@@ -23,6 +23,9 @@ object BackendConfig {
     const val CONTAINER_DEFAULT = "alpine"
     const val IDLE_TIMEOUT_DEFAULT_MIN = 5
 
+    /** 空闲回收时长取值：0 表示无限时长（永不自动回收） */
+    const val IDLE_TIMEOUT_INFINITE = 0
+
     /** 内置简化版 Termux 的固定容器名（从 assets 离线恢复） */
     const val BUILTIN_CONTAINER = "alpine"
 
@@ -31,6 +34,7 @@ object BackendConfig {
     private const val KEY_ENV = "backend_env"
     private const val KEY_CONTAINER = "backend_container"
     private const val KEY_IDLE_TIMEOUT = "backend_idle_timeout_min"
+    private const val KEY_KEEP_ALIVE = "backend_keep_alive"
 
     /** 实体 Termux 包名 */
     const val REAL_TERMUX_PACKAGE = "com.termux"
@@ -110,7 +114,27 @@ object BackendConfig {
     fun getIdleTimeoutMinutes(context: Context): Int =
         prefs(context).getInt(KEY_IDLE_TIMEOUT, IDLE_TIMEOUT_DEFAULT_MIN)
 
+    /** 无限时长：0 表示永不自动回收 */
+    fun isInfiniteIdleTimeout(context: Context): Boolean =
+        getIdleTimeoutMinutes(context) <= IDLE_TIMEOUT_INFINITE
+
+    /** 写入空闲回收时长（分钟）。0 = 无限（永不回收），允许自定义任意分钟数。 */
     fun setIdleTimeoutMinutes(context: Context, minutes: Int) {
-        prefs(context).edit().putInt(KEY_IDLE_TIMEOUT, minutes.coerceIn(1, 120)).apply()
+        val safe = if (minutes <= IDLE_TIMEOUT_INFINITE) IDLE_TIMEOUT_INFINITE else minutes
+        prefs(context).edit().putInt(KEY_IDLE_TIMEOUT, safe).apply()
+    }
+
+    // ==================== 后台保活 ====================
+
+    /**
+     * 后台保活是否开启。开启后共享 supervisor 不再因宿主进程被杀而退出
+     * （宿主写 keep_alive 标记，supervisor 只凭显式 shutdown 退出），配合
+     * 电池优化豁免 / 通知栏保活 / shizuku、dhizuku 权限保持后台存活。
+     */
+    fun isKeepAliveEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_KEEP_ALIVE, false)
+
+    fun setKeepAliveEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_KEEP_ALIVE, enabled).apply()
     }
 }

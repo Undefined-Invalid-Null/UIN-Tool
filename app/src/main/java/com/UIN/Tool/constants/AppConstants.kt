@@ -15,12 +15,47 @@ object AppConstants {
 
     // ==================== 应用信息 ====================
     const val APP_NAME = "UIN_Tool"
-    const val APP_VERSION = "5.4.0"
-    const val APP_VERSION_CODE = 20
+
+    /**
+     * 版本名/版本号统一从已安装包读取（避免与 build.gradle 硬编码漂移）。
+     * 读取失败时回退到默认值。
+     */
+    val APP_VERSION: String by lazy {
+        try {
+            val context = com.UIN.Tool.UinApplication.getAppContext()
+            context.packageManager.getPackageInfo(context.packageName, 0)
+                .versionName ?: "1.0.0"
+        } catch (e: Exception) {
+            "1.0.0"
+        }
+    }
+
+    val APP_VERSION_CODE: Int by lazy {
+        try {
+            val context = com.UIN.Tool.UinApplication.getAppContext()
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                info.longVersionCode.toInt()
+            } else {
+                info.versionCode
+            }
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    // ==================== 自定义权限 ====================
+    const val OPEN_PLUGIN_PERMISSION = "com.UIN.Tool.permission.OPEN_PLUGIN"
+    const val RUN_COMMAND_PERMISSION = "com.UIN.Tool.permission.RUN_COMMAND"
 
     // ==================== 目录路径 ====================
     val WORK_DIR = File(Environment.getExternalStorageDirectory(), APP_NAME).absolutePath
     val PLUGIN_DIR = File(WORK_DIR, "plugins").absolutePath
+
+    /**
+     * 日志目录固定在共享存储 UIN_Tool/logs 下，用户可直接访问并反馈日志（用户反馈要求）。
+     * 注：共享目录其它应用可读，日志中不应写入 token/敏感路径。
+     */
     val LOG_DIR = File(WORK_DIR, "logs").absolutePath
     val BACKUP_DIR = File(WORK_DIR, "backups").absolutePath
     val DOWNLOAD_DIR = File(WORK_DIR, "downloads").absolutePath
@@ -77,12 +112,10 @@ object AppConstants {
     // ==================== 偏好设置键（插件多开） ====================
     /** 原生插件多开开关（默认关闭，开发工具页可开启） */
     const val KEY_NATIVE_MULTI_INSTANCE = "native_multi_instance"
-    /** 同一插件多实例时的后端端口模式：shared=共享端口，independent=独立端口 */
-    const val KEY_BACKEND_MULTI_MODE = "backend_multi_mode"
-    const val BACKEND_MULTI_MODE_SHARED = "shared"
-    const val BACKEND_MULTI_MODE_INDEPENDENT = "independent"
     /** 共享端口模式下关闭插件时保留页面/后端会话，重开直接复用（默认开启） */
     const val KEY_SHARED_SESSION_RETAIN = "shared_session_retain"
+    /** 开发者选项：忽略签名验证（仅开发调试用，默认关闭） */
+    const val KEY_DEV_IGNORE_SIGNATURE = "dev_ignore_signature"
 
     // ==================== 插件相关 ====================
     const val PLUGIN_EXTENSION = ".tpk"
@@ -102,14 +135,13 @@ object AppConstants {
     const val CACHE_SIZE = 50 * 1024 * 1024L
 
     // ==================== 默认镜像站 ====================
+    // 已剔除长期失效源（hub.fastgit.xyz/fastgit 已停止服务、mirror.ghproxy.com、
+    // gh.api.99988866.xyz、gh.jiewen.ltd 等不可用），保留当前可用/仍在维护的源。
     val DEFAULT_MIRRORS = listOf(
-        "https://hub.fastgit.xyz",
         "https://github.moeyy.xyz",
         "https://ghproxy.net",
-        "https://mirror.ghproxy.com",
-        "https://gh.api.99988866.xyz",
-        "https://gitclone.com",
-        "https://gh.jiewen.ltd"
+        "https://gh-proxy.com",
+        "https://gitclone.com"
     )
 
     // ==================== UI配置 ====================

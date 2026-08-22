@@ -54,13 +54,14 @@ object CrashLogUtils {
 
     /**
      * 记录异常并标记需要跳转
+     * 用 commit() 同步写盘：主线程崩溃后进程随即被杀，apply() 的异步写可能来不及落盘
      */
     fun logExceptionAndNavigate(context: Context, throwable: Throwable, tag: String = "Exception") {
         logException(context, throwable, tag)
 
         // 标记需要跳转到日志页面
         val prefs = context.getSharedPreferences(Constants.PREF_CRASH, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(Constants.KEY_JUST_CRASHED, true).apply()
+        prefs.edit().putBoolean(Constants.KEY_JUST_CRASHED, true).commit()
     }
 
     /**

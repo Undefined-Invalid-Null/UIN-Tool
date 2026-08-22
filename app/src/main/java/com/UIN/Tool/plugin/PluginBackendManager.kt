@@ -13,9 +13,13 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import java.io.File
+import java.io.FileWriter
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.Socket
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
@@ -30,17 +34,30 @@ object PluginBackendManager {
     private const val MAX_MESSAGE_AGE_MS = 60000L
     private const val CLEANUP_INTERVAL_MS = 30000L
 
+    /** 写性能日志到 logs/perf_<date>.log */
+    private fun perfLog(msg: String) {
+        try {
+            val dir = File(Constants.LOG_DIR)
+            if (!dir.exists()) dir.mkdirs()
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val file = File(dir, "perf_$date.log")
+            val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+            FileWriter(file, true).use { it.appendLine("[$ts] [Host] $msg") }
+        } catch (_: Exception) {
+        }
+    }
     // ==================== 后端进程管理 ====================
     
-    private val runningProcesses = mutableMapOf<String, Process>()
-    private val runningPorts = mutableMapOf<String, Int>()
-    private val processLocks = mutableMapOf<String, Any>()
-    private val startTimes = mutableMapOf<String, Long>()
-    private val processPids = mutableMapOf<String, Int>()
+    /** 进程管理容器全部使用并发集合，支持多线程并发启动/停止（WebView 多实例、空闲回收线程）。 */
+    private val runningProcesses = ConcurrentHashMap<String, Process>()
+    private val runningPorts = ConcurrentHashMap<String, Int>()
+    private val processLocks = ConcurrentHashMap<String, Any>()
+    private val startTimes = ConcurrentHashMap<String, Long>()
+    private val processPids = ConcurrentHashMap<String, Int>()
     /** 每个插件最后一次被请求的时间（毫秒），用于空闲自动回收 */
-    private val lastRequestTimes = mutableMapOf<String, Long>()
+    private val lastRequestTimes = ConcurrentHashMap<String, Long>()
     /** 共享端口模式下，同一插件被多少个实例持有的引用计数（>0 表示仍在被使用） */
-    private val holdCounts = mutableMapOf<String, Int>()
+    private val holdCounts = ConcurrentHashMap<String, Int>()
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -126,32 +143,45 @@ object PluginBackendManager {
     }
 
     /**
-     * 空闲自动回收：超过全局配置的空闲时长（默认 5 分钟）且无请求的后端会被停止。
+     * 空闲自动回收：超过全局配置的空闲时长且无请求的后端会被停止。
+     * 空闲时长为 0（无限）时不回收任何后端。
      * 先探测端口，端口已关则直接清理状态（进程已死）；否则调用 stopBackend 优雅停止。
+     *
+     * 实体 Termux：空闲判定与杀进程由共享 supervisor（Termux 自身 UID 下按心跳文件 mtime
+     * 判超时并递归杀进程树）负责，宿主这里只做端口探测 + 状态清理，不再宿主轮询杀。
      */
     private fun checkIdleBackends() {
         if (!::context.isInitialized) return
         val idleMinutes = BackendConfig.getIdleTimeoutMinutes(context)
-        val idleMs = idleMinutes * 60_000L
-        val now = System.currentTimeMillis()
+        if (idleMinutes <= BackendConfig.IDLE_TIMEOUT_INFINITE) return
+        val isRealTermux = BackendConfig.isRealTermux(context)
 
         runningPorts.keys.toList().forEach { pluginId ->
             val port = runningPorts[pluginId] ?: return@forEach
             if (port <= 0) return@forEach
-            val last = lastRequestTimes[pluginId] ?: return@forEach
-            if (now - last < idleMs) return@forEach
 
             if (!isPortOpen(port)) {
+                // 端口已关：后端已死（supervisor 空闲回收 / 进程崩溃），清理宿主侧状态
                 runningProcesses.remove(pluginId)
                 runningPorts.remove(pluginId)
                 startTimes.remove(pluginId)
                 processPids.remove(pluginId)
                 lastRequestTimes.remove(pluginId)
+                if (isRealTermux) {
+                    SharedSupervisor.clearBackendRecord(pluginId)
+                }
                 Logger.w(TAG, Str.get(R.string.backend_dead_idle_recycled_pluginid, pluginId))
-            } else {
-                Logger.i(TAG, Str.get(R.string.backend_idle_recycling_pluginid, pluginId))
-                stopBackend(pluginId)
+            } else if (!isRealTermux) {
+                // 内置 Termux：宿主直接杀
+                val last = lastRequestTimes[pluginId] ?: return@forEach
+                val now = System.currentTimeMillis()
+                val idleMs = idleMinutes * 60_000L
+                if (now - last >= idleMs) {
+                    Logger.i(TAG, Str.get(R.string.backend_idle_recycling_pluginid, pluginId))
+                    stopBackend(pluginId)
+                }
             }
+            // 实体 Termux：端口还开着 → supervisor 空闲回收或进程正常，宿主不管
         }
     }
 
@@ -497,7 +527,7 @@ object PluginBackendManager {
             return false
         }
 
-        synchronized(processLocks.getOrPut(key) { Any() }) {
+        synchronized(processLocks.computeIfAbsent(key) { Any() }) {
             Logger.d(TAG, Str.get(R.string.lock_acquired))
 
             if (isRunning(key)) {
@@ -559,37 +589,56 @@ object PluginBackendManager {
     // ============================================================
 
     private fun startScriptInRealTermux(context: Context, info: PluginInfo, pluginDir: File, port: Int, key: String): Boolean {
-        if (!probeRealTermux(context)) return false
+        val t0 = System.currentTimeMillis()
+        // 不再需要 probeRealTermux：ensureSupervisor 的 startRunCommand 已验证 Termux 可用性
+        val t1 = System.currentTimeMillis()
+        perfLog("probeRealTermux: 0ms (skipped=true)")
 
         val startCmd = info.getStartCommandText()
         val isProotEnv = BackendConfig.getEnvironment(context) == BackendConfig.ENV_PROOT
+        val idleMinutes = BackendConfig.getIdleTimeoutMinutes(context)
+        val infiniteIdle = idleMinutes <= BackendConfig.IDLE_TIMEOUT_INFINITE
 
-        val intent = if (isProotEnv) {
-            val container = BackendConfig.getContainer(context)
-            val inner = buildScriptCommand(info, "/plugins/${info.pluginId}", port, startCmd)
-            RealTermuxRuntime.buildRunCommandIntent(
-                commandPath = RealTermuxRuntime.PROOT_DISTRO_PATH,
-                arguments = arrayOf(
-                    "login", container,
-                    "--bind", "${pluginDir.absolutePath}:/plugins/${info.pluginId}",
-                    "--", "sh", "-lc", inner
-                ),
-                workDir = pluginDir.absolutePath,
-                shellName = info.name,
-                commandLabel = Str.get(R.string.start_backend)
-            )
+        // 共享 supervisor：确保常驻容器（proot）/ Termux 本机会话已就绪
+        val t2 = System.currentTimeMillis()
+        if (!SharedSupervisor.ensureSupervisor(context)) return false
+        val t3 = System.currentTimeMillis()
+        perfLog("ensureSupervisor: ${t3 - t2}ms (alive=${SharedSupervisor.isSupervisorAlive()})")
+
+        // 组装后端启动命令体（含环境变量 export 与启动命令），投放给 supervisor 后台执行
+        val inner = if (isProotEnv) {
+            buildScriptCommand(info, "/plugins/${info.pluginId}", port, startCmd)
         } else {
-            val inner = buildScriptCommand(info, pluginDir.absolutePath, port, startCmd)
-            RealTermuxRuntime.buildRunCommandIntent(
-                commandPath = RealTermuxRuntime.BASH_PATH,
-                arguments = arrayOf("-lc", inner),
-                workDir = pluginDir.absolutePath,
-                shellName = info.name,
-                commandLabel = Str.get(R.string.start_backend)
-            )
+            buildScriptCommand(info, pluginDir.absolutePath, port, startCmd)
         }
+        val t4 = System.currentTimeMillis()
+        SharedSupervisor.requestStart(key, inner, idleMinutes)
+        val t5 = System.currentTimeMillis()
+        perfLog("requestStart: ${t5 - t4}ms")
 
-        return launchRealTermux(context, info, port, intent, key)
+        val result = waitForRealTermuxReady(context, info, port, key)
+        val t6 = System.currentTimeMillis()
+        perfLog("waitForRealTermuxReady: ${t6 - t5}ms (result=$result)")
+        perfLog("TOTAL startScriptInRealTermux: ${t6 - t0}ms")
+        return result
+    }
+
+    /**
+     * 实体 Termux 后端就绪等待：等待端口可访问（后端由共享 supervisor 后台拉起，
+     * 宿主只负责轮询端口就绪）。实体 Termux 后端冷启动较慢（尤其 proot 容器），放宽就绪超时。
+     */
+    private fun waitForRealTermuxReady(context: Context, info: PluginInfo, port: Int, key: String): Boolean {
+        val readyTimeout = maxOf(
+            info.backendTimeout,
+            if (BackendConfig.getEnvironment(context) == BackendConfig.ENV_PROOT) 120 else 60
+        )
+        val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
+        if (ready) {
+            Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, info.pluginId, port))
+            return true
+        }
+        Logger.w(TAG, Str.get(R.string.real_termux_backend_not_ready_pluginid, info.pluginId))
+        return false
     }
 
     /**
@@ -604,7 +653,8 @@ object PluginBackendManager {
             append("export WORK_DIR=$baseDir; ")
             append("export PYTHONUNBUFFERED=1; ")
         }
-        return "$exports cd $baseDir && $startCmd"
+        // cd 失败则 exit 1，避免在错误目录执行 exec；exec 让 sh 直接替换为启动命令（无 fork 孤儿）
+        return "$exports cd $baseDir && exec $startCmd"
     }
 
     // ============================================================
@@ -617,32 +667,6 @@ object PluginBackendManager {
             return false
         }
         return true
-    }
-
-    /**
-     * 启动实体 Termux RUN_COMMAND（无法追踪进程），随后轮询端口就绪。
-     */
-    private fun launchRealTermux(context: Context, info: PluginInfo, port: Int, intent: android.content.Intent, key: String): Boolean {
-        try {
-            if (!RealTermuxRuntime.startRunCommand(context, intent)) {
-                Logger.w(TAG, Str.get(R.string.real_termux_run_command_permission_denied))
-                return false
-            }
-            Logger.i(TAG, Str.get(R.string.real_termux_command_started))
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.real_termux_start_failed_e_message, e.message), e)
-            return false
-        }
-
-        // 实体 Termux 后端冷启动较慢（尤其 proot 容器），放宽就绪超时
-        val readyTimeout = maxOf(info.backendTimeout, if (BackendConfig.getEnvironment(context) == BackendConfig.ENV_PROOT) 120 else 60)
-        val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
-        if (ready) {
-            Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, info.pluginId, port))
-            return true
-        }
-        Logger.w(TAG, Str.get(R.string.real_termux_backend_not_ready_pluginid, info.pluginId))
-        return false
     }
 
     /**
@@ -750,9 +774,15 @@ object PluginBackendManager {
     }
 
     fun stopBackend(pluginId: String) {
-        synchronized(processLocks.getOrPut(pluginId) { Any() }) {
-            // 优先优雅停止：调用约定好的 /stop 端点。实体 Termux 无法杀进程，全靠它。
+        synchronized(processLocks.computeIfAbsent(pluginId) { Any() }) {
+            // 优先优雅停止：调用约定好的 /stop 端点。
             requestGracefulStop(pluginId)
+            if (::context.isInitialized && BackendConfig.isRealTermux(context)) {
+                // 实体 Termux：跨应用沙箱无法直接杀进程，向共享 supervisor 投放停止请求
+                // （supervisor 在 Termux 自身 UID 下按 PID 递归杀进程树）。空闲回收 / 插件关闭 /
+                // stopAllBackends 均会走到这里。
+                SharedSupervisor.requestStop(pluginId)
+            }
             val pid = processPids[pluginId]
             if (pid != null && pid > 0) {
                 killProcessGroup(pid)
@@ -824,9 +854,9 @@ object PluginBackendManager {
     }
 
     fun stopAllBackends() {
-        runningProcesses.keys.toList().forEach { stopBackend(it) }
+        val keys = (runningProcesses.keys + runningPorts.keys).toSet()
+        keys.forEach { stopBackend(it) }
     }
-
     fun callApi(
         pluginId: String,
         path: String,
@@ -889,15 +919,38 @@ object PluginBackendManager {
     // 私有方法
     // ============================================================
 
+        /**
+     * 找到一个未被占用的端口。优先尝试真实 TCP bind 探测（原子占用即释放），
+     * 同时避开 runningPorts 中已登记的端口，避免并发启动竞态导致端口冲突。
+     */
     private fun findAvailablePort(): Int {
-        var port = 8000
-        while (port < 9000) {
-            if (!runningPorts.values.contains(port)) {
-                return port
+        var preferred = 8000
+        // 记录池：优先复用已登记的端口范围外
+        val used = runningPorts.values.toSet()
+        while (preferred < 9000) {
+            if (!used.contains(preferred) && isPortBindable(preferred)) {
+                return preferred
             }
-            port++
+            preferred++
+        }
+        // 已登记端口已满：尝试登记集合中的每一个，确认实际可绑定
+        for (candidate in 8000 until 9000) {
+            if (isPortBindable(candidate)) return candidate
         }
         return 8000 + runningPorts.size
+    }
+
+    /** 真实 TCP bind 探测：能绑定即端口可用（绑定后立即释放）。 */
+    private fun isPortBindable(port: Int): Boolean {
+        return try {
+            java.net.ServerSocket().use { server ->
+                server.reuseAddress = true
+                server.bind(InetSocketAddress("127.0.0.1", port))
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun monitorOutput(pluginId: String, process: Process, isProot: Boolean) {
@@ -967,6 +1020,11 @@ object PluginBackendManager {
     private fun findPidsByCmdline(pattern: String): List<Int> {
         val result = mutableListOf<Int>()
         try {
+            // 精确匹配完整路径段，避免短 pluginId（如 "a"）误杀 /plugins/abc/... 的兄弟插件后端。
+            // cmdline 参数以 \u0000 分隔；路径段后必须是 /、空白、\u0000 或字符串结尾。
+            val quoted = java.util.regex.Pattern.quote(pattern)
+            val boundary = "($quoted/)|($quoted\\s)|($quoted\\u0000)|($quoted$)"
+            val regex = Regex(boundary)
             File("/proc").listFiles()?.forEach { f ->
                 val name = f.name
                 if (name.isEmpty() || !name.all { it.isDigit() }) return@forEach
@@ -974,7 +1032,7 @@ object PluginBackendManager {
                 if (pid <= 0) return@forEach
                 try {
                     val cmdline = File(f, "cmdline").readText().trimEnd('\u0000')
-                    if (cmdline.contains(pattern)) result.add(pid)
+                    if (regex.containsMatchIn(cmdline)) result.add(pid)
                 } catch (_: Exception) {
                 }
             }
