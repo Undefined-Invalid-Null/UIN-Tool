@@ -866,10 +866,25 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="github_acceleration_feature_under_de" formatted="false">GitHub acceleration feature under development</string>
     <string name="github_api_error_response_code">GitHub API error: %1$s</string>
     <string name="github_mirror_list_n_format_name_url" formatted="false"># GitHub mirror list\n# Format: name|URL|notes\n\n</string>
-    <string name="glass_background_color" formatted="false">Glass Background Color</string>
-    <string name="glass_effect" formatted="false">Glass Effect</string>
-    <string name="glass_effect_disabled" formatted="false">Glass effect disabled</string>
-    <string name="glass_effect_preview" formatted="false">Glass Effect Preview</string>
+    <string name="glass_background_color" formatted="false">Translucent Background Color</string>
+    <string name="glass_effect" formatted="false">Translucent Effect</string>
+    <string name="glass_effect_disabled" formatted="false">Translucent effect disabled</string>
+    <string name="glass_effect_preview" formatted="false">Translucent Effect Preview</string>
+    <string name="neumorphism_tab" formatted="false">Neumorphism</string>
+    <string name="enable_neumorphism" formatted="false">Enable Neumorphism</string>
+    <string name="neumorphism_intensity" formatted="false">Shadow Intensity</string>
+    <string name="intensity_light" formatted="false">Light</string>
+    <string name="intensity_medium" formatted="false">Medium</string>
+    <string name="intensity_strong" formatted="false">Strong</string>
+    <string name="neumorphism_inset" formatted="false">Inset (Pressed State)</string>
+    <string name="neumorphism_glow" formatted="false">Glow Effect</string>
+    <string name="neumorphism_preview" formatted="false">Preview</string>
+    <string name="animation_speed" formatted="false">Animation Speed</string>
+    <string name="speed_fast" formatted="false">Fast</string>
+    <string name="speed_medium" formatted="false">Medium</string>
+    <string name="speed_slow" formatted="false">Slow</string>
+    <string name="card" formatted="false">Card</string>
+    <string name="button" formatted="false">Button</string>
     <string name="global_config_saved_all_widgets_refr" formatted="false">Global config saved, all widgets refreshed</string>
     <string name="go_to_settings" formatted="false">Go to Settings</string>
     <string name="go_to_system_settings_to_enable_spec" formatted="false">Go to system settings to enable special permissions</string>
@@ -1314,6 +1329,7 @@ Dependencies: %1$s
     <string name="plugin_load_failed_h3">Plugin failed to load</string>
     <string name="plugin_manage_installed" formatted="false">Installed plugins</string>
     <string name="plugin_management" formatted="false">Plugin Management</string>
+    <string name="software" formatted="false">Software</string>
     <string name="plugin_details" formatted="false">Plugin Details</string>
     <string name="plugin_config_fields" formatted="false">plugin.json Fields</string>
     <string name="plugin_file_structure" formatted="false">File Structure</string>
@@ -1339,6 +1355,7 @@ Dependencies: %1$s
     <string name="plugin_permission_feature_under_deve" formatted="false">Plugin permission feature under development</string>
     <string name="plugin_permission_management" formatted="false">Plugin Permission Management</string>
     <string name="plugin_permissions" formatted="false">Plugin Permissions</string>
+    <string name="manage_plugin_permissions" formatted="false">Manage plugin permissions</string>
     <string name="plugin_permissions_size_permission_s">%1$s permission(s)</string>
     <string name="plugin_plugin_name">Plugin: %1$s</string>
     <string name="plugin_r_name_needs_a_pre_command_in">Plugin "%1$s" needs a pre-command in the container: \n\n%2$s\n\nRun it in the terminal now?</string>
@@ -1858,7 +1875,7 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="theme_mode" formatted="false">Theme Mode</string>
     <string name="this_device_does_not_support_shortcu" formatted="false">This device does not support shortcuts</string>
     <string name="this_feature_requires_android_8_0" formatted="false">This feature requires Android 8.0+</string>
-    <string name="this_is_a_glass_effect_card" formatted="false">This is a glass effect card</string>
+    <string name="this_is_a_glass_effect_card" formatted="false">This is a translucent effect card</string>
     <string name="this_is_a_mandatory_update_you_must_" formatted="false">This is a mandatory update. You must install the latest version</string>
     <string name="this_is_a_native_plugin_example" formatted="false">This is a native plugin example</string>
     <string name="this_is_a_web_plugin_example" formatted="false">This is a Web plugin example</string>
@@ -2316,4 +2333,47 @@ Please import plugins in the app first</string>
     <string name="no_web_plugins_manageable" formatted="false">No web plugins to manage</string>
     <string name="only_web_plugins_can_be_managed" formatted="false">Only web plugins can be managed here. Native plugins are controlled by the system.</string>
     <string name="retain_session_single_window_reuse" formatted="false">Retain session on: reusing existing window for this plugin</string>
+    <string name="style_default_title" formatted="false">Default</string>
+    <string name="style_default_subtitle" formatted="false">Standard color scheme</string>
+    <string name="style_neumorphism_title" formatted="false">Neumorphism</string>
+    <string name="style_neumorphism_subtitle" formatted="false">Soft shadows and embossed effects</string>
+    <string name="current_style" formatted="false">Current style: %1$s</string>
+    <string name="border_settings" formatted="false">Border thickness settings</string>
+    <string name="border_settings_coming_soon" formatted="false">Border thickness settings coming soon</string>
+    <string name="background_image_settings" formatted="false">Background image settings</string>
+    <string name="background_image_coming_soon" formatted="false">Background image settings coming soon</string>
+    <string name="font_family" formatted="false">Font family</string>
+    <string name="sans_serif_default" formatted="false">Sans Serif (Default)</string>
+    <string name="language_label" formatted="false">Language</string>
+    <string name="simplified_chinese" formatted="false">Simplified Chinese</string>
+    <string name="icon_image_replace" formatted="false">Icon and image replacement</string>
+    <string name="icon_image_replace_coming_soon" formatted="false">Icon and image replacement coming soon</string>
+    <string name="sidebar_style" formatted="false">Style</string>
+    <string name="sidebar_appearance" formatted="false">Appearance</string>
+    <string name="sidebar_colors" formatted="false">Colors</string>
+    <string name="sidebar_shapes" formatted="false">Shapes</string>
+    <string name="sidebar_corner_radius" formatted="false">Corner radius</string>
+    <string name="sidebar_width_height" formatted="false">Width &amp; height</string>
+    <string name="sidebar_border_thickness" formatted="false">Border thickness</string>
+    <string name="sidebar_material" formatted="false">Material</string>
+    <string name="sidebar_shadow" formatted="false">Shadow</string>
+    <string name="sidebar_translucent" formatted="false">Translucent</string>
+    <string name="sidebar_background" formatted="false">Background</string>
+    <string name="sidebar_gradient" formatted="false">Gradient</string>
+    <string name="sidebar_solid" formatted="false">Solid</string>
+    <string name="sidebar_image" formatted="false">Image</string>
+    <string name="sidebar_content" formatted="false">Content</string>
+    <string name="sidebar_text" formatted="false">Text</string>
+    <string name="sidebar_text_size" formatted="false">Text size</string>
+    <string name="sidebar_font" formatted="false">Font</string>
+    <string name="sidebar_weight" formatted="false">Weight</string>
+    <string name="sidebar_interaction" formatted="false">Interaction</string>
+    <string name="sidebar_click_effect" formatted="false">Click effect</string>
+    <string name="sidebar_animation_speed" formatted="false">Animation speed</string>
+    <string name="sidebar_layout" formatted="false">Layout</string>
+    <string name="sidebar_margin" formatted="false">Margin</string>
+    <string name="sidebar_position" formatted="false">Position</string>
+    <string name="reset_default_settings" formatted="false">Reset default settings</string>
+    <string name="menu" formatted="false">Menu</string>
+    <string name="ui_personalization" formatted="false">UI Personalization</string>
 </resources>

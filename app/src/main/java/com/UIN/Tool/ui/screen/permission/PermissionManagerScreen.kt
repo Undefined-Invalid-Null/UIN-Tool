@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -236,75 +237,22 @@ fun PermissionManagerScreen() {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .navigationBarsPadding()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+            item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
                 UIComponents.LastUpdatedCaption(time = lastRefreshTime)
-            }
-            // 插件权限管理入口卡片
-            item {
-                UnifiedCard(
-                    onClick = {
-                        try {
-                            context.startActivity(Intent(context, PluginPermissionActivity::class.java))
-                        } catch (e: Exception) {
-                            AppToast.warning(context, Str.get(R.string.plugin_permission_feature_under_deve))
-                        }
-                    }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            modifier = Modifier.size(48.dp),
-                            shape = RoundedCornerShape(AppDimens.radiusMedium),
-                            color = MaterialTheme.colorScheme.primary
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Extension,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = Str.get(R.string.plugin_permission_management),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = Str.get(R.string.manage_each_plugin_s_declared_permis),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Icon(
-                            Icons.Default.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
             }
 
             // 应用权限标题
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -320,7 +268,13 @@ fun PermissionManagerScreen() {
             // 权限列表
             items(permissionItems) { item ->
                 val granted = permissionStates[item.permission] ?: checkPermission(item.permission)
+                val cardVariant = when {
+                    item.isSpecial -> CardVariant.Outlined
+                    item.category.contains(Str.get(R.string.system)) -> CardVariant.Filled
+                    else -> CardVariant.Elevated
+                }
                 UnifiedCard(
+                    variant = cardVariant,
                     onClick = {
                         if (!granted) {
                             requestPermission(item.permission)
@@ -330,7 +284,8 @@ fun PermissionManagerScreen() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp),
+                            .height(56.dp)
+                            .padding(horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -352,10 +307,7 @@ fun PermissionManagerScreen() {
                                 else -> Icons.Default.Security
                             },
                             contentDescription = null,
-                            tint = if (granted)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
 
@@ -380,7 +332,7 @@ fun PermissionManagerScreen() {
                             Text(
                                 text = Str.get(R.string.special),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
                         }

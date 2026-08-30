@@ -391,17 +391,14 @@ fun ThemeSelectionDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
+                UnifiedButton(
+                    text = Str.get(R.string.close),
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF0F0F0),
-                        contentColor = Color(0xFF333333)
-                    ),
-                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                ) {
-                    Text(Str.get(R.string.close), fontWeight = FontWeight.Medium)
-                }
+                    variant = ButtonVariant.Secondary,
+                    containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else Color(0xFFF0F0F0),
+                    contentColor = Color(0xFF333333)
+                )
             }
         }
     }
@@ -419,7 +416,7 @@ fun ThemeChip(
         modifier = modifier
             .clickable { onClick() }
             .padding(vertical = 4.dp),
-        color = if (isSelected) Color(0xFF1A3A4A) else Color(0xFFF5F5F5),
+        color = if (isSelected) Color(0xFF1A3A4A) else if (AppColors.glassEnabled()) AppColors.glassBackground() else Color(0xFFF5F5F5),
         shape = RoundedCornerShape(AppDimens.radiusSmall),
         tonalElevation = if (isSelected) 2.dp else 0.dp
     ) {
@@ -489,17 +486,13 @@ fun FileTreeItem(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
             }
-            IconButton(
+            UnifiedIconButton(
+                icon = Icons.Default.Close,
                 onClick = onDelete,
-                modifier = Modifier.size(20.dp)
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = Str.get(R.string.delete),
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+                modifier = Modifier.size(20.dp),
+                contentDescription = Str.get(R.string.delete),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         // 长按菜单：查看属性 / 重命名
@@ -696,39 +689,24 @@ fun CodeEditorScreen(
             TopAppBar(
                 title = { /* 不显示标题 */ },
                 navigationIcon = {
-                    IconButton(
+                    UnifiedIconButton(
+                        icon = if (isSidebarVisible) Icons.Default.MenuOpen else Icons.Default.Menu,
                         onClick = {
                             isSidebarVisible = !isSidebarVisible
                             if (isSidebarVisible) sidebarWidth = 180.dp else sidebarWidth = 0.dp
-                        }
-                    ) {
-                        Icon(
-                            if (isSidebarVisible) Icons.Default.MenuOpen else Icons.Default.Menu,
-                            contentDescription = if (isSidebarVisible) Str.get(R.string.collapse_sidebar) else Str.get(R.string.expand_sidebar)
-                        )
-                    }
+                        },
+                        contentDescription = if (isSidebarVisible) Str.get(R.string.collapse_sidebar) else Str.get(R.string.expand_sidebar)
+                    )
                 },
                 actions = {
-                    IconButton(onClick = { undo() }) {
-                        Icon(Icons.Default.Undo, contentDescription = Str.get(R.string.undo))
-                    }
-                    IconButton(onClick = { redo() }) {
-                        Icon(Icons.Default.Redo, contentDescription = Str.get(R.string.redo))
-                    }
-                    IconButton(onClick = { showThemeDialog = true }) {
-                        Icon(Icons.Default.Palette, contentDescription = Str.get(R.string.select_theme))
-                    }
-                    Button(
+                    UnifiedIconButton(icon = Icons.Default.Undo, onClick = { undo() }, contentDescription = Str.get(R.string.undo))
+                    UnifiedIconButton(icon = Icons.Default.Redo, onClick = { redo() }, contentDescription = Str.get(R.string.redo))
+                    UnifiedIconButton(icon = Icons.Default.Palette, onClick = { showThemeDialog = true }, contentDescription = Str.get(R.string.select_theme))
+                    UnifiedButton(
+                        text = Str.get(R.string.finish),
                         onClick = { saveAll() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
                         modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        Text(Str.get(R.string.finish), fontWeight = FontWeight.Medium)
-                    }
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = AppColors.pageBackground(),
@@ -761,16 +739,12 @@ fun CodeEditorScreen(
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            IconButton(
+                            UnifiedIconButton(
+                                icon = Icons.Default.Add,
                                 onClick = { showAddFileDialog = true },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = Str.get(R.string.new_file),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+                                modifier = Modifier.size(28.dp),
+                                contentDescription = Str.get(R.string.new_file)
+                            )
                         }
 
                         Divider()

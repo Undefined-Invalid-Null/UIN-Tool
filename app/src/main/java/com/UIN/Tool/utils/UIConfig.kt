@@ -18,6 +18,7 @@ object UIConfig {
     private const val KEY_USE_ICON_TINT = "use_icon_tint"
     private const val KEY_CURRENT_THEME = "current_theme"
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_CURRENT_STYLE = "current_style"
     
     const val THEME_MODE_SYSTEM = "system"
     const val THEME_MODE_LIGHT = "light"
@@ -28,6 +29,7 @@ object UIConfig {
     private var useIconTint: Boolean = true
     private var currentTheme: String = "default"
     private var themeMode: String = THEME_MODE_SYSTEM
+    private var currentStyle: String = "default"
     private var isInitialized = false
     
     // 配置版本号：每次保存自增，供 Compose 主题观察以触发重组
@@ -72,6 +74,7 @@ object UIConfig {
         useIconTint = prefs.getBoolean(KEY_USE_ICON_TINT, true)
         currentTheme = prefs.getString(KEY_CURRENT_THEME, "default") ?: "default"
         themeMode = prefs.getString(KEY_THEME_MODE, THEME_MODE_SYSTEM) ?: THEME_MODE_SYSTEM
+        currentStyle = prefs.getString(KEY_CURRENT_STYLE, "default") ?: "default"
     }
 
     /**
@@ -163,6 +166,7 @@ object UIConfig {
             putBoolean(KEY_USE_ICON_TINT, useIconTint)
             putString(KEY_CURRENT_THEME, currentTheme)
             putString(KEY_THEME_MODE, themeMode)
+            putString(KEY_CURRENT_STYLE, currentStyle)
         }.apply()
         _configVersion.value += 1
         Logger.d(TAG, Str.get(R.string.config_saved))
@@ -277,18 +281,31 @@ object UIConfig {
                 put("experimental", JSONObject().apply {
                     put("enableGlassEffect", true)
                     put("enableRipple", true)
+                    put("enableNeumorphism", false)
+                    put("enableNeumorphismInset", true)
+                    put("enableNeumorphismGlow", true)
+                    put("neumorphismIntensity", "light")
+                    put("animationSpeed", "medium")
                 })
                 put("gradient", JSONObject().apply {
                     put("enabled", true)
                     put("mode", GRADIENT_MODE_SINGLE)
+                    put("mode_dark", GRADIENT_MODE_SINGLE)
                     put("color", "#FFC4D6DF")
                     put("color_dark", "#FF4C4F51")
                     put("from", GRADIENT_DIR_BOTTOM_RIGHT)
+                    put("from_dark", GRADIENT_DIR_BOTTOM_RIGHT)
                     put("to", GRADIENT_DIR_TOP_LEFT)
+                    put("to_dark", GRADIENT_DIR_TOP_LEFT)
                     put("colors", org.json.JSONArray().apply {
                         put("#FFC4D6DF")
                         put("#FFD6E8F2")
                         put("#FFEAF4FA")
+                    })
+                    put("colors_dark", org.json.JSONArray().apply {
+                        put("#FF4C4F51")
+                        put("#FF5A5E62")
+                        put("#FF6B6F73")
                     })
                 })
             }
@@ -436,10 +453,15 @@ object UIConfig {
     }
     
     fun resetToDefault() {
+        val savedStyle = currentStyle
         config = getDefaultConfig()
         useIconTint = true
         currentTheme = "default"
         themeMode = THEME_MODE_SYSTEM
+        currentStyle = savedStyle
+        try {
+            com.UIN.Tool.ui.common.StyleManager.clearCache()
+        } catch (_: Exception) {}
         saveConfig()
         Logger.i(TAG, Str.get(R.string.reset_to_default_config))
     }
@@ -469,6 +491,13 @@ object UIConfig {
         saveConfig()
     }
     
+    fun getCurrentStyle(): String = currentStyle
+
+    fun setCurrentStyle(style: String) {
+        currentStyle = style
+        saveConfig()
+    }
+
     fun isSystemDark(): Boolean {
         val uiMode = context.resources.configuration.uiMode
         return (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
@@ -486,9 +515,84 @@ object UIConfig {
     }
     
     fun isGlassEffectEnabled(): Boolean = getBoolean("enableGlassEffect", true)
+    fun getTranslucentAlpha(): Float {
+        val v = config.optJSONObject("experimental")?.optDouble("translucentAlpha", 0.5) ?: 0.5
+        return v.toFloat().coerceIn(0.05f, 0.95f)
+    }
+    fun setTranslucentAlpha(value: Float) {
+        try {
+            if (!config.has("experimental")) config.put("experimental", JSONObject())
+            config.getJSONObject("experimental").put("translucentAlpha", value.toDouble())
+            saveConfig()
+        } catch (e: Exception) { Logger.e(TAG, "Failed to set translucentAlpha", e) }
+    }
     fun isRippleEnabled(): Boolean = getBoolean("enableRipple", true)
     fun isBoldEnabled(): Boolean = config.optJSONObject("font")?.optBoolean("enableBold", true) ?: true
     fun getFontFamily(): String = config.optJSONObject("font")?.optString("fontFamily", "sans-serif") ?: "sans-serif"
+
+    fun setFontFamily(value: String) {
+        try {
+            if (!config.has("font")) config.put("font", JSONObject())
+            config.getJSONObject("font").put("fontFamily", value)
+            saveConfig()
+        } catch (e: Exception) { Logger.e(TAG, "Failed to set fontFamily", e) }
+    }
+
+    fun getLanguage(): String = config.optJSONObject("font")?.optString("language", "system") ?: "system"
+    fun setLanguage(value: String) {
+        try {
+            if (!config.has("font")) config.put("font", JSONObject())
+            config.getJSONObject("font").put("language", value)
+            saveConfig()
+        } catch (e: Exception) { Logger.e(TAG, "Failed to set language", e) }
+    }
+
+    // ==================== 新拟态配置 ====================
+
+    fun isNeumorphismEnabled(): Boolean = getBoolean("enableNeumorphism", false)
+    fun setNeumorphismEnabled(enabled: Boolean) = updateBoolean("enableNeumorphism", enabled)
+
+    fun getNeumorphismIntensity(): String {
+        val exp = config.optJSONObject("experimental")
+        return exp?.optString("neumorphismIntensity", "light") ?: "light"
+    }
+
+    fun setNeumorphismIntensity(intensity: String) {
+        val normalized = if (intensity in listOf("light", "medium", "strong")) intensity else "light"
+        val exp = config.optJSONObject("experimental") ?: JSONObject()
+        exp.put("neumorphismIntensity", normalized)
+        config.put("experimental", exp)
+        saveConfig()
+    }
+
+    fun isNeumorphismInsetEnabled(): Boolean = getBoolean("enableNeumorphismInset", true)
+
+    fun setNeumorphismInsetEnabled(enabled: Boolean) = updateBoolean("enableNeumorphismInset", enabled)
+
+    fun isNeumorphismGlowEnabled(): Boolean = getBoolean("enableNeumorphismGlow", true)
+
+    fun setNeumorphismGlowEnabled(enabled: Boolean) = updateBoolean("enableNeumorphismGlow", enabled)
+
+    fun getAnimationSpeed(): String {
+        val exp = config.optJSONObject("experimental")
+        return exp?.optString("animationSpeed", "medium") ?: "medium"
+    }
+
+    fun setAnimationSpeed(speed: String) {
+        val normalized = if (speed in listOf("fast", "medium", "slow")) speed else "medium"
+        val exp = config.optJSONObject("experimental") ?: JSONObject()
+        exp.put("animationSpeed", normalized)
+        config.put("experimental", exp)
+        saveConfig()
+    }
+
+    fun getAnimationSpeedMultiplier(): Float {
+        return when (getAnimationSpeed()) {
+            "fast" -> 0.6f
+            "slow" -> 1.5f
+            else -> 1.0f
+        }
+    }
 
     // ==================== 渐变背景配置 ====================
 
@@ -545,6 +649,35 @@ object UIConfig {
             arr.optString(i, "").takeIf { it.isNotEmpty() }?.let { list.add(it) }
         }
         return if (list.isNotEmpty()) list else listOf("#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA")
+    }
+
+    fun getGradientColorsStringDark(): List<String> {
+        val arr = config.optJSONObject("gradient")?.optJSONArray("colors_dark")
+        if (arr == null) {
+            return getGradientColorsString()
+        }
+        val list = mutableListOf<String>()
+        for (i in 0 until arr.length()) {
+            arr.optString(i, "").takeIf { it.isNotEmpty() }?.let { list.add(it) }
+        }
+        return if (list.isNotEmpty()) list else listOf("#FF4C4F51", "#FF5A5E62", "#FF6B6F73")
+    }
+
+    fun getGradientFromDark(): String {
+        val dir = config.optJSONObject("gradient")?.optString("from_dark", GRADIENT_DIR_BOTTOM_RIGHT)
+            ?: GRADIENT_DIR_BOTTOM_RIGHT
+        return if (GRADIENT_DIRECTIONS.contains(dir)) dir else GRADIENT_DIR_BOTTOM_RIGHT
+    }
+
+    fun getGradientToDark(): String {
+        val dir = config.optJSONObject("gradient")?.optString("to_dark", GRADIENT_DIR_TOP_LEFT)
+            ?: GRADIENT_DIR_TOP_LEFT
+        return if (GRADIENT_DIRECTIONS.contains(dir)) dir else GRADIENT_DIR_TOP_LEFT
+    }
+
+    fun getGradientModeDark(): String {
+        val mode = config.optJSONObject("gradient")?.optString("mode_dark", GRADIENT_MODE_SINGLE) ?: GRADIENT_MODE_SINGLE
+        return if (mode == GRADIENT_MODE_SINGLE || mode == GRADIENT_MODE_MULTI) mode else GRADIENT_MODE_SINGLE
     }
 
     fun setGradientBackgroundEnabled(enabled: Boolean) {

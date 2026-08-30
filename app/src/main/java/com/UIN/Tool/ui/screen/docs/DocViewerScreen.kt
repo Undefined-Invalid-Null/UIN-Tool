@@ -99,7 +99,10 @@ private suspend fun loadDocument(docType: String, onResult: (String) -> Unit) {
 
     try {
         val appContext = com.UIN.Tool.UinApplication.getInstance()
-        val inputStream = appContext.assets.open("docs/$fileName")
+        val language = com.UIN.Tool.utils.UIConfig.getLanguage()
+        val isEnglish = language == "en" || (language == "system" && java.util.Locale.getDefault().language == "en")
+        val path = if (isEnglish && docType != "contributors") "docs/en/$fileName" else "docs/zh-cn/$fileName"
+        val inputStream = appContext.assets.open(path)
         val reader = BufferedReader(InputStreamReader(inputStream, "UTF-8"))
         val content = reader.readText()
         reader.close()

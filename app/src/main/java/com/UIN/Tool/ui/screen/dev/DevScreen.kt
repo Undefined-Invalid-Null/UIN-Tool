@@ -6,9 +6,12 @@ import com.UIN.Tool.utils.Str
 import android.content.Intent
 // ui/screen/dev/DevScreen.kt - 添加缺失的 import
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -39,6 +42,7 @@ fun DevScreen() {
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var isExporting by remember { mutableStateOf(false) }
+    var neuOverscroll by remember { mutableFloatStateOf(0f) }
 
     // 创建插件对话框状态
     var showCreatePluginDialog by remember { mutableStateOf(false) }
@@ -48,6 +52,23 @@ fun DevScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = { neuOverscroll = 0f },
+                    onDragCancel = { neuOverscroll = 0f },
+                    onVerticalDrag = { _, dragAmount ->
+                        val atTop = scrollState.value == 0 && dragAmount > 0
+                        val atBottom = !scrollState.canScrollForward && dragAmount < 0
+                        if (atTop || atBottom) {
+                            neuOverscroll = (neuOverscroll + dragAmount * 0.35f).coerceIn(-25f, 25f)
+                        }
+                    }
+                )
+            }
+            .graphicsLayer {
+                scaleY = 1f + neuOverscroll * 0.004f
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, if (neuOverscroll > 0) 0f else 1f)
+            }
             .verticalScroll(scrollState)
             .padding(16.dp)
             .padding(bottom = 84.dp),
@@ -210,7 +231,9 @@ fun DevScreen() {
                             showCreatePluginDialog = false
                             navigateToWizard(context, "native", "")
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                     
                     // ✅ 纯 WebView（无后端）
@@ -220,10 +243,11 @@ fun DevScreen() {
                             selectedUiType = "web"
                             isWebViewOnly = true
                             showCreatePluginDialog = false
-                            // 无后端，直接跳转
                             navigateToWizard(context, "web", "")
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                     
                     // WebView + 后端
@@ -233,10 +257,11 @@ fun DevScreen() {
                             selectedUiType = "web"
                             isWebViewOnly = false
                             showCreatePluginDialog = false
-                            // 新式后端：统一走启动脚本模式（启动命令在向导里填写）
                             navigateToWizard(context, "web", "other")
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                     
                     // ✅ CUI 终端
@@ -248,7 +273,9 @@ fun DevScreen() {
                             showCreatePluginDialog = false
                             navigateToWizard(context, "cui", "")
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                     
                     UnifiedDialogTextButton(

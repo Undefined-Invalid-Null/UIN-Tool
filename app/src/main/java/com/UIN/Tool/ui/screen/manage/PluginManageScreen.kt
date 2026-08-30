@@ -6,17 +6,17 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.UIN.Tool.utils.UIConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -26,8 +26,10 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,6 +54,8 @@ import java.util.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
+import com.UIN.Tool.ui.theme.gradientBackgroundBrush
+
 
 private const val TAG = "PluginManageScreen"
 
@@ -82,6 +86,8 @@ fun PluginManageScreen(
     var selectedCategory by remember { mutableStateOf(Str.get(R.string.all)) }
     var categoryTargetIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var selectionMode by remember { mutableStateOf(false) }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val drawerScope = rememberCoroutineScope()
 
     fun loadPlugins() {
         pluginManager.refreshPlugins()
@@ -446,6 +452,102 @@ fun PluginManageScreen(
         AppLog.i(TAG, Str.get(R.string.plugin_management_ui_initialized))
     }
 
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.width(280.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.background
+            ) {
+                val textPrimary = if (UIConfig.shouldUseDarkTheme()) Color(0xFFD0D0D0) else Color(0xFF333333)
+                val textSecondary = if (UIConfig.shouldUseDarkTheme()) Color(0xFFB0B0B0) else Color(0xFF666666)
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val widthPx = with(LocalDensity.current) { 280.dp.toPx() }
+                    val heightPx = with(LocalDensity.current) { 600.dp.toPx() }
+                    val gradientBrush = gradientBackgroundBrush(widthPx, heightPx)
+                    if (gradientBrush != null) {
+                        Box(modifier = Modifier.fillMaxSize().background(gradientBrush))
+                    }
+                    Box(modifier = Modifier.fillMaxHeight().navigationBarsPadding()) {
+                        Column(
+                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                        ) {
+                            Spacer(Modifier.height(140.dp))
+                            categories.forEach { category ->
+                                val isSelected = selectedCategory == category
+                                val neu = UIConfig.isNeumorphismEnabled()
+                                val isDark = UIConfig.shouldUseDarkTheme()
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 2.dp)
+                                        .then(
+                                            if (neu) {
+                                                Modifier.neuRaised(
+                                                    RoundedCornerShape(12.dp), isDark, NeuDefaults.Intensity.LIGHT,
+                                                    cornerRadius = 12.dp, backgroundColor = Color.Transparent
+                                                ).background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                                    else MaterialTheme.colorScheme.surface,
+                                                    RoundedCornerShape(12.dp)
+                                                )
+                                            } else Modifier
+                                        )
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable {
+                                            selectedCategory = category
+                                            drawerScope.launch { drawerState.close() }
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        if (isSelected) Icons.Default.CheckCircle else Icons.Default.Circle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(
+                                        text = category,
+                                        fontSize = 14.sp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(48.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .background(MaterialTheme.colorScheme.background)
+                                .padding(top = 48.dp, start = 20.dp, end = 20.dp, bottom = 20.dp)
+                                .align(Alignment.TopCenter)
+                        ) {
+                            Column {
+                                Text(
+                                    "分类",
+                                    color = textPrimary,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    selectedCategory,
+                                    color = textSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        gesturesEnabled = true
+    ) {
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
@@ -453,6 +555,13 @@ fun PluginManageScreen(
                 titleText = Str.get(R.string.plugin_management),
                 onBack = onBack,
                 actions = {
+                    UnifiedIconButton(
+                        icon = Icons.Default.Menu,
+                        onClick = {
+                            drawerScope.launch { drawerState.open() }
+                        },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     UnifiedIconButton(
                         icon = if (selectionMode) Icons.Default.Close else Icons.Default.Checklist,
                         onClick = {
@@ -495,9 +604,11 @@ fun PluginManageScreen(
             state = manageListState,
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
                 UIComponents.LastUpdatedCaption(
                     time = lastRefreshTime,
@@ -511,26 +622,41 @@ fun PluginManageScreen(
                     placeholder = Str.get(R.string.search_plugins),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 14.dp),
                     leadingIcon = Icons.Default.Search
                 )
             }
 
-        if (categories.size > 1) {
+        if (selectedCategory != Str.get(R.string.all)) {
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
                         .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    categories.forEach { category ->
-                        UnifiedChip(
-                            label = category,
-                            selected = selectedCategory == category,
-                            onClick = { selectedCategory = category }
-                        )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(AppDimens.radiusSmall)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = selectedCategory,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            UnifiedIconButton(
+                                icon = Icons.Default.Close,
+                                onClick = { selectedCategory = Str.get(R.string.all) },
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }
@@ -654,26 +780,24 @@ fun PluginManageScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (selectionMode) {
-                        TextButton(
+                        UnifiedButton(
+                            text = if (selectedPluginIds.size == filteredPlugins.size) Str.get(R.string.deselect_all_2) else Str.get(R.string.select_all),
                             onClick = {
                                 selectedPluginIds = if (selectedPluginIds.size == filteredPlugins.size) {
                                     emptySet()
                                 } else {
                                     filteredPlugins.map { it.pluginId }.toSet()
                                 }
-                            }
-                        ) {
-                            Text(
-                                if (selectedPluginIds.size == filteredPlugins.size) Str.get(R.string.deselect_all_2) else Str.get(R.string.select_all),
-                                fontSize = AppDimens.captionTextSize.sp
-                            )
-                        }
+                            },
+                            variant = ButtonVariant.Text,
+                            size = ButtonSize.Small
+                        )
                     }
                     if (selectedPluginIds.isNotEmpty()) {
                         Text(
                             text = Str.get(R.string.selectedpluginids_size_selected, selectedPluginIds.size),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -741,6 +865,7 @@ onViewPermissions = { showPermissionDetail = plugin }
             }
         }
         }
+    }
     }
     }
     }
@@ -885,9 +1010,9 @@ fun PermissionManagementDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .wrapContentHeight()
-                .heightIn(max = 450.dp)
-                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
-            containerColor = Color.Transparent
+                .heightIn(max = 450.dp),
+            containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(AppDimens.dialogCornerRadius)
         ) {
             Column(
                 modifier = Modifier
@@ -901,7 +1026,7 @@ fun PermissionManagementDialog(
                     Icon(
                         Icons.Default.Security,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(28.dp)
                     )
                     Text(
@@ -943,17 +1068,13 @@ fun PermissionManagementDialog(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        IconButton(
+                        UnifiedIconButton(
+                            icon = Icons.Default.Refresh,
                             onClick = { refreshPermissions() },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Refresh,
-                                contentDescription = Str.get(R.string.refresh),
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                            modifier = Modifier.size(28.dp),
+                            contentDescription = Str.get(R.string.refresh),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -1017,7 +1138,8 @@ fun PermissionManagementDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (permissions.isNotEmpty() && !allGranted) {
-                        Button(
+                        UnifiedButton(
+                            text = if (isRequesting) Str.get(R.string.requesting) else Str.get(R.string.grant_all_permissions),
                             onClick = {
                                 isRequesting = true
                                 pluginManager.requestPluginPermissionsByGroups(
@@ -1040,33 +1162,18 @@ fun PermissionManagementDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(40.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
+                            icon = if (isRequesting) null else Icons.Default.Check,
+                            loading = isRequesting,
                             enabled = !isRequesting
-                        ) {
-                            if (isRequesting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            } else {
-                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-                            Text(if (isRequesting) Str.get(R.string.requesting) else Str.get(R.string.grant_all_permissions), fontSize = AppDimens.bodyTextSize.sp)
-                        }
+                        )
                     }
 
                     val hasSpecial = permissions.keys.any {
                         PluginPermissionManager.isSpecialPermission(it) && !(permissions[it] ?: false)
                     }
                     if (hasSpecial) {
-                        Button(
+                        UnifiedButton(
+                            text = Str.get(R.string.go_to_system_settings_to_enable_spec),
                             onClick = {
                                 try {
                                     val intent = android.content.Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -1079,31 +1186,19 @@ fun PermissionManagementDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(40.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                        ) {
-                            Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(Str.get(R.string.go_to_system_settings_to_enable_spec), fontSize = AppDimens.bodyTextSize.sp)
-                        }
+                            variant = ButtonVariant.Secondary,
+                            icon = Icons.Outlined.Settings
+                        )
                     }
 
-                    Button(
+                    UnifiedButton(
+                        text = Str.get(R.string.close),
                         onClick = onDismiss,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                    ) {
-                        Text(Str.get(R.string.close), fontSize = AppDimens.bodyTextSize.sp)
-                    }
+                        variant = ButtonVariant.Outlined
+                    )
                 }
             }
         }
@@ -1180,22 +1275,19 @@ fun PermissionItemCompact(
     granted: Boolean,
     onRequest: () -> Unit
 ) {
-    Card(
+    val bgColor = if (AppColors.glassEnabled())
+        AppColors.glassBackground()
+    else
+        if (granted) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.errorContainer
+
+    UnifiedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(AppDimens.cardCornerRadius),
-        border = null,
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (AppColors.glassEnabled())
-                AppColors.glassBackground()
-            else
-                if (granted) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.errorContainer
-        )
+        onClick = onRequest
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -1235,19 +1327,14 @@ fun PermissionItemCompact(
                     )
                 }
             } else {
-                Button(
+                UnifiedButton(
+                    text = Str.get(R.string.grant),
                     onClick = onRequest,
                     modifier = Modifier.height(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                ) {
-                    Text(Str.get(R.string.grant), fontSize = AppDimens.captionTextSize.sp)
-                }
-            }
+                    size = ButtonSize.Small
+                )
         }
+    }
     }
 }
 
@@ -1276,12 +1363,19 @@ fun PluginManageItem(
 
     UnifiedCard(
         modifier = modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .then(
+                if (isSelected) Modifier.background(
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                    RoundedCornerShape(12.dp)
+                ) else Modifier
+            ),
         onClick = { onDetail() }
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (selectionMode) {
@@ -1300,7 +1394,7 @@ fun PluginManageItem(
                 modifier = Modifier
                     .size(44.dp)
                     .background(
-                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(AppDimens.radiusMedium)
                     ),
                 contentAlignment = Alignment.Center
@@ -1310,7 +1404,7 @@ fun PluginManageItem(
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold
                     ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -1327,7 +1421,6 @@ fun PluginManageItem(
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        maxLines = 1,
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
@@ -1386,8 +1479,7 @@ fun PluginManageItem(
                 Text(
                     text = plugin.pluginId,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Row(
@@ -1421,13 +1513,13 @@ fun PluginManageItem(
 
                     if (plugin.isWebPlugin()) {
                         Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                             shape = RoundedCornerShape(AppDimens.radiusSmall)
                         ) {
                             Text(
                                 text = Str.get(R.string.web_label),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                             )
                         }
@@ -1450,7 +1542,7 @@ fun PluginManageItem(
                             color = if (hasMissingPermissions)
                                 MaterialTheme.colorScheme.errorContainer
                             else
-                                MaterialTheme.colorScheme.primaryContainer,
+                                MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(AppDimens.radiusSmall)
                         ) {
                             Text(
@@ -1459,7 +1551,7 @@ fun PluginManageItem(
                                 color = if (hasMissingPermissions)
                                     MaterialTheme.colorScheme.onErrorContainer
                                 else
-                                    MaterialTheme.colorScheme.onPrimaryContainer,
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                             )
                         }
@@ -1480,7 +1572,7 @@ fun PluginManageItem(
                         tint = if (hasMissingPermissions)
                             MaterialTheme.colorScheme.error
                         else
-                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -1488,7 +1580,7 @@ fun PluginManageItem(
                 UnifiedIconButton(
                     icon = Icons.Default.Add,
                     onClick = onOpen,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     contentDescription = Str.get(R.string.add_shortcut),
                     modifier = Modifier.size(32.dp)
                 )
@@ -1551,8 +1643,9 @@ fun PluginDetailDialog(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .heightIn(max = 620.dp)
-                .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
-            containerColor = Color.Transparent
+                .dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius)),
+            containerColor = Color.Transparent,
+            shape = RoundedCornerShape(AppDimens.dialogCornerRadius)
         ) {
             Column(
                 modifier = Modifier
@@ -1567,7 +1660,7 @@ fun PluginDetailDialog(
                     Icon(
                         Icons.Default.Extension,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(28.dp)
                     )
                     Text(
@@ -1659,6 +1752,10 @@ fun PluginDetailDialog(
                     }
 
                     item {
+                        Divider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
                         SectionHeader(
                             Str.get(R.string.plugin_file_structure),
                             MaterialTheme.colorScheme.secondary
@@ -1673,6 +1770,10 @@ fun PluginDetailDialog(
                     }
 
                     item {
+                        Divider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
                         SectionHeader(
                             Str.get(R.string.plugin_json_raw),
                             MaterialTheme.colorScheme.tertiary
@@ -1696,13 +1797,13 @@ fun PluginDetailDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(AppDimens.radiusMedium)
                     ) {
                         Text(
                             text = Str.get(R.string.plugin_size),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -1727,7 +1828,8 @@ fun PluginDetailDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Button(
+                UnifiedButton(
+                    text = Str.get(R.string.run),
                     onClick = {
                         ServiceLocator.getPluginManager().openPlugin(plugin.pluginId, context)
                         onDismiss()
@@ -1735,21 +1837,14 @@ fun PluginDetailDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(40.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(Str.get(R.string.run), fontSize = AppDimens.bodyTextSize.sp)
-                }
+                    icon = Icons.Default.PlayArrow
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (onChangeCategory != null) {
-                    Button(
+                    UnifiedButton(
+                        text = Str.get(R.string.btn_change_category),
                         onClick = {
                             onChangeCategory()
                             onDismiss()
@@ -1757,22 +1852,16 @@ fun PluginDetailDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                    ) {
-                        Icon(Icons.Default.Category, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(Str.get(R.string.btn_change_category), fontSize = AppDimens.bodyTextSize.sp)
-                    }
+                        variant = ButtonVariant.Secondary,
+                        icon = Icons.Default.Category
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 if (onUninstall != null) {
-                    Button(
+                    UnifiedButton(
+                        text = Str.get(R.string.btn_uninstall),
                         onClick = {
                             onUninstall()
                             onDismiss()
@@ -1780,16 +1869,9 @@ fun PluginDetailDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(Str.get(R.string.btn_uninstall), fontSize = AppDimens.bodyTextSize.sp)
-                    }
+                        variant = ButtonVariant.Destructive,
+                        icon = Icons.Default.Delete
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -1872,9 +1954,10 @@ fun CategoryChangeDialog(
             }
         },
         confirmButton = {
-            Button(
+            UnifiedButton(
+                text = Str.get(R.string.ok_2),
                 onClick = {
-                    val newCategory = category ?: return@Button
+                    val newCategory = category ?: return@UnifiedButton
                     targetPluginIds.forEach { id ->
                         pluginManager.updatePluginCategory(id, newCategory)
                     }
@@ -1883,14 +1966,8 @@ fun CategoryChangeDialog(
                     onDismiss()
                 },
                 enabled = category != null && category.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(AppDimens.radiusLarge)
-            ) {
-                Text(Str.get(R.string.ok_2))
-            }
+                modifier = Modifier.fillMaxWidth()
+            )
         },
         dismissButton = {
             UnifiedDialogTextButton(onClick = onDismiss) {

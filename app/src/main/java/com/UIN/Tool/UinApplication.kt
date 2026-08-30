@@ -55,6 +55,8 @@ class UinApplication : TermuxApplication() {
 
         try {
             UIConfig.init(this)
+            com.UIN.Tool.ui.common.StyleManager.init()
+            applyLocale()
             Logger.i(TAG, Str.get(R.string.uiconfig_initialized))
         } catch (e: Exception) {
             Logger.e(TAG, "UIConfig init failed", e)
@@ -138,6 +140,21 @@ class UinApplication : TermuxApplication() {
         } catch (e: Exception) {
             Logger.e(TAG, "installGlobalCrashHandler failed", e)
         }
+    }
+
+    fun applyLocale() {
+        if (!UIConfig.isInitialized()) return
+        val lang = UIConfig.getInstance().getLanguage()
+        val locale = when (lang) {
+            "zh" -> java.util.Locale.CHINESE
+            "en" -> java.util.Locale.ENGLISH
+            else -> java.util.Locale.getDefault()
+        }
+        java.util.Locale.setDefault(locale)
+        val config = android.content.res.Configuration(resources.configuration)
+        config.setLocales(android.os.LocaleList(locale))
+        @Suppress("DEPRECATION")
+        resources.updateConfiguration(config, resources.displayMetrics)
     }
 
     /**

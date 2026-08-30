@@ -181,6 +181,7 @@ fun DevToolsScreen(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 // ==================== 开发者选项 ====================
+                item { Spacer(modifier = Modifier.height(8.dp)) }
                 item {
                     UnifiedCard(
                         modifier = Modifier

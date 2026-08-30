@@ -4,6 +4,7 @@ package com.UIN.Tool.ui.theme
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -152,10 +153,18 @@ object AppColors {
     
     @Composable
     fun glassEnabled(): Boolean = UIConfig.isInitialized() && UIConfig.isGlassEffectEnabled()
+
+    @Composable
+    fun translucentAlpha(): Float {
+        UIConfig.configVersion.collectAsState().value
+        return UIConfig.getTranslucentAlpha()
+    }
     
     @Composable
     fun glassBackground(): Color = if (glassEnabled()) {
-        dynamicColor("glass_background", surface().copy(alpha = 0.7f))
+        UIConfig.configVersion.collectAsState().value
+        val alpha = UIConfig.getTranslucentAlpha()
+        dynamicColor("glass_background", surface()).copy(alpha = alpha)
     } else {
         surface()
     }

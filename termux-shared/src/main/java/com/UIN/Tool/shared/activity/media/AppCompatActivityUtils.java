@@ -1,5 +1,8 @@
 package com.UIN.Tool.shared.activity.media;
 
+import android.graphics.drawable.Drawable;
+
+import androidx.annotation.ColorRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.StyleRes;
@@ -7,6 +10,8 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import com.UIN.Tool.shared.logger.Logger;
 import com.UIN.Tool.shared.theme.NightMode;
@@ -45,8 +50,29 @@ public class AppCompatActivityUtils {
      */
     public static void setToolbar(@NonNull AppCompatActivity activity, @IdRes int id) {
         Toolbar toolbar = activity.findViewById(id);
-        if (toolbar != null)
+        if (toolbar != null) {
             activity.setSupportActionBar(toolbar);
+            // Tint icons white immediately
+            tintToolbarIcons(toolbar, activity);
+            // Re-tint after menu is inflated (overflow icon created lazily)
+            toolbar.postDelayed(() -> tintToolbarIcons(toolbar, activity), 200);
+        }
+    }
+
+    private static void tintToolbarIcons(Toolbar toolbar, AppCompatActivity activity) {
+        int white = ContextCompat.getColor(activity, android.R.color.white);
+        Drawable navIcon = toolbar.getNavigationIcon();
+        if (navIcon != null) {
+            navIcon = DrawableCompat.wrap(navIcon).mutate();
+            DrawableCompat.setTint(navIcon, white);
+            toolbar.setNavigationIcon(navIcon);
+        }
+        Drawable overflowIcon = toolbar.getOverflowIcon();
+        if (overflowIcon != null) {
+            overflowIcon = DrawableCompat.wrap(overflowIcon).mutate();
+            DrawableCompat.setTint(overflowIcon, white);
+            toolbar.setOverflowIcon(overflowIcon);
+        }
     }
 
     /** Set activity toolbar title.

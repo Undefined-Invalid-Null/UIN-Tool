@@ -231,10 +231,26 @@ fun gradientBackgroundBrush(widthPx: Float, heightPx: Float): Brush? {
     val dark = isAppDarkTheme()
     val background = parseUiColor(UIConfig.getInstance(), "background", dark, MaterialTheme.colorScheme.background)
     val colors = if (dark) {
-        // 深色模式：渐变始终使用深色单色（默认 #FF4C4F51），不受浅色多色配置影响
-        val stored = UIConfig.getInstance().getGradientColorStringDark()
-        val c = parseColor(stored, Color(0xFF4C4F51))
-        listOf(c, background)
+        when (UIConfig.getInstance().getGradientModeDark()) {
+            UIConfig.GRADIENT_MODE_SINGLE -> {
+                val stored = UIConfig.getInstance().getGradientColorStringDark()
+                val c = parseColor(stored, Color(0xFF4C4F51))
+                listOf(c, background)
+            }
+            else -> {
+                val parsed = UIConfig.getInstance().getGradientColorsStringDark()
+                    .map { parseColor(it, Color(0xFF4C4F51)) }
+                    .filter { it != Color.Unspecified }
+                if (parsed.isEmpty()) {
+                    val stored = UIConfig.getInstance().getGradientColorStringDark()
+                    listOf(parseColor(stored, Color(0xFF4C4F51)), background)
+                } else if (parsed.size == 1) {
+                    listOf(parsed[0], background)
+                } else {
+                    parsed
+                }
+            }
+        }
     } else when (UIConfig.getInstance().getGradientMode()) {
         UIConfig.GRADIENT_MODE_SINGLE -> {
             val stored = UIConfig.getInstance().getGradientColorString()
@@ -254,8 +270,10 @@ fun gradientBackgroundBrush(widthPx: Float, heightPx: Float): Brush? {
             }
         }
     }
-    val from = gradientDirectionOffset(UIConfig.getInstance().getGradientFrom(), widthPx, heightPx)
-    val to = gradientDirectionOffset(UIConfig.getInstance().getGradientTo(), widthPx, heightPx)
+    val fromDirection = if (dark) UIConfig.getInstance().getGradientFromDark() else UIConfig.getInstance().getGradientFrom()
+    val toDirection = if (dark) UIConfig.getInstance().getGradientToDark() else UIConfig.getInstance().getGradientTo()
+    val from = gradientDirectionOffset(fromDirection, widthPx, heightPx)
+    val to = gradientDirectionOffset(toDirection, widthPx, heightPx)
     return Brush.linearGradient(colors = colors, start = from, end = to)
 }
 
@@ -372,6 +390,7 @@ private class NoRippleNode : Modifier.Node(), DrawModifierNode {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UINToolTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -421,8 +440,8 @@ fun UINToolTheme(
     }
 
     val rippleEnabled = if (UIConfig.isInitialized()) UIConfig.isRippleEnabled() else true
-    val effectiveIndication = if (rippleEnabled) LocalIndication.current else NoRippleIndication
-    CompositionLocalProvider(LocalIndication provides effectiveIndication) {
+    val rippleConfig: RippleConfiguration? = if (rippleEnabled) RippleConfiguration() else null
+    CompositionLocalProvider(LocalRippleConfiguration provides rippleConfig) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,
@@ -449,6 +468,8 @@ fun UINToolTheme(
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    val isDark = isAppDarkTheme()
+                    key(isDark) {
                     val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
                     val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
                     val gradientBrush = gradientBackgroundBrush(widthPx, heightPx)
@@ -481,6 +502,7 @@ fun UINToolTheme(
                             )
                         }
                     }
+                    } // key(isDark)
                 }
             }
         )

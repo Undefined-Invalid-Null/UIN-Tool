@@ -57,8 +57,8 @@ fun DocBrowserScreen() {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
+                .padding(paddingValues),
+            contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(docs) { doc ->

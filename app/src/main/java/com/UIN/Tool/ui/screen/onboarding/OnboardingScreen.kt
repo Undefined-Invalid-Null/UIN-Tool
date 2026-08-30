@@ -176,24 +176,24 @@ fun OnboardingScreen(
                                     Icon(
                                         imageVector = Icons.Outlined.FormatQuote,
                                         contentDescription = null,
-                                        tint = Color(0xFF1565C0),
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     UnifiedSectionTitle(
                                         text = Str.get(R.string.a_word_from_the_author),
-                                        color = Color(0xFF0D47A1)
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
 
                                 UnifiedBodyText(
                                     text = Str.get(R.string.onboarding_author_words),
-                                    color = Color(0xFF0D47A1)
+                                    color = MaterialTheme.colorScheme.primary
                                 )
 
                                 HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 12.dp),
-                                    color = Color(0xFF1565C0).copy(alpha = 0.15f)
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                 )
 
                                 Row(
@@ -203,26 +203,26 @@ fun OnboardingScreen(
                                     Icon(
                                         imageVector = Icons.Outlined.Terminal,
                                         contentDescription = null,
-                                        tint = Color(0xFFE65100),
+                                        tint = AppColors.warning(),
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     UnifiedSectionTitle(
                                         text = Str.get(R.string.terminal_environment_notice),
-                                        color = Color(0xFFBF360C)
+                                        color = MaterialTheme.colorScheme.error
                                     )
                                 }
 
                                 UnifiedBodyText(
                                     text = Str.get(R.string.onboarding_terminal_notice),
-                                    color = Color(0xFFBF360C)
+                                    color = MaterialTheme.colorScheme.error
                                 )
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
                                 HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 0.dp),
-                                    color = Color(0xFF2E7D32).copy(alpha = 0.15f)
+                                    color = AppColors.success().copy(alpha = 0.15f)
                                 )
 
                                 Spacer(modifier = Modifier.height(10.dp))
@@ -234,13 +234,13 @@ fun OnboardingScreen(
                                     Icon(
                                         imageVector = Icons.Outlined.Info,
                                         contentDescription = null,
-                                        tint = Color(0xFF2E7D32),
+                                        tint = AppColors.success(),
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     UnifiedSectionTitle(
                                         text = Str.get(R.string.environment_init_notice),
-                                        color = Color(0xFF1B5E20)
+                                        color = AppColors.success()
                                     )
                                 }
                             }

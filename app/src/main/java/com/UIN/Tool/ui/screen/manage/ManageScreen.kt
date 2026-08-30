@@ -13,19 +13,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -43,6 +43,7 @@ import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.backup.BackupManagerActivity
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
 import com.UIN.Tool.ui.screen.permission.PermissionManagerActivity
+import com.UIN.Tool.ui.screen.permission.PluginPermissionActivity
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.formatFileSize
@@ -79,7 +80,6 @@ fun ManageScreen(
     var hasCheckedUpdate by remember { mutableStateOf(false) }
     var hasNewVersion by remember { mutableStateOf(false) }
 
-    // ✅ 复用 App 级单例，避免每次进入页面重建检查器/下载器（并发下载 + 回调死 State 泄漏）
     val updateChecker = remember { ServiceLocator.getUpdateChecker() }
     val updateDownloader = remember { ServiceLocator.getUpdateDownloader() }
 
@@ -105,7 +105,6 @@ fun ManageScreen(
                 } else {
                     hasNewVersion = false
                     if (showNoUpdateToast) {
-                        // ✅ 移除 Emoji
                         AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio))
                     }
                 }
@@ -129,7 +128,6 @@ fun ManageScreen(
                 downloadTarget = null
                 showUpdateDialog = false
                 if (showNoUpdateToast) {
-                    // ✅ 移除 Emoji
                     AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio_2, currentVersion))
                 }
             }
@@ -181,7 +179,7 @@ fun ManageScreen(
         }
     }
 
-    val menuItems = listOf(
+    val pluginItems = listOf(
         ManageMenuItem(
             id = "plugin_manage",
             title = Str.get(R.string.plugin_management),
@@ -195,8 +193,48 @@ fun ManageScreen(
             }
         },
         ManageMenuItem(
-            id = "permission",
-            title = Str.get(R.string.permission_management),
+            id = "plugin_permissions",
+            title = Str.get(R.string.plugin_permissions),
+            icon = Icons.Default.Security,
+            description = Str.get(R.string.manage_plugin_permissions)
+        ) {
+            try {
+                context.startActivity(Intent(context, PluginPermissionActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.permission_management_feature_under_))
+            }
+        },
+        ManageMenuItem(
+            id = "backend_settings",
+            title = Str.get(R.string.backend_runtime_settings),
+            icon = Icons.Default.Storage,
+            description = Str.get(R.string.backend_runtime_settings_desc)
+        ) {
+            try {
+                context.startActivity(Intent(context, BackendSettingsActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.backend_runtime_settings_open_failed))
+            }
+        },
+        ManageMenuItem(
+            id = "widget_config",
+            title = Str.get(R.string.widget_configuration),
+            icon = Icons.Default.Widgets,
+            description = Str.get(R.string.configure_shortcuts_and_widgets)
+        ) {
+            try {
+                val intent = Intent(context, WidgetConfigActivity::class.java)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.widget_config_feature_under_developm))
+            }
+        }
+    )
+
+    val softwareItems = listOf(
+        ManageMenuItem(
+            id = "app_permissions",
+            title = Str.get(R.string.app_permissions),
             icon = Icons.Default.Security,
             description = Str.get(R.string.manage_app_and_plugin_permissions)
         ) {
@@ -204,6 +242,19 @@ fun ManageScreen(
                 context.startActivity(Intent(context, PermissionManagerActivity::class.java))
             } catch (e: Exception) {
                 AppToast.warning(context, Str.get(R.string.permission_management_feature_under_))
+            }
+        },
+        ManageMenuItem(
+            id = "ui_config",
+            title = Str.get(R.string.ui_customization_2),
+            icon = Icons.Default.Palette,
+            description = Str.get(R.string.theme_colors_corner_radius_settings)
+        ) {
+            try {
+                val intent = Intent(context, UIConfigActivity::class.java)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.ui_customization_feature_under_devel))
             }
         },
         ManageMenuItem(
@@ -244,31 +295,6 @@ fun ManageScreen(
             }
         },
         ManageMenuItem(
-            id = "ui_config",
-            title = Str.get(R.string.ui_customization_2),
-            icon = Icons.Default.Palette,
-            description = Str.get(R.string.theme_colors_corner_radius_settings)
-        ) {
-            try {
-                val intent = Intent(context, UIConfigActivity::class.java)
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.ui_customization_feature_under_devel))
-            }
-        },
-        ManageMenuItem(
-            id = "backend_settings",
-            title = Str.get(R.string.backend_runtime_settings),
-            icon = Icons.Default.Storage,
-            description = Str.get(R.string.backend_runtime_settings_desc)
-        ) {
-            try {
-                context.startActivity(Intent(context, BackendSettingsActivity::class.java))
-            } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.backend_runtime_settings_open_failed))
-            }
-        },
-        ManageMenuItem(
             id = "github_mirror",
             title = Str.get(R.string.github_acceleration),
             icon = Icons.Default.Settings,
@@ -278,19 +304,6 @@ fun ManageScreen(
                 context.startActivity(Intent(context, GitHubMirrorActivity::class.java))
             } catch (e: Exception) {
                 AppToast.warning(context, Str.get(R.string.github_acceleration_feature_under_de))
-            }
-        },
-        ManageMenuItem(
-            id = "widget_config",
-            title = Str.get(R.string.widget_configuration),
-            icon = Icons.Default.Widgets,
-            description = Str.get(R.string.configure_shortcuts_and_widgets)
-        ) {
-            try {
-                val intent = Intent(context, WidgetConfigActivity::class.java)
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.widget_config_feature_under_developm))
             }
         },
         ManageMenuItem(
@@ -307,6 +320,7 @@ fun ManageScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .navigationBarsPadding()
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -318,29 +332,92 @@ fun ManageScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 84.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 84.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(menuItems) { item ->
-                ManageMenuItemCard(
-                    item = item,
-                    modifier = Modifier.animateItem(
-                        fadeInSpec = tween(300),
-                        placementSpec = spring(
-                            dampingRatio = 0.5f,
-                            stiffness = 500f
-                        )
-                    )
-                )
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item {
+                UnifiedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Extension,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = Str.get(R.string.plugin_management),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                fontSize = 17.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        pluginItems.forEach { item ->
+                            ManageSectionItem(item = item)
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+
+            item {
+                UnifiedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Apps,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = Str.get(R.string.software),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                fontSize = 17.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        softwareItems.forEach { item ->
+                            ManageSectionItem(item = item)
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
             }
         }
     }
 
-    // ==================== 更新对话框（与开屏共用的 Markdown 弹窗） ====================
     val updateTarget = downloadTarget
     if (showUpdateDialog && updateTarget != null) {
         UpdateDialog(
@@ -377,7 +454,6 @@ fun ManageScreen(
         )
     }
 
-    // ==================== 进度对话框 ====================
     if (showProgressDialog) {
         UnifiedLoadingDialog(
             message = progressMessage,
@@ -385,6 +461,70 @@ fun ManageScreen(
                 showProgressDialog = false
                 updateDownloader.cancelDownload()
             }
+        )
+    }
+}
+
+@Composable
+fun ManageSectionItem(
+    item: ManageMenuItem,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.5f,
+            stiffness = 300f
+        ),
+        label = "item_scale"
+    )
+
+    Row(
+            modifier = modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = item.onClick,
+                onClickLabel = item.title
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            item.icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = item.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -428,16 +568,7 @@ fun ManageMenuItemCard(
                     modifier = Modifier
                         .size(44.dp)
                         .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-                                )
-                            ),
-                            shape = RoundedCornerShape(AppDimens.radiusMedium)
-                        )
-                        .background(
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
+                            color = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(AppDimens.radiusMedium)
                         ),
                     contentAlignment = Alignment.Center
@@ -445,7 +576,7 @@ fun ManageMenuItemCard(
                     Icon(
                         item.icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -459,7 +590,6 @@ fun ManageMenuItemCard(
                         fontWeight = FontWeight.Medium
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
                     modifier = Modifier.padding(horizontal = 2.dp)
                 )
 
@@ -469,7 +599,6 @@ fun ManageMenuItemCard(
                         fontSize = AppDimens.captionTextSize.sp
                     ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
                     modifier = Modifier.padding(horizontal = 2.dp)
                 )
             }

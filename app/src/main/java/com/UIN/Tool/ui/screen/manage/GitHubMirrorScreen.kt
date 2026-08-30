@@ -211,6 +211,7 @@ fun GitHubMirrorScreen(
             contentPadding = PaddingValues(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
                 UIComponents.LastUpdatedCaption(
                     time = lastRefreshTime,

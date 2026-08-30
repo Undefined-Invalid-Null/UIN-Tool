@@ -30,9 +30,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
+import com.UIN.Tool.ui.components.unified.UnifiedSlider
 import kotlin.math.roundToInt
 
 /**
@@ -310,7 +312,7 @@ private fun HueBar(
             .fillMaxWidth()
             .height(28.dp)
             .clip(RoundedCornerShape(AppDimens.radiusSmall))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { offset ->
@@ -351,7 +353,7 @@ private fun SVSquare(
             .fillMaxWidth()
             .height(240.dp)
             .clip(RoundedCornerShape(AppDimens.radiusSmall))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { offset ->
@@ -401,17 +403,11 @@ private fun ColorSliderRow(
             color = labelColor
         )
 
-        Slider(
+        UnifiedSlider(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.roundToInt()) },
             valueRange = valueRange,
-            steps = steps,
-            modifier = Modifier.weight(1f),
-            colors = SliderDefaults.colors(
-                thumbColor = if (isAlpha) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                activeTrackColor = if (isAlpha) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            modifier = Modifier.weight(1f)
         )
 
         Text(

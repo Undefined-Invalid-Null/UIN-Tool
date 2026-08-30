@@ -3,12 +3,21 @@ package com.UIN.Tool.ui.components.unified
 
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -19,22 +28,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip          // ✅ 添加这行
-import androidx.compose.ui.draw.shadow      // ✅ 添加这行
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.BasicTextField
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.isBoldEnabled
+import com.UIN.Tool.utils.UIConfig
 import androidx.compose.material3.LocalContentColor
 
 enum class ButtonVariant {
@@ -90,26 +102,58 @@ fun UnifiedButton(
     enabled: Boolean = true,
     loading: Boolean = false,
     icon: ImageVector? = null,
-    iconPosition: IconPosition = IconPosition.Start
+    iconPosition: IconPosition = IconPosition.Start,
+    containerColor: Color? = null,
+    contentColor: Color? = null
 ) {
-    val (containerColor, contentColor) = when (variant) {
-        ButtonVariant.Primary -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
-        ButtonVariant.Secondary -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
-        ButtonVariant.Destructive -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
-        ButtonVariant.Success -> Color(0xFF4CAF50) to Color.White
-        ButtonVariant.Warning -> Color(0xFFFF9800) to Color.White
-        else -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+    val (resolvedContainerColor, resolvedContentColor) = when {
+        variant == ButtonVariant.Primary && containerColor != null && contentColor != null -> containerColor to contentColor
+        variant == ButtonVariant.Primary && containerColor != null -> containerColor to MaterialTheme.colorScheme.onSurface
+        else -> when (variant) {
+            ButtonVariant.Primary -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+            ButtonVariant.Secondary -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
+            ButtonVariant.Destructive -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
+            ButtonVariant.Success -> Color(0xFF4CAF50) to Color.White
+            ButtonVariant.Warning -> Color(0xFFFF9800) to Color.White
+            else -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+        }
     }
-    
+
     val shape = RoundedCornerShape(size.cornerRadius)
-    
+    val neu = UIConfig.isNeumorphismEnabled()
+    val isDark = UIConfig.shouldUseDarkTheme()
+    val glass = AppColors.glassEnabled()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val neuModifier = if (neu) {
+        when (variant) {
+            ButtonVariant.Outlined, ButtonVariant.Text -> {
+                Modifier
+            }
+            else -> {
+                val neuInset = UIConfig.isNeumorphismInsetEnabled()
+                val currentOffset = if (isPressed) 0f else 5f
+                val bgColor = if (glass) resolvedContainerColor.copy(alpha = AppColors.translucentAlpha()) else resolvedContainerColor
+                if (neuInset && isPressed) {
+                    Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = Color.Transparent, offset = currentOffset)
+                        .background(bgColor, shape)
+                } else {
+                    Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = Color.Transparent, offset = currentOffset)
+                        .background(bgColor, shape)
+                }
+            }
+        }
+    } else Modifier
+
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
         modifier = modifier
-            .height(size.height)
-            .defaultMinSize(minWidth = size.minWidth),
+            .then(neuModifier)
+            .defaultMinSize(minHeight = size.height, minWidth = size.minWidth),
         shape = shape,
+        interactionSource = interactionSource,
         border = if (variant == ButtonVariant.Outlined) {
             BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         } else {
@@ -123,28 +167,25 @@ fun UnifiedButton(
                 contentColor = MaterialTheme.colorScheme.primary
             )
             else -> ButtonDefaults.buttonColors(
-                containerColor = containerColor,
-                contentColor = contentColor,
+                containerColor = resolvedContainerColor,
+                contentColor = resolvedContentColor,
                 disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                 disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             )
         },
-        elevation = when (variant) {
-            ButtonVariant.Outlined, ButtonVariant.Text -> ButtonDefaults.buttonElevation(
-                defaultElevation = 0.dp
-            )
-            else -> ButtonDefaults.buttonElevation(
-                defaultElevation = 2.dp,
-                pressedElevation = 4.dp
-            )
-        }
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            hoveredElevation = 0.dp,
+            focusedElevation = 0.dp
+        )
     ) {
         if (loading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
                 color = when (variant) {
                     ButtonVariant.Outlined, ButtonVariant.Text -> MaterialTheme.colorScheme.primary
-                    else -> contentColor
+                    else -> resolvedContentColor
                 },
                 strokeWidth = 2.dp
             )
@@ -160,7 +201,10 @@ fun UnifiedButton(
                 Text(
                     text = text,
                     fontSize = size.fontSize.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = Int.MAX_VALUE,
+                    softWrap = true,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (icon != null && iconPosition == IconPosition.End) {
                     Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
@@ -190,12 +234,38 @@ fun UnifiedCard(
     containerColor: Color? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val glass = AppColors.glassEnabled()
+    val neu = UIConfig.isNeumorphismEnabled()
+    val isDark = UIConfig.shouldUseDarkTheme()
+
     val finalModifier = modifier
-        .clip(shape)
+        .then(
+            if (neu) {
+                val surfaceColor = containerColor ?: MaterialTheme.colorScheme.surface
+                val bgColor = if (glass) surfaceColor.copy(alpha = AppColors.translucentAlpha()) else surfaceColor
+                val neuInset = UIConfig.isNeumorphismInsetEnabled()
+                Modifier.then(
+                        if (neuInset && isPressed) {
+                            Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = AppDimens.cardCornerRadius, backgroundColor = Color.Transparent)
+                        } else {
+                            Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = AppDimens.cardCornerRadius, backgroundColor = Color.Transparent)
+                        }
+                    )
+                    .clip(shape)
+                    .background(bgColor, shape)
+            } else {
+                Modifier.clip(shape)
+                    .then(
+                        if (!glass) Modifier.background(containerColor ?: MaterialTheme.colorScheme.surface, shape) else Modifier
+                    )
+            }
+        )
         .then(
             if (onClick != null) {
                 Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = interactionSource,
                     indication = LocalIndication.current,
                     onClick = onClick
                 )
@@ -203,8 +273,6 @@ fun UnifiedCard(
                 Modifier
             }
         )
-
-    val glass = AppColors.glassEnabled()
 
     when (variant) {
         CardVariant.Elevated -> {
@@ -215,7 +283,7 @@ fun UnifiedCard(
                     containerColor = containerColor
                         ?: if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = if (glass) 0.dp else elevation),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 shape = shape
             ) {
                 Column(
@@ -301,54 +369,128 @@ fun UnifiedTextField(
     singleLine: Boolean = true,
     onTrailingIconClick: (() -> Unit)? = null
 ) {
+    val neu = UIConfig.isNeumorphismEnabled()
+    val isDark = UIConfig.shouldUseDarkTheme()
     var passwordVisible by remember { mutableStateOf(!isPassword) }
-    
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier,
-        label = label?.let { { Text(it) } },
-        placeholder = placeholder?.let { { Text(it) } },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
-        trailingIcon = {
-            Row {
+
+    val inputShape = RoundedCornerShape(AppDimens.inputCornerRadius)
+
+    if (neu) {
+        val surfaceColor = if (isDark) Color(0xFF1E1E22) else Color.White
+        val glass = AppColors.glassEnabled()
+        val bgColor = if (glass) surfaceColor.copy(alpha = AppColors.translucentAlpha()) else surfaceColor
+        Box(
+            modifier = modifier
+                .neuInset(RoundedCornerShape(AppDimens.inputCornerRadius), isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = AppDimens.inputCornerRadius, backgroundColor = bgColor)
+                .background(bgColor, RoundedCornerShape(AppDimens.inputCornerRadius))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (leadingIcon != null) {
+                    Icon(leadingIcon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
+                    singleLine = singleLine,
+                    maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+                    enabled = enabled,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (value.isEmpty() && placeholder != null) {
+                                Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp)
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
                 if (isPassword) {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }, modifier = Modifier.size(28.dp)) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) Str.get(R.string.hide_password) else Str.get(R.string.show_password)
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
                 if (showClearButton && value.isNotEmpty()) {
-                    IconButton(onClick = { onValueChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = Str.get(R.string.clear_2))
+                    IconButton(onClick = { onValueChange("") }, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                 }
                 trailingIcon?.let {
-                    IconButton(onClick = { onTrailingIconClick?.invoke() }) {
-                        Icon(it, contentDescription = null)
+                    IconButton(onClick = { onTrailingIconClick?.invoke() }, modifier = Modifier.size(28.dp)) {
+                        Icon(it, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                 }
             }
-        },
-        visualTransformation = if (isPassword && !passwordVisible) {
-            PasswordVisualTransformation()
-        } else {
-            VisualTransformation.None
-        },
-        isError = error != null,
-        supportingText = error?.let { { Text(it) } } ?: supportingText?.let { { Text(it) } },
-        enabled = enabled,
-        singleLine = singleLine,
-        shape = RoundedCornerShape(AppDimens.inputCornerRadius),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            focusedLabelColor = MaterialTheme.colorScheme.primary,
-            cursorColor = MaterialTheme.colorScheme.primary
+        }
+        if (error != null || supportingText != null) {
+            Text(
+                error ?: supportingText ?: "",
+                color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
+        }
+    } else {
+        val glass = AppColors.glassEnabled()
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier,
+            label = label?.let { { Text(it) } },
+            placeholder = placeholder?.let { { Text(it) } },
+            leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
+            trailingIcon = {
+                Row {
+                    if (isPassword) {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (passwordVisible) Str.get(R.string.hide_password) else Str.get(R.string.show_password)
+                            )
+                        }
+                    }
+                    if (showClearButton && value.isNotEmpty()) {
+                        IconButton(onClick = { onValueChange("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = Str.get(R.string.clear_2))
+                        }
+                    }
+                    trailingIcon?.let {
+                        IconButton(onClick = { onTrailingIconClick?.invoke() }) {
+                            Icon(it, contentDescription = null)
+                        }
+                    }
+                }
+            },
+            visualTransformation = if (isPassword && !passwordVisible) {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            },
+            isError = error != null,
+            supportingText = error?.let { { Text(it) } } ?: supportingText?.let { { Text(it) } },
+            enabled = enabled,
+            singleLine = singleLine,
+            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedContainerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+            )
         )
-    )
+    }
 }
 
 // ==================== 统一文本 ====================
@@ -434,18 +576,70 @@ fun UnifiedSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = modifier,
-        enabled = enabled,
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = MaterialTheme.colorScheme.primary,
-            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-            uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val neu = UIConfig.isNeumorphismEnabled()
+    val isDark = UIConfig.shouldUseDarkTheme()
+
+    val glass = AppColors.glassEnabled()
+    if (neu) {
+        val isToggleOn = remember { mutableStateOf(checked) }
+        LaunchedEffect(checked) { isToggleOn.value = checked }
+
+        val trackColor by animateColorAsState(
+            targetValue = if (checked) MaterialTheme.colorScheme.primary
+            else if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant,
+            animationSpec = tween(NeuDefaults.animationDuration()),
+            label = "switch_track"
         )
-    )
+        val thumbColor by animateColorAsState(
+            targetValue = if (checked) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            animationSpec = tween(NeuDefaults.animationDuration()),
+            label = "switch_thumb"
+        )
+        val thumbOffset by animateFloatAsState(
+            targetValue = if (checked) 24f else 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "switch_offset"
+        )
+
+        Box(
+            modifier = modifier
+                .size(54.dp, 30.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(trackColor, RoundedCornerShape(15.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    enabled = enabled,
+                    onClick = { onCheckedChange(!checked) }
+                ),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                modifier = Modifier
+                    .offset(x = thumbOffset.dp)
+                    .padding(3.dp)
+                    .size(24.dp)
+                    .background(thumbColor, CircleShape)
+            )
+        }
+    } else {
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = modifier,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+            )
+        )
+    }
 }
 
 // ==================== 统一标签 ====================
@@ -459,36 +653,124 @@ fun UnifiedChip(
     enabled: Boolean = true,
     leadingIcon: @Composable (() -> Unit)? = null
 ) {
-    AssistChip(
-        onClick = onClick,
-        label = { 
-            Text(
-                text = label,
-                fontSize = AppDimens.captionTextSize.sp
-            ) 
-        },
-        modifier = modifier,
+    val neu = UIConfig.isNeumorphismEnabled()
+    val isDark = UIConfig.shouldUseDarkTheme()
+
+    if (neu) {
+        val bgColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+        else if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+        val textColor = if (selected) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurfaceVariant
+        Box(
+            modifier = modifier
+                .then(
+                    if (!selected) Modifier.neuRaised(
+                        RoundedCornerShape(AppDimens.radiusXXXLarge),
+                        isDark, NeuDefaults.Intensity.LIGHT,
+                        AppDimens.radiusXXXLarge,
+                        backgroundColor = Color.Transparent
+                    ) else Modifier
+                )
+                .clip(RoundedCornerShape(AppDimens.radiusXXXLarge))
+                .background(bgColor)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = LocalIndication.current,
+                    onClick = onClick
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (leadingIcon != null) {
+                    Box(contentAlignment = Alignment.Center) { leadingIcon() }
+                }
+                Text(
+                    text = label,
+                    fontSize = AppDimens.captionTextSize.sp,
+                    color = textColor
+                )
+            }
+        }
+    } else {
+        AssistChip(
+            onClick = onClick,
+            label = { Text(text = label, fontSize = AppDimens.captionTextSize.sp) },
+            modifier = modifier,
+            enabled = enabled,
+            leadingIcon = leadingIcon,
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = if (selected) MaterialTheme.colorScheme.primary else if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
+                labelColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                leadingIconContentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+            ),
+            border = if (selected) null else AssistChipDefaults.assistChipBorder(
+                borderColor = MaterialTheme.colorScheme.outline,
+                enabled = enabled
+            ),
+            shape = RoundedCornerShape(AppDimens.radiusXXXLarge)
+        )
+    }
+}
+
+// ==================== 统一滑块 ====================
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UnifiedSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    enabled: Boolean = true
+) {
+    val isDark = UIConfig.shouldUseDarkTheme()
+    val neu = UIConfig.isNeumorphismEnabled()
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        valueRange = valueRange,
         enabled = enabled,
-        leadingIcon = leadingIcon,
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = if (selected) 
-                MaterialTheme.colorScheme.primary 
-            else 
-                MaterialTheme.colorScheme.surface,
-            labelColor = if (selected) 
-                MaterialTheme.colorScheme.onPrimary 
-            else 
-                MaterialTheme.colorScheme.onSurface,
-            leadingIconContentColor = if (selected) 
-                MaterialTheme.colorScheme.onPrimary 
-            else 
-                MaterialTheme.colorScheme.onSurface
+        modifier = modifier,
+        colors = SliderDefaults.colors(
+            thumbColor = primaryColor,
+            activeTrackColor = primaryColor,
+            inactiveTrackColor = surfaceColor
         ),
-        border = if (selected) null else AssistChipDefaults.assistChipBorder(
-            borderColor = MaterialTheme.colorScheme.outline,
-            enabled = enabled
-        ),
-        shape = RoundedCornerShape(AppDimens.radiusXXXLarge)
+        thumb = {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(primaryColor, CircleShape)
+            )
+        },
+        track = { sliderState ->
+            Box(modifier = Modifier.height(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .then(
+                            if (neu) Modifier.neuInset(RoundedCornerShape(4.dp), isDark, NeuDefaults.Intensity.LIGHT, backgroundColor = surfaceColor)
+                            else Modifier.background(surfaceColor, RoundedCornerShape(4.dp))
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth((sliderState.value - valueRange.start) / (valueRange.endInclusive - valueRange.start))
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(primaryColor)
+                )
+            }
+        }
     )
 }
 
@@ -594,16 +876,39 @@ fun UnifiedIconButton(
     tint: Color? = null,
     contentDescription: String? = null
 ) {
-    androidx.compose.material3.IconButton(
-        onClick = onClick,
-        modifier = modifier
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = tint ?: LocalContentColor.current,
-            modifier = Modifier.size(24.dp)
-        )
+    val neu = UIConfig.isNeumorphismEnabled()
+    val isDark = UIConfig.shouldUseDarkTheme()
+
+    if (neu) {
+        val glass = AppColors.glassEnabled()
+        val surfaceColor = if (glass) MaterialTheme.colorScheme.surface.copy(alpha = AppColors.translucentAlpha()) else MaterialTheme.colorScheme.surface
+        Box(
+            modifier = modifier
+                .neuRaised(CircleShape, isDark, NeuDefaults.Intensity.LIGHT, cornerRadius = 20.dp, backgroundColor = Color.Transparent)
+                .clip(CircleShape)
+                .background(surfaceColor, CircleShape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = LocalIndication.current,
+                    onClick = onClick
+                )
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription, modifier = Modifier.size(24.dp), tint = tint ?: LocalContentColor.current)
+        }
+    } else {
+        androidx.compose.material3.IconButton(
+            onClick = onClick,
+            modifier = modifier
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = tint ?: LocalContentColor.current,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }
 

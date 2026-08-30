@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -79,8 +80,10 @@ fun RepoScreen() {
             )
         }
     ) {
+    val repoListState = rememberLazyListState()
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        state = repoListState,
+        modifier = Modifier.fillMaxSize().elasticOverscroll(repoListState),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 84.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -112,7 +115,7 @@ fun RepoScreen() {
                     }
                 },
                 placeholder = Str.get(R.string.search_plugins),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
                 leadingIcon = Icons.Default.Search
             )
         }

@@ -1,4 +1,3 @@
-// app/src/main/java/com/UIN/Tool/ui/screen/manage/UIConfigScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
 import com.UIN.Tool.R
@@ -7,361 +6,53 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.UIN.Tool.ui.components.FullColorPickerDialog
-import com.UIN.Tool.ui.components.UIComponents
-import com.UIN.Tool.ui.components.unified.ButtonVariant
-import com.UIN.Tool.ui.components.unified.UnifiedBodyText
 import com.UIN.Tool.ui.components.unified.UnifiedButton
-import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
 import com.UIN.Tool.ui.components.unified.UnifiedCard
-import com.UIN.Tool.ui.components.unified.UnifiedSectionTitle
-import com.UIN.Tool.ui.components.unified.UnifiedSwitch
-import com.UIN.Tool.ui.components.unified.UnifiedIconButton
+import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
+import com.UIN.Tool.ui.components.unified.UnifiedChip
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
+import com.UIN.Tool.ui.components.unified.UnifiedSlider
+import com.UIN.Tool.ui.common.StyleManager
+import com.UIN.Tool.ui.common.StylePresets
+import com.UIN.Tool.ui.screen.manage.uiconfig.UIConfigSidebar
+import com.UIN.Tool.ui.screen.manage.uiconfig.NumericPropertyRow
+import com.UIN.Tool.ui.screen.manage.uiconfig.DropdownPropertyRow
+import com.UIN.Tool.ui.screen.manage.uiconfig.ColorPropertyRow
+import com.UIN.Tool.ui.screen.manage.uiconfig.BooleanPropertyRow
+import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.FileUtils
-import com.UIN.Tool.utils.UIConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.theme.gradientBackgroundBrush
 
 private const val TAG = "UIConfigScreen"
-
-private fun safeParseColor(colorString: String): Color {
-    return try {
-        if (colorString.isNotEmpty() && colorString.startsWith("#") && colorString.length >= 7) {
-            Color(android.graphics.Color.parseColor(colorString))
-        } else {
-            Color(0xFF1A3A4A)
-        }
-    } catch (e: Exception) {
-        Color(0xFF1A3A4A)
-    }
-}
-
-private data class ConfigState(
-    val themeMode: String,
-    val primaryColor: String,
-    val primaryDarkColor: String,
-    val primaryLightColor: String,
-    val accentColor: String,
-    val successColor: String,
-    val warningColor: String,
-    val errorColor: String,
-    val infoColor: String,
-    val textPrimaryColor: String,
-    val textSecondaryColor: String,
-    val textHintColor: String,
-    val textPrimaryInverseColor: String,
-    val backgroundColor: String,
-    val surfaceColor: String,
-    val surfaceVariantColor: String,
-    val dividerColor: String,
-    val glassBackgroundColor: String,
-    val disabledColor: String,
-    val statusBarColor: String,
-    val navigationBarColor: String,
-    val navSelectedColor: String,
-    val navUnselectedColor: String,
-    val primaryColorDark: String,
-    val primaryDarkColorDark: String,
-    val primaryLightColorDark: String,
-    val accentColorDark: String,
-    val successColorDark: String,
-    val warningColorDark: String,
-    val errorColorDark: String,
-    val infoColorDark: String,
-    val textPrimaryColorDark: String,
-    val textSecondaryColorDark: String,
-    val textHintColorDark: String,
-    val textPrimaryInverseColorDark: String,
-    val backgroundColorDark: String,
-    val surfaceColorDark: String,
-    val surfaceVariantColorDark: String,
-    val dividerColorDark: String,
-    val glassBackgroundColorDark: String,
-    val disabledColorDark: String,
-    val statusBarColorDark: String,
-    val navigationBarColorDark: String,
-    val navSelectedColorDark: String,
-    val navUnselectedColorDark: String,
-    val cornerRadiusSmall: Float,
-    val cornerRadiusMedium: Float,
-    val cornerRadiusLarge: Float,
-    val cornerRadiusExtraLarge: Float,
-    val buttonCornerRadius: Float,
-    val cardCornerRadius: Float,
-    val dialogCornerRadius: Float,
-    val inputCornerRadius: Float,
-    val buttonHeight: Float,
-    val buttonMinWidth: Float,
-    val buttonElevation: Float,
-    val cardElevation: Float,
-    val cardPadding: Float,
-    val spacingSmall: Float,
-    val spacingMedium: Float,
-    val spacingLarge: Float,
-    val iconSizeSmall: Float,
-    val iconSizeMedium: Float,
-    val iconSizeLarge: Float,
-    val progressHeight: Float,
-    val titleTextSize: Float,
-    val bodyTextSize: Float,
-    val captionTextSize: Float,
-    val sectionTitleTextSize: Float,
-    val enableGlassEffect: Boolean,
-    val enableRipple: Boolean,
-    val enableBold: Boolean,
-    val enableGradientBackground: Boolean,
-    val gradientMode: String,
-    val gradientColor: String,
-    val gradientColors: List<String>,
-    val gradientFrom: String,
-    val gradientTo: String
-)
-
-private fun loadConfigFromUIConfig(): ConfigState {
-    val uiConfig = UIConfig.getInstance()
-    return ConfigState(
-        themeMode = uiConfig.getThemeMode(),
-        primaryColor = uiConfig.getColorString("primary"),
-        primaryDarkColor = uiConfig.getColorString("primary_dark"),
-        primaryLightColor = uiConfig.getColorString("primary_light"),
-        accentColor = uiConfig.getColorString("accent"),
-        successColor = uiConfig.getColorString("success"),
-        warningColor = uiConfig.getColorString("warning"),
-        errorColor = uiConfig.getColorString("error"),
-        infoColor = uiConfig.getColorString("info"),
-        textPrimaryColor = uiConfig.getColorString("text_primary"),
-        textSecondaryColor = uiConfig.getColorString("text_secondary"),
-        textHintColor = uiConfig.getColorString("text_hint"),
-        textPrimaryInverseColor = uiConfig.getColorString("text_primary_inverse"),
-        backgroundColor = uiConfig.getColorString("background"),
-        surfaceColor = uiConfig.getColorString("surface"),
-        surfaceVariantColor = uiConfig.getColorString("surface_variant"),
-        dividerColor = uiConfig.getColorString("divider"),
-        glassBackgroundColor = uiConfig.getColorString("glass_background"),
-        disabledColor = uiConfig.getColorString("disabled"),
-        statusBarColor = uiConfig.getColorString("status_bar"),
-        navigationBarColor = uiConfig.getColorString("navigation_bar"),
-        navSelectedColor = uiConfig.getColorString("nav_selected"),
-        navUnselectedColor = uiConfig.getColorString("nav_unselected"),
-        primaryColorDark = uiConfig.getColorStringDark("primary"),
-        primaryDarkColorDark = uiConfig.getColorStringDark("primary_dark"),
-        primaryLightColorDark = uiConfig.getColorStringDark("primary_light"),
-        accentColorDark = uiConfig.getColorStringDark("accent"),
-        successColorDark = uiConfig.getColorStringDark("success"),
-        warningColorDark = uiConfig.getColorStringDark("warning"),
-        errorColorDark = uiConfig.getColorStringDark("error"),
-        infoColorDark = uiConfig.getColorStringDark("info"),
-        textPrimaryColorDark = uiConfig.getColorStringDark("text_primary"),
-        textSecondaryColorDark = uiConfig.getColorStringDark("text_secondary"),
-        textHintColorDark = uiConfig.getColorStringDark("text_hint"),
-        textPrimaryInverseColorDark = uiConfig.getColorStringDark("text_primary_inverse"),
-        backgroundColorDark = uiConfig.getColorStringDark("background"),
-        surfaceColorDark = uiConfig.getColorStringDark("surface"),
-        surfaceVariantColorDark = uiConfig.getColorStringDark("surface_variant"),
-        dividerColorDark = uiConfig.getColorStringDark("divider"),
-        glassBackgroundColorDark = uiConfig.getColorStringDark("glass_background"),
-        disabledColorDark = uiConfig.getColorStringDark("disabled"),
-        statusBarColorDark = uiConfig.getColorStringDark("status_bar"),
-        navigationBarColorDark = uiConfig.getColorStringDark("navigation_bar"),
-        navSelectedColorDark = uiConfig.getColorStringDark("nav_selected"),
-        navUnselectedColorDark = uiConfig.getColorStringDark("nav_unselected"),
-        cornerRadiusSmall = uiConfig.getShape("cornerRadiusSmall"),
-        cornerRadiusMedium = uiConfig.getShape("cornerRadiusMedium"),
-        cornerRadiusLarge = uiConfig.getShape("cornerRadiusLarge"),
-        cornerRadiusExtraLarge = uiConfig.getShape("cornerRadiusExtraLarge"),
-        buttonCornerRadius = uiConfig.getShape("buttonCornerRadius"),
-        cardCornerRadius = uiConfig.getShape("cardCornerRadius"),
-        dialogCornerRadius = uiConfig.getShape("dialogCornerRadius"),
-        inputCornerRadius = uiConfig.getShape("inputCornerRadius"),
-        buttonHeight = uiConfig.getSize("buttonHeight"),
-        buttonMinWidth = uiConfig.getSize("buttonMinWidth"),
-        buttonElevation = uiConfig.getSize("buttonElevation"),
-        cardElevation = uiConfig.getSize("cardElevation"),
-        cardPadding = uiConfig.getSize("cardPadding"),
-        spacingSmall = uiConfig.getSize("spacingSmall"),
-        spacingMedium = uiConfig.getSize("spacingMedium"),
-        spacingLarge = uiConfig.getSize("spacingLarge"),
-        iconSizeSmall = uiConfig.getSize("iconSizeSmall"),
-        iconSizeMedium = uiConfig.getSize("iconSizeMedium"),
-        iconSizeLarge = uiConfig.getSize("iconSizeLarge"),
-        progressHeight = uiConfig.getSize("progressHeight"),
-        titleTextSize = uiConfig.getSize("titleTextSize"),
-        bodyTextSize = uiConfig.getSize("bodyTextSize"),
-        captionTextSize = uiConfig.getSize("captionTextSize"),
-        sectionTitleTextSize = uiConfig.getSize("sectionTitleTextSize"),
-        enableGlassEffect = uiConfig.isGlassEffectEnabled(),
-        enableRipple = uiConfig.isRippleEnabled(),
-        enableBold = uiConfig.isBoldEnabled(),
-        enableGradientBackground = uiConfig.isGradientBackgroundEnabled(),
-        gradientMode = uiConfig.getGradientMode(),
-        gradientColor = if (uiConfig.shouldUseDarkTheme()) uiConfig.getGradientColorStringDark() else uiConfig.getGradientColorString(),
-        gradientColors = uiConfig.getGradientColorsString(),
-        gradientFrom = uiConfig.getGradientFrom(),
-        gradientTo = uiConfig.getGradientTo()
-    )
-}
-
-private fun saveConfigToUIConfig(config: ConfigState) {
-    AppLog.i(TAG, Str.get(R.string.saving_ui_config_to_uiconfig))
-
-    val uiConfig = UIConfig.getInstance()
-
-    // 记录保存前实际生效的主题模式；梯度写入必须依据旧模式分流，
-    // 否则用户切换主题模式后保存会把「浅色模式加载出来的渐变值」写进深色区（反之亦然），
-    // 造成切到深色仍显示浅色渐变的旧 bug 复发。
-    val saveWasDark = uiConfig.shouldUseDarkTheme()
-
-    // ✅ 整份配置一次性构建 JSON 并原子写入（applyJson），
-    //    替代原先 ~70 次 update* 每次全量序列化写盘 + 半途失败配置残缺的问题。
-    val full = JSONObject()
-
-    val theme = JSONObject()
-    theme.put("primary", config.primaryColor)
-    theme.put("primary_dark", config.primaryDarkColor)
-    theme.put("primary_light", config.primaryLightColor)
-    theme.put("accent", config.accentColor)
-    theme.put("success", config.successColor)
-    theme.put("warning", config.warningColor)
-    theme.put("error", config.errorColor)
-    theme.put("info", config.infoColor)
-    theme.put("text_primary", config.textPrimaryColor)
-    theme.put("text_secondary", config.textSecondaryColor)
-    theme.put("text_hint", config.textHintColor)
-    theme.put("text_primary_inverse", config.textPrimaryInverseColor)
-    theme.put("background", config.backgroundColor)
-    theme.put("surface", config.surfaceColor)
-    theme.put("surface_variant", config.surfaceVariantColor)
-    theme.put("divider", config.dividerColor)
-    theme.put("glass_background", config.glassBackgroundColor)
-    theme.put("disabled", config.disabledColor)
-    theme.put("status_bar", config.statusBarColor)
-    theme.put("navigation_bar", config.navigationBarColor)
-    theme.put("nav_selected", config.navSelectedColor)
-    theme.put("nav_unselected", config.navUnselectedColor)
-    full.put("theme", theme)
-
-    val themeDark = JSONObject()
-    themeDark.put("primary", config.primaryColorDark)
-    themeDark.put("primary_dark", config.primaryDarkColorDark)
-    themeDark.put("primary_light", config.primaryLightColorDark)
-    themeDark.put("accent", config.accentColorDark)
-    themeDark.put("success", config.successColorDark)
-    themeDark.put("warning", config.warningColorDark)
-    themeDark.put("error", config.errorColorDark)
-    themeDark.put("info", config.infoColorDark)
-    themeDark.put("text_primary", config.textPrimaryColorDark)
-    themeDark.put("text_secondary", config.textSecondaryColorDark)
-    themeDark.put("text_hint", config.textHintColorDark)
-    themeDark.put("text_primary_inverse", config.textPrimaryInverseColorDark)
-    themeDark.put("background", config.backgroundColorDark)
-    themeDark.put("surface", config.surfaceColorDark)
-    themeDark.put("surface_variant", config.surfaceVariantColorDark)
-    themeDark.put("divider", config.dividerColorDark)
-    themeDark.put("glass_background", config.glassBackgroundColorDark)
-    themeDark.put("disabled", config.disabledColorDark)
-    themeDark.put("status_bar", config.statusBarColorDark)
-    themeDark.put("navigation_bar", config.navigationBarColorDark)
-    themeDark.put("nav_selected", config.navSelectedColorDark)
-    themeDark.put("nav_unselected", config.navUnselectedColorDark)
-    full.put("theme_dark", themeDark)
-
-    val shape = JSONObject()
-    shape.put("cornerRadiusSmall", config.cornerRadiusSmall.toInt())
-    shape.put("cornerRadiusMedium", config.cornerRadiusMedium.toInt())
-    shape.put("cornerRadiusLarge", config.cornerRadiusLarge.toInt())
-    shape.put("cornerRadiusExtraLarge", config.cornerRadiusExtraLarge.toInt())
-    shape.put("buttonCornerRadius", config.buttonCornerRadius.toInt())
-    shape.put("cardCornerRadius", config.cardCornerRadius.toInt())
-    shape.put("dialogCornerRadius", config.dialogCornerRadius.toInt())
-    shape.put("inputCornerRadius", config.inputCornerRadius.toInt())
-    full.put("shape", shape)
-
-    val size = JSONObject()
-    size.put("buttonHeight", config.buttonHeight.toInt())
-    size.put("buttonMinWidth", config.buttonMinWidth.toInt())
-    size.put("buttonElevation", config.buttonElevation.toInt())
-    size.put("cardElevation", config.cardElevation.toInt())
-    size.put("cardPadding", config.cardPadding.toInt())
-    size.put("spacingSmall", config.spacingSmall.toInt())
-    size.put("spacingMedium", config.spacingMedium.toInt())
-    size.put("spacingLarge", config.spacingLarge.toInt())
-    size.put("iconSizeSmall", config.iconSizeSmall.toInt())
-    size.put("iconSizeMedium", config.iconSizeMedium.toInt())
-    size.put("iconSizeLarge", config.iconSizeLarge.toInt())
-    size.put("progressHeight", config.progressHeight.toInt())
-    size.put("titleTextSize", config.titleTextSize.toInt())
-    size.put("bodyTextSize", config.bodyTextSize.toInt())
-    size.put("captionTextSize", config.captionTextSize.toInt())
-    size.put("sectionTitleTextSize", config.sectionTitleTextSize.toInt())
-    full.put("size", size)
-
-    val font = JSONObject()
-    font.put("fontFamily", uiConfig.getFontFamily())
-    font.put("enableBold", config.enableBold)
-    full.put("font", font)
-
-    val experimental = JSONObject()
-    experimental.put("enableGlassEffect", config.enableGlassEffect)
-    experimental.put("enableRipple", config.enableRipple)
-    full.put("experimental", experimental)
-
-    val gradient = JSONObject()
-    gradient.put("enabled", config.enableGradientBackground)
-    gradient.put("mode", config.gradientMode)
-    // 修复：单次保存必须同时写入 color 与 color_dark 两把钥匙。
-    // 原先只按 saveWasDark 写其中一个，另一主题模式的渐变值会被 applyJson 整段替换掉
-    // → 改其他 UI 参数时，深色/浅色渐变背景被悄悄重置为默认值。
-    // 现在：当前生效模式写入被编辑的 gradientColor，另一模式沿用配置中的旧值。
-    val existingGradient = uiConfig.getConfig().optJSONObject("gradient")
-    val existingLight = existingGradient?.optString("color", "#FFC4D6DF") ?: "#FFC4D6DF"
-    val existingDark = existingGradient?.optString("color_dark", "#FF4C4F51") ?: "#FF4C4F51"
-    if (saveWasDark) {
-        gradient.put("color_dark", config.gradientColor)
-        gradient.put("color", existingLight)
-    } else {
-        gradient.put("color", config.gradientColor)
-        gradient.put("color_dark", existingDark)
-    }
-    val gradientColors = org.json.JSONArray()
-    config.gradientColors.forEach { gradientColors.put(it) }
-    gradient.put("colors", gradientColors)
-    gradient.put("from", config.gradientFrom)
-    gradient.put("to", config.gradientTo)
-    full.put("gradient", gradient)
-
-    uiConfig.setThemeMode(config.themeMode)
-
-    uiConfig.applyJson(full)
-
-    AppLog.success(TAG, Str.get(R.string.ui_config_saved))
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -372,17 +63,19 @@ fun UIConfigScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val cardElevation = if (AppColors.glassEnabled()) 0.dp else 1.dp
-
-    var configState by remember { mutableStateOf(loadConfigFromUIConfig()) }
+    var styleVersion by remember { mutableIntStateOf(0) }
+    var configState by remember(styleVersion) { mutableStateOf(loadConfigFromUIConfig()) }
     var isSaving by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
     var selectedColorKey by remember { mutableStateOf<String?>(null) }
     var selectedGradientColorIndex by remember { mutableStateOf(-1) }
     var showResetDialog by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(0) }
     var showDarkPalette by remember { mutableStateOf(false) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
+    var selectedSection by remember { mutableStateOf("style_default") }
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
     LaunchedEffect(Unit) {
         AppLog.i(TAG, Str.get(R.string.loading_config_from_uiconfig))
         configState = loadConfigFromUIConfig()
@@ -419,71 +112,22 @@ fun UIConfigScreen(
     fun resetConfig() {
         AppLog.i(TAG, Str.get(R.string.reset_config))
         val uiConfig = UIConfig.getInstance()
+        val savedStyle = uiConfig.getCurrentStyle()
         uiConfig.resetToDefault()
         configState = loadConfigFromUIConfig()
+        try {
+            configState = StyleManager.switchStyle(configState, savedStyle)
+        } catch (_: Exception) {}
+        saveConfigToUIConfig(configState)
         AppToast.info(context, Str.get(R.string.reset_to_default_config))
         showResetDialog = false
         AppLog.success(TAG, Str.get(R.string.config_reset))
     }
 
-    fun paletteColorValue(key: String): String {
-        val dark = key.startsWith("dark:")
-        val baseKey = key.substringAfter(':')
-        return when (baseKey) {
-            "primary" -> if (dark) configState.primaryColorDark else configState.primaryColor
-            "primary_dark" -> if (dark) configState.primaryDarkColorDark else configState.primaryDarkColor
-            "primary_light" -> if (dark) configState.primaryLightColorDark else configState.primaryLightColor
-            "accent" -> if (dark) configState.accentColorDark else configState.accentColor
-            "success" -> if (dark) configState.successColorDark else configState.successColor
-            "warning" -> if (dark) configState.warningColorDark else configState.warningColor
-            "error" -> if (dark) configState.errorColorDark else configState.errorColor
-            "info" -> if (dark) configState.infoColorDark else configState.infoColor
-            "text_primary" -> if (dark) configState.textPrimaryColorDark else configState.textPrimaryColor
-            "text_secondary" -> if (dark) configState.textSecondaryColorDark else configState.textSecondaryColor
-            "text_hint" -> if (dark) configState.textHintColorDark else configState.textHintColor
-            "text_primary_inverse" -> if (dark) configState.textPrimaryInverseColorDark else configState.textPrimaryInverseColor
-            "background" -> if (dark) configState.backgroundColorDark else configState.backgroundColor
-            "surface" -> if (dark) configState.surfaceColorDark else configState.surfaceColor
-            "surface_variant" -> if (dark) configState.surfaceVariantColorDark else configState.surfaceVariantColor
-            "divider" -> if (dark) configState.dividerColorDark else configState.dividerColor
-            "glass_background" -> if (dark) configState.glassBackgroundColorDark else configState.glassBackgroundColor
-            "disabled" -> if (dark) configState.disabledColorDark else configState.disabledColor
-            "status_bar" -> if (dark) configState.statusBarColorDark else configState.statusBarColor
-            "navigation_bar" -> if (dark) configState.navigationBarColorDark else configState.navigationBarColor
-            "nav_selected" -> if (dark) configState.navSelectedColorDark else configState.navSelectedColor
-            "nav_unselected" -> if (dark) configState.navUnselectedColorDark else configState.navUnselectedColor
-            else -> "#FFFFFFFF"
-        }
-    }
+    fun paletteColorValue(key: String): String = configState.paletteColorValue(key)
 
     fun updatePaletteColor(key: String, value: String) {
-        val dark = key.startsWith("dark:")
-        val baseKey = key.substringAfter(':')
-        configState = when (baseKey) {
-            "primary" -> if (dark) configState.copy(primaryColorDark = value) else configState.copy(primaryColor = value)
-            "primary_dark" -> if (dark) configState.copy(primaryDarkColorDark = value) else configState.copy(primaryDarkColor = value)
-            "primary_light" -> if (dark) configState.copy(primaryLightColorDark = value) else configState.copy(primaryLightColor = value)
-            "accent" -> if (dark) configState.copy(accentColorDark = value) else configState.copy(accentColor = value)
-            "success" -> if (dark) configState.copy(successColorDark = value) else configState.copy(successColor = value)
-            "warning" -> if (dark) configState.copy(warningColorDark = value) else configState.copy(warningColor = value)
-            "error" -> if (dark) configState.copy(errorColorDark = value) else configState.copy(errorColor = value)
-            "info" -> if (dark) configState.copy(infoColorDark = value) else configState.copy(infoColor = value)
-            "text_primary" -> if (dark) configState.copy(textPrimaryColorDark = value) else configState.copy(textPrimaryColor = value)
-            "text_secondary" -> if (dark) configState.copy(textSecondaryColorDark = value) else configState.copy(textSecondaryColor = value)
-            "text_hint" -> if (dark) configState.copy(textHintColorDark = value) else configState.copy(textHintColor = value)
-            "text_primary_inverse" -> if (dark) configState.copy(textPrimaryInverseColorDark = value) else configState.copy(textPrimaryInverseColor = value)
-            "background" -> if (dark) configState.copy(backgroundColorDark = value) else configState.copy(backgroundColor = value)
-            "surface" -> if (dark) configState.copy(surfaceColorDark = value) else configState.copy(surfaceColor = value)
-            "surface_variant" -> if (dark) configState.copy(surfaceVariantColorDark = value) else configState.copy(surfaceVariantColor = value)
-            "divider" -> if (dark) configState.copy(dividerColorDark = value) else configState.copy(dividerColor = value)
-            "glass_background" -> if (dark) configState.copy(glassBackgroundColorDark = value) else configState.copy(glassBackgroundColor = value)
-            "disabled" -> if (dark) configState.copy(disabledColorDark = value) else configState.copy(disabledColor = value)
-            "status_bar" -> if (dark) configState.copy(statusBarColorDark = value) else configState.copy(statusBarColor = value)
-            "navigation_bar" -> if (dark) configState.copy(navigationBarColorDark = value) else configState.copy(navigationBarColor = value)
-            "nav_selected" -> if (dark) configState.copy(navSelectedColorDark = value) else configState.copy(navSelectedColor = value)
-            "nav_unselected" -> if (dark) configState.copy(navUnselectedColorDark = value) else configState.copy(navUnselectedColor = value)
-            else -> configState
-        }
+        configState = configState.updatePaletteColor(key, value)
     }
 
     fun importConfig(uri: Uri) {
@@ -600,6 +244,11 @@ fun UIConfigScreen(
                 if (experimental != null) {
                     uiConfig.updateBoolean("enableGlassEffect", experimental.optBoolean("enableGlassEffect", true))
                     uiConfig.updateBoolean("enableRipple", experimental.optBoolean("enableRipple", true))
+                    uiConfig.updateBoolean("enableNeumorphism", experimental.optBoolean("enableNeumorphism", false))
+                    uiConfig.updateBoolean("enableNeumorphismInset", experimental.optBoolean("enableNeumorphismInset", true))
+                    uiConfig.updateBoolean("enableNeumorphismGlow", experimental.optBoolean("enableNeumorphismGlow", true))
+                    uiConfig.setNeumorphismIntensity(experimental.optString("neumorphismIntensity", "light"))
+                    uiConfig.setAnimationSpeed(experimental.optString("animationSpeed", "medium"))
                 }
 
                 val gradient = obj.optJSONObject("gradient")
@@ -625,6 +274,9 @@ fun UIConfigScreen(
                 val font = obj.optJSONObject("font")
                 if (font != null) {
                     uiConfig.updateBoolean("enableBold", font.optBoolean("enableBold", true))
+                    if (font.has("fontFamily")) {
+                        uiConfig.setFontFamily(font.getString("fontFamily"))
+                    }
                 }
 
                 uiConfig.saveConfig()
@@ -668,879 +320,503 @@ fun UIConfigScreen(
         if (uri != null) exportConfig(uri)
     }
 
-    Scaffold(
-        containerColor = AppColors.pageBackground(),
-        topBar = {
-            UIComponents.ManageTopAppBar(
-                titleText = Str.get(R.string.ui_customization),
-                onBack = onBack,
-                actions = {
-                    UnifiedIconButton(
-                        icon = Icons.Default.Save,
-                        onClick = { saveConfig() }
-                    )
-                    UnifiedIconButton(
-                        icon = Icons.Default.FileUpload,
-                        onClick = { importLauncher.launch("application/json") }
-                    )
-                    UnifiedIconButton(
-                        icon = Icons.Default.FileDownload,
-                        onClick = { exportLauncher.launch("ui_config.json") }
-                    )
-                    UnifiedIconButton(
-                        icon = Icons.Default.Restore,
-                        onClick = { showResetDialog = true }
-                    )
-                }
-            )
-        }
+    UIConfigSidebar(
+        selectedSection = selectedSection,
+        onSectionSelected = { selectedSection = it },
+        onReset = { showResetDialog = true },
+        drawerState = drawerState,
+        drawerScope = scope
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(AppColors.pageBackground())
-        ) {
-            // 标签页：跟随背景色（渐变开启时透明透出），底部不画分割线
-            ScrollableTabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = AppColors.pageBackground(),
-                edgePadding = 0.dp,
-                divider = {}
-            ) {
-                listOf(Str.get(R.string.colors), Str.get(R.string.shapes), Str.get(R.string.sizes), Str.get(R.string.fonts), Str.get(R.string.effects)).forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                title,
-                                color = if (selectedTab == index)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = if (selectedTab == index)
-                                    FontWeight.Bold
-                                else
-                                    FontWeight.Normal
-                            )
-                        }
-                    )
-                }
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+            val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
+            val gradientBrush = gradientBackgroundBrush(widthPx, heightPx)
+            if (gradientBrush != null) {
+                Box(modifier = Modifier.fillMaxSize().background(gradientBrush))
             }
-
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                when (selectedTab) {
-                    0 -> {
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.theme_mode),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        listOf(
-                                            UIConfig.THEME_MODE_SYSTEM to Str.get(R.string.follow_system),
-                                            UIConfig.THEME_MODE_LIGHT to Str.get(R.string.light_mode),
-                                            UIConfig.THEME_MODE_DARK to Str.get(R.string.dark_mode)
-                                        ).forEach { (mode, label) ->
-                                            FilterChip(
-                                                selected = configState.themeMode == mode,
-                                                onClick = { configState = configState.copy(themeMode = mode) },
-                                                label = { Text(label) },
-                                                modifier = Modifier.weight(1f),
-                                                colors = FilterChipDefaults.filterChipColors(
-                                                    containerColor = MaterialTheme.colorScheme.surface,
-                                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                                )
-                                            )
-                                        }
-                                    }
+            when (selectedSection) {
+                "style_default", "style_neumorphism" -> {
+                    item {
+                        val isCurrentDefault = StyleManager.getCurrentStyleName() == "default"
+                        val isCurrentNeumorphism = StyleManager.getCurrentStyleName() == "neumorphism"
+                        Column {
+                            StyleCard(
+                                title = Str.get(R.string.style_default_title),
+                                subtitle = Str.get(R.string.style_default_subtitle),
+                                selected = isCurrentDefault,
+                                onClick = {
+                                    configState = StyleManager.switchStyle(configState, "default")
+                                    saveConfigToUIConfig(configState)
+                                    UIConfig.getInstance().setCurrentStyle("default")
+                                    configState = loadConfigFromUIConfig()
+                                    styleVersion++
                                 }
-                            }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            StyleCard(
+                                title = Str.get(R.string.style_neumorphism_title),
+                                subtitle = Str.get(R.string.style_neumorphism_subtitle),
+                                selected = isCurrentNeumorphism,
+                                onClick = {
+                                    configState = StyleManager.switchStyle(configState, "neumorphism")
+                                    saveConfigToUIConfig(configState)
+                                    UIConfig.getInstance().setCurrentStyle("neumorphism")
+                                    configState = loadConfigFromUIConfig()
+                                    styleVersion++
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            UnifiedCaptionText(
+                                text = Str.get(R.string.current_style, StyleManager.getCurrentStyleName()),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
+                    }
+                }
 
-                        val colorKeys = listOf(
-                            "primary" to Str.get(R.string.primary_color),
-                            "primary_dark" to Str.get(R.string.dark_primary),
-                            "primary_light" to Str.get(R.string.light_primary),
-                            "accent" to Str.get(R.string.accent_color),
-                            "success" to Str.get(R.string.success_color),
-                            "warning" to Str.get(R.string.warning_color),
-                            "error" to Str.get(R.string.error_color),
-                            "info" to Str.get(R.string.info_color),
-                            "text_primary" to Str.get(R.string.primary_text_color),
-                            "text_secondary" to Str.get(R.string.secondary_text_color),
-                            "text_hint" to Str.get(R.string.hint_text_color),
-                            "text_primary_inverse" to Str.get(R.string.on_color_text),
-                            "background" to Str.get(R.string.background_color),
-                            "surface" to Str.get(R.string.surface_color),
-                            "surface_variant" to Str.get(R.string.surface_variant_color),
-                            "divider" to Str.get(R.string.divider_color),
-                            "glass_background" to Str.get(R.string.glass_background_color),
-                            "disabled" to Str.get(R.string.disabled_color),
-                            "status_bar" to Str.get(R.string.status_bar_color),
-                            "navigation_bar" to Str.get(R.string.navigation_bar_color),
-                            "nav_selected" to Str.get(R.string.bottom_nav_selected_color),
-                            "nav_unselected" to Str.get(R.string.bottom_nav_unselected_color)
+                "appearance_colors" -> {
+                    item {
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.theme_mode),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else Color.Transparent)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
-
-                        item(key = "palette_mode_switch") {
-                            UnifiedCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.palette_editing),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        listOf(
-                                            "light" to Str.get(R.string.light_palette),
-                                            "dark" to Str.get(R.string.dark_palette)
-                                        ).forEach { (prefix, label) ->
-                                            FilterChip(
-                                                selected = if (prefix == "light") !showDarkPalette else showDarkPalette,
-                                                onClick = { showDarkPalette = prefix == "dark" },
-                                                label = { Text(label) },
-                                                modifier = Modifier.weight(1f),
-                                                colors = FilterChipDefaults.filterChipColors(
-                                                    containerColor = MaterialTheme.colorScheme.surface,
-                                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(
+                                UIConfig.THEME_MODE_SYSTEM to Str.get(R.string.follow_system),
+                                UIConfig.THEME_MODE_LIGHT to Str.get(R.string.light_mode),
+                                UIConfig.THEME_MODE_DARK to Str.get(R.string.dark_mode)
+                            ).forEach { (mode, label) ->
+                                UnifiedChip(
+                                    label = label,
+                                    selected = configState.themeMode == mode,
+                                    onClick = {
+                                        configState = configState.copy(themeMode = mode)
+                                        UIConfig.getInstance().setThemeMode(mode)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
+                    }
 
-                        val activePrefix = if (showDarkPalette) "dark" else "light"
+                    item {
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.palette_editing),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else Color.Transparent)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(
+                                "light" to Str.get(R.string.light_palette),
+                                "dark" to Str.get(R.string.dark_palette)
+                            ).forEach { (prefix, label) ->
+                                UnifiedChip(
+                                    label = label,
+                                    selected = if (prefix == "light") !showDarkPalette else showDarkPalette,
+                                    onClick = { showDarkPalette = prefix == "dark" },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
 
-                        item(key = "section_$activePrefix") {
-                            UnifiedSectionTitle(
-                                text = if (showDarkPalette) Str.get(R.string.dark_palette) else Str.get(R.string.light_palette),
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    val colorKeys = listOf(
+                        "primary" to Str.get(R.string.primary_color),
+                        "primary_dark" to Str.get(R.string.dark_primary),
+                        "primary_light" to Str.get(R.string.light_primary),
+                        "accent" to Str.get(R.string.accent_color),
+                        "success" to Str.get(R.string.success_color),
+                        "warning" to Str.get(R.string.warning_color),
+                        "error" to Str.get(R.string.error_color),
+                        "info" to Str.get(R.string.info_color),
+                        "text_primary" to Str.get(R.string.primary_text_color),
+                        "text_secondary" to Str.get(R.string.secondary_text_color),
+                        "text_hint" to Str.get(R.string.hint_text_color),
+                        "text_primary_inverse" to Str.get(R.string.on_color_text),
+                        "background" to Str.get(R.string.background_color),
+                        "surface" to Str.get(R.string.surface_color),
+                        "surface_variant" to Str.get(R.string.surface_variant_color),
+                        "divider" to Str.get(R.string.divider_color),
+                        "glass_background" to Str.get(R.string.glass_background_color),
+                        "disabled" to Str.get(R.string.disabled_color),
+                        "status_bar" to Str.get(R.string.status_bar_color),
+                        "navigation_bar" to Str.get(R.string.navigation_bar_color),
+                        "nav_selected" to Str.get(R.string.bottom_nav_selected_color),
+                        "nav_unselected" to Str.get(R.string.bottom_nav_unselected_color)
+                    )
+
+                    val activePrefix = if (showDarkPalette) "dark" else "light"
+                    val activeTitle = if (showDarkPalette) Str.get(R.string.dark_palette) else Str.get(R.string.light_palette)
+
+                    item {
+                        UnifiedCaptionText(
+                            text = activeTitle,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                    }
+
+                    items(colorKeys.size) { index ->
+                        val (key, displayName) = colorKeys[index]
+                        val prefixedKey = "$activePrefix:$key"
+                        val colorValue = paletteColorValue(prefixedKey)
+
+                        ColorPropertyRow(
+                            label = displayName,
+                            colorValue = colorValue,
+                            onClick = {
+                                selectedColorKey = prefixedKey
+                                showColorPicker = true
+                            }
+                        )
+                    }
+                }
+
+                "appearance_shapes_corner" -> {
+                    val shapeKeys = listOf(
+                        "cornerRadiusSmall" to Str.get(R.string.small_radius),
+                        "cornerRadiusMedium" to Str.get(R.string.medium_radius),
+                        "cornerRadiusLarge" to Str.get(R.string.large_radius),
+                        "cornerRadiusExtraLarge" to Str.get(R.string.extra_large_radius),
+                        "buttonCornerRadius" to Str.get(R.string.button_radius),
+                        "cardCornerRadius" to Str.get(R.string.card_radius),
+                        "dialogCornerRadius" to Str.get(R.string.dialog_radius),
+                        "inputCornerRadius" to Str.get(R.string.input_field_radius)
+                    )
+
+                    items(shapeKeys.size) { index ->
+                        val (key, displayName) = shapeKeys[index]
+                        val value = when (key) {
+                            "cornerRadiusSmall" -> configState.cornerRadiusSmall
+                            "cornerRadiusMedium" -> configState.cornerRadiusMedium
+                            "cornerRadiusLarge" -> configState.cornerRadiusLarge
+                            "cornerRadiusExtraLarge" -> configState.cornerRadiusExtraLarge
+                            "buttonCornerRadius" -> configState.buttonCornerRadius
+                            "cardCornerRadius" -> configState.cardCornerRadius
+                            "dialogCornerRadius" -> configState.dialogCornerRadius
+                            "inputCornerRadius" -> configState.inputCornerRadius
+                            else -> 8f
+                        }
+
+                        NumericPropertyRow(
+                            label = displayName,
+                            value = value,
+                            onValueChange = { newValue ->
+                                configState = when (key) {
+                                    "cornerRadiusSmall" -> configState.copy(cornerRadiusSmall = newValue)
+                                    "cornerRadiusMedium" -> configState.copy(cornerRadiusMedium = newValue)
+                                    "cornerRadiusLarge" -> configState.copy(cornerRadiusLarge = newValue)
+                                    "cornerRadiusExtraLarge" -> configState.copy(cornerRadiusExtraLarge = newValue)
+                                    "buttonCornerRadius" -> configState.copy(buttonCornerRadius = newValue)
+                                    "cardCornerRadius" -> configState.copy(cardCornerRadius = newValue)
+                                    "dialogCornerRadius" -> configState.copy(dialogCornerRadius = newValue)
+                                    "inputCornerRadius" -> configState.copy(inputCornerRadius = newValue)
+                                    else -> configState
+                                }
+                            },
+                            valueRange = 0f..50f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                }
+
+                "appearance_shapes_size" -> {
+                    val sizeKeys = listOf(
+                        "buttonHeight" to Str.get(R.string.button_height),
+                        "buttonMinWidth" to Str.get(R.string.button_min_width),
+                        "cardPadding" to Str.get(R.string.card_padding),
+                        "progressHeight" to Str.get(R.string.progress_bar_height)
+                    )
+
+                    items(sizeKeys.size) { index ->
+                        val (key, displayName) = sizeKeys[index]
+                        val value = when (key) {
+                            "buttonHeight" -> configState.buttonHeight
+                            "buttonMinWidth" -> configState.buttonMinWidth
+                            "cardPadding" -> configState.cardPadding
+                            "progressHeight" -> configState.progressHeight
+                            else -> 16f
+                        }
+                        val range = when (key) {
+                            "buttonHeight" -> 28f..64f
+                            "buttonMinWidth" -> 60f..160f
+                            "cardPadding" -> 0f..32f
+                            "progressHeight" -> 2f..12f
+                            else -> 0f..100f
+                        }
+
+                        NumericPropertyRow(
+                            label = displayName,
+                            value = value,
+                            onValueChange = { newValue ->
+                                configState = when (key) {
+                                    "buttonHeight" -> configState.copy(buttonHeight = newValue)
+                                    "buttonMinWidth" -> configState.copy(buttonMinWidth = newValue)
+                                    "cardPadding" -> configState.copy(cardPadding = newValue)
+                                    "progressHeight" -> configState.copy(progressHeight = newValue)
+                                    else -> configState
+                                }
+                            },
+                            valueRange = range,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                }
+
+                "appearance_shapes_border" -> {
+                    item {
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.border_settings),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else Color.Transparent)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.border_settings_coming_soon),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+
+                "appearance_material_shadow" -> {
+                    item {
+                        BooleanPropertyRow(
+                            label = Str.get(R.string.enable_neumorphism),
+                            value = configState.enableNeumorphism,
+                            onValueChange = {
+                                configState = configState.copy(enableNeumorphism = it)
+                                UIConfig.getInstance().setNeumorphismEnabled(it)
+                            }
+                        )
+                    }
+
+                    if (configState.enableNeumorphism) {
+                        item {
+                            DropdownPropertyRow(
+                                label = Str.get(R.string.neumorphism_intensity),
+                                value = configState.neumorphismIntensity,
+                                options = listOf(
+                                    "light" to Str.get(R.string.intensity_light),
+                                    "medium" to Str.get(R.string.intensity_medium),
+                                    "strong" to Str.get(R.string.intensity_strong)
+                                ),
+                                onValueChange = {
+                                    configState = configState.copy(neumorphismIntensity = it)
+                                    try {
+                                        val uiConfig = UIConfig.getInstance()
+                                        uiConfig.setNeumorphismIntensity(it)
+                                    } catch (_: Exception) {}
+                                }
                             )
                         }
 
-                        items(colorKeys, key = { "$activePrefix:${it.first}" }) { (key, displayName) ->
-                                val prefixedKey = "$activePrefix:$key"
-                                val colorValue = paletteColorValue(prefixedKey)
+                        item {
+                            BooleanPropertyRow(
+                                label = Str.get(R.string.neumorphism_inset),
+                                value = configState.enableNeumorphismInset,
+                                onValueChange = {
+                                    configState = configState.copy(enableNeumorphismInset = it)
+                                    UIConfig.getInstance().setNeumorphismInsetEnabled(it)
+                                }
+                            )
+                        }
 
-                                UnifiedCard(
-                                    onClick = {
-                                        selectedColorKey = prefixedKey
-                                        showColorPicker = true
+                        item {
+                            BooleanPropertyRow(
+                                label = Str.get(R.string.neumorphism_glow),
+                                value = configState.enableNeumorphismGlow,
+                                onValueChange = {
+                                    configState = configState.copy(enableNeumorphismGlow = it)
+                                    UIConfig.getInstance().setNeumorphismGlowEnabled(it)
+                                }
+                            )
+                        }
+                    }
+                }
+
+                "appearance_material_blur" -> {
+                    item {
+                        BooleanPropertyRow(
+                            label = Str.get(R.string.glass_effect),
+                            value = configState.enableGlassEffect,
+                            onValueChange = {
+                                configState = configState.copy(enableGlassEffect = it)
+                                try { UIConfig.getInstance().updateBoolean("enableGlassEffect", it) } catch (_: Exception) {}
+                            }
+                        )
+                    }
+
+                    if (configState.enableGlassEffect) {
+                        item {
+                            ColorPropertyRow(
+                                label = Str.get(R.string.glass_background_color),
+                                colorValue = configState.glassBackgroundColor,
+                                onClick = {
+                                    selectedColorKey = "glass_background"
+                                    showColorPicker = true
+                                }
+                            )
+                        }
+                        item {
+                            val alpha = configState.translucentAlpha
+                            Column(modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else Color.Transparent)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = "${Str.get(R.string.glass_effect)} (Alpha: ${(alpha * 100).toInt()}%)",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                UnifiedSlider(
+                                    value = alpha,
+                                    onValueChange = {
+                                        configState = configState.copy(translucentAlpha = it)
+                                        try { UIConfig.getInstance().setTranslucentAlpha(it) } catch (_: Exception) {}
                                     },
+                                    valueRange = 0.05f..0.95f,
                                     modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = displayName,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            UnifiedCaptionText(
-                                                text = colorValue,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(end = 8.dp)
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(24.dp)
-                                                    .background(
-                                                        safeParseColor(colorValue),
-                                                        RoundedCornerShape(AppDimens.radiusSmall)
-                                                    )
-                                            )
-                                        }
-                                }
+                                )
                             }
                         }
                     }
+                }
 
-                    1 -> {
-                        val shapeKeys = listOf(
-                            "cornerRadiusSmall" to Str.get(R.string.small_radius),
-                            "cornerRadiusMedium" to Str.get(R.string.medium_radius),
-                            "cornerRadiusLarge" to Str.get(R.string.large_radius),
-                            "cornerRadiusExtraLarge" to Str.get(R.string.extra_large_radius),
-                            "buttonCornerRadius" to Str.get(R.string.button_radius),
-                            "cardCornerRadius" to Str.get(R.string.card_radius),
-                            "dialogCornerRadius" to Str.get(R.string.dialog_radius),
-                            "inputCornerRadius" to Str.get(R.string.input_field_radius)
+                "appearance_bg_gradient" -> {
+                    item {
+                        BooleanPropertyRow(
+                            label = Str.get(R.string.gradient_background),
+                            value = configState.enableGradientBackground,
+                            onValueChange = { configState = configState.copy(enableGradientBackground = it) }
                         )
-
-                        items(shapeKeys) { (key, displayName) ->
-                            val value = when (key) {
-                                "cornerRadiusSmall" -> configState.cornerRadiusSmall
-                                "cornerRadiusMedium" -> configState.cornerRadiusMedium
-                                "cornerRadiusLarge" -> configState.cornerRadiusLarge
-                                "cornerRadiusExtraLarge" -> configState.cornerRadiusExtraLarge
-                                "buttonCornerRadius" -> configState.buttonCornerRadius
-                                "cardCornerRadius" -> configState.cardCornerRadius
-                                "dialogCornerRadius" -> configState.dialogCornerRadius
-                                "inputCornerRadius" -> configState.inputCornerRadius
-                                else -> 8f
-                            }
-
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = displayName,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        UnifiedCaptionText(
-                                            text = "${value.toInt()} dp",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Slider(
-                                        value = value,
-                                        onValueChange = { newValue ->
-                                            val updated = when (key) {
-                                                "cornerRadiusSmall" -> configState.copy(cornerRadiusSmall = newValue)
-                                                "cornerRadiusMedium" -> configState.copy(cornerRadiusMedium = newValue)
-                                                "cornerRadiusLarge" -> configState.copy(cornerRadiusLarge = newValue)
-                                                "cornerRadiusExtraLarge" -> configState.copy(cornerRadiusExtraLarge = newValue)
-                                                "buttonCornerRadius" -> configState.copy(buttonCornerRadius = newValue)
-                                                "cardCornerRadius" -> configState.copy(cardCornerRadius = newValue)
-                                                "dialogCornerRadius" -> configState.copy(dialogCornerRadius = newValue)
-                                                "inputCornerRadius" -> configState.copy(inputCornerRadius = newValue)
-                                                else -> configState
-                                            }
-                                            configState = updated
-                                        },
-                                        valueRange = 0f..50f,
-                                        steps = 10,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
-                                        )
-                                    )
-                                }
-                            }
-                        }
                     }
 
-                    2 -> {
-                        val sizeKeys = listOf(
-                            "buttonHeight" to Str.get(R.string.button_height),
-                            "buttonMinWidth" to Str.get(R.string.button_min_width),
-                            "buttonElevation" to Str.get(R.string.button_shadow),
-                            "cardElevation" to Str.get(R.string.card_shadow),
-                            "cardPadding" to Str.get(R.string.card_padding),
-                            "spacingSmall" to Str.get(R.string.small_spacing),
-                            "spacingMedium" to Str.get(R.string.medium_spacing),
-                            "spacingLarge" to Str.get(R.string.large_spacing),
-                            "iconSizeSmall" to Str.get(R.string.small_icon),
-                            "iconSizeMedium" to Str.get(R.string.medium_icon),
-                            "iconSizeLarge" to Str.get(R.string.large_icon),
-                            "progressHeight" to Str.get(R.string.progress_bar_height)
-                        )
+                    if (configState.enableGradientBackground) {
+                        item {
+                            DropdownPropertyRow(
+                                label = Str.get(R.string.gradient_mode),
+                                value = configState.gradientMode,
+                                options = listOf(
+                                    UIConfig.GRADIENT_MODE_SINGLE to Str.get(R.string.single_color_gradient),
+                                    UIConfig.GRADIENT_MODE_MULTI to Str.get(R.string.multi_color_gradient)
+                                ),
+                                onValueChange = { configState = configState.copy(gradientMode = it) }
+                            )
+                        }
 
-                        items(sizeKeys) { (key, displayName) ->
-                            val value = when (key) {
-                                "buttonHeight" -> configState.buttonHeight
-                                "buttonMinWidth" -> configState.buttonMinWidth
-                                "buttonElevation" -> configState.buttonElevation
-                                "cardElevation" -> configState.cardElevation
-                                "cardPadding" -> configState.cardPadding
-                                "spacingSmall" -> configState.spacingSmall
-                                "spacingMedium" -> configState.spacingMedium
-                                "spacingLarge" -> configState.spacingLarge
-                                "iconSizeSmall" -> configState.iconSizeSmall
-                                "iconSizeMedium" -> configState.iconSizeMedium
-                                "iconSizeLarge" -> configState.iconSizeLarge
-                                "progressHeight" -> configState.progressHeight
-                                else -> 16f
-                            }
-                            val range = when (key) {
-                                "buttonHeight" -> 28f..64f
-                                "buttonMinWidth" -> 60f..160f
-                                "buttonElevation" -> 0f..12f
-                                "cardElevation" -> 0f..16f
-                                "cardPadding" -> 0f..32f
-                                "spacingSmall" -> 0f..16f
-                                "spacingMedium" -> 0f..24f
-                                "spacingLarge" -> 0f..48f
-                                "iconSizeSmall" -> 12f..24f
-                                "iconSizeMedium" -> 16f..32f
-                                "iconSizeLarge" -> 20f..40f
-                                "progressHeight" -> 2f..12f
-                                else -> 0f..100f
-                            }
-
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = displayName,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        UnifiedCaptionText(
-                                            text = "${value.toInt()} dp",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Slider(
-                                        value = value,
-                                        onValueChange = { newValue ->
-                                            val updated = when (key) {
-                                                "buttonHeight" -> configState.copy(buttonHeight = newValue)
-                                                "buttonMinWidth" -> configState.copy(buttonMinWidth = newValue)
-                                                "buttonElevation" -> configState.copy(buttonElevation = newValue)
-                                                "cardElevation" -> configState.copy(cardElevation = newValue)
-                                                "cardPadding" -> configState.copy(cardPadding = newValue)
-                                                "spacingSmall" -> configState.copy(spacingSmall = newValue)
-                                                "spacingMedium" -> configState.copy(spacingMedium = newValue)
-                                                "spacingLarge" -> configState.copy(spacingLarge = newValue)
-                                                "iconSizeSmall" -> configState.copy(iconSizeSmall = newValue)
-                                                "iconSizeMedium" -> configState.copy(iconSizeMedium = newValue)
-                                                "iconSizeLarge" -> configState.copy(iconSizeLarge = newValue)
-                                                "progressHeight" -> configState.copy(progressHeight = newValue)
-                                                else -> configState
-                                            }
-                                            configState = updated
-                                        },
-                                        valueRange = range,
-                                        steps = 10,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
-                                        )
+                                Box(modifier = Modifier.weight(1f)) {
+                                    DropdownPropertyRow(
+                                        label = Str.get(R.string.gradient_from),
+                                        value = configState.gradientFrom,
+                                        options = UIConfig.GRADIENT_DIRECTIONS.map { it to gradientDirectionLabel(it) },
+                                        onValueChange = { configState = configState.copy(gradientFrom = it) }
                                     )
                                 }
-                            }
-                        }
-                    }
-
-                    3 -> {
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = Str.get(R.string.title_font_size),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        UnifiedCaptionText(
-                                            text = "${configState.titleTextSize.toInt()} sp",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Slider(
-                                        value = configState.titleTextSize,
-                                        onValueChange = { newValue ->
-                                            configState = configState.copy(titleTextSize = newValue)
-                                        },
-                                        valueRange = 14f..36f,
-                                        steps = 11,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
-                                        )
+                                Box(modifier = Modifier.weight(1f)) {
+                                    DropdownPropertyRow(
+                                        label = Str.get(R.string.gradient_to),
+                                        value = configState.gradientTo,
+                                        options = UIConfig.GRADIENT_DIRECTIONS.map { it to gradientDirectionLabel(it) },
+                                        onValueChange = { configState = configState.copy(gradientTo = it) }
                                     )
                                 }
                             }
                         }
 
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = Str.get(R.string.body_font_size),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        UnifiedCaptionText(
-                                            text = "${configState.bodyTextSize.toInt()} sp",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                        if (configState.gradientMode == UIConfig.GRADIENT_MODE_SINGLE) {
+                            item {
+                                ColorPropertyRow(
+                                    label = Str.get(R.string.gradient_color),
+                                    colorValue = configState.gradientColor,
+                                    onClick = {
+                                        selectedColorKey = "gradient_color"
+                                        showColorPicker = true
                                     }
-                                    Slider(
-                                        value = configState.bodyTextSize,
-                                        onValueChange = { newValue ->
-                                            configState = configState.copy(bodyTextSize = newValue)
-                                        },
-                                        valueRange = 10f..22f,
-                                        steps = 6,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
-                                        )
-                                    )
-                                }
+                                )
                             }
-                        }
-
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = Str.get(R.string.caption_font_size),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        UnifiedCaptionText(
-                                            text = "${configState.captionTextSize.toInt()} sp",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Slider(
-                                        value = configState.captionTextSize,
-                                        onValueChange = { newValue ->
-                                            configState = configState.copy(captionTextSize = newValue)
-                                        },
-                                        valueRange = 8f..16f,
-                                        steps = 4,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = Str.get(R.string.section_title_size),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        UnifiedCaptionText(
-                                            text = "${configState.sectionTitleTextSize.toInt()} sp",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Slider(
-                                        value = configState.sectionTitleTextSize,
-                                        onValueChange = { newValue ->
-                                            configState = configState.copy(sectionTitleTextSize = newValue)
-                                        },
-                                        valueRange = 12f..28f,
-                                        steps = 8,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                        } else {
+                            items(configState.gradientColors.size) { index ->
+                                val color = configState.gradientColors[index]
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.bold_text),
-                                        color = MaterialTheme.colorScheme.onSurface
+                                    ColorPropertyRow(
+                                        label = "${Str.get(R.string.gradient_color)} ${index + 1}",
+                                        colorValue = color,
+                                        onClick = {
+                                            selectedGradientColorIndex = index
+                                            selectedColorKey = "gradient_multi_color"
+                                            showColorPicker = true
+                                        }
                                     )
-                                    UnifiedSwitch(
-                                        checked = configState.enableBold,
-                                        onCheckedChange = { configState = configState.copy(enableBold = it) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    4 -> {
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        UnifiedBodyText(
-                                            text = Str.get(R.string.gradient_background),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        UnifiedSwitch(
-                                            checked = configState.enableGradientBackground,
-                                            onCheckedChange = {
-                                                configState = configState.copy(enableGradientBackground = it)
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.gradient_mode),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    var modeExpanded by remember { mutableStateOf(false) }
-                                    val modeOptions = listOf(
-                                        UIConfig.GRADIENT_MODE_SINGLE to Str.get(R.string.single_color_gradient),
-                                        UIConfig.GRADIENT_MODE_MULTI to Str.get(R.string.multi_color_gradient)
-                                    )
-                                    val currentModeLabel = modeOptions
-                                        .firstOrNull { it.first == configState.gradientMode }
-                                        ?.second
-                                        ?: Str.get(R.string.single_color_gradient)
-                                    ExposedDropdownMenuBox(
-                                        expanded = modeExpanded,
-                                        onExpandedChange = { modeExpanded = it }
-                                    ) {
-                                        OutlinedTextField(
-                                            value = currentModeLabel,
-                                            onValueChange = {},
-                                            readOnly = true,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .menuAnchor(),
-                                            trailingIcon = {
-                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = modeExpanded)
-                                            },
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                                cursorColor = MaterialTheme.colorScheme.primary
-                                            ),
-                                            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
-                                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                        )
-                                        ExposedDropdownMenu(
-                                            expanded = modeExpanded,
-                                            onDismissRequest = { modeExpanded = false },
-                                            containerColor = MaterialTheme.colorScheme.surface
-                                        ) {
-                                            modeOptions.forEach { (mode, label) ->
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text(
-                                                            label,
-                                                            color = MaterialTheme.colorScheme.onSurface,
-                                                            fontSize = AppDimens.bodyTextSize.sp
-                                                        )
-                                                    },
-                                                    onClick = {
-                                                        configState = configState.copy(gradientMode = mode)
-                                                        modeExpanded = false
+                                    UnifiedIconButton(
+                                        icon = Icons.Default.RemoveCircle,
+                                        onClick = {
+                                            if (configState.gradientColors.size > 1) {
+                                                configState = configState.copy(
+                                                    gradientColors = configState.gradientColors.toMutableList().apply {
+                                                        removeAt(index)
                                                     }
                                                 )
                                             }
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.gradient_from),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    gradientDirectionDropdown(configState.gradientFrom) {
-                                        configState = configState.copy(gradientFrom = it)
-                                    }
-
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.gradient_to),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    gradientDirectionDropdown(configState.gradientTo) {
-                                        configState = configState.copy(gradientTo = it)
-                                    }
-
-                                    if (configState.gradientMode == UIConfig.GRADIENT_MODE_SINGLE) {
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        val gradientColorValue = configState.gradientColor
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(RoundedCornerShape(AppDimens.inputCornerRadius))
-                                                .clickable {
-                                                    selectedColorKey = "gradient_color"
-                                                    showColorPicker = true
-                                                }
-                                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            UnifiedBodyText(
-                                                text = Str.get(R.string.gradient_color),
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                UnifiedCaptionText(
-                                                    text = gradientColorValue,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(end = 8.dp)
-                                                )
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(24.dp)
-                                                        .background(
-                                                            safeParseColor(gradientColorValue),
-                                                            RoundedCornerShape(AppDimens.radiusSmall)
-                                                        )
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        configState.gradientColors.forEachIndexed { index, color ->
-                                            Spacer(modifier = Modifier.height(12.dp))
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                UnifiedBodyText(
-                                                    text = Str.get(R.string.gradient_color),
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    UnifiedCaptionText(
-                                                        text = color,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        modifier = Modifier.padding(end = 8.dp)
-                                                    )
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(24.dp)
-                                                            .background(
-                                                                safeParseColor(color),
-                                                                RoundedCornerShape(AppDimens.radiusSmall)
-                                                            )
-                                                    )
-                                                    UnifiedIconButton(
-                                                        icon = Icons.Default.Edit,
-                                                        onClick = {
-                                                            selectedGradientColorIndex = index
-                                                            selectedColorKey = "gradient_multi_color"
-                                                            showColorPicker = true
-                                                        }
-                                                    )
-                                                    UnifiedIconButton(
-                                                        icon = Icons.Default.RemoveCircle,
-                                                        onClick = {
-                                                            if (configState.gradientColors.size > 1) {
-                                                                configState = configState.copy(
-                                                                    gradientColors = configState.gradientColors.toMutableList().apply {
-                                                                        removeAt(index)
-                                                                    }
-                                                                )
-                                                            }
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        if (configState.gradientColors.size < 6) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            UnifiedButton(
-                                                variant = ButtonVariant.Outlined,
-                                                text = Str.get(R.string.add_gradient_color),
-                                                icon = Icons.Default.Add,
-                                                onClick = {
-                                                    if (configState.gradientColors.size < 6) {
-                                                        configState = configState.copy(
-                                                            gradientColors = configState.gradientColors + "#FF4FC3F7"
-                                                        )
-                                                    }
-                                                },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.glass_effect),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    UnifiedSwitch(
-                                        checked = configState.enableGlassEffect,
-                                        onCheckedChange = { configState = configState.copy(enableGlassEffect = it) }
+                                        },
+                                        tint = MaterialTheme.colorScheme.error
                                     )
                                 }
                             }
-                        }
 
-                        item {
-                            UnifiedCard(
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.ripple_effect),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    UnifiedSwitch(
-                                        checked = configState.enableRipple,
-                                        onCheckedChange = { configState = configState.copy(enableRipple = it) }
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            val previewGlass = configState.enableGlassEffect
-                            val previewShape = RoundedCornerShape(AppDimens.cardCornerRadius)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(previewShape)
-                                    .background(
-                                        Brush.linearGradient(
-                                            colors = listOf(
-                                                Color(0xFF6A5AE0),
-                                                Color(0xFF00C6AE),
-                                                Color(0xFFFFB36B)
-                                            )
-                                        )
-                                    )
-                                    .padding(14.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(previewShape)
-                                        .then(
-                                            if (previewGlass) {
-                                                Modifier
-                                                    .background(safeParseColor(paletteColorValue("glass_background")))
-                                            } else {
-                                                Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                            if (configState.gradientColors.size < 6) {
+                                item {
+                                    UnifiedButton(
+                                        text = Str.get(R.string.add_gradient_color),
+                                        icon = Icons.Default.Add,
+                                        onClick = {
+                                            if (configState.gradientColors.size < 6) {
+                                                configState = configState.copy(
+                                                    gradientColors = configState.gradientColors + "#FF4FC3F7"
+                                                )
                                             }
-                                        )
-                                        .padding(16.dp)
-                                ) {
-                                    UnifiedBodyText(
-                                        text = Str.get(R.string.glass_effect_preview),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    UnifiedCaptionText(
-                                        text = if (previewGlass) Str.get(R.string.this_is_a_glass_effect_card) else Str.get(R.string.glass_effect_disabled),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             }
@@ -1548,33 +824,307 @@ fun UIConfigScreen(
                     }
                 }
 
-                item {
-                    saveMessage?.let {
-                        UnifiedBodyText(
-                            text = it,
-                            color = if (it.contains(Str.get(R.string.saved_successfully)) || it.contains(Str.get(R.string.saved)))
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                "appearance_bg_solid" -> {
+                    item {
+                        ColorPropertyRow(
+                            label = Str.get(R.string.background_color),
+                            colorValue = paletteColorValue("light:background"),
+                            onClick = {
+                                selectedColorKey = "light:background"
+                                showColorPicker = true
+                            }
                         )
                     }
+                    item {
+                        ColorPropertyRow(
+                            label = Str.get(R.string.surface_color),
+                            colorValue = paletteColorValue("light:surface"),
+                            onClick = {
+                                selectedColorKey = "light:surface"
+                                showColorPicker = true
+                            }
+                        )
+                    }
+                    item {
+                        ColorPropertyRow(
+                            label = Str.get(R.string.surface_variant_color),
+                            colorValue = paletteColorValue("light:surface_variant"),
+                            onClick = {
+                                selectedColorKey = "light:surface_variant"
+                                showColorPicker = true
+                            }
+                        )
+                    }
+                }
 
-                    UnifiedButton(
-                        text = if (isSaving) Str.get(R.string.saving) else Str.get(R.string.save_config),
-                        onClick = { saveConfig() },
-                        variant = ButtonVariant.Primary,
-                        loading = isSaving,
-                        icon = Icons.Default.Save,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                "appearance_bg_image" -> {
+                    item {
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.background_image_settings),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else Color.Transparent)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.background_image_coming_soon),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+
+                "content_text_size" -> {
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.title_font_size),
+                            value = configState.titleTextSize,
+                            onValueChange = { configState = configState.copy(titleTextSize = it) },
+                            valueRange = 14f..36f,
+                            unit = "sp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.body_font_size),
+                            value = configState.bodyTextSize,
+                            onValueChange = { configState = configState.copy(bodyTextSize = it) },
+                            valueRange = 10f..22f,
+                            unit = "sp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.caption_font_size),
+                            value = configState.captionTextSize,
+                            onValueChange = { configState = configState.copy(captionTextSize = it) },
+                            valueRange = 8f..16f,
+                            unit = "sp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.section_title_size),
+                            value = configState.sectionTitleTextSize,
+                            onValueChange = { configState = configState.copy(sectionTitleTextSize = it) },
+                            valueRange = 12f..28f,
+                            unit = "sp",
+                            step = 1f
+                        )
+                    }
+                }
+
+                "content_text_font" -> {
+                    item {
+                        DropdownPropertyRow(
+                            label = Str.get(R.string.font_family),
+                            value = configState.fontFamily,
+                            options = listOf(
+                                "sans-serif" to Str.get(R.string.sans_serif_default),
+                                "serif" to "Serif",
+                                "monospace" to "Monospace"
+                            ),
+                            onValueChange = { configState = configState.copy(fontFamily = it) }
+                        )
+                    }
+                }
+
+                "content_text_language" -> {
+                    item {
+                        val appContext = LocalContext.current.applicationContext as? com.UIN.Tool.UinApplication
+                        DropdownPropertyRow(
+                            label = Str.get(R.string.language_label),
+                            value = configState.language,
+                            options = listOf(
+                                "system" to Str.get(R.string.follow_system),
+                                "zh" to Str.get(R.string.simplified_chinese),
+                                "en" to "English"
+                            ),
+                            onValueChange = {
+                                configState = configState.copy(language = it)
+                                try { UIConfig.getInstance().setLanguage(it) } catch (_: Exception) {}
+                                try { appContext?.applyLocale() } catch (_: Exception) {}
+                            }
+                        )
+                    }
+                }
+
+                "content_text_weight" -> {
+                    item {
+                        BooleanPropertyRow(
+                            label = Str.get(R.string.bold_text),
+                            value = configState.enableBold,
+                            onValueChange = { configState = configState.copy(enableBold = it) }
+                        )
+                    }
+                }
+
+                "content_image" -> {
+                    item {
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.icon_image_replace),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else Color.Transparent)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.icon_image_replace_coming_soon),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+
+                "interaction_click" -> {
+                    item {
+                        BooleanPropertyRow(
+                            label = Str.get(R.string.ripple_effect),
+                            value = configState.enableRipple,
+                            onValueChange = { configState = configState.copy(enableRipple = it) }
+                        )
+                    }
+                }
+
+                "interaction_animation" -> {
+                    item {
+                        DropdownPropertyRow(
+                            label = Str.get(R.string.animation_speed),
+                            value = configState.animationSpeed,
+                            options = listOf(
+                                "fast" to Str.get(R.string.speed_fast),
+                                "medium" to Str.get(R.string.speed_medium),
+                                "slow" to Str.get(R.string.speed_slow)
+                            ),
+                            onValueChange = { configState = configState.copy(animationSpeed = it) }
+                        )
+                    }
+                }
+
+                "layout_margin" -> {
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.small_spacing),
+                            value = configState.spacingSmall,
+                            onValueChange = { configState = configState.copy(spacingSmall = it) },
+                            valueRange = 0f..16f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.medium_spacing),
+                            value = configState.spacingMedium,
+                            onValueChange = { configState = configState.copy(spacingMedium = it) },
+                            valueRange = 0f..24f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.large_spacing),
+                            value = configState.spacingLarge,
+                            onValueChange = { configState = configState.copy(spacingLarge = it) },
+                            valueRange = 0f..48f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.card_shadow),
+                            value = configState.cardElevation,
+                            onValueChange = { configState = configState.copy(cardElevation = it) },
+                            valueRange = 0f..16f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.button_shadow),
+                            value = configState.buttonElevation,
+                            onValueChange = { configState = configState.copy(buttonElevation = it) },
+                            valueRange = 0f..12f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                }
+
+                "layout_position" -> {
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.small_icon),
+                            value = configState.iconSizeSmall,
+                            onValueChange = { configState = configState.copy(iconSizeSmall = it) },
+                            valueRange = 12f..24f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.medium_icon),
+                            value = configState.iconSizeMedium,
+                            onValueChange = { configState = configState.copy(iconSizeMedium = it) },
+                            valueRange = 16f..32f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
+                    item {
+                        NumericPropertyRow(
+                            label = Str.get(R.string.large_icon),
+                            value = configState.iconSizeLarge,
+                            onValueChange = { configState = configState.copy(iconSizeLarge = it) },
+                            valueRange = 20f..40f,
+                            unit = "dp",
+                            step = 1f
+                        )
+                    }
                 }
             }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                saveMessage?.let {
+                    UnifiedCaptionText(
+                        text = it,
+                        color = if (it.contains(Str.get(R.string.saved_successfully)) || it.contains(Str.get(R.string.saved)))
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+            }
+
+            item {
+                UnifiedButton(
+                    text = if (isSaving) Str.get(R.string.saving) else Str.get(R.string.save_config),
+                    onClick = { saveConfig() },
+                    loading = isSaving,
+                    icon = Icons.Default.Save,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
         }
     }
 
-    // ==================== 颜色选择对话框 ====================
     val pickerKey = selectedColorKey
     if (showColorPicker && pickerKey != null) {
         var colorValue by remember { mutableStateOf("") }
@@ -1583,6 +1133,7 @@ fun UIConfigScreen(
                 pickerKey == "gradient_color" -> configState.gradientColor
                 pickerKey == "gradient_multi_color" && selectedGradientColorIndex in configState.gradientColors.indices ->
                     configState.gradientColors[selectedGradientColorIndex]
+                pickerKey == "glass_background" -> configState.glassBackgroundColor
                 else -> paletteColorValue(pickerKey)
             }
         }
@@ -1591,7 +1142,8 @@ fun UIConfigScreen(
         FullColorPickerDialog(
             initialColor = initialColor,
             onColorSelected = { selectedColor ->
-                val newColor = String.format("#%02X%02X%02X%02X",
+                val newColor = String.format(
+                    "#%02X%02X%02X%02X",
                     (selectedColor.alpha * 255).toInt(),
                     (selectedColor.red * 255).toInt(),
                     (selectedColor.green * 255).toInt(),
@@ -1606,6 +1158,7 @@ fun UIConfigScreen(
                             }
                         )
                     }
+                    pickerKey == "glass_background" -> configState = configState.copy(glassBackgroundColor = newColor)
                     else -> updatePaletteColor(pickerKey, newColor)
                 }
                 showColorPicker = false
@@ -1616,7 +1169,6 @@ fun UIConfigScreen(
         )
     }
 
-    // ==================== 重置对话框 ====================
     if (showResetDialog) {
         UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_reset),
@@ -1630,57 +1182,55 @@ fun UIConfigScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun gradientDirectionDropdown(
-    selected: String,
-    onSelect: (String) -> Unit
+private fun StyleCard(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it }
+    UnifiedCard(
+        modifier = Modifier.fillMaxWidth()
+            .then(
+                if (selected) Modifier.border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(AppDimens.cardCornerRadius)
+                ) else Modifier
+            ),
+        containerColor = if (selected) {
+            if (AppColors.glassEnabled()) AppColors.glassBackground().copy(alpha = 0.85f) else MaterialTheme.colorScheme.surfaceVariant
+        } else {
+            if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+        },
+        onClick = onClick
     ) {
-        OutlinedTextField(
-            value = gradientDirectionLabel(selected),
-            onValueChange = {},
-            readOnly = true,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(),
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-            },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                cursorColor = MaterialTheme.colorScheme.primary
-            ),
-            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            containerColor = MaterialTheme.colorScheme.surface
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            UIConfig.GRADIENT_DIRECTIONS.forEach { dir ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            gradientDirectionLabel(dir),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = AppDimens.bodyTextSize.sp
-                        )
-                    },
-                    onClick = {
-                        onSelect(dir)
-                        expanded = false
-                    }
+            Column {
+                Text(
+                    text = title,
+                    fontSize = AppDimens.bodyTextSize.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = AppDimens.captionTextSize.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (selected) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }

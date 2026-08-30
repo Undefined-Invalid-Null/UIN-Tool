@@ -21,6 +21,14 @@
     <!-- 抽屉按钮样式 - 深色 -->
     <style name="TermuxActivity.Drawer.ButtonBarStyle.Dark" parent="@style/Widget.MaterialComponents.Button.TextButton">
         <item name="android:textColor">@color/white</item>
+        <item name="android:backgroundTint">@color/black</item>
+        <item name="android:textColorHighlight">@color/white</item>
+        <item name="android:colorControlNormal">@color/white</item>
+    </style>
+
+    <!-- Toolbar 白色图标主题 -->
+    <style name="ThemeOverlay.UIN.Tool.Toolbar" parent="ThemeOverlay.AppCompat.DayNight.ActionBar">
+        <item name="colorControlNormal">@color/white</item>
     </style>
 
 </resources>

@@ -36,6 +36,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 
 import androidx.compose.ui.res.painterResource
@@ -70,6 +72,8 @@ import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.ui.theme.dynamicColor
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.components.unified.NeuDefaults
+import com.UIN.Tool.ui.components.unified.neuRaised
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -229,22 +233,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun closeAllPluginActivities() {
-        try {
-            val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-            val tasks = activityManager.appTasks
-            
-            for (task in tasks) {
-                val info = task.taskInfo
-                val topActivity = info.topActivity
-                if (topActivity?.className?.contains("PluginHostActivity") == true) {
-                    AppLog.i(TAG, Str.get(R.string.found_pluginhostactivity_task_closin))
-                    task.finishAndRemoveTask()
-                    AppLog.i(TAG, Str.get(R.string.pluginhostactivity_task_closed))
-                }
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, Str.get(R.string.failed_to_close_plugin_activity_e_me, e.message), e)
-        }
     }
 
     private fun openPluginDirectly(pluginId: String) {
@@ -455,25 +443,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         AppLog.d(TAG, "onResume")
-
-        try {
-            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-            val tasks = am.appTasks
-            for (task in tasks) {
-                val info = task.taskInfo
-                val topActivity = info.topActivity
-                if (topActivity?.className?.contains("PluginHostActivity") == true) {
-                    AppLog.i(TAG, Str.get(R.string.plugin_page_is_in_the_foreground_clo))
-                    task.finishAndRemoveTask()
-                    val intent = Intent(this, MainActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    startActivity(intent)
-                    return
-                }
-            }
-        } catch (e: Exception) {
-            AppLog.e(TAG, Str.get(R.string.failed_to_check_task_e_message, e.message), e)
-        }
 
         val uiConfig = UIConfig.getInstance()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -718,13 +687,17 @@ fun MainContent(
         val selectedColor = dynamicColor("nav_selected", MaterialTheme.colorScheme.primary)
         val unselectedColor = dynamicColor("nav_unselected", MaterialTheme.colorScheme.onSurfaceVariant)
         val navShape = RoundedCornerShape(AppDimens.cardCornerRadius)
+        val neuNav = UIConfig.isNeumorphismEnabled()
+        val isDarkNav = UIConfig.shouldUseDarkTheme()
+
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .shadow(AppDimens.cardElevation, navShape)
+                .then(if (neuNav) Modifier.neuRaised(navShape, isDarkNav, NeuDefaults.Intensity.LIGHT, cornerRadius = AppDimens.cardCornerRadius, backgroundColor = Color.Transparent) else Modifier.shadow(AppDimens.cardElevation, navShape))
+                .clip(navShape)
                 .background(AppColors.cardBackground(), navShape)
                 .height(AppDimens.bottomNavHeight)
         ) {

@@ -486,6 +486,7 @@ fun BackupScreen() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -713,19 +714,15 @@ fun BackupScreen() {
                 }
             },
             confirmButton = {
-                Button(
+                UnifiedButton(
+                    text = Str.get(R.string.confirm_restore),
                     onClick = {
                         restoreTarget?.let { restoreBackup(it, restoreMode) }
                         restoreTarget = null
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = RoundedCornerShape(AppDimens.radiusLarge)
-                ) {
-                    Text(Str.get(R.string.confirm_restore))
-                }
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             },
             dismissButton = {
                 UnifiedDialogTextButton(

@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
+import com.UIN.Tool.utils.UIConfig
 
 // ==================== 统一弹窗文本按钮（带描边） ====================
 
@@ -35,14 +37,19 @@ import com.UIN.Tool.ui.theme.dialogBackgroundOf
 fun UnifiedDialogTextButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    contentColor: Color = MaterialTheme.colorScheme.primary,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
     content: @Composable RowScope.() -> Unit
 ) {
-    TextButton(
+    val btnShape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+
+    Button(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(AppDimens.buttonCornerRadius),
-        colors = ButtonDefaults.textButtonColors(contentColor = contentColor),
+        shape = btnShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = contentColor
+        ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     ) {
         content()
@@ -75,8 +82,8 @@ fun UnifiedDialog(
     onDismissRequest: () -> Unit,
     title: String? = null,
     content: @Composable ColumnScope.() -> Unit,
-    confirmButton: @Composable (() -> Unit)? = null,
-    dismissButton: @Composable (() -> Unit)? = null,
+    confirmButton: @Composable (RowScope.() -> Unit)? = null,
+    dismissButton: @Composable (RowScope.() -> Unit)? = null,
     modifier: Modifier = Modifier,
     showScrim: Boolean = true
 ) {
@@ -118,10 +125,14 @@ fun UnifiedDialog(
                     enter = FadeInAnimation,
                     exit = FadeOutAnimation
                 ) {
-Surface(
+val neuDialog = UIConfig.isNeumorphismEnabled()
+                    val isDarkDialog = UIConfig.shouldUseDarkTheme()
+
+                    Surface(
                     modifier = modifier
                         .fillMaxWidth(0.92f)
                         .wrapContentHeight()
+                        .then(if (neuDialog) Modifier.neuRaised(RoundedCornerShape(AppDimens.dialogCornerRadius), isDarkDialog, NeuDefaults.Intensity.LIGHT, cornerRadius = AppDimens.dialogCornerRadius, backgroundColor = Color.Transparent) else Modifier)
                         .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius)))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -155,14 +166,11 @@ Surface(
                                 Spacer(modifier = Modifier.height(AppDimens.spacingLarge))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    dismissButton?.invoke()
-                                    if (dismissButton != null && confirmButton != null) {
-                                        Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
-                                    }
-                                    confirmButton?.invoke()
+                                    dismissButton?.invoke(this)
+                                    confirmButton?.invoke(this)
                                 }
                             }
                         }
@@ -197,29 +205,29 @@ fun UnifiedConfirmDialog(
             )
         },
         confirmButton = {
-            Button(
+            UnifiedButton(
+                text = confirmText,
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = confirmButtonColor ?: if (isDestructive) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                    contentColor = if (isDestructive) {
-                        MaterialTheme.colorScheme.onError
-                    } else {
-                        MaterialTheme.colorScheme.onPrimary
-                    }
-                ),
-                shape = RoundedCornerShape(AppDimens.radiusLarge)
-            ) {
-                Text(confirmText)
-            }
+                containerColor = confirmButtonColor ?: if (isDestructive) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                contentColor = if (isDestructive) {
+                    MaterialTheme.colorScheme.onError
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.weight(1f)
+            )
         },
         dismissButton = {
-            UnifiedDialogTextButton(onClick = onDismiss) {
-                Text(dismissText)
-            }
+            UnifiedButton(
+                text = dismissText,
+                onClick = onDismiss,
+                variant = ButtonVariant.Outlined,
+                modifier = Modifier.weight(1f)
+            )
         }
     )
 }
@@ -247,8 +255,8 @@ fun UnifiedInfoDialog(
             Button(
                 onClick = onDismiss,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 shape = RoundedCornerShape(AppDimens.radiusLarge)
             ) {
@@ -280,8 +288,11 @@ fun UnifiedAlertDialog(
         onDismissRequest = onDismissRequest,
         properties = properties
     ) {
+        val neuAlertDialog = UIConfig.isNeumorphismEnabled()
+        val isDarkAlertDialog = UIConfig.shouldUseDarkTheme()
+
         Surface(
-            modifier = modifier.then(Modifier.dialogBackgroundOf(shape)),
+            modifier = modifier.then(if (neuAlertDialog) Modifier.neuRaised(shape, isDarkAlertDialog, NeuDefaults.Intensity.LIGHT, cornerRadius = AppDimens.dialogCornerRadius, backgroundColor = Color.Transparent) else Modifier).then(Modifier.dialogBackgroundOf(shape)),
             shape = shape,
             color = Color.Transparent,
             shadowElevation = 0.dp
@@ -364,6 +375,11 @@ fun UnifiedLoadingDialog(
                         modifier = Modifier
                             .fillMaxWidth(0.85f)
                             .wrapContentHeight()
+                            .then(
+                                if (UIConfig.isNeumorphismEnabled()) {
+                                    Modifier.neuRaised(RoundedCornerShape(AppDimens.dialogCornerRadius), UIConfig.shouldUseDarkTheme(), NeuDefaults.Intensity.LIGHT, cornerRadius = AppDimens.dialogCornerRadius, backgroundColor = Color.Transparent)
+                                } else Modifier
+                            )
                             .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
                         shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
                         color = Color.Transparent,

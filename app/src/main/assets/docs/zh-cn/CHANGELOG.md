@@ -12,6 +12,61 @@
 
 ---
 
+## [5.6.0] - 2026-08-30
+
+> 本版本聚焦**UI 系统完善、新拟态风格新增、语言切换功能**：完善 UI 个性化系统，新增新拟态（Neumorphism）风格，新增语言切换功能（支持跟随系统/简体中文/English）。共修改 92 个文件，新增 6240 行，删除 3850 行。
+
+### 🎨 UI 系统完善
+
+- 完善统一组件系统：所有页面统一使用 UnifiedButton、UnifiedCard、UnifiedTextField、UnifiedSwitch、UnifiedIconButton、UnifiedSlider、UnifiedChip 等组件
+- 修复多处原始 Material3 组件未统一的问题（CodeEditorScreen、BackupScreen、BackendSettingsScreen、WidgetConfigScreen、UIConfigPropertyPanel）
+- 修复 OnboardingScreen 硬编码颜色为主题色
+- 统一新拟态阴影效果（neuRaised/neuInset）使用 BlurMaskFilter 实现
+- UnifiedButton 支持长文本自动换行，不再截断
+- DropdownPropertyRow 使用原生 Row+Text 替代 disabled UnifiedTextField，修复下拉框文字灰色问题
+- UnifiedDialogs 重构：Popup + AnimatedVisibility 实现纯淡入淡出动画，dialogBackgroundOf() 支持渐变背景
+- UIComponents 桥接层：所有旧 UIComponents 方法委托给 Unified* 组件
+- ManageScreen、PluginManageScreen、ToolsScreen、DevToolsScreen、PermissionManagerScreen 等页面全面使用 Unified 组件
+
+### ✨ 新拟态风格
+
+- 新增新拟态（Neumorphism）风格预设，支持自定义阴影强度、内阴影、辉光效果
+- 新增文件：NeuModifiers.kt（381行）- BlurMaskFilter 渲染引擎，neuRaised/neuInset/neuPressable/neuGlow 等修饰符
+- 新增文件：NeuEffects.kt - 自定义波纹和辉光效果
+- 新增文件：NeumorphicComponents.kt - NeuCard/NeuButton/NeuInput/NeuSwitch 等组件
+- 新增文件：SpecialComponents.kt - 特殊组件
+- 新增文件：UIConfigPreviewScreen.kt - 新拟态预览页面（35个控件展示）
+- 新增文件：UIConfigNeumorphismPreview.kt - 新拟态独立预览
+- 新增文件：UIConfigModels.kt - ConfigState 数据模型，loadConfigFromUIConfig/saveConfigToUIConfig 序列化
+- 新增文件：StylePresets.kt - Default/Neumorphism 预设，toConfigState() 扩展
+- 新增文件：StyleManager.kt - 风格切换、缓存、重置
+- 新拟态组件支持：卡片、按钮、输入框、开关、芯片、滑块等
+- 新拟态动画速度可调（快/中/慢）
+
+### 🌐 语言切换
+
+- 新增语言切换功能（内容属性 > 文字 > 语言）
+- 支持：跟随系统、简体中文、English
+- UinApplication.applyLocale() 设置 Locale 并更新 Configuration
+- 语言设置持久化保存，重启后生效
+- UI 个性化页面所有标签支持多语言（Str.get() 本地化）
+- UIConfigSidebar 30+ 树节点标签本地化
+
+### 🔧 其他改进
+
+- 半透明效果（原玻璃效果）重命名，支持透明度调节滑块
+- 修复半透明效果透明度调节不生效的问题（glassBackground 现在正确应用 alpha 覆盖）
+- 修复文档中心页面顶部间距问题（DocBrowserScreen contentPadding）
+- 修复 15 个中英文字符串错位问题（neumorphism/animation 字符串移到正确位置）
+- 波纹效果开关说明：该开关控制 Material3 原生波纹，新拟态组件使用独立的阴影过渡动画作为点击反馈，两者互不影响
+- 新增文件：SharedSupervisor.kt - 共享 Supervisor 进程管理
+- build.gradle: versionCode 22, versionName "5.6.0"
+- AndroidManifest.xml: 多处 activity 属性更新
+- 多个 .tpk 测试插件包更新
+- 修复部分已知问题
+
+---
+
 ## [5.5.0] - 2026-08-22
 
 > 本版本聚焦**原生插件兼容性修复、实体 Termux 架构升级与开发向导补全**：修复原生插件因接口默认方法字节码不兼容导致的崩溃（`-Xjvm-default=all` + 重建 host-sdk.jar + 重新打包 plugin.dex）、CUI 插件 proot 容器内启动脚本路径错误、崩溃后日志页不跳转、MarkdownRenderer `appendReplacement` 崩溃、DocViewerScreen 闪退等问题；补齐剪贴板伪权限声明（`READ_CLIPBOARD`/`WRITE_CLIPBOARD`）；**开发向导补全所有插件字段**并同步更新内置文档。新增**打开插件前的权限提示**、**实体 Termux 共享 Supervisor**（单个常驻进程管理所有插件后端，冷启动省掉 ~5s 初始化开销）、**启动环境自动安装**（bootstrap + Alpine 后台预装）、**4 个静态桌面快捷方式**替换动态插件快捷方式。

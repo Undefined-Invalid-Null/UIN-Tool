@@ -52,6 +52,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
     var isLoading by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
     var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    var pluginSearchText by remember { mutableStateOf("") }
     val pullRefreshState = rememberPullToRefreshState()
 
     fun loadPluginPermissions(pluginId: String) {
@@ -237,6 +238,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
                 UIComponents.LastUpdatedCaption(
                     time = lastRefreshTime,
@@ -278,54 +280,70 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
 
                     var expanded by remember { mutableStateOf(false) }
                     val selectedPlugin = plugins.find { it.pluginId == selectedPluginId }
+                    val filteredPlugins = plugins.filter {
+                        pluginSearchText.isBlank() ||
+                        it.name.contains(pluginSearchText, ignoreCase = true) ||
+                        it.pluginId.contains(pluginSearchText, ignoreCase = true)
+                    }
 
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = selectedPlugin?.name ?: Str.get(R.string.select_plugin_2),
-                            onValueChange = {},
-                            readOnly = true,
-                            modifier = Modifier
-                                .weight(0.7f)
-                                .menuAnchor()
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(AppDimens.inputCornerRadius)),
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                cursorColor = MaterialTheme.colorScheme.primary
-                            ),
-                            shape = RoundedCornerShape(AppDimens.inputCornerRadius),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        )
-                        ExposedDropdownMenu(
+                    Column(modifier = Modifier.weight(0.7f)) {
+                        ExposedDropdownMenuBox(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            containerColor = MaterialTheme.colorScheme.surface
+                            onExpandedChange = { expanded = it }
                         ) {
-                            plugins.forEach { plugin ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            plugin.name,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontSize = AppDimens.bodyTextSize.sp
-                                        )
-                                    },
-                                    onClick = {
-                                        selectedPluginId = plugin.pluginId
-                                        loadPluginPermissions(plugin.pluginId)
-                                        expanded = false
-                                    }
+                            OutlinedTextField(
+                                value = selectedPlugin?.name ?: Str.get(R.string.select_plugin_2),
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                                    .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface, RoundedCornerShape(AppDimens.inputCornerRadius)),
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedContainerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
+                                    cursorColor = MaterialTheme.colorScheme.primary
+                                ),
+                                shape = RoundedCornerShape(AppDimens.inputCornerRadius),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+                            ) {
+                                UnifiedTextField(
+                                    value = pluginSearchText,
+                                    onValueChange = { pluginSearchText = it },
+                                    placeholder = "搜索插件",
+                                    leadingIcon = Icons.Default.Search,
+                                    showClearButton = true,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                                filteredPlugins.forEach { plugin ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                plugin.name,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                fontSize = AppDimens.bodyTextSize.sp
+                                            )
+                                        },
+                                        onClick = {
+                                            selectedPluginId = plugin.pluginId
+                                            loadPluginPermissions(plugin.pluginId)
+                                            pluginSearchText = ""
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

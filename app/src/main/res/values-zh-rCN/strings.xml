@@ -856,10 +856,25 @@
     <string name="github_acceleration_feature_under_de" formatted="false">GitHub加速功能开发中</string>
     <string name="github_api_error_response_code">GitHub API错误: %1$s</string>
     <string name="github_mirror_list_n_format_name_url" formatted="false"># GitHub 镜像站列表\n# 格式: 名称|URL|备注\n\n</string>
-    <string name="glass_background_color" formatted="false">玻璃背景色</string>
-    <string name="glass_effect" formatted="false">玻璃效果</string>
-    <string name="glass_effect_disabled" formatted="false">玻璃效果已禁用</string>
-    <string name="glass_effect_preview" formatted="false">玻璃效果预览</string>
+    <string name="glass_background_color" formatted="false">半透明背景色</string>
+    <string name="glass_effect" formatted="false">半透明效果</string>
+    <string name="glass_effect_disabled" formatted="false">半透明效果已禁用</string>
+    <string name="glass_effect_preview" formatted="false">半透明效果预览</string>
+    <string name="neumorphism_tab" formatted="false">新拟态</string>
+    <string name="enable_neumorphism" formatted="false">启用新拟态</string>
+    <string name="neumorphism_intensity" formatted="false">阴影强度</string>
+    <string name="intensity_light" formatted="false">轻</string>
+    <string name="intensity_medium" formatted="false">中</string>
+    <string name="intensity_strong" formatted="false">强</string>
+    <string name="neumorphism_inset" formatted="false">内阴影（按下状态）</string>
+    <string name="neumorphism_glow" formatted="false">辉光效果</string>
+    <string name="neumorphism_preview" formatted="false">预览</string>
+    <string name="animation_speed" formatted="false">动画速度</string>
+    <string name="speed_fast" formatted="false">快</string>
+    <string name="speed_medium" formatted="false">中</string>
+    <string name="speed_slow" formatted="false">慢</string>
+    <string name="card" formatted="false">卡片</string>
+    <string name="button" formatted="false">按钮</string>
     <string name="global_config_saved_all_widgets_refr" formatted="false">全局配置已保存，所有小部件已刷新</string>
     <string name="go_to_settings" formatted="false">去设置</string>
     <string name="go_to_system_settings_to_enable_spec" formatted="false">去系统设置开启特殊权限</string>
@@ -1304,6 +1319,7 @@
     <string name="plugin_load_failed_h3">插件加载失败</string>
     <string name="plugin_manage_installed" formatted="false">已安装插件</string>
     <string name="plugin_management" formatted="false">插件管理</string>
+    <string name="software" formatted="false">软件</string>
     <string name="plugin_details" formatted="false">插件详情</string>
     <string name="plugin_config_fields" formatted="false">plugin.json 字段</string>
     <string name="plugin_file_structure" formatted="false">文件结构</string>
@@ -1329,6 +1345,7 @@
     <string name="plugin_permission_feature_under_deve" formatted="false">插件权限功能开发中</string>
     <string name="plugin_permission_management" formatted="false">插件权限管理</string>
     <string name="plugin_permissions" formatted="false">插件权限</string>
+    <string name="manage_plugin_permissions" formatted="false">管理插件权限</string>
     <string name="plugin_permissions_size_permission_s">%1$s 项权限</string>
     <string name="plugin_plugin_name">插件: %1$s</string>
     <string name="plugin_r_name_needs_a_pre_command_in">插件「%1$s」需要在容器环境中先执行启动前命令：\n\n%2$s\n\n是否现在在终端中运行？</string>
@@ -1842,7 +1859,7 @@
     <string name="theme_mode" formatted="false">主题模式</string>
     <string name="this_device_does_not_support_shortcu" formatted="false">当前设备不支持创建快捷方式</string>
     <string name="this_feature_requires_android_8_0" formatted="false">Android 8.0+ 才支持此功能</string>
-    <string name="this_is_a_glass_effect_card" formatted="false">这是一个玻璃效果卡片</string>
+    <string name="this_is_a_glass_effect_card" formatted="false">这是一个半透明效果卡片</string>
     <string name="this_is_a_mandatory_update_you_must_" formatted="false">这是强制更新，必须安装最新版本</string>
     <string name="this_is_a_native_plugin_example" formatted="false">这是一个原生插件示例</string>
     <string name="this_is_a_web_plugin_example" formatted="false">这是一个Web插件示例</string>
@@ -2299,4 +2316,47 @@
     <string name="no_web_plugins_manageable" formatted="false">暂无可管理的 Web 插件</string>
     <string name="only_web_plugins_can_be_managed" formatted="false">此处仅可管理 Web 插件。原生插件权限由系统管控。</string>
     <string name="retain_session_single_window_reuse" formatted="false">已开启保留会话：复用该插件的既有窗口</string>
+    <string name="style_default_title" formatted="false">默认</string>
+    <string name="style_default_subtitle" formatted="false">标准配色方案</string>
+    <string name="style_neumorphism_title" formatted="false">新拟态</string>
+    <string name="style_neumorphism_subtitle" formatted="false">柔和阴影与浮雕效果</string>
+    <string name="current_style" formatted="false">当前风格: %1$s</string>
+    <string name="border_settings" formatted="false">边框粗细设置</string>
+    <string name="border_settings_coming_soon" formatted="false">边框粗细设置即将推出</string>
+    <string name="background_image_settings" formatted="false">背景图片设置</string>
+    <string name="background_image_coming_soon" formatted="false">背景图片设置即将推出</string>
+    <string name="font_family" formatted="false">字体族</string>
+    <string name="sans_serif_default" formatted="false">Sans Serif (默认)</string>
+    <string name="language_label" formatted="false">语言</string>
+    <string name="simplified_chinese" formatted="false">简体中文</string>
+    <string name="icon_image_replace" formatted="false">图标与图片替换</string>
+    <string name="icon_image_replace_coming_soon" formatted="false">图标与图片替换即将推出</string>
+    <string name="sidebar_style" formatted="false">风格</string>
+    <string name="sidebar_appearance" formatted="false">外观属性</string>
+    <string name="sidebar_colors" formatted="false">色彩</string>
+    <string name="sidebar_shapes" formatted="false">形状</string>
+    <string name="sidebar_corner_radius" formatted="false">圆角</string>
+    <string name="sidebar_width_height" formatted="false">宽高</string>
+    <string name="sidebar_border_thickness" formatted="false">边框粗细</string>
+    <string name="sidebar_material" formatted="false">材质</string>
+    <string name="sidebar_shadow" formatted="false">阴影</string>
+    <string name="sidebar_translucent" formatted="false">半透明效果</string>
+    <string name="sidebar_background" formatted="false">背景</string>
+    <string name="sidebar_gradient" formatted="false">渐变</string>
+    <string name="sidebar_solid" formatted="false">纯色</string>
+    <string name="sidebar_image" formatted="false">图片</string>
+    <string name="sidebar_content" formatted="false">内容属性</string>
+    <string name="sidebar_text" formatted="false">文字</string>
+    <string name="sidebar_text_size" formatted="false">文字大小</string>
+    <string name="sidebar_font" formatted="false">字体</string>
+    <string name="sidebar_weight" formatted="false">粗细</string>
+    <string name="sidebar_interaction" formatted="false">交互属性</string>
+    <string name="sidebar_click_effect" formatted="false">点击效果</string>
+    <string name="sidebar_animation_speed" formatted="false">动画速度</string>
+    <string name="sidebar_layout" formatted="false">布局属性</string>
+    <string name="sidebar_margin" formatted="false">外边距</string>
+    <string name="sidebar_position" formatted="false">排版占位</string>
+    <string name="reset_default_settings" formatted="false">恢复默认设置</string>
+    <string name="menu" formatted="false">菜单</string>
+    <string name="ui_personalization" formatted="false">UI 个性化</string>
 </resources>

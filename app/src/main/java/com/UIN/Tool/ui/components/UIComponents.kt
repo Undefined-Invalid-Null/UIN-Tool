@@ -520,7 +520,7 @@ object UIComponents {
             state = state,
             isRefreshing = isRefreshing,
             modifier = modifier,
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
             color = MaterialTheme.colorScheme.primary
         )
     }
@@ -555,7 +555,7 @@ object UIComponents {
                     shape = RoundedCornerShape(AppDimens.cardCornerRadius),
                     border = null,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
                     )
                 ) {
                     Row(

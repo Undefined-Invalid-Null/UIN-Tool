@@ -27,6 +27,7 @@ import com.UIN.Tool.R
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
+import com.UIN.Tool.ui.components.unified.ButtonSize
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
@@ -182,25 +183,13 @@ fun WidgetConfigScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        Button(
+                        UnifiedButton(
+                            text = Str.get(R.string.add_to_home_screen),
                             onClick = onAddShortcut,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = Str.get(R.string.add),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(Str.get(R.string.add_to_home_screen), fontSize = AppDimens.bodyTextSize.sp, fontWeight = FontWeight.Medium)
-                        }
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            icon = Icons.Default.Add,
+                            size = ButtonSize.Medium
+                        )
                     }
                 }
             }
@@ -254,25 +243,13 @@ fun WidgetConfigScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        Button(
+                        UnifiedButton(
+                            text = Str.get(R.string.add_to_home_screen),
                             onClick = onAddWidget,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = Str.get(R.string.add),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(Str.get(R.string.add_to_home_screen), fontSize = AppDimens.bodyTextSize.sp, fontWeight = FontWeight.Medium)
-                        }
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            icon = Icons.Default.Add,
+                            size = ButtonSize.Medium
+                        )
                     }
                 }
             }

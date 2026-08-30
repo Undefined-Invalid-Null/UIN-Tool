@@ -495,24 +495,12 @@ private fun PermissionPickerField(
         selected.take(3).joinToString(" / ") { PermissionUtils.getPermissionDisplayName(it) } +
             if (selected.size > 3) Str.get(R.string.permissions_more_count, selected.size - 3) else ""
     }
-    OutlinedButton(
+    UnifiedButton(
+        text = summary,
         onClick = onOpenDialog,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(AppDimens.inputCornerRadius)
-    ) {
-        Text(
-            text = summary,
-            fontSize = AppDimens.captionTextSize.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Icon(
-            Icons.Default.ArrowDropDown,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+        variant = ButtonVariant.Outlined
+    )
 }
 
 /** 权限多选弹窗：列表 + 复选框，确定后生效 */
@@ -729,7 +717,7 @@ fun NativeCodeStep(
 ) {
     Column {
         UnifiedCard(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
         ) {
             UnifiedBodyText(
                 Str.get(R.string.native_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
@@ -756,7 +744,7 @@ fun WebCodeStep(
 ) {
     Column {
         UnifiedCard(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
         ) {
             UnifiedBodyText(
                 Str.get(R.string.web_plugin_dev_tips, if (fileCount > 0) fileCount else 0),
@@ -792,7 +780,7 @@ fun CuiCodeStep(
 ) {
     Column {
         UnifiedCard(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
         ) {
             UnifiedBodyText(
                 Str.get(R.string.cui_plugin_dev_tips, if (fileCount > 0) fileCount else 0),

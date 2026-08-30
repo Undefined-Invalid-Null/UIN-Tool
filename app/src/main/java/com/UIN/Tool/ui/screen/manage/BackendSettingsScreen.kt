@@ -110,14 +110,11 @@ fun BackendSettingsScreen(
                     BackendConfig.IMPL_BUILTIN to Str.get(R.string.builtin_termux),
                     BackendConfig.IMPL_REAL to Str.get(R.string.real_termux)
                 ).forEach { (key, label) ->
-                    FilterChip(
+                    UnifiedChip(
+                        label = label,
                         selected = impl == key,
                         onClick = { impl = key },
-                        label = { Text(label) },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -139,14 +136,11 @@ fun BackendSettingsScreen(
                         BackendConfig.ENV_TERMUX to Str.get(R.string.termux_local),
                         BackendConfig.ENV_PROOT to Str.get(R.string.proot_container)
                     ).forEach { (key, label) ->
-                        FilterChip(
+                        UnifiedChip(
+                            label = label,
                             selected = env == key,
                             onClick = { env = key },
-                            label = { Text(label) },
-                            modifier = Modifier.weight(1f),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -171,33 +165,18 @@ fun BackendSettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 idlePresets.forEach { minutes ->
-                    FilterChip(
+                    UnifiedChip(
+                        label = "$minutes ${Str.get(R.string.min_)}",
                         selected = idleMin == minutes,
                         onClick = { onIdlePreset(minutes) },
-                        label = { Text("$minutes ${Str.get(R.string.min_)}") },
-                        modifier = Modifier.weight(1f),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                        modifier = Modifier.weight(1f)
                     )
                 }
-                FilterChip(
+                UnifiedChip(
+                    label = Str.get(R.string.idle_infinite),
                     selected = idleMin == BackendConfig.IDLE_TIMEOUT_INFINITE,
                     onClick = { onIdleInfinite() },
-                    label = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(Str.get(R.string.idle_infinite))
-                            Text(
-                                Str.get(R.string.idle_infinite_desc),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                    modifier = Modifier.weight(1f)
                 )
             }
             UnifiedTextField(
@@ -235,7 +214,7 @@ fun BackendSettingsScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Switch(
+                            UnifiedSwitch(
                                 checked = keepAlive,
                                 onCheckedChange = {
                                     keepAlive = it
