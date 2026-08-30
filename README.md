@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-5.5.0-blue)
-![Build](https://img.shields.io/badge/build-21-green)
+![Version](https://img.shields.io/badge/version-5.6.0-blue)
+![Build](https://img.shields.io/badge/build-22-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -18,7 +18,8 @@ UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框
 - **高效**：原生性能，Web 插件支持热更新，无需重新编译
 - **易用**：可视化开发向导，无需复杂配置即可创建插件
 - **灵活**：支持网格/列表视图切换，支持分类管理
-- **现代化**：基于 Jetpack Compose 构建，Material 3 设计语言
+- **现代化**：基于 Jetpack Compose 构建，Material 3 设计语言，支持新拟态风格
+- **国际化**：支持应用内多语言切换，无需更改系统语言
 - **强大**：内置 Termux 终端环境，支持 Python/Node.js/PHP 后端
 - **持久化**：插件数据独立存储，更新时自动保留用户数据
 
@@ -58,19 +59,36 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ## 版本信息
 
-### 当前版本：v5.5.0 (Build 21)
+### 当前版本：v5.6.0 (Build 22)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 5.5.0 |
-| 版本代码 | 21 |
-| 更新日期 | 2026年8月22日 |
+| 版本号 | 5.6.0 |
+| 版本代码 | 22 |
+| 更新日期 | 2026年8月30日 |
 | 最低 Android 版本 | 6.0 (API 23) |
-| 目标 Android 版本 | 14 (API 34) |
-| 编译 SDK 版本 | 35 (Android 15) |
+| 目标 Android 版本 | 9 (API 28) |
+| 编译 SDK 版本 | 36 (Android 16) |
 | 架构 | arm64-v8a |
 
 ### 版本历史
+
+#### v5.6.0 (Build 22) - 🎨 新拟态风格、多语言切换与半透明效果控制
+
+**🎨 新拟态风格（Neumorphism）：**
+- 新增新拟态 UI 风格，为卡片、按钮等组件提供柔和的凹凸光影效果
+- 在「UI 个性化」→「特效」页开启，与玻璃效果互斥
+
+**🌐 多语言切换：**
+- 支持在应用内直接切换语言（中文/英文等），无需更改系统语言
+- 在「管理」→「UI 个性化」→「语言」页选择
+
+**🪟 半透明效果透明度控制：**
+- 玻璃效果和新拟态效果支持透明度（alpha）调节
+- 在「特效」页拖动滑块即可实时预览
+
+**部分小问题修复：**
+- 修复部分已知问题
 
 #### v5.5.0 (Build 21) - 🧱 兼容性修复、实体 Termux 架构升级与开发向导补全
 
@@ -823,7 +841,7 @@ A: 点击底部「开发」→「打开终端」，首次使用会自动安装 L
 贡献者名单
 
 贡献者 角色 贡献内容
-UIN Team 核心开发 架构设计、核心功能
+-UIN- 核心开发 架构设计、核心功能
 一支电笔 功能开发 1x1 桌面小部件功能
 Termux 团队 上游项目 终端模拟器核心引擎
 
