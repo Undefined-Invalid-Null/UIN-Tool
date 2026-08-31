@@ -278,15 +278,15 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                 ) {
                     UnifiedBodyText(Str.get(R.string.select_plugin), modifier = Modifier.weight(0.3f))
 
-                    var expanded by remember { mutableStateOf(false) }
-                    val selectedPlugin = plugins.find { it.pluginId == selectedPluginId }
-                    val filteredPlugins = plugins.filter {
-                        pluginSearchText.isBlank() ||
-                        it.name.contains(pluginSearchText, ignoreCase = true) ||
-                        it.pluginId.contains(pluginSearchText, ignoreCase = true)
-                    }
-
                     Column(modifier = Modifier.weight(0.7f)) {
+                        var expanded by remember { mutableStateOf(false) }
+                        val selectedPlugin = plugins.find { it.pluginId == selectedPluginId }
+                        val filteredPlugins = plugins.filter {
+                            pluginSearchText.isBlank() ||
+                            it.name.contains(pluginSearchText, ignoreCase = true) ||
+                            it.pluginId.contains(pluginSearchText, ignoreCase = true)
+                        }
+
                         ExposedDropdownMenuBox(
                             expanded = expanded,
                             onExpandedChange = { expanded = it }
@@ -298,18 +298,18 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .menuAnchor()
-                                    .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface, RoundedCornerShape(AppDimens.inputCornerRadius)),
+                                    .padding(vertical = 4.dp),
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                                 },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                     unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                    focusedContainerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
-                                    unfocusedContainerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
+                                    focusedContainerColor = MaterialTheme.colorScheme.background,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.background,
                                     cursorColor = MaterialTheme.colorScheme.primary
                                 ),
-                                shape = RoundedCornerShape(AppDimens.inputCornerRadius),
+                                shape = RoundedCornerShape(12.dp),
                                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -317,12 +317,12 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                             ExposedDropdownMenu(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false },
-                                containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+                                containerColor = MaterialTheme.colorScheme.background
                             ) {
                                 UnifiedTextField(
                                     value = pluginSearchText,
                                     onValueChange = { pluginSearchText = it },
-                                    placeholder = "搜索插件",
+                                    placeholder = Str.get(R.string.search_plugin_hint),
                                     leadingIcon = Icons.Default.Search,
                                     showClearButton = true,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -332,8 +332,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                                         text = {
                                             Text(
                                                 plugin.name,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = AppDimens.bodyTextSize.sp
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                         },
                                         onClick = {

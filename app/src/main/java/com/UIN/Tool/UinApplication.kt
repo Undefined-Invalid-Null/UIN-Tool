@@ -77,6 +77,13 @@ class UinApplication : TermuxApplication() {
         }
 
         try {
+            com.UIN.Tool.cache.DiskCache.cleanup("icons")
+            Logger.i(TAG, "Disk cache cleanup completed")
+        } catch (e: Exception) {
+            Logger.e(TAG, "Disk cache cleanup failed", e)
+        }
+
+        try {
             cleanupOnVersionUpgrade()
         } catch (e: Exception) {
             Logger.e(TAG, "cleanupOnVersionUpgrade failed", e)

@@ -3,11 +3,10 @@ package com.UIN.Tool.data.remote
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import com.UIN.Tool.domain.model.RepoPluginInfo
+import com.UIN.Tool.domain.model.SourceInfo
 import com.UIN.Tool.log.Logger
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 class GitHubApiService(
@@ -16,114 +15,94 @@ class GitHubApiService(
     
     companion object {
         private const val TAG = "GitHubApiService"
-        private const val GITHUB_API_BASE = "https://api.github.com"
-        private const val GITHUB_ORG = "UIN-Tool-Plugins"
     }
     
-    suspend fun fetchOrgRepos(): List<RepoPluginInfo> {
-        val result = mutableListOf<RepoPluginInfo>()
-        val url = "$GITHUB_API_BASE/orgs/$GITHUB_ORG/repos?per_page=100"
+    private val indexFetcher = SourceIndexFetcher(client)
+
+    /**
+     * 获取所有启用源的插件列表
+     */
+    suspend fun fetchAllSourcesPlugins(sources: List<SourceInfo>): List<RepoPluginInfo> {
+        val allPlugins = mutableListOf<RepoPluginInfo>()
         
-        try {
-            val request = Request.Builder()
-                .url(url)
-                .header("Accept", "application/vnd.github.v3+json")
-                .header("User-Agent", "UIN-Tool-Android")
-                .build()
-            
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val json = response.body?.string() ?: return emptyList()
-                    val repos = JSONArray(json)
-                    
-                    for (i in 0 until repos.length()) {
-                        val repo = repos.getJSONObject(i)
-                        val repoName = repo.getString("name")
-                        
-                        if (repoName == ".github" || repoName == "Docs" || repoName == "docs") {
-                            continue
-                        }
-                        
-                        val description = repo.optString("description", "")
-                        val plugin = fetchLatestRelease(repoName)
-                        plugin?.let {
-                            it.name = if (description.isNotEmpty()) description else repoName
-                            result.add(it)
-                        }
-                    }
-                }
+        for (source in sources.filter { it.enabled }) {
+            try {
+                val plugins = fetchSourcePlugins(source)
+                allPlugins.addAll(plugins)
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to fetch plugins from source: ${source.sourceId}", e)
             }
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_fetch_repo_list), e)
+        }
+        
+        return allPlugins
+    }
+
+    /**
+     * 获取单个源的插件列表
+     */
+    suspend fun fetchSourcePlugins(source: SourceInfo): List<RepoPluginInfo> {
+        val result = mutableListOf<RepoPluginInfo>()
+        
+        val pluginsResult = indexFetcher.fetchSourcePlugins(source)
+        if (pluginsResult.isFailure) {
+            Logger.e(TAG, "Failed to fetch source index: ${source.sourceId}")
+            return emptyList()
+        }
+        
+        val plugins = pluginsResult.getOrNull() ?: return emptyList()
+        val baseUrl = source.getDownloadBaseUrl()
+        
+        for (pluginMap in plugins) {
+            try {
+                val plugin = RepoPluginInfo()
+                
+                plugin.pluginId = pluginMap["pluginId"] as? String ?: ""
+                plugin.name = pluginMap["name"] as? String ?: ""
+                plugin.author = pluginMap["author"] as? String ?: ""
+                plugin.description = pluginMap["description"] as? String ?: ""
+                plugin.version = pluginMap["version"] as? String ?: ""
+                plugin.versionName = pluginMap["versionName"] as? String ?: ""
+                plugin.updateLog = pluginMap["updateLog"] as? String ?: ""
+                plugin.size = (pluginMap["size"] as? Number)?.toLong() ?: 0
+                plugin.lastUpdate = pluginMap["lastUpdate"] as? String ?: ""
+                plugin.repositoryUrl = pluginMap["repositoryUrl"] as? String ?: ""
+                plugin.uiType = pluginMap["uiType"] as? String ?: ""
+                
+                // 设置源信息
+                plugin.sourceId = source.sourceId
+                plugin.sourceName = source.getDisplayName()
+                
+                // 构建下载 URL
+                val tpkPath = pluginMap["tpkPath"] as? String ?: ""
+                if (tpkPath.isNotEmpty()) {
+                    plugin.downloadUrl = "$baseUrl/$tpkPath"
+                    plugin.tpkPath = tpkPath
+                }
+                
+                // 构建图标 URL
+                val iconPath = pluginMap["iconPath"] as? String ?: ""
+                if (iconPath.isNotEmpty()) {
+                    plugin.iconUrl = "$baseUrl/$iconPath"
+                    plugin.iconPath = iconPath
+                } else {
+                    // 默认图标路径
+                    val pluginDir = pluginMap["pluginId"] as? String ?: ""
+                    plugin.iconUrl = "$baseUrl/plugins/$pluginDir/icon.png"
+                }
+                
+                result.add(plugin)
+            } catch (e: Exception) {
+                Logger.e(TAG, "Failed to parse plugin from source: ${source.sourceId}", e)
+            }
         }
         
         return result
     }
     
-    suspend fun fetchLatestRelease(repoName: String): RepoPluginInfo? {
-        val url = "$GITHUB_API_BASE/repos/$GITHUB_ORG/$repoName/releases/latest"
-        
-        return try {
-            val request = Request.Builder()
-                .url(url)
-                .header("Accept", "application/vnd.github.v3+json")
-                .header("User-Agent", "UIN-Tool-Android")
-                .build()
-            
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val json = response.body?.string() ?: return null
-                    parseRelease(repoName, json)
-                } else {
-                    null
-                }
-            }
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_fetch_release_reponame, repoName), e)
-            null
-        }
-    }
-    
-    private fun parseRelease(repoName: String, json: String): RepoPluginInfo? {
-        return try {
-            val release = JSONObject(json)
-            val plugin = RepoPluginInfo()
-            plugin.pluginId = repoName
-            
-            val tagName = release.optString("tag_name", "")
-            if (tagName.contains("-")) {
-                val parts = tagName.split("-", limit = 2)
-                plugin.version = parts[0]
-                plugin.versionName = if (parts.size > 1) parts[1] else parts[0]
-            } else {
-                plugin.version = "1"
-                plugin.versionName = if (tagName.isNotEmpty()) tagName else "1.0.0"
-            }
-            
-            plugin.updateLog = release.optString("body", "")
-            plugin.lastUpdate = release.optString("published_at", "")
-            plugin.repositoryUrl = release.optString("html_url", "")
-            
-            val assets = release.getJSONArray("assets")
-            for (i in 0 until assets.length()) {
-                val asset = assets.getJSONObject(i)
-                if (asset.getString("name").endsWith(".tpk")) {
-                    plugin.downloadUrl = asset.getString("browser_download_url")
-                    plugin.size = asset.getLong("size")
-                    break
-                }
-            }
-            
-            if (plugin.downloadUrl.isEmpty()) {
-                return null
-            }
-            
-            plugin.author = Str.get(R.string.uin_community)
-            plugin.description = Str.get(R.string.uin_tool_plugins)
-            plugin
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.failed_to_parse_release), e)
-            null
-        }
+    /**
+     * 清除所有缓存
+     */
+    fun clearCache() {
+        indexFetcher.clearCache()
     }
 }

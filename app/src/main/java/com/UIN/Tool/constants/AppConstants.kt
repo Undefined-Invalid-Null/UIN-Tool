@@ -144,6 +144,22 @@ object AppConstants {
         "https://gitclone.com"
     )
 
+    // ==================== 默认源 ====================
+    val DEFAULT_SOURCES_JSON = """
+        [
+            {
+                "sourceId": "official",
+                "name": "官方源",
+                "owner": "UIN-Tool-Plugins",
+                "repo": "Official",
+                "branch": "dist",
+                "description": "UIN Tool 官方维护的插件仓库",
+                "trustLevel": "official",
+                "addedAt": "2026-08-30T14:07:27+08:00"
+            }
+        ]
+    """.trimIndent()
+
     // ==================== UI配置 ====================
     const val UI_CONFIG_FILE = "ui_config.json"
 

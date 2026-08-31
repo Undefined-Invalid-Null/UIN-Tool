@@ -12,6 +12,57 @@
 
 ---
 
+## [5.7.0] - 2026-08-31
+
+> 本版本聚焦**插件分发系统重构、更新检测、CI 自动化、网络缓存优化**：从单仓库单插件模式切换为源（Source）+ 多插件模式，支持多源聚合、自动版本更新检测、GitHub Actions CI 自动构建、图标磁盘缓存与 HTTP 条件请求。共修改 50+ 个文件，新增 2500+ 行。
+
+### 插件分发系统重构
+
+- 全新源（Source）架构：每个 GitHub 仓库作为"源"包含多个插件，通过 `source.json` 索引
+- 新增 `SourceIndexFetcher`：支持 GitHub API + raw URL 双通道获取插件索引，内置缓存
+- 新增 `SourceManageActivity`：源管理页面，支持启用/禁用/删除自定义源
+- `RepoViewModel` 重构：多源插件聚合、按源筛选、搜索过滤
+- `RepoScreen` 更新：源 FilterChip 筛选、"有更新"标记、详情对话框显示版本对比
+- 移除 `backendPort` 字段：后端端口由 `findAvailablePort()` 自动分配，避免端口冲突
+
+### 插件更新检测
+
+- 新增 `hasUpdate` / `installedVersion` 字段：比较本地已安装版本与远程源版本
+- 已安装插件有更新时显示"有更新"标记，按钮变为"更新"
+- 详情对话框显示当前已安装版本，支持一键更新
+
+### CI 自动化
+
+- `build.yml`：触发路径包含 `.github/workflows/**`；deploy 使用 `git clone --branch dist`（token 认证）；增量构建使用 `github.event.before` 精确检测变更；自动复制 `plugin.json` + `icon.png` + `.tpk` 到 dist 分支
+- `generate-index.sh`：从 dist 目录读取 `plugin.json`，支持 `visible` 文件隐藏插件
+- `build-plugin.sh`：native 编译使用 `host-sdk.jar`；支持绝对路径；`other` 类型调用插件自带 `build.sh`
+- 插件构建脚本 `build.sh`：支持 `chmod +x` 确保二进制可执行
+
+### 网络缓存优化
+
+- 新增 `DiskCache` 磁盘缓存工具：SHA-256 哈希文件命名、内存+磁盘双层缓存、1 天 TTL 自动过期
+- HTTP 条件请求：存储 `ETag` / `Last-Modified` 头，发送 `If-None-Match` / `If-Modified-Since` 避免重复下载未变更资源
+- 图标缓存：`CachedPluginIcon` Composable 优先从磁盘缓存加载，回退到网络条件请求
+- 启动时缓存清理：应用启动时自动清除过期缓存条目
+
+### UI 改进
+
+- 插件详情对话框显示插件图标（64dp 居中）
+- 详情对话框确认按钮使用主题色背景 + 白色文字
+- 插件卡片列表"打开"按钮使用描边样式（透明底 + 主题色文字 + 描边）
+- 统一 UI 修复：下拉框样式跨页面对齐、按钮颜色在默认与新拟态风格间保持一致、硬编码文字移入字符串资源
+
+### Bug 修复
+
+- 修复 `filemanager` 插件路径错误：从 app 内部存储改为 `/storage/emulated/0/UIN_Tool/plugins`
+- 修复 `calculator` 后端启动失败：移除不必要的 `pip install flask` 依赖
+- 修复 `sysinfo` 插件二进制权限问题：构建时添加 `chmod +x`
+- 修复 `RepoScreen` 缺少 `AppColors` 导入
+- 修复 `SourceManageActivity` 主题使用 `UINToolTheme`
+- 修复 `RepoPluginCard` 图标加载智能转型错误（委托属性）
+
+---
+
 ## [5.6.0] - 2026-08-30
 
 > 本版本聚焦**UI 系统完善、新拟态风格新增、语言切换功能**：完善 UI 个性化系统，新增新拟态（Neumorphism）风格，新增语言切换功能（支持跟随系统/简体中文/English）。共修改 92 个文件，新增 6240 行，删除 3850 行。
@@ -865,7 +916,7 @@ v4.0.0 是一次重大重构，升级前请注意：
 |------|------|
 | 文档版本 | 5.5.0 |
 | 最后更新 | 2026年8月22日 |
-| 对应应用版本 | v5.5.0 (Build 21) |
+| 对应应用版本 | v5.7.0 (Build 23) |
 
 ---
 

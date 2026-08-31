@@ -19,7 +19,14 @@ data class RepoPluginInfo(
     var size: Long = 0,
     var lastUpdate: String = "",
     var repositoryUrl: String = "",
-    var isInstalled: Boolean = false
+    var isInstalled: Boolean = false,
+    var sourceId: String = "",
+    var sourceName: String = "",
+    var tpkPath: String = "",
+    var iconPath: String = "",
+    var uiType: String = "",
+    var hasUpdate: Boolean = false,
+    var installedVersion: Int = 0
 ) {
     
     fun getFormattedSize(): String {

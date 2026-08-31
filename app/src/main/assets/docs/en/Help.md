@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 5.6.0 |
-| Corresponding App Version | v5.6.0 (Build 22) |
-| Last Updated | August 28, 2026 |
+| Document Version | 5.7.0 |
+| Corresponding App Version | v5.7.0 (Build 23) |
+| Last Updated | August 31, 2026 |
 
 ---
 
@@ -127,27 +127,26 @@
 
 ## I. App Overview
 
-UIN Tool is a lightweight plugin framework application that allows you to dynamically load and run third-party plugins. Version 5.6.0 focuses on **Neumorphism style, multilingual switching, and translucent effect control**: adds Neumorphism UI style providing soft concave-convex light-shadow effects for cards, buttons, and other components (enabled in the "Effects" page, mutually exclusive with glass effect); supports in-app language switching (Chinese/English, etc., no need to change system language); glass effect and neumorphism effect support transparency (alpha) adjustment (drag the slider for real-time preview). Version 5.5.0 focuses on **compatibility fixes, real Termux architecture upgrade, and development wizard completion**: fixes native plugin `AbstractMethodError` crash, CUI plugin proot container script path issue, MarkdownRenderer `appendReplacement` crash, DocViewerScreen crash, etc.; adds clipboard pseudo-permissions (`READ_CLIPBOARD`/`WRITE_CLIPBOARD`, effective just by declaration), completes development wizard fields (backend timeout/health check/openWith/permission multi-select, retains plugin notice), **pops up permission prompt dialog before opening plugin** (Web plugin shows ungranted permissions / native plugin shows required permissions, unified style dialog), removes refresh button on permission management page and changes button text to "Grant All"/"Revoke All", **"Keep Session on Close" enabled by default (single-window deduplication)**, users must explicitly disable to support multi-instance; **real Termux shared Supervisor** (single resident process manages all plugin backends, cold startup saves ~5s initialization overhead, warm startup ~0.5s); **startup environment auto-installation** (bootstrap + Alpine background pre-installation, terminal no longer black screen); **4 static desktop shortcuts** replace dynamic plugin shortcuts; also **streamlines wizard fields** (no longer provides max memory/max CPU time/max concurrent tasks, dependencies, API level, backend keep-alive input fields) and fixes code editor always showing default MainPlugin.java. Version 5.4.0 is a **proactive capability extension**: **adds plugin receiving external content** -- text, links, files shared or opened with other apps by the system/other apps can be sent to UIN Tool, the relay page lists all plugins declaring `openWith` that match the content for you to choose which plugin to handle (auto-opens when only 1 match, relay page supports real-time search; files are copied into the plugin `.incoming/` directory for backend reading, Web plugins use `window.getOpenData()` / `UINPlugin.getOpenData()` to read, native plugins receive via `onHostEvent("host.open", bundle)`); **adds plugin multi-instance** -- Web/CUI plugins support multi-instance by default (each opening is an independent instance, page/JS interface/backend do not interfere), native plugins are single instance by default, can enable "Native Plugin Multi-Instance (Experimental)" in the development tools page, each instance has an independent `instanceId`, backend supports shared port / independent port two multi-instance modes; also **changes the launch button on plugin management page list items to "Add Desktop Shortcut"** (`+` icon). Version 5.3.0 is a **comprehensive refinement**: **adds global gradient background** -- can be enabled/disabled in "UI Personalization" > "Effects" page, supports single-select (single-color gradient)/multi-select (multi-color gradient) two modes, can set **start/end direction** separately (6 directions selectable), default single-color gradient adapts by theme (light `#FFC4D6DF` / dark `#FF4C4F51`, bottom-right → top-left), takes effect on all pages and **top title bar follows gradient**; **glass transparency increased**, **plugin management page card style unified** (checkboxes only show in selection mode), **bottom navigation floating style** (completely follows card style: opaque card background + rounded corners + shadow, covers content, scrolling cards show from surrounding whitespace without clipping, press to compress and scale, selected icon enlarges, no ripple), **button outline improved** (white/transparent background outline buttons have clear contours); **dialog background follows main background** and maintains high transparency (0.95) ensuring text readability, also fixes plugin dialog background covering plugin page content; **fixes permission status auto-refresh** -- auto-updates checkmarks after granting, no manual pull-to-refresh needed; **unified UI component system** -- `Unified*` components become the sole implementation source (buttons/cards/input fields/text/switches/tags/dialogs, etc.), `UIComponents` refactored into a thin delegation layer, all screens migrated to use unified components, cards/input fields/dialogs support glass effect (semi-transparent background, no border, no shadow, follows theme); **enhanced color picker** -- visual color picker (hue bar + saturation/brightness panel, click/drag anywhere to pick any color), supports hex color input, retains RGB/Alpha sliders and preset palette, supports dark mode theme following; **enhanced plugin category management** -- plugin details page and export/delete action bar both...
+UIN Tool is a lightweight plugin framework that lets you dynamically load and run third-party plugins on Android. It supports both **native plugins** (Java/Kotlin) and **Web plugins** (HTML/CSS/JS), with a built-in Linux terminal, backend runtime, and permission management.
 
 ### 1.1 Core Features
 
 | Feature Module | Description |
 |----------------|-------------|
-| Plugin System | Supports native plugins (Java/Kotlin) and Web plugins (HTML/CSS/JS) |
-| Data Persistence | Each plugin has an independent data/ directory, user data automatically preserved on update |
-| Terminal Environment | Built-in complete Linux terminal based on Termux |
-| Backend Integration | Web plugins can start backend services (unified startup command mode, built-in Termux / real Termux globally selectable) |
-| Container Runtime | Proot shared Alpine container, backend and host environment isolated |
-| Plugin Repository | Browse, search, and install plugins from the official GitHub repository |
-| Development Tools | Plugin creation wizard, code editor (Sora Editor), template export |
-| Permission Management | App permissions and independent plugin permission management, state persistence |
-| Backup & Restore | Backup/restore all plugins and configurations |
-| UI Personalization | 38+ color items, 7 corner radius options, complete color picker, global gradient background (adjustable direction), neumorphism style, translucent effect transparency control |
-| Multilingual Support | In-app language switching (Chinese/English, etc.), no need to change system language |
-| Documentation Center | Development docs, user guide, changelog, about information |
+| Plugin System | Native (Java/Kotlin) and Web (HTML/CSS/JS) plugins |
+| Data Persistence | Independent data/ directory per plugin, preserved on update |
+| Terminal Environment | Built-in Linux terminal based on Termux |
+| Backend Integration | Unified startup command mode, built-in/real Termux globally selectable |
+| Container Runtime | Proot shared Alpine container, backend and host isolated |
+| Plugin Repository | Browse, search, install from GitHub sources |
+| Development Tools | Creation wizard, code editor (Sora Editor), template export |
+| Permission Management | App + plugin permissions, state persistence |
+| Backup & Restore | Backup/restore plugins and configurations |
+| UI Personalization | 38+ colors, gradient background, neumorphism style, glass effects |
+| Multilingual Support | In-app language switching (Chinese/English) |
 | Desktop Widgets | List widget (3x3) and 1x1 shortcut |
-| External Content Reception | System share / open with other apps relay processing (openWith), can receive text / links / files |
-| Plugin Multi-Instance | Run multiple independent instances of the same plugin simultaneously (Web/CUI default, native optional) |
+| External Content | System share/open-with relay (openWith) |
+| Multi-Instance | Multiple independent plugin instances simultaneously |
 
 ### 1.2 Plugin Type Comparison
 
@@ -159,7 +158,7 @@ UIN Tool is a lightweight plugin framework application that allows you to dynami
 | Development Barrier | Higher | Lower |
 | System API Access | Full access | Via JS interface (170+ APIs) |
 | Data Storage | PluginContext API | UINPlugin Storage API |
-| Backend Support | None | Unified startup command mode (built-in Termux / real Termux globally selectable) |
+| Backend Support | None | Unified startup command mode |
 
 ---
 
@@ -1279,9 +1278,9 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 
 | Item | Info |
 |---|---|
-| Document Version | 5.6.0 |
-| Last Updated | August 28, 2026 |
-| Corresponding App Version | v5.6.0 (Build 22) |
+| Document Version | 5.7.0 |
+| Last Updated | August 31, 2026 |
+| Corresponding App Version | v5.7.0 (Build 23) |
 
 ---
 

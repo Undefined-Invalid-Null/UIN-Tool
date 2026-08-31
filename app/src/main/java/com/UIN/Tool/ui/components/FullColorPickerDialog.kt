@@ -164,6 +164,11 @@ fun FullColorPickerDialog(
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurface
                     ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.background,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                     shape = RoundedCornerShape(AppDimens.radiusSmall)
                 )

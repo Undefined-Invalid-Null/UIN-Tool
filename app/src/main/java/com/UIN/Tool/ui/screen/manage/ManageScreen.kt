@@ -193,6 +193,18 @@ fun ManageScreen(
             }
         },
         ManageMenuItem(
+            id = "source_manage",
+            title = "源管理",
+            icon = Icons.Default.Cloud,
+            description = "管理插件源，添加或移除第三方源"
+        ) {
+            try {
+                context.startActivity(Intent(context, SourceManageActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, "源管理功能开发中")
+            }
+        },
+        ManageMenuItem(
             id = "plugin_permissions",
             title = Str.get(R.string.plugin_permissions),
             icon = Icons.Default.Security,

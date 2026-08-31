@@ -163,7 +163,7 @@ fun UIConfigPreviewScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (UIConfig.shouldUseDarkTheme()) Color(0xFF1E1E22) else Color.White
+            val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
             val textPrimary = if (UIConfig.shouldUseDarkTheme()) Color(0xFFD0D0D0) else Color(0xFF333333)
             val primaryLight = Color(0xFF1A3A4A)
             ModalDrawerSheet(
@@ -224,7 +224,7 @@ fun UIConfigPreviewScreen(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (UIConfig.shouldUseDarkTheme()) Color(0xFF1E1E22) else Color.White,
+                        containerColor = MaterialTheme.colorScheme.background,
                         navigationIconContentColor = if (UIConfig.shouldUseDarkTheme()) Color(0xFFD0D0D0) else Color(0xFF333333)
                     )
                 )
@@ -246,7 +246,7 @@ fun UIConfigPreviewContent(
 ) {
     val isDark = UIConfig.shouldUseDarkTheme()
     val bgColor = if (isDark) Color(0xFF18181A) else Color(0xFFF5F7FA)
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
     val textSecondary = if (isDark) Color(0xFFB0B0B0) else Color(0xFF666666)
     val textTertiary = if (isDark) Color(0xFF8A8A8A) else Color(0xFF888888)
@@ -1517,7 +1517,7 @@ private fun PluginCardDemo(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "card_scale"
     )
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     Column(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -1559,7 +1559,7 @@ private fun PluginCardDemo(
 
 @Composable
 private fun MiniCardDemo(title: String, subtitle: String, isDark: Boolean, intensity: NeuDefaults.Intensity, onEmptyClick: () -> Unit = {}) {
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
     val textSecondary = if (isDark) Color(0xFFB0B0B0) else Color(0xFF666666)
     var isPressed by remember { mutableStateOf(false) }
@@ -1634,7 +1634,7 @@ private fun ListItemDemo(
     iconColors: List<Color>, isDark: Boolean, intensity: NeuDefaults.Intensity,
     onEmptyClick: () -> Unit = {}
 ) {
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
     val textSecondary = if (isDark) Color(0xFFB0B0B0) else Color(0xFF666666)
 
@@ -1710,7 +1710,7 @@ private fun ProgressDemo(
 ) {
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
     val textSecondary = if (isDark) Color(0xFFB0B0B0) else Color(0xFF666666)
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -1830,7 +1830,7 @@ private fun RadioButtonRow(text: String, selected: Boolean, onClick: () -> Unit)
 @Composable
 private fun AccordionDemo(title: String, content: String, isDark: Boolean, intensity: NeuDefaults.Intensity) {
     var expanded by remember { mutableStateOf(false) }
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
     val textSecondary = if (isDark) Color(0xFFB0B0B0) else Color(0xFF666666)
     val rotation by animateFloatAsState(
@@ -2048,7 +2048,7 @@ private fun PaginationBtn(
     textColor: Color, isDark: Boolean, intensity: NeuDefaults.Intensity,
     onEmptyClick: () -> Unit = {}
 ) {
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     var isPressed by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val isBtnEnabled = text != "..."
@@ -2094,7 +2094,7 @@ private fun PaginationBtn(
 
 @Composable
 private fun StepperDemo(label: String, initialValue: Int, isDark: Boolean, intensity: NeuDefaults.Intensity) {
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
     val primaryLight = Color(0xFF1A3A4A)
     var value by remember { mutableIntStateOf(initialValue) }
@@ -2230,7 +2230,7 @@ private fun TimeColumn(label: String, value: Int, range: IntRange, onValueChange
     val primaryLight = Color(0xFF1A3A4A)
     val isDark = UIConfig.shouldUseDarkTheme()
     val neuIntensity = NeuDefaults.currentIntensity()
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
 
     Column(
@@ -2306,7 +2306,7 @@ private fun NotificationRow(
     isDark: Boolean, intensity: NeuDefaults.Intensity,
     onEmptyClick: () -> Unit = {}
 ) {
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else if (isDark) Color(0xFF1E1E22) else Color.White
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = if (isDark) Color(0xFFD0D0D0) else Color(0xFF333333)
     val textSecondary = if (isDark) Color(0xFFB0B0B0) else Color(0xFF666666)
     val textTertiary = if (isDark) Color(0xFF8A8A8A) else Color(0xFF888888)

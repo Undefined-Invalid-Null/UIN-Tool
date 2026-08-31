@@ -27,6 +27,8 @@ data class PluginInfo(
     var entry: String = "web/index.html",
     var permissions: List<String> = emptyList(),
     var dependencies: List<String> = emptyList(),
+    /** 来源源 ID（安装时记录） */
+    var sourceId: String = "",
 
     // ==================== 插件说明 ====================
     var notice: String = "",
@@ -282,6 +284,7 @@ data class PluginInfo(
             put("entry", entry)
             put("permissions", permissions.joinToString(","))
             put("dependencies", dependencies.joinToString(","))
+            put("sourceId", sourceId)
             put("notice", notice)
             put("backend", backend)
             put("backendRuntime", backendRuntime)
@@ -370,6 +373,7 @@ data class PluginInfo(
                     entry = obj.optString("entry", "web/index.html"),
                     permissions = parseStringList(obj, "permissions"),
                     dependencies = parseStringList(obj, "dependencies"),
+                    sourceId = obj.optString("sourceId", ""),
                     notice = obj.optString("notice", ""),
                     backend = obj.optString("backend", ""),
                     backendRuntime = obj.optString("backendRuntime", ""),

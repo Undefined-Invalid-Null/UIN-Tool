@@ -107,8 +107,9 @@ fun UnifiedButton(
     contentColor: Color? = null
 ) {
     val (resolvedContainerColor, resolvedContentColor) = when {
-        variant == ButtonVariant.Primary && containerColor != null && contentColor != null -> containerColor to contentColor
-        variant == ButtonVariant.Primary && containerColor != null -> containerColor to MaterialTheme.colorScheme.onSurface
+        containerColor != null && contentColor != null -> containerColor to contentColor
+        containerColor != null -> containerColor to MaterialTheme.colorScheme.onSurface
+        contentColor != null -> MaterialTheme.colorScheme.primary to contentColor
         else -> when (variant) {
             ButtonVariant.Primary -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
             ButtonVariant.Secondary -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
@@ -134,13 +135,10 @@ fun UnifiedButton(
             else -> {
                 val neuInset = UIConfig.isNeumorphismInsetEnabled()
                 val currentOffset = if (isPressed) 0f else 5f
-                val bgColor = if (glass) resolvedContainerColor.copy(alpha = AppColors.translucentAlpha()) else resolvedContainerColor
                 if (neuInset && isPressed) {
-                    Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = Color.Transparent, offset = currentOffset)
-                        .background(bgColor, shape)
+                    Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = resolvedContainerColor, offset = currentOffset)
                 } else {
-                    Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = Color.Transparent, offset = currentOffset)
-                        .background(bgColor, shape)
+                    Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = resolvedContainerColor, offset = currentOffset)
                 }
             }
         }
@@ -161,10 +159,10 @@ fun UnifiedButton(
         },
         colors = when (variant) {
             ButtonVariant.Outlined -> ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary
+                contentColor = if (contentColor != null) resolvedContentColor else MaterialTheme.colorScheme.primary
             )
             ButtonVariant.Text -> ButtonDefaults.textButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary
+                contentColor = if (contentColor != null) resolvedContentColor else MaterialTheme.colorScheme.primary
             )
             else -> ButtonDefaults.buttonColors(
                 containerColor = resolvedContainerColor,
@@ -367,7 +365,8 @@ fun UnifiedTextField(
     supportingText: String? = null,
     enabled: Boolean = true,
     singleLine: Boolean = true,
-    onTrailingIconClick: (() -> Unit)? = null
+    onTrailingIconClick: (() -> Unit)? = null,
+    containerColor: Color? = null
 ) {
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
@@ -376,9 +375,9 @@ fun UnifiedTextField(
     val inputShape = RoundedCornerShape(AppDimens.inputCornerRadius)
 
     if (neu) {
-        val surfaceColor = if (isDark) Color(0xFF1E1E22) else Color.White
+        val surfaceColor = containerColor ?: MaterialTheme.colorScheme.background
         val glass = AppColors.glassEnabled()
-        val bgColor = if (glass) surfaceColor.copy(alpha = AppColors.translucentAlpha()) else surfaceColor
+        val bgColor = if (containerColor != null) containerColor else if (glass) AppColors.glassBackground() else surfaceColor
         Box(
             modifier = modifier
                 .neuInset(RoundedCornerShape(AppDimens.inputCornerRadius), isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = AppDimens.inputCornerRadius, backgroundColor = bgColor)
@@ -396,7 +395,7 @@ fun UnifiedTextField(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.weight(1f),
-                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
+                    textStyle = TextStyle(color = Color(0xFF333333), fontSize = 15.sp),
                     singleLine = singleLine,
                     maxLines = if (singleLine) 1 else Int.MAX_VALUE,
                     enabled = enabled,
@@ -486,8 +485,8 @@ fun UnifiedTextField(
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                 focusedLabelColor = MaterialTheme.colorScheme.primary,
                 cursorColor = MaterialTheme.colorScheme.primary,
-                focusedContainerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+                focusedContainerColor = containerColor ?: if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.background,
+                unfocusedContainerColor = containerColor ?: if (glass) AppColors.glassBackground() else MaterialTheme.colorScheme.background
             )
         )
     }

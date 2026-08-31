@@ -41,7 +41,7 @@ fun NumericPropertyRow(
 ) {
     val textPrimary = MaterialTheme.colorScheme.onSurface
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val outlineColor = MaterialTheme.colorScheme.outline
     val primaryLight = MaterialTheme.colorScheme.primary
     val neu = UIConfig.isNeumorphismEnabled()
@@ -139,7 +139,7 @@ fun DropdownPropertyRow(
     onValueChange: (String) -> Unit
 ) {
     val textPrimary = MaterialTheme.colorScheme.onSurface
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val outlineColor = MaterialTheme.colorScheme.outline
     val primaryLight = MaterialTheme.colorScheme.primary
     val neu = UIConfig.isNeumorphismEnabled()
@@ -227,7 +227,7 @@ fun ColorPropertyRow(
     onClick: () -> Unit
 ) {
     val textPrimary = MaterialTheme.colorScheme.onSurface
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
 
@@ -297,7 +297,7 @@ fun BooleanPropertyRow(
 ) {
     val textPrimary = MaterialTheme.colorScheme.onSurface
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
 

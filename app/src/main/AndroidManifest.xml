@@ -332,6 +332,12 @@
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/title_plugin_manage" />
 
+        <activity
+            android:name=".ui.screen.manage.SourceManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="源管理" />
+
         <!-- ==================== 备份管理 ==================== -->
         <activity
             android:name=".ui.screen.backup.BackupManagerActivity"

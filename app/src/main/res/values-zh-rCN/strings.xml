@@ -954,6 +954,7 @@
     <string name="installed" formatted="false">已安装</string>
     <string name="installed_info_name">安装成功: %1$s</string>
     <string name="installed_info_name_info_pluginid">安装成功: %1$s (%2$s)</string>
+    <string name="installed_version_d">已安装版本: %1$d</string>
     <string name="installing_proot_distro_requires_net" formatted="false">正在安装 proot-distro（需联网下载，约需数分钟，请耐心等待）...</string>
     <string name="insufficient_disk_space" formatted="false">磁盘空间不足</string>
     <string name="invalid_appwidgetid_finishing_activi" formatted="false">无效的 appWidgetId，结束 Activity</string>
@@ -1653,6 +1654,21 @@
     <string name="some_permissions_denied" formatted="false">部分权限被拒绝</string>
     <string name="some_permissions_denied_deniedpermis">部分权限被拒绝: %1$s</string>
     <string name="source_dir_javasrcdir_absolutepath">  源码目录: %1$s</string>
+    <string name="source_manage" formatted="false">源管理</string>
+    <string name="add_source" formatted="false">添加源</string>
+    <string name="add_source_success" formatted="false">源添加成功</string>
+    <string name="source_id_exists" formatted="false">源 ID 已存在</string>
+    <string name="no_source_hint" formatted="false">暂无源，请点击右上角添加</string>
+    <string name="delete_source" formatted="false">删除源</string>
+    <string name="source_deleted" formatted="false">源已删除</string>
+    <string name="confirm_delete_source" formatted="false">确定要删除源 \"%s\" 吗？</string>
+    <string name="search_plugin_hint" formatted="false">搜索插件</string>
+    <string name="github_username_hint" formatted="false">GitHub 用户名/组织</string>
+    <string name="repo_name_hint" formatted="false">仓库名</string>
+    <string name="display_name_optional_hint" formatted="false">显示名称（可选）</string>
+    <string name="branch_hint" formatted="false">分支</string>
+    <string name="description_optional_hint" formatted="false">描述（可选）</string>
+    <string name="all_sources" formatted="false">全部源</string>
     <string name="special" formatted="false">特殊</string>
     <string name="special_permission_required" formatted="false">需要特殊权限</string>
     <string name="special_permission_requires_enabling" formatted="false">特殊权限，需在系统设置中开启</string>
@@ -2076,6 +2092,7 @@
     <string name="unknown_sensor_type_type">未知传感器类型: %1$s</string>
     <string name="unreachable" formatted="false">不可达</string>
     <string name="update" formatted="false">更新</string>
+    <string name="update_available" formatted="false">有更新</string>
     <string name="update_check_failed" formatted="false">检查更新失败</string>
     <string name="update_check_failed_error">检查更新失败：%1$s</string>
     <string name="update_check_failed_error_2">检查更新失败: %1$s</string>

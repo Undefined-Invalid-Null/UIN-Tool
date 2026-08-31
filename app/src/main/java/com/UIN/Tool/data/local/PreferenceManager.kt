@@ -222,6 +222,39 @@ class PreferenceManager(private val context: Context) {
         prefs.edit().putBoolean(Constants.KEY_DEV_IGNORE_SIGNATURE, enabled).apply()
     }
 
+    // ==================== 源管理 ====================
+
+    /** 获取已保存的源列表 JSON 字符串 */
+    fun getSourcesJson(): String {
+        return prefs.getString("sources_json", "") ?: ""
+    }
+
+    /** 保存源列表 JSON 字符串 */
+    fun setSourcesJson(json: String) {
+        prefs.edit().putString("sources_json", json).apply()
+    }
+
+    /** 获取已启用的源 ID 列表 */
+    fun getEnabledSourceIds(): List<String> {
+        val str = prefs.getString("enabled_source_ids", "") ?: ""
+        return if (str.isEmpty()) emptyList() else str.split(",").filter { it.isNotEmpty() }
+    }
+
+    /** 保存已启用的源 ID 列表 */
+    fun setEnabledSourceIds(ids: List<String>) {
+        prefs.edit().putString("enabled_source_ids", ids.joinToString(",")).apply()
+    }
+
+    /** 获取上次刷新时间 */
+    fun getLastRepoRefreshTime(): Long {
+        return prefs.getLong("last_repo_refresh_time", 0L)
+    }
+
+    /** 保存上次刷新时间 */
+    fun setLastRepoRefreshTime(time: Long) {
+        prefs.edit().putLong("last_repo_refresh_time", time).apply()
+    }
+
     // ==================== UI配置 ====================
 
     fun getUiConfig(): String {

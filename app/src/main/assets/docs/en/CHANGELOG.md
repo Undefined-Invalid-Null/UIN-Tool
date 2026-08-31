@@ -12,7 +12,58 @@ This document records all important version updates and feature changes of UIN T
 
 ---
 
-## [5.6.0] - 2026-08-28
+## [5.7.0] - 2026-08-31
+
+> This version focuses on **plugin distribution system restructuring, update detection, CI automation, and network cache optimization**: switches from single-repo-single-plugin model to source-based multi-plugin model, supports multi-source aggregation, automatic version update detection, GitHub Actions CI auto-build, and icon disk caching with HTTP conditional requests. Total of 50+ files modified, 2500+ lines added.
+
+### Plugin Distribution System Restructuring
+
+- New Source architecture: Each GitHub repository serves as a "source" containing multiple plugins, indexed via `source.json`
+- New `SourceIndexFetcher`: Supports GitHub API + raw URL dual-channel fetching with built-in caching
+- New `SourceManageActivity`: Source management page with enable/disable/delete custom sources
+- `RepoViewModel` rewrite: Multi-source plugin aggregation, source filtering, search filtering
+- `RepoScreen` update: Source FilterChip filtering, "update available" indicator, detail dialog with version comparison
+- Removed `backendPort` field: Backend ports auto-assigned via `findAvailablePort()` to avoid conflicts
+
+### Plugin Update Detection
+
+- New `hasUpdate` / `installedVersion` fields: Compare local installed version with remote source version
+- Installed plugins with updates show "Update available" indicator, button changes to "Update"
+- Detail dialog shows current installed version, supports one-click update
+
+### CI Automation
+
+- `build.yml`: Trigger paths include `.github/workflows/**`; deploy uses `git clone --branch dist` (token auth); incremental build uses `github.event.before` for accurate diff detection; auto-copies `plugin.json` + `icon.png` + `.tpk` to dist branch
+- `generate-index.sh`: Reads `plugin.json` from dist directory, supports `visible` file for hiding plugins
+- `build-plugin.sh`: Native compilation uses `host-sdk.jar`; supports absolute paths; `other` type calls plugin's own `build.sh`
+- Plugin build script `build.sh`: Supports `chmod +x` to ensure binary executability
+
+### Network Cache Optimization
+
+- New `DiskCache` utility: SHA-256 hashed file naming, in-memory + disk two-tier caching, 1-day TTL auto-expiration
+- HTTP conditional requests: Stores `ETag` / `Last-Modified` headers, sends `If-None-Match` / `If-Modified-Since` to avoid re-downloading unchanged resources
+- Icon caching: `CachedPluginIcon` composable loads icons from disk cache first, falls back to network with conditional request
+- Startup cache cleanup: Automatically purges expired cache entries on app launch
+
+### UI Improvements
+
+- Plugin detail dialog now displays plugin icon (64dp centered)
+- Detail dialog confirm button uses primary theme color with white text
+- Plugin card list "Open" button uses outlined style (transparent + theme color text + border)
+- Unified UI fixes: dropdown styles aligned across pages, button colors consistent between default and neumorphism modes, hardcoded text moved to string resources
+
+### Bug Fixes
+
+- Fixed `filemanager` plugin path: Changed from app internal storage to `/storage/emulated/0/UIN_Tool/plugins`
+- Fixed `calculator` backend startup failure: Removed unnecessary `pip install flask` dependency
+- Fixed `sysinfo` plugin binary permission issue: Added `chmod +x` during build
+- Fixed `RepoScreen` missing `AppColors` import
+- Fixed `SourceManageActivity` theme to use `UINToolTheme`
+- Fixed smart cast error in `RepoPluginCard` icon loading (delegated property)
+
+---
+
+## [5.6.0] - 2026-08-30
 
 > This version focuses on **UI system refinement, neumorphism style addition, and language switching functionality**: refines the UI personalization system, adds neumorphism (Neumorphism) style, adds language switching functionality (supports Follow System/Simplified Chinese/English). Total of 92 files modified, 6240 lines added, 3850 lines deleted.
 
@@ -863,7 +914,7 @@ v4.0.0 is a major refactoring, please note before upgrading:
 |------|------|
 | Document Version | 5.5.0 |
 | Last Updated | August 22, 2026 |
-| Corresponding App Version | v5.5.0 (Build 21) |
+| Corresponding App Version | v5.7.0 (Build 23) |
 
 ---
 

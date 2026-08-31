@@ -96,7 +96,7 @@ fun UIConfigSidebar(
     drawerScope: CoroutineScope,
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface
+    val surfaceColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background
     val textPrimary = MaterialTheme.colorScheme.onSurface
     val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
     val primaryLight = MaterialTheme.colorScheme.primary

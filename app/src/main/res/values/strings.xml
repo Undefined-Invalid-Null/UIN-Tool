@@ -964,6 +964,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="installed" formatted="false">Installed</string>
     <string name="installed_info_name">Installed: %1$s</string>
     <string name="installed_info_name_info_pluginid">Installed: %1$s (%2$s)</string>
+    <string name="installed_version_d">Installed version: %1$d</string>
     <string name="installing_proot_distro_requires_net" formatted="false">Installing proot-distro (requires network, ~a few minutes, please wait)...</string>
     <string name="insufficient_disk_space" formatted="false">Insufficient disk space</string>
     <string name="invalid_appwidgetid_finishing_activi" formatted="false">Invalid appWidgetId, finishing Activity</string>
@@ -1666,6 +1667,21 @@ Continue?</string>
     <string name="some_permissions_denied" formatted="false">Some permissions denied</string>
     <string name="some_permissions_denied_deniedpermis">Some permissions denied: %1$s</string>
     <string name="source_dir_javasrcdir_absolutepath">  Source dir: %1$s</string>
+    <string name="source_manage" formatted="false">Source Management</string>
+    <string name="add_source" formatted="false">Add Source</string>
+    <string name="add_source_success" formatted="false">Source added successfully</string>
+    <string name="source_id_exists" formatted="false">Source ID already exists</string>
+    <string name="no_source_hint" formatted="false">No sources yet, tap + to add</string>
+    <string name="delete_source" formatted="false">Delete Source</string>
+    <string name="source_deleted" formatted="false">Source deleted</string>
+    <string name="confirm_delete_source" formatted="false">Are you sure you want to delete source \"%s\"?</string>
+    <string name="search_plugin_hint" formatted="false">Search plugins</string>
+    <string name="github_username_hint" formatted="false">GitHub username/organization</string>
+    <string name="repo_name_hint" formatted="false">Repository name</string>
+    <string name="display_name_optional_hint" formatted="false">Display name (optional)</string>
+    <string name="branch_hint" formatted="false">Branch</string>
+    <string name="description_optional_hint" formatted="false">Description (optional)</string>
+    <string name="all_sources" formatted="false">All Sources</string>
     <string name="special" formatted="false">Special</string>
     <string name="special_permission_required" formatted="false">Special permission required</string>
     <string name="special_permission_requires_enabling" formatted="false">Special permission, requires enabling in system settings</string>
@@ -2092,6 +2108,7 @@ Disable it if it causes screen flickering on your device. (Default)</string>
     <string name="unknown_sensor_type_type">Unknown sensor type: %1$s</string>
     <string name="unreachable" formatted="false">Unreachable</string>
     <string name="update" formatted="false">Update</string>
+    <string name="update_available" formatted="false">Update available</string>
     <string name="update_check_failed" formatted="false">Update check failed</string>
     <string name="update_check_failed_error">Update check failed: %1$s</string>
     <string name="update_check_failed_error_2">Update check failed: %1$s</string>

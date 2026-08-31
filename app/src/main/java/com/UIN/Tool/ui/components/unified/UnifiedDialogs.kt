@@ -211,12 +211,14 @@ fun UnifiedConfirmDialog(
                 containerColor = confirmButtonColor ?: if (isDestructive) {
                     MaterialTheme.colorScheme.error
                 } else {
-                    MaterialTheme.colorScheme.surfaceVariant
+                    MaterialTheme.colorScheme.primary
                 },
                 contentColor = if (isDestructive) {
                     MaterialTheme.colorScheme.onError
-                } else {
+                } else if (confirmButtonColor != null) {
                     MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onPrimary
                 },
                 modifier = Modifier.weight(1f)
             )

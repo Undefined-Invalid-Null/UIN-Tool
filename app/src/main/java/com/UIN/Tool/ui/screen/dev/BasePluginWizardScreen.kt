@@ -740,6 +740,11 @@ fun BasePluginWizardScreen(
                             .fillMaxWidth()
                             .height(420.dp),
                         visualTransformation = highlighter,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.background,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        ),
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             fontSize = AppDimens.bodyTextSize.sp
