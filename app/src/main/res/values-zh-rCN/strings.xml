@@ -82,20 +82,7 @@
     <string name="all_set" formatted="false">一切就绪</string>
     <string name="all_storage_permissions_granted" formatted="false">所有存储权限已授予</string>
     <string name="all_widgets_refreshed_appwidgetids_s">所有小部件已刷新，共 %1$s 个</string>
-    <string name="allocating_port_port">🔌 分配端口: %1$s</string>
-    <string name="alpine_backup_resource_unavailable" formatted="false">Alpine 备份资源不可用</string>
-    <string name="alpine_container_install_failed_make" formatted="false">Alpine 容器安装失败，请确认 APK 的 assets 目录已包含 Alpine 离线安装包（alpine*）后重试。</string>
-    <string name="alpine_container_ready" formatted="false">Alpine 容器已就绪</string>
-    <string name="alpine_container_restore_error_e_mes">Alpine 容器恢复异常: %1$s</string>
-    <string name="alpine_container_restore_failed_resu">Alpine 容器恢复失败: %1$s</string>
-    <string name="alpine_container_restored" formatted="false">Alpine 容器恢复成功</string>
-    <string name="alpine_container_setup_failed" formatted="false">❌ Alpine 容器准备失败</string>
-    <string name="alpine_not_installed_starting_offlin" formatted="false">Alpine 容器未安装，开始离线恢复...</string>
-    <string name="environment_init_notice" formatted="false">为节省时间，bootstrap 和 Alpine 正在后台自动安装。Alpine 容器需要约 1 分钟安装完毕，为防止安装不完整，请不要在此期间退出软件。</string>
-    <string name="alpine_installing_do_not_exit" formatted="false">Alpine 容器正在安装，请勿退出软件</string>
-    <string name="alpine_install_complete" formatted="false">Alpine 容器安装完成</string>
-    <string name="alpine_ready_processing_pre_command" formatted="false">✅ Alpine 容器就绪，处理 pre-command...</string>
-    <string name="an_exception_occurred" formatted="false">应用发生异常</string>
+    <string name="allocating_port_port">🔌 分配端口: %1$s</string>    <string name="environment_init_notice" formatted="false">为节省时间，Debian 容器正在后台自动安装需要约 1 分钟安装完毕，为防止安装不完整，请不要在此期间退出软件。</string>    <string name="an_exception_occurred" formatted="false">应用发生异常</string>
     <string name="android_version" formatted="false">Android版本</string>
     <string name="android_version_too_old_info_minhost">Android 版本过低: %1$s > %2$s</string>
     <string name="android_api_level_too_low_info_apil">插件需要 Android API 级别 %1$s，当前设备为 %2$s</string>
@@ -135,9 +122,9 @@
     <string name="builtin_termux" formatted="false">内置 Termux</string>
     <string name="real_termux" formatted="false">实体 Termux</string>
     <string name="real_termux_will_call_com_termux_t" formatted="false">实体 Termux：插件在已安装的 Termux（com.termux）内运行，需要先安装并配置好 Termux。</string>
-    <string name="builtin_termux_is_a_simplified_li" formatted="false">内置 Termux：本应用自带的精简 Linux 环境（Proot Alpine 容器），无需额外安装。</string>
+    <string name="builtin_termux_is_a_simplified_li" formatted="false">内置 Termux：本应用自带的精简 Linux 环境（Proot Debian 容器），无需额外安装。</string>
     <string name="proot_container_name" formatted="false">Proot 容器名</string>
-    <string name="run_proot_distro_list_in_termux_t" formatted="false">在 Termux 里执行 proot-distro list 可查看容器名。</string>
+    <string name="run_proot_distro_list_in_termux_t" formatted="false">在 Termux 里执行 proot-distro list（仅实体 Termux 模式） 可查看容器名。</string>
     <string name="idle_recycle_timeout_minutes" formatted="false">空闲回收时长</string>
     <string name="min_" formatted="false">分钟</string>
     <string name="idle_infinite" formatted="false">无限</string>
@@ -179,7 +166,7 @@
     <string name="real_termux_run_command_permission_grant_guide" formatted="false">要在实体 Termux 中运行命令，UIN Tool 需要「com.termux.permission.RUN_COMMAND」权限。\n\n该权限由 Termux 应用自身声明（而非 UIN Tool），因此需在 Termux 内授予：\n1. 打开 Termux 应用。\n2. 长按终端区域 -> 更多 -> 允许外部应用（或 Termux 设置 -> Allow external apps）。\n3. 弹出提示时确认「允许运行命令」，然后返回重试。\n\n同时确保 ~/.termux/termux.properties 中已设置 allow-external-apps=true。</string>
     <string name="failed_to_start_real_termux_probe_e" formatted="false">探测实体 Termux 失败: %1$s</string>
     <string name="allow_external_apps_not_enabled" formatted="false">未开启 allow-external-apps。请在 ~/.termux/termux.properties 中添加 "allow-external-apps=true"</string>
-    <string name="real_termux_not_initialized" formatted="false">Termux bootstrap 未初始化。请先打开一次 Termux 让它安装基础包</string>
+    <string name="real_termux_not_initialized" formatted="false">Termux 未初始化。请先打开一次 Termux 让它安装基础包</string>
     <string name="backend_health_check_url">📡 健康检查地址: %1$s</string>
     <string name="backend_message_service_ready" formatted="false">✅ 后台消息服务已就绪</string>
     <string name="backend_message_service_started" formatted="false">📡 后台消息服务已启动</string>
@@ -250,15 +237,7 @@
     <string name="bluetooth" formatted="false">蓝牙</string>
     <string name="bluetooth_management" formatted="false">蓝牙管理</string>
     <string name="body_font_size" formatted="false">正文字体大小</string>
-    <string name="bold_text" formatted="false">文字加粗</string>
-    <string name="bootstrap_error_abort" formatted="false">中止</string>
-    <string name="bootstrap_error_body" formatted="false">&TERMUX_APP_NAME; 无法安装启动包。</string>
-    <string name="bootstrap_error_installed_on_portable_sd">&TERMUX_APP_NAME; 无法安装在设备的外部/便携/可移除 SD 卡上。\n为 &TERMUX_APP_NAME; 编译的启动二进制文件具有硬编码的 $PREFIX 路径，无法安装在以下路径以外的任何路径：\n%1$s。</string>
-    <string name="bootstrap_error_not_primary_user_message">&TERMUX_APP_NAME; 只能以主用户身份运行。\n为 &TERMUX_APP_NAME; 编译的启动二进制文件具有硬编码的 $PREFIX 路径，无法安装在以下路径以外的任何路径：\n%1$s。</string>
-    <string name="bootstrap_error_title" formatted="false">无法安装启动包</string>
-    <string name="bootstrap_error_try_again" formatted="false">重试</string>
-    <string name="bootstrap_installer_body" formatted="false">正在安装启动包…</string>
-    <string name="bottom_nav_selected_color" formatted="false">底部导航选中颜色</string>
+    <string name="bold_text" formatted="false">文字加粗</string>    <string name="bottom_nav_selected_color" formatted="false">底部导航选中颜色</string>
     <string name="bottom_nav_unselected_color" formatted="false">底部导航未选中颜色</string>
     <string name="br_backend_info_getbackenddisplaynam">&lt;br>后端: %1$s</string>
     <string name="br_includes_documentation" formatted="false">&lt;br>包含说明文档</string>
@@ -436,7 +415,7 @@
     <string name="cui_terminal" formatted="false">CUI 终端</string>
     <string name="cui_terminal_command_line" formatted="false">CUI 终端 (命令行界面)</string>
     <string name="cui_terminal_plugin_example_fullscre" formatted="false">CUI 终端插件示例（全屏终端执行脚本）</string>
-    <string name="cui_terminal_session_started" formatted="false">✅ 已启动 CUI 终端会话</string>
+    <string name="cui_terminal_session_started" formatted="false">✅ 已启动</string>
     <string name="cui_terminal_start_error_e_message">❌ CUI 终端启动异常: %1$s</string>
     <string name="cui_terminal_start_failed_e_message">CUI 终端启动失败: %1$s</string>
     <string name="current_theme" formatted="false">当前主题</string>
@@ -582,13 +561,7 @@
     <string name="error_run_command_service_invalid_intent_action">传递给 RunCommandService 的 Intent Action 无效：`%1$s`</string>
     <string name="error_run_command_service_mandatory_extra_missing">传递给 RunCommandService 的必需 Extra 缺失："%1$s"</string>
     <string name="error_styling_not_installed" formatted="false">未安装 &TERMUX_STYLING_APP_NAME; 插件应用。</string>
-    <string name="error_termux_service_execution_command_shell_name_unset">Shell 名称未设置，但传入了 `%1$s` Shell 创建模式</string>
-    <string name="error_termux_service_invalid_execution_command_runner">传递给 TermuxService 的执行命令运行器无效：`%1$s`</string>
-    <string name="error_termux_service_start_failed_bg" formatted="false">由于 Android 后台限制，应用在后台时无法启动 TermuxService。</string>
-    <string name="error_termux_service_start_failed_general" formatted="false">启动 TermuxService 失败。请检查 logcat 中的异常信息。</string>
-    <string name="error_termux_service_unsupported_execution_command_runner">传递给 TermuxService 的执行命令运行器不支持：`%1$s`</string>
-    <string name="error_termux_service_unsupported_execution_command_shell_create_mode">传递给 TermuxService 的 Shell 创建模式不支持：`%1$s`</string>
-    <string name="event_bus_cleared" formatted="false">事件总线已清理</string>
+    <string name="error_termux_service_execution_command_shell_name_unset">Shell 名称未设置，但传入了 `%1$s` Shell 创建模式</string>    <string name="event_bus_cleared" formatted="false">事件总线已清理</string>
     <string name="event_dispatch_error_e_message">事件分发异常: %1$s</string>
     <string name="exception_e_message">❌ 异常: %1$s</string>
     <string name="exception_message_throwable_message_">异常信息: %1$s\n</string>
@@ -643,9 +616,7 @@
     <string name="failed_to_copy_asset_assetpath">复制资产失败: %1$s</string>
     <string name="failed_to_copy_binary_file" formatted="false">二进制文件复制失败</string>
     <string name="failed_to_copy_directory" formatted="false">复制目录失败</string>
-    <string name="failed_to_copy_file_name_e_message">复制文件失败: %1$s - %2$s</string>
-    <string name="failed_to_copy_offline_alpine_backup">复制离线 Alpine 备份失败: %1$s</string>
-    <string name="failed_to_copy_offline_package" formatted="false">复制离线安装包失败</string>
+    <string name="failed_to_copy_file_name_e_message">复制文件失败: %1$s - %2$s</string>    <string name="failed_to_copy_offline_package" formatted="false">复制离线安装包失败</string>
     <string name="failed_to_copy_uri_to_file" formatted="false">复制Uri到文件失败</string>
     <string name="failed_to_create_backup" formatted="false">创建备份失败</string>
     <string name="failed_to_create_directory_e_message">创建目录失败: %1$s</string>
@@ -829,9 +800,7 @@
     <string name="for_the_plugin_to_send_notifications" formatted="false">用于插件发送通知</string>
     <string name="for_the_plugin_to_send_sms" formatted="false">用于插件发送短信</string>
     <string name="for_the_plugin_to_show_overlays" formatted="false">用于插件显示悬浮窗</string>
-    <string name="for_the_plugin_to_take_photos_with_t" formatted="false">用于插件调用相机拍照</string>
-    <string name="found_alpine_offline_resource_assetn">检测到 Alpine 离线资源: %1$s</string>
-    <string name="found_languagedirs_size_language_dir">发现 %1$s 个目录</string>
+    <string name="for_the_plugin_to_take_photos_with_t" formatted="false">用于插件调用相机拍照</string>    <string name="found_languagedirs_size_language_dir">发现 %1$s 个目录</string>
     <string name="found_pluginhostactivity_task_closin" formatted="false">找到 PluginHostActivity 任务，正在关闭...</string>
     <string name="found_python_path">✅ 找到 Python: %1$s</string>
     <string name="found_usable_default_mirror_mirror">找到可用默认镜像: %1$s</string>
@@ -936,12 +905,8 @@
 %3$s</string>
     <string name="import_successful_info_name">导入成功: %1$s</string>
     <string name="imported_count_mirror_s">成功导入 %1$s 个镜像站</string>
-    <string name="imported_count_mirror_s_2">导入 %1$s 个镜像站</string>
-    <string name="in_custom_mode_the_host_won_t_auto_s" formatted="false">「自定义」模式：宿主不自动启动后端，由该命令在 Termux 终端中启动服务，首次执行成功后永久跳过</string>
-    <string name="include_app_settings" formatted="false">包含应用设置</string>
-    <string name="include_ui_config" formatted="false">包含 UI 配置</string>
-    <string name="incomplete_alpine_rootfs_found_clean" formatted="false">检测到不完整的 Alpine rootfs，先清理...</string>
-    <string name="info" formatted="false">提示</string>
+    <string name="imported_count_mirror_s_2">导入 %1$s 个镜像站</string>    <string name="include_app_settings" formatted="false">包含应用设置</string>
+    <string name="include_ui_config" formatted="false">包含 UI 配置</string>    <string name="info" formatted="false">提示</string>
     <string name="info_color" formatted="false">信息色</string>
     <string name="info_name_directory_does_not_exist">%1$s (目录不存在)</string>
     <string name="initial_editor_text_length_initialco">编辑器初始文本长度: %1$s</string>
@@ -1078,9 +1043,7 @@
     <string name="missing_targetplugin_or_method" formatted="false">缺少 targetPlugin 或 method</string>
     <string name="modified" formatted="false">已修改</string>
     <string name="modify_system_settings" formatted="false">修改系统设置</string>
-    <string name="more" formatted="false">更多</string>
-    <string name="msg_add_termux_debug_info" formatted="false">是否在报告中添加 Termux 调试信息？</string>
-    <string name="msg_disabling_terminal_toolbar" formatted="false">禁用终端工具栏</string>
+    <string name="more" formatted="false">更多</string>    <string name="msg_disabling_terminal_toolbar" formatted="false">禁用终端工具栏</string>
     <string name="msg_enabling_terminal_toolbar" formatted="false">启用终端工具栏</string>
     <string name="msg_failed_to_focus_window" formatted="false">无法聚焦窗口</string>
     <string name="msg_generating_report" formatted="false">正在生成报告</string>
@@ -1140,7 +1103,7 @@
     <string name="no_matching_plugins_2" formatted="false">没有匹配的插件</string>
     <string name="no_matching_plugins_found" formatted="false">没有找到相关插件</string>
     <string name="no_mirrors_yet" formatted="false">暂无镜像站</string>
-    <string name="no_offline_package_found_assets_alpi" formatted="false">未检测到离线安装包（assets/alpine*），请先将其放入 APK 的 assets 目录</string>
+    <string name="no_offline_package_found_assets_alpi" formatted="false">未检测到离线安装包（assets/debian*），请先将其放入 APK 的 assets 目录</string>
     <string name="no_plugins_available" formatted="false">暂无可用插件</string>
     <string name="no_plugins_to_back_up" formatted="false">没有插件可备份</string>
     <string name="no_plugins_yet" formatted="false">暂无插件</string>
@@ -1418,7 +1381,7 @@
     <string name="project_dir_projectdir_absolutepath">  项目目录: %1$s</string>
     <string name="project_files_generated" formatted="false">项目文件已生成</string>
     <string name="project_files_generated_workdir_abso">项目文件生成成功: %1$s</string>
-    <string name="proot_backend_runs_in_a_shared_alpin" formatted="false">Proot 容器：后端在共享 Alpine 容器中运行，环境隔离，不会影响宿主机</string>
+    <string name="proot_backend_runs_in_a_shared_alpin" formatted="false">Proot 容器：后端在共享 Debian 容器中运行，环境隔离，不会影响宿主机</string>
     <string name="proot_container" formatted="false">Proot 容器</string>
     <string name="proot_distro_install_failed_check_ne" formatted="false">proot-distro 安装失败，请检查网络后重试</string>
     <string name="proot_distro_installed" formatted="false">proot-distro 已安装</string>
@@ -1502,9 +1465,7 @@
     <string name="restoring_backup" formatted="false">正在恢复备份...</string>
     <string name="restoring_mirror_config" formatted="false">正在恢复镜像配置...</string>
     <string name="restoring_plugins" formatted="false">正在恢复插件...</string>
-    <string name="restoring_plugins_2" formatted="false">恢复插件...</string>
-    <string name="restoring_shared_alpine_container_fi" formatted="false">正在恢复 Alpine 共享容器（首次解压约需数分钟，请耐心等待）...</string>
-    <string name="restoring_ui_config" formatted="false">正在恢复 UI 配置...</string>
+    <string name="restoring_plugins_2" formatted="false">恢复插件...</string>    <string name="restoring_ui_config" formatted="false">正在恢复 UI 配置...</string>
     <string name="restoring_will_overwrite_existing_pl" formatted="false">恢复操作将覆盖现有插件、配置和 UI 主题！\n\n确定要继续吗？</string>
     <string name="restore_mode_merge_title" formatted="false">合并恢复</string>
     <string name="restore_mode_merge_desc" formatted="false">同名文件覆盖，保留备份中不存在的多余插件/文件</string>
@@ -1809,9 +1770,7 @@
     <string name="terminal_started" formatted="false">启动终端成功</string>
     <string name="termux_api_preferences_summary" formatted="false">&TERMUX_API_APP_NAME; 应用的偏好设置</string>
     <string name="termux_api_preferences_title" formatted="false">&TERMUX_API_APP_NAME;</string>
-    <string name="termux_backend_plugin_example_python" formatted="false">Termux 后端插件示例（Python 后端）</string>
-    <string name="termux_command_failed_e_message">Termux 命令执行失败: %1$s</string>
-    <string name="termux_crash_report_notifications_enabled_off" formatted="false">禁用崩溃报告通知。</string>
+    <string name="termux_backend_plugin_example_python" formatted="false">Termux 后端插件示例（Python 后端）</string>    <string name="termux_crash_report_notifications_enabled_off" formatted="false">禁用崩溃报告通知。</string>
     <string name="termux_crash_report_notifications_enabled_on" formatted="false">显示崩溃报告通知。（默认）</string>
     <string name="termux_crash_report_notifications_enabled_title" formatted="false">崩溃报告通知</string>
     <string name="termux_debugging_preferences_summary" formatted="false">调试偏好设置</string>
@@ -1825,14 +1784,12 @@
     <string name="termux_local" formatted="false">Termux 本机</string>
     <string name="termux_log_level_title" formatted="false">日志级别</string>
     <string name="termux_logging_header" formatted="false">日志记录</string>
-    <string name="termux_not_ready_initializing_bootst" formatted="false">Termux 环境未就绪，开始初始化 bootstrap...</string>
+    <string name="termux_not_ready_initializing_bootst" formatted="false">Termux 环境未就绪，正在初始化...</string>
     <string name="termux_plugin_error_notifications_enabled_off" formatted="false">禁用插件错误的提示和通知。</string>
     <string name="termux_plugin_error_notifications_enabled_on" formatted="false">显示插件错误的提示和通知。（默认）</string>
     <string name="termux_plugin_error_notifications_enabled_title" formatted="false">插件错误通知</string>
     <string name="termux_preferences_summary" formatted="false">&TERMUX_APP_NAME; 应用的偏好设置</string>
-    <string name="termux_preferences_title" formatted="false">&TERMUX_APP_NAME;</string>
-    <string name="termux_ready_checking_alpine" formatted="false">✅ Termux 环境就绪，检查 Alpine...</string>
-    <string name="termux_soft_keyboard_enabled_off" formatted="false">软键盘将被禁用。</string>
+    <string name="termux_preferences_title" formatted="false">&TERMUX_APP_NAME;</string>    <string name="termux_soft_keyboard_enabled_off" formatted="false">软键盘将被禁用。</string>
     <string name="termux_soft_keyboard_enabled_on" formatted="false">软键盘将被启用。（默认）</string>
     <string name="termux_soft_keyboard_enabled_only_if_no_hardware_off" formatted="false">即使连接了硬件键盘，软键盘也将被启用。（默认）</string>
     <string name="termux_soft_keyboard_enabled_only_if_no_hardware_on" formatted="false">仅当未连接硬件键盘时启用软键盘。</string>
@@ -2294,7 +2251,7 @@
     <string name="your_launcher_doesn_t_support_pinnin" formatted="false">当前启动器不支持固定小部件，请长按桌面手动添加</string>
     <string name="your_launcher_doesn_t_support_pinnin_2" formatted="false">当前启动器不支持固定快捷方式，请长按桌面手动添加</string>
     <string name="onboarding_author_words" formatted="false">一直以来，我都希望能在手机上有一个真正自由的工具平台，\n可以按自己的需求随时扩展功能，而不是等开发者更新。\n\nUIN Tool 就是我对这个想法的回答，\n它只是一个框架，真正的灵魂在于你 —— 每一位使用者。\n\n希望你能用它创造出属于你自己的东西，\n也欢迎分享你的插件给更多人。\n\n— UIN Team</string>
-    <string name="onboarding_terminal_notice" formatted="false">由于包名变更，终端内暂时无法使用 pkg 安装软件包，\n此问题可能会在后续版本中修复（选择构建部分软件包供下载）</string>
+    <string name="onboarding_terminal_notice" formatted="false">可在终端中使用以下命令安装软件包：\napt install &lt;包名&gt;</string>
     <string name="dev_create_plugin_steps" formatted="false">1. 点击「创建插件」选择类型\n2. 填写插件基本信息\n3. 编写代码或选择二进制文件\n4. 导出 TPK 文件\n5. 在「管理」「插件管理」中导入运行</string>
     <string name="widget_1x1_desc" formatted="false">• 占用桌面空间小，适合常用插件\n• 点击即开，无需进入应用\n• 可放置多个，每个指向不同插件</string>
     <string name="widget_3x3_desc" formatted="false">• 同时显示 3 个插件，方便快速切换\n• 自动轮播展示插件状态\n• 点击插件卡片直接进入对应功能</string>
@@ -2376,4 +2333,73 @@
     <string name="reset_default_settings" formatted="false">恢复默认设置</string>
     <string name="menu" formatted="false">菜单</string>
     <string name="ui_personalization" formatted="false">UI 个性化</string>
+
+    <string name="container_current_default">当前默认容器</string>
+    <string name="container_default_label">默认</string>
+    <string name="container_default_switched">已切换至 %1$s</string>
+    <string name="container_delete">删除</string>
+    <string name="container_delete_confirm_message">删除容器 "%1$s"？此操作不可撤销。</string>
+    <string name="container_delete_confirm_title">删除容器</string>
+    <string name="container_deleted">容器 "%1$s" 已删除</string>
+    <string name="container_download_failed">下载失败：%1$s</string>
+    <string name="container_downloading">正在下载 %1$s...</string>
+    <string name="container_download_success">容器 "%1$s" 下载完成</string>
+    <string name="container_export">导出</string>
+    <string name="container_export_confirm">导出容器 "%1$s" 为归档文件？</string>
+    <string name="container_export_failed">导出失败：%1$s</string>
+    <string name="container_exporting">正在导出 %1$s...</string>
+    <string name="container_export_progress">已处理 %1$d / %2$d 个文件</string>
+    <string name="container_export_scanning">正在扫描文件...</string>
+    <string name="container_export_success">容器 "%1$s" 导出完成</string>
+    <string name="container_import">导入</string>
+    <string name="container_import_entry_count">已处理 %1$d 个条目</string>
+    <string name="container_import_failed">导入失败：%1$s</string>
+    <string name="container_importing">正在导入容器...</string>
+    <string name="container_import_success">容器 "%1$s" 导入完成</string>
+    <string name="container_info_files">文件数</string>
+    <string name="container_info_modified">最后修改</string>
+    <string name="container_info_path">路径</string>
+    <string name="container_info_size">大小</string>
+    <string name="container_info_status">状态</string>
+    <string name="container_install_completed">安装完成</string>
+    <string name="container_installed_list">已安装的容器</string>
+    <string name="container_installing_please_wait">正在安装，请稍候...</string>
+    <string name="container_management_desc">管理 Linux 容器（Proot）</string>
+    <string name="container_not_ready">未就绪</string>
+    <string name="container_ready">就绪</string>
+    <string name="container_rename">重命名</string>
+    <string name="container_renamed">已重命名为 "%1$s"</string>
+    <string name="container_rename_empty">名称不能为空</string>
+    <string name="container_rename_duplicate">名称已存在</string>
+    <string name="container_reset">重置</string>
+    <string name="container_reset_confirm">重置容器 "%1$s"？将重新安装该容器。</string>
+    <string name="container_reset_done">容器 "%1$s" 已重置</string>
+    <string name="debian_container_install_failed_make">Debian 容器安装失败，请确认 APK 的 assets 目录已包含 Debian 离线安装包后重试。</string>
+    <string name="download_linux_distro">下载 Linux 发行版</string>
+    <string name="linux_container_installing">正在安装 Linux 容器，请稍候...</string>
+    <string name="preparing_linux_environment">正在准备 Linux 环境...</string>
+    <string name="proot_container_management">Proot 容器管理</string>
+    <string name="proot_install_button">安装 Proot</string>
+    <string name="proot_install_failed">Proot 安装失败</string>
+    <string name="proot_install_success">Proot 安装成功</string>
+    <string name="proot_status_not_installed">Proot 未安装</string>
+    <string name="proot_status_ready">Proot 已就绪</string>
+    <string name="select_distro_to_download">选择要下载的发行版：</string>
+    <string name="source_management">源管理</string>
+    <string name="source_management_desc">管理应用数据源和仓库</string>
+    <string name="source_management_feature_developing">源管理功能开发中</string>
+    <string name="terminal_close">关闭</string>
+    <string name="terminal_container_not_ready">容器未就绪</string>
+    <string name="terminal_log_copied">日志已复制</string>
+    <string name="terminal_log_empty">剪贴板为空</string>
+    <string name="terminal_proot_not_installed">Proot 未安装</string>
+    <string name="terminal_rename_session">重命名</string>
+    <string name="terminal_session_number">会话(%1$d)</string>
+    <string name="terminal_session_pid">%1$s  PID:%2$s</string>
+    <string name="trust_community">社区</string>
+    <string name="trust_official">官方</string>
+    <string name="trust_verified">已验证</string>
+
+    <string name="terminal_sessions">会话</string>
+    <string name="terminal_new_session">新建</string>
 </resources>

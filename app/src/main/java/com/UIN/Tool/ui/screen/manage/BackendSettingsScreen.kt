@@ -149,13 +149,55 @@ fun BackendSettingsScreen(
                         value = container,
                         onValueChange = { container = it },
                         label = Str.get(R.string.proot_container_name),
-                        placeholder = "alpine",
+                        placeholder = "debian",
                         modifier = Modifier.fillMaxWidth()
                     )
                     UnifiedCaptionText(
                         Str.get(R.string.run_proot_distro_list_in_termux_t),
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     )
+                }
+            }
+
+            if (!isReal) {
+                // ==================== 内置 Linux 容器管理 ====================
+                UnifiedSectionTitle(Str.get(R.string.builtin_termux))
+                UnifiedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    Str.get(R.string.proot_container_management),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    Str.get(R.string.container_management_desc),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            UnifiedButton(
+                                text = Str.get(R.string.manage),
+                                onClick = {
+                                    context.startActivity(
+                                        android.content.Intent(
+                                            context,
+                                            com.UIN.Tool.ui.screen.proot.ContainerManagementActivity::class.java
+                                        )
+                                    )
+                                }
+                            )
+                        }
+                    }
                 }
             }
 

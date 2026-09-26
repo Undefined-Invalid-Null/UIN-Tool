@@ -6,10 +6,10 @@ set -e
 
 cd "$(dirname "$0")"
 
-# ---- 依赖检测：动态查找解释器，环境无关（Termux 用 pkg，容器用 apk） ----
+# ---- 依赖检测：动态查找解释器，环境无关（使用 apt） ----
 if ! command -v python3 >/dev/null 2>&1; then
     echo "[start.sh] python3 not found, installing..."
-    pkg install python -y 2>/dev/null || apk add python3 -y 2>/dev/null || {
+    apt install -y python3 2>/dev/null || {
         echo "[start.sh] failed to install python3, exit"
         exit 1
     }

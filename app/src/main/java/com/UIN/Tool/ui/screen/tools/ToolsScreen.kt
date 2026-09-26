@@ -5,6 +5,7 @@ package com.UIN.Tool.ui.screen.tools
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import com.UIN.Tool.utils.UIConfig
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -32,12 +33,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
-
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
+import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.ui.components.unified.*
@@ -47,7 +51,56 @@ import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.gradientBackgroundBrush
 import com.UIN.Tool.utils.AppToast
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+
+/**
+ * 从插件目录异步加载图标，失败时显示首字母
+ */
+@Composable
+fun PluginIcon(plugin: PluginInfo, size: Dp, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var bitmap by remember(plugin.pluginId) { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    LaunchedEffect(plugin.pluginId) {
+        withContext(Dispatchers.IO) {
+            val pluginDir = File(Constants.PLUGIN_DIR, plugin.pluginId)
+            if (pluginDir.exists()) {
+                val iconPath = plugin.icon.ifEmpty { "icon.png" }
+                val iconFile = File(pluginDir, iconPath)
+                if (iconFile.exists()) {
+                    try {
+                        bitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
+    val currentBitmap = bitmap
+    Box(
+        modifier = modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        if (currentBitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = currentBitmap.asImageBitmap(),
+                contentDescription = plugin.name,
+                modifier = Modifier
+                    .size(size)
+                    .clip(RoundedCornerShape(AppDimens.radiusSmall))
+            )
+        } else {
+            Text(
+                plugin.name.take(1).uppercase(),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 private const val TAG = "ToolsScreen"
 
@@ -376,11 +429,7 @@ fun PluginListItem(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    plugin.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                PluginIcon(plugin, 48.dp)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -436,11 +485,7 @@ fun PluginGridItem(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    plugin.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                PluginIcon(plugin, 56.dp)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(plugin.name, style = MaterialTheme.typography.bodyMedium)

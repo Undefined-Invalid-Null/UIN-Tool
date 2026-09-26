@@ -4,10 +4,6 @@ plugins {
     id "org.jetbrains.kotlin.plugin.compose" version "2.1.0"
 }
 
-ext {
-    packageVariant = System.getenv("TERMUX_PACKAGE_VARIANT") ?: "apt-android-7"
-}
-
 android {
     namespace "com.UIN.Tool"
     compileSdk 36
@@ -18,16 +14,14 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 23
-        versionName "5.7.0"
+        versionCode 24
+        versionName "6.0.0"
 
         multiDexEnabled true
         multiDexKeepProguard file('multidex-config.pro')
 
-        buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\""
-
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.UIN.Tool"
-        manifestPlaceholders.TERMUX_APP_NAME = "UIN Tool"
+        manifestPlaceholders.UIN_PACKAGE_NAME = "com.UIN.Tool"
+        manifestPlaceholders.UIN_APP_NAME = "UIN Tool"
 
         resourceConfigurations += ["en", "zh-rCN"]
 
@@ -161,7 +155,7 @@ configurations.all {
 }
 
 dependencies {
-    // ==================== Termux 原有依赖 ====================
+    // ==================== 基础依赖 ====================
     implementation "androidx.annotation:annotation:1.9.0"
     implementation "androidx.core:core:1.13.1"
     implementation "androidx.drawerlayout:drawerlayout:1.2.0"
@@ -232,7 +226,6 @@ dependencies {
     // ==================== Sora Editor (使用 BOM) ====================
     // ✅ BOM 统一管理版本
     implementation platform("io.github.rosemoe:editor-bom:0.24.4")
-    implementation 'com.github.luben:zstd-jni:1.5.5-5'
     implementation 'org.brotli:dec:0.1.2'
     implementation 'org.ow2.asm:asm:9.6'
     implementation 'org.ow2.asm:asm-commons:9.6'
@@ -254,6 +247,7 @@ dependencies {
     // 压缩
     implementation "org.apache.commons:commons-compress:1.26.2"
     implementation "org.tukaani:xz:1.9"
+    implementation("com.github.luben:zstd-jni:1.5.6-9@aar")
 
     // 测试
     testImplementation "junit:junit:4.13.2"

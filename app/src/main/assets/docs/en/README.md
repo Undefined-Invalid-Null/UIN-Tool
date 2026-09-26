@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 5.7.0 |
-| Corresponding App Version | v5.7.0 (Build 23) |
-| Last Updated | August 31, 2026 |
+| Document Version | 6.0.0 |
+| Corresponding App Version | v6.0.0 (Build 24) |
+| Last Updated | September 26, 2026 |
 
 ---
 
@@ -149,7 +149,7 @@
    - **Pure WebView**: HTML/CSS/JS only, no backend
    - **WebView + Backend**: HTML/CSS/JS + backend service
    - **CUI Terminal**: Full-screen terminal running scripts (new in v4.5.0)
-5. If selecting "WebView + Backend", fill in the **backend startup command** in the wizard (default `sh scripts/start.sh`); the backend runtime environment is globally configured in "Backend Runtime Settings" on the "Manage" page (built-in Termux / real Termux)
+5. If selecting "WebView + Backend", fill in the **backend startup command** in the wizard (default `sh scripts/start.sh`); the backend runtime environment is globally configured in "Backend Runtime Settings" on the "Manage" page (built-in Debian container / real Termux)
 6. Complete configuration according to the wizard
 
 ### 1.2 Configure Plugin Information
@@ -606,7 +606,7 @@ window.addEventListener('destroy', () => { console.log('Plugin destroyed'); });
 Web plugins can start Termux backend services, providing computation, data processing, system command execution, and other capabilities. Since v5.1.0, the backend runtime architecture has been refactored to a **unified "startup command" mode**:
 
 · All backend plugins use `backend: "other"` + `backendStartCommand` as the single path, no longer differentiated by language interpreter (python/node/php/...)
-· The runtime environment is **globally configured** by the user within the software (built-in Termux / real Termux), plugins do not need to worry about it
+· The runtime environment is **globally configured** by the user within the software (built-in Debian container / real Termux), plugins do not need to worry about it
 · The host executes `sh -lc "<startup command>"` and injects `$PORT`, `$PLUGIN_ID`, `$PLUGIN_DIR`, `$WORK_DIR` and other environment variables
 · Legacy backends (`backend: "python"` etc.) are automatically migrated to startup command mode on loading, no changes needed for published plugins
 
@@ -620,10 +620,10 @@ Click "**Backend Runtime Settings**" on the "Manage" page to enter the standalon
 
 | Setting | Options | Description |
 |---------|---------|-------------|
-| **Backend Implementation** | **Built-in Termux** (default) | Uses the app's **built-in lightweight Termux** (no need to install anything), forces **Proot shared Alpine container** (fixed container name `alpine`) to run the plugin backend, achieving environment isolation |
+| **Backend Implementation** | **Built-in Debian container** (default) | Uses the app's **built-in Debian/proot container** (no need to install anything), forces **Proot shared Debian container** (fixed container name `debian`) to run the plugin backend, achieving environment isolation |
 | | **Real Termux** | Calls the externally installed **Termux** (`com.termux`) `RUN_COMMAND` service to run the plugin backend, suitable for scenarios needing native Termux ecosystem (pip/npm/apk, etc.) |
 
-- **Built-in Termux**: No network needed for first installation; Alpine rootfs is restored offline from app assets (about 19MB, one-time decompression); first installation time does not involve network
+- **Built-in Debian container**: No network needed for first installation; Debian rootfs is restored offline from app assets (one-time decompression); first installation time does not involve network
 - **Real Termux**: Requires Termux to be installed on the device and initialization completed once (see 5.2.4 initialization command), otherwise a guide will pop up if startup fails
 
 #### 5.2.2 Backend Environment (Real Termux Only)
@@ -631,10 +631,10 @@ Click "**Backend Runtime Settings**" on the "Manage" page to enter the standalon
 | Setting | Options | Description |
 |---------|---------|-------------|
 | **Backend Environment** | **Termux Native** | Run startup command directly in Termux native environment |
-| | **Proot Container** | Run in a Proot container (e.g., `alpine`, `ubuntu`, etc.), container name configurable, must be installed first in Termux using `proot-distro install <containerName>` |
+| | **Proot Container** | Run in a Proot container (e.g., `debian`, `ubuntu`, etc.), container name configurable, must be installed first in Termux using `proot-distro install <containerName>` |
 
-- Selecting Proot container requires filling in **container name** (default `alpine`); use `proot-distro list` to view installed containers
-- Built-in Termux **forces** Proot Alpine container, this setting is not applicable
+- Selecting Proot container requires filling in **container name** (default `debian`); use `proot-distro list` to view installed containers
+- Built-in Debian container **forces** Proot Debian container, this setting is not applicable
 
 #### 5.2.3 Idle Auto Reclamation
 
@@ -643,7 +643,7 @@ Click "**Backend Runtime Settings**" on the "Manage" page to enter the standalon
 | **Idle Reclamation Timeout** | 3 / 5 / 10 / 15 minutes (default 5) / Unlimited | Backend automatically stops after being idle for this duration to save resources; active requests refresh the timer; supports custom arbitrary minute values; selecting "Unlimited" means never automatically reclaimed |
 
 - When stopping, the host first calls the agreed HTTP `/stop` endpoint for graceful shutdown (recommended to implement in the startup script, see 5.6)
-- **Built-in Termux**: Additionally terminates by process group `SIGKILL`
+- **Built-in Debian container**: Additionally terminates by process group `SIGKILL`
 - **Real Termux**: Idle reclamation is managed uniformly by the shared supervisor (see 5.2.5), with independent timeout recursive process tree killing per plugin based on `idle/<key>.start` startup timestamps, **does not depend on the plugin implementing `/stop`**; the host only does port detection and state cleanup
 
 #### 5.2.4 Real Termux Initialization Command
@@ -663,7 +663,7 @@ This command completes the following in order:
 
 #### 5.2.5 Real Termux Shared Supervisor
 
-Real Termux (proot or native mode) uses a **single resident shared supervisor**: the container/session is only initialized once, and all plugin backends run as supervisor child processes. Subsequent plugin startup saves proot initialization overhead (cold startup about 5s). Built-in Termux (alpine, about 2s) remains unchanged (each plugin has its own proot).
+Real Termux (proot or native mode) uses a **single resident shared supervisor**: the container/session is only initialized once, and all plugin backends run as supervisor child processes. Subsequent plugin startup saves proot initialization overhead (cold startup about 5s). Built-in Debian container (about 2s) remains unchanged (each plugin has its own proot).
 
 - Communication protocol (control directory `<plugins_root>/.uin/`): `cmd/<key>.cmd` (startup command), `pid/<key>` (backend PID), `stop/<key>` (stop request), `idle/<key>` (idle minutes), `idle/<key>.start` (startup timestamp), `alive` (supervisor alive marker), `host_alive` (host heartbeat, touch every 30s, supervisor auto-exits on 300s timeout), `shutdown` (exit marker), `keep_alive` (background keep-alive marker)
 - proot startup: `proot-distro login <container> --bind '<plugins_root>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`
@@ -678,7 +678,7 @@ Real Termux (proot or native mode) uses a **single resident shared supervisor**:
 
 After a plugin is opened, the host selects the execution path based on global settings:
 
-- **Built-in Termux**: `proot-distro login alpine --bind <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`, plugin directory is bind-mounted read-only into the container
+- **Built-in Debian container**: `proot --link2symlink -0 -r <rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`, plugin directory is bind-mounted read-only into the container
 - **Real Termux + Termux Native**: `/bin/bash -lc "<startup command>"` (working directory = plugin directory)
 - **Real Termux + Proot Container**: `proot-distro login <containerName> --bind <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`
 
@@ -856,21 +856,21 @@ The host communicates with the backend via HTTP; the backend must follow these c
 
 **Environment Variable Injection Method (By Runtime Environment)**
 
-- **Built-in Termux (proot Alpine container)**: Host injects via `ProcessBuilder` process environment (including `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR` and Termux-specific variables), then enters the container with `proot-distro login alpine --bind <pluginDir>:/plugins/<id> -- sh -lc "..."`; container inherits process environment. Backend actually runs inside the container, `PLUGIN_DIR`/`WORK_DIR` are `/plugins/{pluginId}`.
+- **Built-in Debian container (proot)**: Host injects via `ProcessBuilder` process environment (including `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR` and Termux-specific variables), then enters the container with `proot --link2symlink -0 -r <rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "..."`; container inherits process environment. Backend actually runs inside the container, `PLUGIN_DIR`/`WORK_DIR` are `/plugins/{pluginId}`.
 - **Real Termux Native**: Host launches `com.termux.RUN_COMMAND`, since the intent has **no environment variable channel**, the host inlines environment variables into the `sh -lc` command string (`export PORT=...; export PLUGIN_ID=...; cd <pluginDir> && <startup command>`).
 - **Real Termux proot container**: Same as above, inlined into `sh -lc` then enters the container via `proot-distro login <container> --bind <pluginDir>:/plugins/<id> -- sh -lc "..."`.
 
 **Runtime Environment Constraints (Real Termux)**
 
 - Needs `allow-external-apps=true` set in real Termux (`.termux/termux.properties`), `termux-setup-storage` executed to grant storage permission, and `com.termux.permission.RUN_COMMAND` granted. Plugins are on shared storage (`/storage/emulated/0/UIN_Tool/plugins/`), Termux needs to be able to read this directory.
-- Real Termux processes **cannot be terminated by the host across apps**; stopping the backend can only rely on the backend responding to the `/stop` endpoint — therefore real Termux backends **must implement `/stop`** (built-in Termux additionally uses `SIGKILL` by process group as fallback beyond `/stop`).
-- Real Termux backend cold startup is slower (especially proot containers), ready timeout has been relaxed to `max(backendTimeout, 60/120)`, the host will prompt when timeout occurs but **will not automatically kill already-started processes** (built-in version cleans up if the process has already exited).
+- Real Termux processes **cannot be terminated by the host across apps**; stopping the backend can only rely on the backend responding to the `/stop` endpoint — therefore real Termux backends **must implement `/stop`** (built-in Debian container additionally uses `SIGKILL` by process group as fallback beyond `/stop`).
+- Real Termux backend cold startup is slower (especially proot containers), ready timeout has been relaxed to `max(backendTimeout, 60/120)`, the host will prompt when timeout occurs but **will not automatically kill already-started processes** (built-in container cleans up if the process has already exited).
 
 **Backend Lifecycle**
 
 - Plugin opens → Host auto-starts backend (`backendAutoStart: true`); real Termux managed by shared supervisor (see 5.2.5), first startup takes about 5s to initialize container/session, subsequent plugin startups are immediately available
 - Ready detection: first TCP port detection (500ms connection timeout), then **GET** health check after port is open (not HEAD, to avoid 501), 200 response indicates readiness; retries every 200ms until timeout
-- Plugin closes → Host calls `GET http://127.0.0.1:<port>/stop` for graceful shutdown (built-in Termux additionally terminates by process group; real Termux killed recursively by supervisor by PID)
+- Plugin closes → Host calls `GET http://127.0.0.1:<port>/stop` for graceful shutdown (built-in Debian container additionally terminates by process group; real Termux killed recursively by supervisor by PID)
 - Idle reclamation: Backend automatically stops after exceeding "idle reclamation timeout" (global setting, default 5 minutes, presets 3/5/10/15 minutes or custom arbitrary minutes; set to "Unlimited" to never auto-reclaim) without being called; WebView direct requests also refresh the timer to prevent premature reclamation. **Real Termux**: Managed by shared supervisor with independent timeout recursive process tree killing per plugin based on `idle/<key>.start` startup timestamps (does not depend on plugin implementing `/stop`); host only does port detection and state cleanup. When "Unlimited" is selected, no idle files are written, backend only stops when actively stopped
 
 
@@ -878,7 +878,7 @@ The host communicates with the backend via HTTP; the backend must follow these c
 
 ### 6.1 What is a CUI Plugin
 
-**CUI plugins** (`uiType: "cui"`, Command-line User Interface) are plugins whose frontend is presented as a **full-screen terminal**: when the plugin opens, the host no longer renders pages or WebView, but directly launches a real terminal window (based on the built-in Termux engine) to execute the startup command you configured in the plugin directory.
+**CUI plugins** (`uiType: "cui"`, Command-line User Interface) are plugins whose frontend is presented as a **full-screen terminal**: when the plugin opens, the host no longer renders pages or WebView, but directly launches a real terminal window (based on the built-in Debian container engine) to execute the startup command you configured in the plugin directory.
 
 - Suitable for: command-line tools, script automation, interactive interpreters, service consoles, etc.
 - The plugin page only shows a placeholder prompt; the real interface is the full-screen terminal
@@ -929,7 +929,7 @@ plugin.tpk
 | `entry` | CUI plugins have no page entry, leave empty |
 | `backendPreCommand` | **Startup command**: executed each time the plugin opens in the plugin directory with `bash -lc "<this command>"`. Must use `export PLUGIN_ID=... PLUGIN_DIR=$(pwd)` to inject environment variables, because terminal sessions do not auto-inject them |
 | `backend` | Optional. Fill `""` for pure terminal; can also be combined with backend fields to simultaneously start an HTTP backend |
-| `backendRuntime` | `"termux"` (default) or `"proot"` (execute in Alpine container) |
+| `backendRuntime` | `"termux"` (default) or `"proot"` (execute in Debian container) |
 
 ### 6.3 Create CUI Plugin (Wizard)
 
@@ -1004,15 +1004,15 @@ The terminal session automatically closes after the script ends (if the script d
 ### 6.5 Runtime Flow and Lifecycle
 
 1. User opens CUI plugin → `PluginHostActivity` displays placeholder view: "Opening full-screen terminal to execute command..."
-2. Host selects execution environment based on global "Backend Runtime Settings": built-in Termux uses environment pipeline (Termux ready → Alpine ready, if `backendRuntime: "proot"` is configured); real Termux directly calls `RUN_COMMAND`
-3. Through `RunCommandService`, starts **full-screen terminal session** in the plugin directory with `bash -lc "<startup command>"` (`backendPreCommand`), foreground directly launches `TermuxActivity` / `com.termux` full-screen terminal (no longer depends on overlay permission); when startup command is empty, opens interactive login Shell with `bash -l`
+2. Host selects execution environment based on global "Backend Runtime Settings": built-in Debian container uses environment pipeline (Debian ready → proot ready, if `backendRuntime: "proot"` is configured); real Termux directly calls `RUN_COMMAND`
+3. Through `RunCommandService`, starts **full-screen terminal session** in the plugin directory with `bash -lc "<startup command>"` (`backendPreCommand`), foreground directly launches `SimpleTerminalActivity` / `com.termux` full-screen terminal (no longer depends on overlay permission); when startup command is empty, opens interactive login Shell with `bash -l`
 4. Terminal session survives independently of the plugin page: closes when script/Shell exits; closing the plugin page **does not** force-kill the terminal (session managed by TermuxService)
 
 ### 6.6 CUI and Backend/Proot Relationship
 
 - **Pure CUI**: `backend` left empty, only terminal, no HTTP backend
 - **CUI + Backend**: `backend: "other"` + `backendStartCommand` + `backendAutoStart: true`, host starts backend in background while launching terminal
-- **CUI + Proot**: `backendRuntime: "proot"`, startup command executes inside Alpine container, suitable for scenarios needing isolated environment
+- **CUI + Proot**: `backendRuntime: "proot"`, startup command executes inside Debian container, suitable for scenarios needing isolated environment
 - **CUI + other**: `backend: "other"` means host does not auto-start backend, startup command is typically a resident service launched by the terminal itself
 
 Note: CUI's `backendPreCommand` is a "startup command executed each time the plugin opens", semantically different from Web plugin backend's `backendStartCommand` (host executes in background with `sh -lc`, used to start HTTP service).
@@ -1985,12 +1985,12 @@ A complete example of a Web plugin with Python backend + Proot container:
 | `backendStartCommand` | string | `""` | web+backend Yes | **Startup command**: host executes with `sh -lc` in the plugin directory (dependency detection + start backend). Defaults to `sh scripts/start.sh` when empty. Host injects `$PORT`, `$PLUGIN_ID`, `$PLUGIN_DIR`, `$WORK_DIR`. |
 | `backendStartEntry` | string | `scripts/start.sh` | No | Relative path of the startup script within the plugin directory. |
 | `backendAutoStart` | boolean | `true` | No | Whether to auto-start the backend when opening the plugin. |
-| `backendTimeout` | int | `30` | No | Backend ready wait timeout (seconds). Actual effective value is relaxed based on runtime environment (see 5.6): built-in Termux always proot container → `max(backendTimeout, 120)` seconds; real Termux proot → `max(backendTimeout, 120)` seconds; real Termux native → `max(backendTimeout, 60)` seconds. |
+| `backendTimeout` | int | `30` | No | Backend ready wait timeout (seconds). Actual effective value is relaxed based on runtime environment (see 5.6): built-in Debian container always proot container → `max(backendTimeout, 120)` seconds; real Termux proot → `max(backendTimeout, 120)` seconds; real Termux native → `max(backendTimeout, 60)` seconds. |
 | `backendHealthCheck` | string | `/health` | No | Health check endpoint path. Host polls this path and 200 response indicates readiness. |
 | `backendMaxRetries` | int | `3` | No | **Reserved field**. Model declared, participates in JSON read/write, but host currently has no retry logic (prompts on failure, does not auto-retry). |
 | `backendLogLevel` | string | `info` | No | **Reserved field**. Model declared, participates in JSON read/write, but host currently does not switch log level based on it (logs are fixed output, does not read this value). |
 | `backendKeepAlive` | boolean | `false` | No | Whether to keep backend running after plugin closes. When `true`, host does not stop backend in onDestroy. |
-| `backendEnv` | object | `{}`` | No | **Note: Current version does not read this JSON field, and `fromJson()`/`toJson()` has not read/written it yet; writing it in plugin.json will not take effect** (can only be set internally by the host program). Pass-through behavior varies by environment: built-in Termux injects via `ProcessBuilder` process environment, proot container inherits this environment; **real Termux uses `RUN_COMMAND` intent, has no environment variable channel, `backendEnv` does not pass through at all** — when variables are needed, please write them directly into `backendStartCommand` (e.g., `export KEY=value; ...`). |
+| `backendEnv` | object | `{}`` | No | **Note: Current version does not read this JSON field, and `fromJson()`/`toJson()` has not read/written it yet; writing it in plugin.json will not take effect** (can only be set internally by the host program). Pass-through behavior varies by environment: built-in Debian container injects via `ProcessBuilder` process environment, proot container inherits this environment; **real Termux uses `RUN_COMMAND` intent, has no environment variable channel, `backendEnv` does not pass through at all** — when variables are needed, please write them directly into `backendStartCommand` (e.g., `export KEY=value; ...`). |
 
 > Legacy fields (still readable and auto-migrated on loading, not recommended for new plugins): `backendRuntime` (`termux`/`proot`), `backendPort`, `backendEntry`, `backendPreCommand`, `backendBinary`, `backendInstallCmd`, `backendCheckCmd`, `backendPhpDocRoot`, `backendJavaClass`, `backendJavaJar`, `backendArgs`.
 
@@ -2162,7 +2162,7 @@ Click "**Export Template**" on the "Dev" page; the app copies built-in packaged 
 |---------------|-------------|
 | `com.example.cuitest.tpk` | CUI terminal plugin example (full-screen terminal executing scripts) |
 | `com.example.othertest.tpk` | Custom backend plugin example (other mode, startup command launched) |
-| `com.example.termuxtest.tpk` | Termux backend plugin example (Python backend) |
+| `com.example.termuxtest.tpk` | Debian backend plugin example (Python backend) |
 | `com.test.allapi.tpk` | Full API test plugin |
 | `com.test.storage.tpk` | Storage test plugin |
 | `com.uin.compression.tpk` | File compression tool plugin example (Web + backend) |
@@ -2199,37 +2199,37 @@ Click "**Export Template**" on the "Dev" page; the app copies built-in packaged 
 
 ### 14.1 Overview
 
-UIN Tool includes a complete terminal environment; core engine is based on Termux adaptation.
+UIN Tool includes a complete terminal environment; core engine is based on the built-in Debian container (proot).
 
 ### 14.2 Terminal Features
 
 | Feature | Description |
 |---------|-------------|
-| Shell | Default bash; zsh, fish, etc. need `pkg install` to install |
-| Package Manager | `pkg`/`apt` (Termux's own software source termux-packages, not Debian/Ubuntu sources) |
+| Shell | Default bash; zsh, fish, etc. need `apt install` to install |
+| Package Manager | `apt`/`dpkg` (Debian's package management, standard Debian repositories) |
 | Development Tools | gcc, clang, make, git |
-| Script Languages | Python, Node.js, Ruby, etc. (install with `pkg install`) |
+| Script Languages | Python, Node.js, Ruby, etc. (install with `apt install`) |
 | Network Tools | curl, wget, openssh |
 | Multi-Session | Multiple terminal sessions running simultaneously |
 | Multi-Window | Android 7.0+ multi-window support (new window button) |
 | Safe Mode | New sessions can enable safe mode |
 
-Terminal environment variables: `HOME=/data/data/com.UIN.Tool/files/home`, `PREFIX=/data/data/com.UIN.Tool/files/usr`, `TMPDIR=$PREFIX/tmp`, `PATH=$PREFIX/bin`, etc. Sessions are managed by `TermuxService` (foreground service + notification); `TermuxActivity` destruction/recreation does not interrupt sessions.
+Terminal environment variables: `HOME=/data/data/com.UIN.Tool/files/home`, `PREFIX=/data/data/com.UIN.Tool/files/usr`, `TMPDIR=$PREFIX/tmp`, `PATH=$PREFIX/bin`, etc. Sessions are managed by `TermuxService` (foreground service + notification); `SimpleTerminalActivity` destruction/recreation does not interrupt sessions.
 
 ### 14.3 Common Commands
 
 ```bash
-# Update package sources (Termux's own repository)
-pkg update
+# Update package sources (Debian repository)
+apt update
 
 # Install Python
-pkg install python
+apt install python3
 
 # Install Node.js
-pkg install nodejs
+apt install nodejs
 
 # Install git
-pkg install git
+apt install git
 
 # SSH to server
 ssh user@hostname

@@ -49,9 +49,9 @@ data class SourceInfo(
 
     fun getTrustLabel(): String {
         return when (trustLevel) {
-            "official" -> "官方"
-            "verified" -> "认证"
-            else -> "社区"
+            "official" -> com.UIN.Tool.utils.Str.get(com.UIN.Tool.R.string.trust_official)
+            "verified" -> com.UIN.Tool.utils.Str.get(com.UIN.Tool.R.string.trust_verified)
+            else -> com.UIN.Tool.utils.Str.get(com.UIN.Tool.R.string.trust_community)
         }
     }
 }

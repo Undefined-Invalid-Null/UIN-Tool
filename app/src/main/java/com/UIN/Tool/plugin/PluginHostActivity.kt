@@ -25,8 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
-import com.UIN.Tool.app.RunCommandService
-import com.UIN.Tool.app.TermuxActivity
+
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
@@ -40,6 +39,8 @@ import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.ui.screen.permission.PluginPermissionActivity
 import com.UIN.Tool.constants.AppConstants as Constants
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
@@ -106,8 +107,6 @@ private val backendKey: String
     private var backendPort = 0
     private var isBackendReady = false
     private var isBackendStarting = false
-
-    private var envProgressDialog: android.app.ProgressDialog? = null
 
     private var backendTimeoutHandler: Handler? = null
     private var backendTimeoutRunnable: Runnable? = null
@@ -360,7 +359,7 @@ private val backendKey: String
         setupBackendTimeout()
 
         if (BackendConfig.isBuiltin(this)) {
-            // 内置 Termux（强制 proot Alpine 容器）：走环境流水线（确保 bootstrap + alpine）
+            // 内置 proot 模式：走环境流水线（确保 proot + 容器）
             Logger.i(TAG, Str.get(R.string.going_through_proot_other_environmen))
             runEnvironmentPipeline()
         } else {
@@ -399,13 +398,13 @@ private val backendKey: String
     // ============================================================
 
     /**
-     * ① Termux 基础环境 → ② Alpine 共享容器 → ③ 启动后端
+     * ① proot 基础环境 → ② Debian 容器 → ③ 启动后端
      */
     private fun runEnvironmentPipeline() {
         val info = pluginInfo ?: return
         Logger.i(TAG, "🔍 runEnvironmentPipeline()")
 
-        // 若后台正在安装 Alpine，等待完成后再继续
+        // 若后台正在安装环境，等待完成后再继续
         if (com.UIN.Tool.UinApplication.isEnvironmentInstalling()) {
             Logger.i(TAG, "runEnvironmentPipeline: waiting for background env install...")
             showEnvProgress(Str.get(R.string.initializing_termux_base_environment))
@@ -420,22 +419,38 @@ private val backendKey: String
             return
         }
 
-        ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
-            Logger.success(TAG, Str.get(R.string.termux_ready_checking_alpine))
-            ProotContainerManager.ensureAlpine(applicationContext, status = { showEnvProgress(it) }) { ok ->
-                if (!ok) {
-                    Logger.e(TAG, Str.get(R.string.alpine_container_setup_failed))
+        // 内置 proot 模式：确保 proot 二进制和默认容器就绪
+        MainScope().launch {
+            showEnvProgress(Str.get(R.string.preparing_linux_environment))
+            val prootResult = com.UIN.Tool.proot.ProotInstaller.ensureInstalled(this@PluginHostActivity)
+            if (prootResult.isFailure) {
+                Logger.e(TAG, "Proot installation failed: ${prootResult.exceptionOrNull()?.message}")
+                isBackendStarting = false
+                dismissEnvProgress()
+                showPluginInfoDialog(
+                    Str.get(R.string.environment_setup_failed),
+                    Str.get(R.string.proot_install_failed)
+                )
+                return@launch
+            }
+            val containerName = com.UIN.Tool.proot.RootfsManager.getDefaultContainer(this@PluginHostActivity)
+            if (!com.UIN.Tool.proot.RootfsManager.isContainerReady(this@PluginHostActivity, containerName)) {
+                showEnvProgress(getString(R.string.linux_container_installing))
+                val containerResult = ProotContainerManager.ensureDefaultContainer(this@PluginHostActivity)
+                if (containerResult.isFailure) {
+                    Logger.e(TAG, "Container installation failed: ${containerResult.exceptionOrNull()?.message}")
                     isBackendStarting = false
                     dismissEnvProgress()
                     showPluginInfoDialog(
                         Str.get(R.string.environment_setup_failed),
-                        Str.get(R.string.alpine_container_install_failed_make)
+                        Str.get(R.string.debian_container_install_failed_make)
                     )
-                    return@ensureAlpine
+                    return@launch
                 }
-                Logger.success(TAG, Str.get(R.string.alpine_ready_processing_pre_command))
-                startBackendAfterEnv()
             }
+            Logger.success(TAG, "Linux environment ready")
+            dismissEnvProgress()
+            startBackendAfterEnv()
         }
     }
 
@@ -503,23 +518,10 @@ private val backendKey: String
      */
     private fun showEnvProgress(message: String) {
         if (isDestroyed || isFinishing) return
-        if (envProgressDialog == null) {
-            envProgressDialog = android.app.ProgressDialog(this).apply {
-                setCancelable(false)
-                setMessage(message)
-                show()
-            }
-        } else {
-            envProgressDialog?.setMessage(message)
-        }
+        com.UIN.Tool.utils.AppToast.show(this, message)
     }
 
     private fun dismissEnvProgress() {
-        try {
-            envProgressDialog?.dismiss()
-        } catch (_: Exception) {
-        }
-        envProgressDialog = null
     }
 
     // ============================================================
@@ -605,7 +607,7 @@ private val backendKey: String
     }
 
     // ============================================================
-    // 实体 Termux 引导（allow-external-apps / bootstrap / 存储授权）
+    // 实体 Termux 引导（allow-external-apps / 存储授权）
     // ============================================================
 
     /**
@@ -1244,29 +1246,13 @@ private val backendKey: String
      */
     private fun loadCuiPlugin() {
         Logger.separator(TAG, "loadCuiPlugin")
-        try {
-            container.removeAllViews()
-            val textView = android.widget.TextView(this).apply {
-                text = Str.get(R.string.opening_terminal_and_running_command)
-                gravity = android.view.Gravity.CENTER
-                setTextColor(android.graphics.Color.BLACK)
-                textSize = 16f
-            }
-            container.addView(
-                textView,
-                ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            )
-            Logger.success(TAG, Str.get(R.string.cui_placeholder_view_created))
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.cui_placeholder_view_creation_error), e)
-            Toast.makeText(this, Str.get(R.string.cui_plugin_load_failed_e_message, e.message), Toast.LENGTH_LONG).show()
-            finish()
-        }
+        // CUI 插件直接启动全屏终端，不需要显示占位页面
+        // 终端启动后本 Activity 会自动 finish()
     }
 
     /**
      * CUI 环境流水线：
-     * - 内置 Termux：确保 Termux 环境（需要时再确保 Alpine），然后启动全屏终端会话；
+     * - 内置：确保 proot 环境（需要时再确保 Debian rootfs），然后启动全屏终端会话；
      * - 实体 Termux：直接按后端设置（Termux 本机 / Proot 容器）启动 CUI 会话；
      * 若插件还声明了后端，再后台启动后端。
      */
@@ -1284,38 +1270,50 @@ private val backendKey: String
             return
         }
 
-        ProotContainerManager.ensureTermux(this, status = { showEnvProgress(it) }) {
+        // 内置 proot 模式：确保环境就绪后启动 CUI 终端会话
+        MainScope().launch {
+            showEnvProgress(Str.get(R.string.preparing_linux_environment))
+            val prootResult = com.UIN.Tool.proot.ProotInstaller.ensureInstalled(this@PluginHostActivity)
+            if (prootResult.isFailure) {
+                Logger.e(TAG, "Proot installation failed: ${prootResult.exceptionOrNull()?.message}")
+                isBackendStarting = false
+                dismissEnvProgress()
+                showPluginInfoDialog(
+                    Str.get(R.string.environment_setup_failed),
+                    Str.get(R.string.proot_install_failed)
+                )
+                return@launch
+            }
+            val containerName = com.UIN.Tool.proot.RootfsManager.getDefaultContainer(this@PluginHostActivity)
+            if (!com.UIN.Tool.proot.RootfsManager.isContainerReady(this@PluginHostActivity, containerName)) {
+                showEnvProgress(getString(R.string.linux_container_installing))
+                val containerResult = ProotContainerManager.ensureDefaultContainer(this@PluginHostActivity)
+                if (containerResult.isFailure) {
+                    Logger.e(TAG, "Container installation failed: ${containerResult.exceptionOrNull()?.message}")
+                    isBackendStarting = false
+                    dismissEnvProgress()
+                    showPluginInfoDialog(
+                        Str.get(R.string.environment_setup_failed),
+                        Str.get(R.string.debian_container_install_failed_make)
+                    )
+                    return@launch
+                }
+            }
+            dismissEnvProgress()
             val start = {
                 startCuiTerminalSession()
                 if (info.hasBackend()) {
                     startBackendAfterEnv()
                 }
-                // 纯 CUI：终端会话已启动（全屏 TermuxActivity），关闭占位宿主页面，
-                // 避免残留一个看似“悬浮窗/多余窗口”的空白页。
                 finish()
             }
-            if (info.useProotRuntime() || info.isOtherBackend()) {
-                ProotContainerManager.ensureAlpine(applicationContext, status = { showEnvProgress(it) }) { ok ->
-                    if (!ok) {
-                        isBackendStarting = false
-                        dismissEnvProgress()
-                        showPluginInfoDialog(
-                            Str.get(R.string.environment_setup_failed),
-                            Str.get(R.string.alpine_container_install_failed_make)
-                        )
-                        return@ensureAlpine
-                    }
-                    start()
-                }
-            } else {
-                start()
-            }
+            start()
         }
     }
 
     /**
      * 根据全局后端设置启动 CUI 会话：
-     * - 内置 Termux：通过 RunCommandService 以 TERMINAL_SESSION 方式启动，前台拉起全屏 TermuxActivity；
+     * - 内置 Proot：通过 SimpleTerminalActivity 启动交互式终端会话；
      * - 实体 Termux：通过 com.termux RUN_COMMAND 启动前台终端会话。
      * @return 是否成功启动
      */
@@ -1323,6 +1321,7 @@ private val backendKey: String
         try {
             val info = pluginInfo ?: return false
             val pluginDir = File(Constants.PLUGIN_DIR, currentPluginId)
+            // CUI 插件用 backendPreCommand（含 export 和启动命令）
             val preCmd = info.backendPreCommand.trim()
             Logger.i(TAG, "🔍 startCuiTerminalSession(), preCmd='$preCmd'")
 
@@ -1330,31 +1329,21 @@ private val backendKey: String
                 return startCuiInRealTermux(info, pluginDir, preCmd)
             }
 
-            val args = if (preCmd.isNotEmpty()) arrayOf("-lc", preCmd) else arrayOf("-l")
-            val intent = Intent(RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND).apply {
-                setClass(this@PluginHostActivity, RunCommandService::class.java)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, ProotContainerManager.BASH)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, args)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_WORKDIR, pluginDir.absolutePath)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, info.name)
-                putExtra(RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, Str.get(R.string.cui_plugin_terminal))
-                // 不设置 EXTRA_BACKGROUND → Runner.TERMINAL_SESSION → 创建真实终端会话并执行命令。
-                // 用 DONT_OPEN_ACTIVITY 让服务端只建会话、不开 Activity，避免触发
-                // “显示在其他应用上层”权限检查；随后由前台 Activity 直接拉起全屏终端。
-                // 注意：RunCommandService 用 getStringExtra 读取该值，必须传字符串。
-                putExtra(
-                    RUN_COMMAND_SERVICE.EXTRA_SESSION_ACTION,
-                    TERMUX_SERVICE.VALUE_EXTRA_SESSION_ACTION_SWITCH_TO_NEW_SESSION_AND_DONT_OPEN_ACTIVITY.toString()
-                )
-            }
-            startService(intent)
-            // 前台 Activity 直接启动全屏 TermuxActivity（不依赖“显示在其他应用上层”权限）。
-            // 会话由上面 RUN_COMMAND 创建，TermuxActivity 绑定后会自动附着到该会话。
-            startActivity(TermuxActivity.newInstance(this))
-            // 仅对进入的终端做淡入：宿主保持不透明直至被覆盖，避免交叉淡入淡出时
-            // 双方同时半透明、露出系统桌面/上一页的“空档期”。
+            // 内置 proot 模式：启动 SimpleTerminalActivity，传入启动命令
+            // 使用宿主路径（/storage/emulated/0 已绑定挂载到容器内）
+            val hostPluginDir = pluginDir.absolutePath
+
+            // 构建完整启动命令：cd 到插件目录 + 执行 preCmd
+            val fullCommand = if (preCmd.isNotEmpty()) {
+                "cd $hostPluginDir && $preCmd"
+            } else ""
+
+            com.UIN.Tool.terminal.SimpleTerminalActivity.start(
+                this@PluginHostActivity,
+                fullCommand.ifEmpty { null }
+            )
             overridePendingTransition(R.anim.fade_in, 0)
-            Logger.success(TAG, Str.get(R.string.cui_terminal_session_started))
+            Logger.success(TAG, "CUI terminal session started")
             return true
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.cui_terminal_start_error_e_message, e.message), e)

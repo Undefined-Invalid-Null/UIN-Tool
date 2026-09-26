@@ -134,6 +134,19 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- ==================== Onboarding ==================== -->
+        <activity
+            android:name=".ui.screen.onboarding.OnboardingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool" />
+
+        <!-- ==================== 终端Activity ==================== -->
+        <activity
+            android:name=".terminal.SimpleTerminalActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- ==================== 主Activity ==================== -->
         <activity
             android:name=".MainActivity"
@@ -153,109 +166,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="uin" android:host="check_update" />
-            </intent-filter>
-        </activity>
-
-        <!-- ==================== Termux 终端 Activity ==================== -->
-        <activity
-            android:name=".app.TermuxActivity"
-            android:exported="true"
-            android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|keyboard|keyboardHidden|navigation"
-            android:label="@string/app_name"
-            android:launchMode="standard"
-            android:resizeableActivity="true"
-            android:theme="@style/Theme.TermuxActivity.DayNight.NoActionBar"
-            tools:targetApi="n">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <!-- ==================== Termux Home Activity 别名（Android Things） ==================== -->
-        <activity-alias
-            android:name=".HomeActivity"
-            android:exported="true"
-            android:targetActivity=".app.TermuxActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.IOT_LAUNCHER" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity-alias>
-
-        <!-- ==================== Termux 设置 ==================== -->
-        <activity
-            android:name=".app.activities.SettingsActivity"
-            android:exported="true"
-            android:label="@string/title_settings"
-            android:theme="@style/Theme.UIN.Tool.NoActionBar" />
-
-        <!-- ==================== Termux 帮助 ==================== -->
-        <activity
-            android:name=".app.activities.HelpActivity"
-            android:exported="false"
-            android:label="@string/app_name"
-            android:parentActivityName=".app.TermuxActivity"
-            android:resizeableActivity="true"
-            tools:targetApi="n" />
-
-        <!-- ==================== 报告页面 ==================== -->
-        <activity
-            android:name=".shared.activities.ReportActivity"
-            android:theme="@style/Theme.UIN.Tool.Markdown"
-            android:documentLaunchMode="intoExisting" />
-
-        <!-- ==================== 文件接收 Activity ==================== -->
-        <activity
-            android:name=".app.api.file.FileReceiverActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:noHistory="true"
-            android:resizeableActivity="true"
-            android:taskAffinity="com.UIN.Tool.filereceiver"
-            tools:targetApi="n" />
-
-        <!-- ==================== 引导页 ==================== -->
-        <activity
-            android:name=".ui.screen.onboarding.OnboardingActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool"
-            android:screenOrientation="portrait" />
-
-        <!-- ==================== 插件 openWith 分发（分享/用其他应用打开） ==================== -->
-        <activity
-            android:name=".plugin.PluginOpenDispatchActivity"
-            android:exported="true"
-            android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:label="@string/plugin_open_receiver_label"
-            android:theme="@style/Theme.UIN.Tool.Dialog">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-            <intent-filter tools:ignore="AppLinkUrlError">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/*" />
-                <data android:mimeType="audio/*" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="message/*" />
-                <data android:mimeType="multipart/*" />
-                <data android:mimeType="text/*" />
-                <data android:mimeType="video/*" />
             </intent-filter>
         </activity>
 
@@ -366,6 +276,13 @@
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/backend_runtime_settings" />
 
+        <!-- ==================== 容器管理 ==================== -->
+        <activity
+            android:name=".ui.screen.proot.ContainerManagementActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/proot_container_management" />
+
         <!-- ==================== 帮助 ==================== -->
         <activity
             android:name=".ui.screen.help.HelpActivity"
@@ -415,24 +332,6 @@
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/widget_config_title" />
 
-        <!-- ==================== Content Provider ==================== -->
-        <provider
-            android:name=".filepicker.TermuxDocumentsProvider"
-            android:authorities="com.UIN.Tool.documents"
-            android:exported="true"
-            android:grantUriPermissions="true"
-            android:permission="android.permission.MANAGE_DOCUMENTS">
-            <intent-filter>
-                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
-            </intent-filter>
-        </provider>
-
-        <provider
-            android:name=".app.TermuxOpenReceiver$ContentProvider"
-            android:authorities="com.UIN.Tool.files"
-            android:exported="true"
-            android:grantUriPermissions="true" />
-
         <!-- ==================== FileProvider ==================== -->
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -443,27 +342,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <!-- ==================== Broadcast Receiver ==================== -->
-        <receiver
-            android:name=".app.TermuxOpenReceiver"
-            android:exported="false" />
-
-        <receiver
-            android:name=".plugin.RealTermuxProbeReceiver"
-            android:exported="false" />
-
-        <receiver
-            android:name=".app.event.SystemEventReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".shared.activities.ReportActivity$ReportActivityBroadcastReceiver"
-            android:exported="false" />
 
         <!-- ==================== 小部件Provider ==================== -->
         <receiver
@@ -510,20 +388,6 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-
-        <!-- ==================== Service ==================== -->
-        <service
-            android:name=".app.TermuxService"
-            android:exported="false" />
-
-        <service
-            android:name=".app.RunCommandService"
-            android:exported="true"
-            android:permission="com.UIN.Tool.permission.RUN_COMMAND">
-            <intent-filter>
-                <action android:name="com.UIN.Tool.RUN_COMMAND" />
-            </intent-filter>
-        </service>
 
         <!-- ==================== 无障碍服务 ==================== -->
         <service

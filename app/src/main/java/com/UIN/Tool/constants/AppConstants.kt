@@ -149,11 +149,11 @@ object AppConstants {
         [
             {
                 "sourceId": "official",
-                "name": "官方源",
+                "name": "Official Source",
                 "owner": "UIN-Tool-Plugins",
                 "repo": "Official",
                 "branch": "dist",
-                "description": "UIN Tool 官方维护的插件仓库",
+                "description": "UIN Tool official plugin repository",
                 "trustLevel": "official",
                 "addedAt": "2026-08-30T14:07:27+08:00"
             }
@@ -187,6 +187,12 @@ object AppConstants {
     const val REQUEST_CODE_SELECT_RESOURCE = 1005
     const val REQUEST_CODE_CODE_EDITOR = 1006
     const val REQUEST_CODE_SETTINGS = 1007
+
+    // ==================== Proot/Container ====================
+    const val PREF_PROOT = "proot_prefs"
+    const val KEY_DEFAULT_CONTAINER = "default_container"
+    const val CONTAINER_PLUGINS_PREFIX = "/plugins"
+    const val LOCALHOST_URL = "http://127.0.0.1"
 
     // ==================== 其他常量 ====================
     const val SPLASH_DELAY = 1500L

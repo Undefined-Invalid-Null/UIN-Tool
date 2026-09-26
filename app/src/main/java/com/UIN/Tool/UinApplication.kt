@@ -3,7 +3,7 @@ package com.UIN.Tool
 import com.UIN.Tool.utils.Str
 import android.content.Context
 import androidx.multidex.MultiDex
-import com.UIN.Tool.app.TermuxApplication
+import android.app.Application
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.utils.UIConfig
@@ -18,9 +18,11 @@ import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
 import org.eclipse.tm4e.core.registry.IGrammarSource
 import org.eclipse.tm4e.core.registry.IThemeSource
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import java.io.File
 
-class UinApplication : TermuxApplication() {
+class UinApplication : Application() {
 
     companion object {
         private const val TAG = "UinApplication"
@@ -185,64 +187,57 @@ class UinApplication : TermuxApplication() {
     }
 
     /**
-     * 后台自动检测并安装 Termux bootstrap 和 Alpine 容器。
-     * 仅在内置 Termux 模式下执行；Real Termux 模式跳过。
+     * 后台自动安装 proot 二进制和默认 rootfs 容器。
+     * 仅在内置 proot 模式下执行；Real Termux 模式跳过。
      * 安装前设置 [isEnvironmentInstalling] 标志，PluginHostActivity 检测到后跳过自身安装，避免冲突。
      */
     private fun autoInstallEnvironment() {
         val ctx = applicationContext
-        // 仅内置模式需要 bootstrap + alpine；Real Termux 模式由外部 Termux 管理
-        if (!com.UIN.Tool.plugin.BackendConfig.isBuiltin(ctx)) return
+        if (!com.UIN.Tool.plugin.BackendConfig.isBuiltin(ctx)) {
+            Logger.i(TAG, "autoInstallEnvironment: 非内置模式，跳过")
+            return
+        }
 
         Thread {
             try {
                 _isEnvironmentInstalling = true
-                Logger.i(TAG, "autoInstallEnvironment: checking bootstrap & alpine")
+                Logger.i(TAG, "autoInstallEnvironment: ═══ 开始检查 proot & rootfs ═══")
 
-                // 1. 确保 Termux bootstrap 就绪（复用 PluginHostActivity 的检测逻辑）
-                if (!com.UIN.Tool.plugin.ProotContainerManager.isTermuxReady()) {
-                    Logger.i(TAG, "autoInstallEnvironment: bootstrap not ready, installing")
-                    com.UIN.Tool.plugin.ProotContainerManager.installBootstrapHeadless(ctx)
-                    if (!com.UIN.Tool.plugin.ProotContainerManager.isTermuxReady()) {
-                        Logger.e(TAG, "autoInstallEnvironment: bootstrap install failed")
-                        _isEnvironmentInstalling = false
-                        return@Thread
-                    }
-                    // 写入环境变量文件（与 TermuxInstaller 安装后一致）
-                    try {
-                        com.UIN.Tool.shared.termux.shell.command.environment.TermuxShellEnvironment.writeEnvironmentToFile(ctx)
-                        Logger.i(TAG, "autoInstallEnvironment: environment file written")
-                    } catch (e: Exception) {
-                        Logger.e(TAG, "autoInstallEnvironment: writeEnvironmentToFile failed: ${e.message}")
-                    }
-                    Logger.success(TAG, "autoInstallEnvironment: bootstrap installed")
+                // 1. 确保 proot 二进制已安装
+                Logger.i(TAG, "autoInstallEnvironment: [1/2] 检查 proot 二进制...")
+                val prootResult = com.UIN.Tool.proot.ProotInstaller.ensureInstalled(ctx)
+                if (prootResult.isFailure) {
+                    Logger.e(TAG, "autoInstallEnvironment: proot 安装失败: ${prootResult.exceptionOrNull()?.message}")
+                    _isEnvironmentInstalling = false
+                    return@Thread
                 }
+                Logger.i(TAG, "autoInstallEnvironment: [1/2] proot 二进制就绪 ✓")
 
-                // bootstrap 就绪即可创建终端会话，不再阻塞
+                // 容器就绪即可创建终端会话，不再阻塞
                 _isEnvironmentInstalling = false
 
-                // 2. 确保 Alpine 容器已安装（异步，不阻塞终端）
-                if (!com.UIN.Tool.plugin.ProotContainerManager.isAlpineInstalled()) {
-                    Logger.i(TAG, "autoInstallEnvironment: Alpine not installed, installing in background")
-                    android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        android.widget.Toast.makeText(ctx, ctx.getString(com.UIN.Tool.R.string.alpine_installing_do_not_exit), android.widget.Toast.LENGTH_LONG).show()
-                    }
-                    com.UIN.Tool.plugin.ProotContainerManager.ensureAlpine(ctx, null) { success ->
-                        if (success) {
-                            Logger.success(TAG, "autoInstallEnvironment: Alpine installed successfully")
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                android.widget.Toast.makeText(ctx, ctx.getString(com.UIN.Tool.R.string.alpine_install_complete), android.widget.Toast.LENGTH_SHORT).show()
-                            }
+                // 2. 确保默认容器已安装（异步，不阻塞终端）
+                val containerName = com.UIN.Tool.proot.RootfsManager.getDefaultContainer(ctx)
+                Logger.i(TAG, "autoInstallEnvironment: [2/2] 检查容器 '$containerName'...")
+                if (!com.UIN.Tool.proot.RootfsManager.isContainerReady(ctx, containerName)) {
+                    Logger.i(TAG, "autoInstallEnvironment: [2/2] 容器 '$containerName' 未就绪，开始后台安装")
+                    com.UIN.Tool.utils.AppToast.show(ctx, ctx.getString(R.string.container_installing_please_wait, containerName))
+                    kotlinx.coroutines.MainScope().launch {
+                        val result = com.UIN.Tool.plugin.ProotContainerManager.ensureDefaultContainer(ctx)
+                        if (result.isSuccess) {
+                            Logger.i(TAG, "autoInstallEnvironment: [2/2] 容器 '$containerName' 安装完成 ✓")
+                            com.UIN.Tool.utils.AppToast.success(ctx, ctx.getString(R.string.container_install_completed, containerName))
                         } else {
-                            Logger.e(TAG, "autoInstallEnvironment: Alpine install failed")
+                            Logger.e(TAG, "autoInstallEnvironment: [2/2] 容器安装失败: ${result.exceptionOrNull()?.message}")
                         }
                     }
                 } else {
-                    Logger.i(TAG, "autoInstallEnvironment: environment ready")
+                    Logger.i(TAG, "autoInstallEnvironment: [2/2] 容器 '$containerName' 已就绪 ✓")
                 }
+                Logger.i(TAG, "autoInstallEnvironment: ═══ 环境检查完成 ═══")
             } catch (e: Exception) {
                 _isEnvironmentInstalling = false
-                Logger.e(TAG, "autoInstallEnvironment error: ${e.message}", e)
+                Logger.e(TAG, "autoInstallEnvironment: 异常: ${e.message}", e)
             }
         }.start()
     }

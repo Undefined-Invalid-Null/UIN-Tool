@@ -7,7 +7,7 @@ LOG=$LOGDIR/supervisor.log
 mkdir -p $CTRL/cmd $CTRL/pid $CTRL/stop $CTRL/idle $CTRL/done $LOGDIR
 
 log() { echo "[$(date '+%H:%M:%S')] $*" >> "$LOG"; }
-# 递归杀进程树：pgrep 不可用时（Alpine BusyBox）用 /proc 兜底
+# 递归杀进程树：pgrep 不可用时用 /proc 兜底
 find_children() {
   local p="$1"
   if command -v pgrep >/dev/null 2>&1; then

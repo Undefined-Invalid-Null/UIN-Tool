@@ -12,6 +12,87 @@
 
 ---
 
+## [6.0.0] - 2026-09-26
+
+> 本次更新是一次**重大架构变革**：彻底去除对 Termux 环境的依赖（bootstrap、proot-distro、TermuxActivity 等），引入自包含的 proot 容器系统，直接支持 Debian rootfs，并新增完整的容器管理 UI。应用不再继承 TermuxApplication，直接继承 Android Application。终端用 Kotlin 重写（SimpleTerminalActivity）。共修改 100+ 个文件，新增 3000+ 行，删除 5000+ 行。
+
+### 去除 Termux 环境依赖
+
+- **移除 Termux bootstrap**：不再需要 `bootstrap-aarch64.zip` 或 native `termux-bootstrap.c`/`termux-bootstrap-zip.S` 代码；启动环境自动安装从 bootstrap + Alpine 流水线改为 proot binary + Debian rootfs 直接流水线
+- **移除 proot-distro 依赖**：不再需要 `proot-distro install/restore` 命令；rootfs 通过 `RootfsManager.extractTar()` 从内置 `debian-rootfs.tar.xz` 直接解压
+- **移除 TermuxActivity**：旧版 Java 终端（`app/` 目录，32 个文件）删除；替换为 `SimpleTerminalActivity`（Kotlin，1 个文件），直接使用 `TerminalView` + `TerminalSession`
+- **移除 TermuxService 和 RunCommandService**：后端进程管理不再需要
+- **移除 TermuxApplication 基类**：`UinApplication` 现在直接继承 `android.app.Application` 而非 `TermuxApplication`
+- **精简 Termux shared 库**：从 121 个文件缩减至 83 个；删除 `crash/`、`data/`、`extrakeys/`、`file/`、`interact/`、`models/`、`notification/`、`plugins/`、`shell/`、`terminal/`、`theme/` 子目录及 `TermuxAppSharedProperties`/`TermuxSharedProperties`
+- **移除 Android 组件**：`DocumentsProvider`、`ContentProvider`、`TermuxOpenReceiver`、`RealTermuxProbeReceiver`、`SystemEventReceiver` 全部移除
+- **移除权限**：`MANAGE_DOCUMENTS`、`RUN_COMMAND` 不再声明
+- **移除 assets**：`alpine.tar.xz`（Alpine rootfs 备份）、`xz-aarch64/` 解压器
+
+### PRoot 容器系统（新增）
+
+- **新增 `proot/` 模块**，包含 6 个文件：
+  - `ContainerConfig.kt` — 容器配置数据类（名称、rootfs 路径、绑定挂载、环境变量）
+  - `ProotInstaller.kt` — 从 assets 安装 proot 二进制到 app files 目录
+  - `ProotRuntime.kt` — 构建 proot 命令行，支持绑定挂载、伪造内核版本、环境变量；使用 `--link2symlink`、`--sysvipc`、`--change-id=0:0`
+  - `RootfsManager.kt` — 完整容器生命周期：创建、删除、列表、导出/导入 tar 归档；支持 tar.gz/tar.xz/tar.zst 格式，正确处理硬链接
+  - `RootfsSetup.kt` — 解压后修复（resolv.conf、hosts、/tmp 权限、/root、/etc/shells）
+  - `FakeSysdata.kt` — 创建假的 /proc 和 /sys 条目以兼容 Android 上的 proot
+- **默认容器从 Alpine 改为 Debian**（`BackendConfig.kt`：`CONTAINER_DEFAULT = "debian"`）
+- **容器存储位置**：`context.filesDir/containers/debian/rootfs`（内部存储以兼容符号链接）
+
+### 容器管理 UI（新增）
+
+- **新增 `ui/screen/proot/` 模块**：
+  - `ContainerManagementActivity.kt` — Activity 包装器
+  - `ContainerManagementScreen.kt` — 完整 Compose UI，管理容器（列表、下载发行版、导出/导入、删除、设置默认）
+- **功能**：在线下载发行版、导出容器为 `.tar.zst`（可分享）、从 `.tar.zst`/`.tar.xz`/`.tar.gz` 导入、删除容器、设置默认容器
+- **导出压缩级别**：可调节 0-22（zstd），默认 9；越低越快，越高越小；根据设备内存自动限制上限防止 OOM
+
+### 终端重写
+
+- **新增 `SimpleTerminalActivity.kt`**：Kotlin 终端，使用 `TerminalView` + `TerminalSession` 类和 Compose UI，直接集成 proot 容器
+- **新增布局文件**：`terminal_activity_layout.xml`、`terminal_session_item.xml`、`terminal_key_bg.xml`、`terminal_key_ripple.xml`
+- **移除布局**：`activity_termux.xml`、`view_terminal_toolbar_extra_keys.xml`
+
+### 插件系统更新
+
+- **`ProotContainerManager.kt` 重写**：不再依赖 Termux 前缀路径（`/data/data/.../files/usr/bin/proot-distro`）；直接使用 `ProotInstaller`、`ProotRuntime`、`RootfsManager`
+- **`PluginHostActivity.kt` 更新**：使用 `MainScope().launch` 协程；进度通过 `AppToast` 显示
+- **`DevScreen.kt` 更新**：终端按钮启动 `SimpleTerminalActivity` 而非 `TermuxActivity`
+
+### 插件后端启动修复
+
+- **环境变量注入 proot 命令**：`PORT`、`PLUGIN_ID`、`PLUGIN_DIR`、`WORK_DIR`、`HOME`、`PYTHONUNBUFFERED` 现在在容器内启动命令前 export
+- **proot 宿主环境清理**：移除污染容器的 Termux 宿主路径（`PREFIX`、`TMPDIR`、`TERMUX_*`）；设置干净的容器 PATH 和 `PROOT_TMP_DIR`/`PROOT_L2S_DIR`
+- **Shell 检测修复**：`findShell()` 现在优先查找 `/bin/sh` 并验证符号链接目标，避免断开的符号链接（如 Debian 最小 rootfs 中 `/bin/bash` -> `/usr/bin/bash`）
+- **`PluginInfo.getInstallCommand()` 更新**：包管理器命令从 `pkg install` 改为 `apt install`，使用正确的 Debian 包名
+
+### CUI 插件改进
+
+- **移除占位页面**：CUI 插件不再显示"正在全屏终端执行命令"占位页，直接启动终端
+- **启动命令传递给终端**：`SimpleTerminalActivity` 现在通过 Intent extras 接收可选命令；CUI 插件传递 `backendPreCommand`（含环境变量 export）
+- **插件目录使用宿主路径**：CUI 终端使用 `/storage/emulated/0/UIN_Tool/plugins/<id>`（通过 `/storage/emulated/0` 绑定挂载可访问），不再使用不存在的容器路径 `/plugins/<id>`
+
+### 插件图标加载
+
+- **新增 `PluginIcon` composable**：在 `Dispatchers.IO` 上异步加载 `plugins/<id>/icon.png`，失败时回退显示插件名首字母
+- **应用于**：`PluginListItem`、`PluginGridItem`（ToolsScreen）、`PluginManageItem`（PluginManageScreen）
+
+### 文档更新
+
+- 版本更新至 6.0.0（build 24），所有文档同步
+- 终端章节："基于 Termux" → "基于 PRoot"
+- 包管理器命令：全文 `pkg` → `apt`
+- Alpine → Debian 引用在活动文档中已更新
+- v6.0.0 更新日志已编写
+
+### 其他变化
+
+- `termux-shared` 模块保留（用于 `terminal-emulator` 和 `terminal-view` JNI）但大幅精简
+- 注释清理：`build.gradle` 头部从 `// Termux/build.gradle` 改为 `// UIN Tool/build.gradle`
+
+---
+
 ## [5.7.0] - 2026-08-31
 
 > 本版本聚焦**插件分发系统重构、更新检测、CI 自动化、网络缓存优化**：从单仓库单插件模式切换为源（Source）+ 多插件模式，支持多源聚合、自动版本更新检测、GitHub Actions CI 自动构建、图标磁盘缓存与 HTTP 条件请求。共修改 50+ 个文件，新增 2500+ 行。

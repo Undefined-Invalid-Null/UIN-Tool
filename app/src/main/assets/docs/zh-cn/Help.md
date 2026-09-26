@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.7.0 |
-| 对应应用版本 | v5.7.0 (Build 23) |
-| 最后更新 | 2026年8月31日 |
+| 文档版本 | 6.0.0 |
+| 对应应用版本 | v6.0.0 (Build 24) |
+| 最后更新 | 2026年9月26日 |
 
 ---
 
@@ -33,7 +33,7 @@
 - [4.2 使用方法](#42-使用方法)
 - [4.3 动态插件快捷方式](#43-动态插件快捷方式)
 
-### 五、终端功能（基于 Termux）
+### 五、终端功能（基于 PRoot）
 - [5.1 访问方式](#51-访问方式)
 - [5.2 终端特性](#52-终端特性)
 - [5.3 常用命令](#53-常用命令)
@@ -135,9 +135,9 @@ UIN Tool 是一个轻量级的插件化框架，允许你在 Android 上动态�
 |----------|------|
 | 插件系统 | 原生（Java/Kotlin）和 Web（HTML/CSS/JS）插件 |
 | 数据持久化 | 每个插件独立的 data/ 目录，更新时自动保留用户数据 |
-| 终端环境 | 内置基于 Termux 的完整 Linux 终端 |
-| 后端集成 | 统一启动命令模式，内置/实体 Termux 全局可选 |
-| 容器运行时 | Proot 共享 Alpine 容器，后端与宿主机环境隔离 |
+| 终端环境 | 内置基于 PRoot 的完整 Linux 终端 |
+| 后端集成 | 统一启动命令模式，内置 Debian 容器 / 实体 Termux 全局可选 |
+| 容器运行时 | Proot 共享 Debian 容器，后端与宿主机环境隔离 |
 | 插件仓库 | 从 GitHub 源浏览、搜索和安装插件 |
 | 开发工具 | 创建向导、代码编辑器（Sora Editor）、模板导出 |
 | 权限管理 | 应用权限和插件独立权限管理，状态持久化 |
@@ -218,12 +218,12 @@ UIN Tool 是一个轻量级的插件化框架，允许你在 Android 上动态�
 
 | 功能 | 说明 |
 |------|------|
-| 打开终端 | 启动 Termux 终端环境 |
+| 打开终端 | 启动终端环境 |
 | 终端设置 | 配置终端字体、配色、键盘等 |
 | 创建插件 | 统一入口，选择前端类型并填写后端启动命令 |
 | 导出模板 | 导出内置打包好的插件模板（写入 README.txt 说明） |
 
-> 💡 **提示**：创建插件时，可选择「原生 UI」「纯 WebView」「WebView + 后端」「CUI 终端」四种模式。WebView + 后端插件的后端运行环境（内置 Termux / 实体 Termux）在「管理」页的「后端运行设置」中全局配置。
+> 💡 **提示**：创建插件时，可选择「原生 UI」「纯 WebView」「WebView + 后端」「CUI 终端」四种模式。WebView + 后端插件的后端运行环境（内置 Debian 容器 / 实体 Termux）在「管理」页的「后端运行设置」中全局配置。
 
 ### 3.3 工具页面
 
@@ -254,7 +254,7 @@ UIN Tool 是一个轻量级的插件化框架，允许你在 Android 上动态�
 | 文档中心 | 使用帮助、开发文档等 |
 | GitHub 加速 | 配置镜像站和 CDN 加速 |
 | 开发工具 | 运行日志查看（导出/清空）+ 开发者选项（签名验证开关等） |
-| 后端运行设置 | 全局切换内置 Termux / 实体 Termux、空闲回收超时等 |
+| 后端运行设置 | 全局切换内置 Debian 容器 / 实体 Termux、空闲回收超时等 |
 | 备份恢复 | 备份/恢复插件和配置 |
 | UI 个性化 | 自定义主题颜色和圆角 |
 | 小部件配置 | 小部件配置和使用指南 |
@@ -271,7 +271,7 @@ UIN Tool 是一个轻量级的插件化框架，允许你在 Android 上动态�
 | 快捷方式 | 功能 |
 |----------|------|
 | 文档 | 打开文档浏览器（DocBrowserActivity） |
-| 终端 | 打开内置终端（TermuxActivity） |
+| 终端 | 打开内置终端 |
 | 后端设置 | 打开后端运行设置页面（BackendSettingsActivity） |
 | UI 个性化 | 打开 UI 个性化设置页面（UIConfigActivity） |
 
@@ -287,7 +287,7 @@ UIN Tool 是一个轻量级的插件化框架，允许你在 Android 上动态�
 
 ---
 
-## 五、终端功能（基于 Termux）
+## 五、终端功能（基于 PRoot）
 
 > 🔥 **v4.0.0 新增功能**：UIN Tool 内置完整的终端环境。
 
@@ -315,22 +315,19 @@ UIN Tool 是一个轻量级的插件化框架，允许你在 Android 上动态�
 
 ```bash
 # 更新软件源
-pkg update
+apt update
 
 # 安装 Python
-pkg install python
+apt install python3
 
 # 安装 Node.js
-pkg install nodejs
+apt install nodejs
 
 # 安装 git
-pkg install git
+apt install git
 
 # SSH 连接服务器
 ssh user@hostname
-
-# 查看存储目录
-ls ~/storage/shared/
 ```
 
 ### 5.4 终端设置
@@ -590,7 +587,7 @@ v5.3.0 起支持在应用内**更换分类**：
    · 纯 WebView：仅 HTML/CSS/JS，无后端
    · WebView + 后端：HTML/CSS/JS + 后端服务
    · CUI 终端：全屏终端运行脚本（v4.5.0 新增）
-4. 如选择 WebView + 后端，填写**后端启动命令**（默认 `sh scripts/start.sh`，可自定义）；后端运行环境（内置 Termux / 实体 Termux）在「管理」页的「后端运行设置」中全局配置
+4. 如选择 WebView + 后端，填写**后端启动命令**（默认 `sh scripts/start.sh`，可自定义）；后端运行环境（内置 Debian 容器 / 实体 Termux）在「管理」页的「后端运行设置」中全局配置
 5. 按照向导填写插件信息
 6. 点击「完成」生成项目文件
 
@@ -734,14 +731,14 @@ val content = pctx.readFile("data.txt")
 
 > ⚠️ v5.2.0 起「后端运行设置」已改为**独立页面**（`BackendSettingsActivity`），仅提供于管理页；开发页不再有入口。
 
-#### 12.5.1 后端实现：内置 Termux 还是实体 Termux
+#### 12.5.1 后端实现：内置 Debian 容器还是实体 Termux
 
 | 选项 | 说明 | 适合场景 |
 |------|------|----------|
-| **内置 Termux**（默认） | 使用应用内置的精简版 Termux，强制通过 Proot 共享 Alpine 容器运行后端，**无需安装任何东西** | 开箱即用，想省事 |
+| **内置 Debian 容器**（默认） | 使用应用内置的 Debian 容器，通过 PRoot 运行后端，**无需安装任何东西** | 开箱即用，想省事 |
 | **实体 Termux** | 调用设备上安装的 Termux（`com.termux`）运行后端，可用原生 Termux 生态 | 需要 pip/npm/apk 等完整软件包生态 |
 
-- **内置 Termux**：Alpine rootfs 随应用内置（assets 离线恢复，约 19MB，首次一次性解压），不依赖网络安装
+- **内置 Debian 容器**：Debian rootfs 随应用内置（assets 离线恢复，约 19MB，首次一次性解压），不依赖网络安装
 - **实体 Termux**：需设备已安装 Termux 并完成一次初始化，否则启动失败时会自动弹出引导
 
 #### 12.5.2 后端环境（仅实体 Termux 可选）
@@ -749,17 +746,17 @@ val content = pctx.readFile("data.txt")
 | 选项 | 说明 |
 |------|------|
 | **Termux 本机** | 直接在 Termux 原生环境运行 |
-| **Proot 容器** | 在 Proot 容器内运行（容器名可配置，默认 `alpine`，如 `ubuntu` 需先安装） |
+| **Proot 容器** | 在 Proot 容器内运行（容器名可配置，默认 `debian`，如 `ubuntu` 需先安装） |
 
-- 选 Proot 容器需填写容器名，可用 `proot-distro list` 查看已安装容器
-- 内置 Termux **强制**使用 Proot Alpine 容器，此项不适用
+- 选 Proot 容器需填写容器名
+- 内置 Debian 容器**强制**使用 PRoot 运行，此项不适用
 
 #### 12.5.3 空闲自动回收
 
 后端空闲超过设定时长自动停止，避免长期占用资源；插件活动请求会刷新计时。退出插件满设定时长后，其后端即被自动清理。时长可选预设 3 / 5 / 10 / 15 分钟（默认 5 分钟），也可在「自定义（分钟）」输入框填任意分钟数；选择「**无限**」则后端永不自动回收，只在主动停止时结束。
 
 - 停止时宿主优先调用 HTTP `/stop` 端点**优雅退出**
-- **内置 Termux**：额外按进程组 `SIGKILL` 终止
+- **内置 Debian 容器**：额外按进程组 `SIGKILL` 终止
 - **实体 Termux**：空闲回收由共享 supervisor 统一管理（见 12.5.5），按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树，**不依赖插件实现 `/stop`**；宿主只做端口探测与状态清理。选「无限」时不写 idle 文件。请确保已授予 `com.termux.permission.RUN_COMMAND` 且开启「允许外部应用运行命令」
 
 #### 12.5.4 实体 Termux 初始化命令
@@ -779,7 +776,7 @@ mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.propert
 
 #### 12.5.5 实体 Termux 共享 Supervisor
 
-实体 Termux（proot 或本机模式）改用**单个常驻共享 supervisor**：容器/会话只初始化一次，所有插件后端作为 supervisor 的子进程运行，后续插件启动省掉 proot 初始化开销（冷启动约 5s）。内置 Termux（alpine，约 2s）保持不变（每插件独立 proot）。
+实体 Termux（proot 或本机模式）改用**单个常驻共享 supervisor**：容器/会话只初始化一次，所有插件后端作为 supervisor 的子进程运行，后续插件启动省掉 proot 初始化开销（冷启动约 5s）。内置 Debian 容器（约 2s）保持不变（每插件独立 proot）。
 
 - 通信协议（控制目录 `<plugins根>/.uin/`）：`cmd/<key>.cmd`（启动命令）、`pid/<key>`（后端 PID）、`stop/<key>`（停止请求）、`idle/<key>`（空闲分钟数）、`idle/<key>.start`（启动时间戳）、`alive`（supervisor 存活标记）、`host_alive`（宿主心跳，每 30s touch，超时 300s supervisor 自退）、`shutdown`（退出标记）、`keep_alive`（后台保活标记）
 - proot 启动：`proot-distro login <container> --bind '<plugins根>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`
@@ -794,7 +791,7 @@ mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.propert
 
 插件打开后，宿主按全局设置选择执行路径，并统一注入 `$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR` 环境变量：
 
-- **内置 Termux**：`proot-distro login alpine --bind <插件目录>:/plugins/<id> -- sh -lc "<启动命令>"`
+- **内置 Debian 容器**：`proot --link2symlink -0 -r <debian_rootfs> -b <插件目录>:/plugins/<id> -- sh -lc "<启动命令>"`
 - **实体 Termux + 本机**：`bash -lc "<启动命令>"`（工作目录 = 插件目录）
 - **实体 Termux + Proot 容器**：`proot-distro login <容器名> --bind <插件目录>:/plugins/<id> -- sh -lc "<启动命令>"`
 
@@ -1188,10 +1185,10 @@ Q20: 如何查看版本更新内容？
 A: 点击「管理」→「文档中心」→「更新日志」
 
 Q21: 如何创建带后端的 Web 插件？
-A: 点击「创建插件」→ 选择「WebView + 后端」→ 填写后端启动命令（默认 `sh scripts/start.sh`）。向导自动生成 `scripts/start.sh` 与 `scripts/backend/server.py`，后端运行环境（内置 Termux / 实体 Termux）在「管理」页的「后端运行设置」中全局配置。
+A: 点击「创建插件」→ 选择「WebView + 后端」→ 填写后端启动命令（默认 `sh scripts/start.sh`）。向导自动生成 `scripts/start.sh` 与 `scripts/backend/server.py`，后端运行环境（内置 Debian 容器 / 实体 Termux）在「管理」页的「后端运行设置」中全局配置。
 
 Q22: 后端需要安装什么？
-A: 启动脚本 `scripts/start.sh` 会自动检测并安装依赖（`pkg install python` / `apk add python3`），无需手动安装第三方库。
+A: 启动脚本 `scripts/start.sh` 会自动检测并安装依赖（`apt install python3` / `pkg install python`），无需手动安装第三方库。
 
 Q23: 插件说明功能如何使用？
 A: 在 plugin.json 中添加 notice 字段，首次打开时自动显示。

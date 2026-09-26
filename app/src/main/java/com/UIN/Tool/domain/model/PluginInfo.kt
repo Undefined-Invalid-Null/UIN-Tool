@@ -186,16 +186,16 @@ data class PluginInfo(
     fun getInstallCommand(): String {
         return backendInstallCmd.ifEmpty {
             when (backend.lowercase()) {
-                "python" -> "pkg install python"
-                "node" -> "pkg install nodejs"
-                "php" -> "pkg install php"
-                "deno" -> "pkg install deno"
-                "go" -> "pkg install golang"
-                "ruby" -> "pkg install ruby"
-                "perl" -> "pkg install perl"
-                "lua" -> "pkg install lua"
-                "java" -> "pkg install openjdk-17"
-                "rust" -> "pkg install rust"
+                "python" -> "apt install -y python3"
+                "node" -> "apt install -y nodejs"
+                "php" -> "apt install -y php-cli"
+                "deno" -> "curl -fsSL https://deno.land/install.sh | sh"
+                "go" -> "apt install -y golang"
+                "ruby" -> "apt install -y ruby"
+                "perl" -> "apt install -y perl"
+                "lua" -> "apt install -y lua5.3"
+                "java" -> "apt install -y default-jdk"
+                "rust" -> "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
                 else -> ""
             }
         }

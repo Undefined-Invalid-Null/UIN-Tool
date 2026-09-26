@@ -20,8 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.UIN.Tool.app.TermuxActivity
-import com.UIN.Tool.app.activities.SettingsActivity
+
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
@@ -98,9 +97,7 @@ fun DevScreen() {
                     icon = Icons.Default.Terminal,
                     onClick = {
                         try {
-                            val intent = Intent(context, TermuxActivity::class.java)
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
+                            com.UIN.Tool.terminal.SimpleTerminalActivity.start(context)
                             AppLog.i(TAG, Str.get(R.string.terminal_started))
                         } catch (e: Exception) {
                             AppLog.e(TAG, Str.get(R.string.failed_to_start_terminal), e)
@@ -115,7 +112,7 @@ fun DevScreen() {
                     icon = Icons.Default.Settings,
                     onClick = {
                         try {
-                            val intent = Intent(context, SettingsActivity::class.java)
+                            val intent = Intent(context, com.UIN.Tool.ui.screen.manage.BackendSettingsActivity::class.java)
                             context.startActivity(intent)
                             AppLog.i(TAG, Str.get(R.string.open_terminal_settings))
                         } catch (e: Exception) {

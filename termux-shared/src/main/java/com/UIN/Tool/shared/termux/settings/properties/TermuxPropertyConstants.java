@@ -1,6 +1,5 @@
 package com.UIN.Tool.shared.termux.settings.properties;
 
-import com.UIN.Tool.shared.termux.shell.am.TermuxAmSocketServer;
 import com.UIN.Tool.shared.theme.NightMode;
 import com.UIN.Tool.shared.file.FileUtils;
 import com.UIN.Tool.shared.file.filesystem.FileType;
@@ -133,7 +132,7 @@ public final class TermuxPropertyConstants {
 
 
 
-    /** Defines the key for whether the {@link TermuxAmSocketServer} should be run at app startup */
+    /** Defines the key for whether the AM socket server should be run at app startup */
     public static final String KEY_RUN_TERMUX_AM_SOCKET_SERVER =  "run-termux-am-socket-server"; // Default: "run-termux-am-socket-server"
 
 

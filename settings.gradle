@@ -1,4 +1,4 @@
-// Termux/settings.gradle
+// UIN Tool/settings.gradle
 
 include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view', ':termux-am-library'
 

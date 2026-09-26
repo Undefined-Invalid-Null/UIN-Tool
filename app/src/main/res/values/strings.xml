@@ -82,20 +82,7 @@
     <string name="all_set" formatted="false">All Set</string>
     <string name="all_storage_permissions_granted" formatted="false">All storage permissions granted</string>
     <string name="all_widgets_refreshed_appwidgetids_s">All widgets refreshed, %1$s in total</string>
-    <string name="allocating_port_port">🔌 Allocating port: %1$s</string>
-    <string name="alpine_backup_resource_unavailable" formatted="false">Alpine backup resource unavailable</string>
-    <string name="alpine_container_install_failed_make" formatted="false">Alpine container install failed. Make sure the APK assets folder includes the Alpine offline package (alpine*) and retry.</string>
-    <string name="alpine_container_ready" formatted="false">Alpine container ready</string>
-    <string name="alpine_container_restore_error_e_mes">Alpine container restore error: %1$s</string>
-    <string name="alpine_container_restore_failed_resu">Alpine container restore failed: %1$s</string>
-    <string name="alpine_container_restored" formatted="false">Alpine container restored</string>
-    <string name="alpine_container_setup_failed" formatted="false">❌ Alpine container setup failed</string>
-    <string name="alpine_not_installed_starting_offlin" formatted="false">Alpine not installed, starting offline restore...</string>
-    <string name="environment_init_notice" formatted="false">To save time, bootstrap and Alpine are being installed in the background. Alpine container takes about 1 minute to complete. Please do not exit the app during this period to avoid incomplete installation.</string>
-    <string name="alpine_installing_do_not_exit" formatted="false">Alpine container is installing, please do not exit the app</string>
-    <string name="alpine_install_complete" formatted="false">Alpine container installation complete</string>
-    <string name="alpine_ready_processing_pre_command" formatted="false">✅ Alpine ready, processing pre-command...</string>
-    <string name="an_exception_occurred" formatted="false">An exception occurred</string>
+    <string name="allocating_port_port">🔌 Allocating port: %1$s</string>    <string name="environment_init_notice" formatted="false">To save time, Debian container is being installed in the background. Debian container takes about 1 minute to complete. Please do not exit the app during this period to avoid incomplete installation.</string>    <string name="an_exception_occurred" formatted="false">An exception occurred</string>
     <string name="android_version" formatted="false">Android version</string>
     <string name="android_version_too_old_info_minhost">Android version too old: %1$s > %2$s</string>
     <string name="android_api_level_too_low_info_apil">Plugin requires Android API level %1$s, current device is %2$s</string>
@@ -135,9 +122,9 @@
     <string name="builtin_termux" formatted="false">Built-in Termux</string>
     <string name="real_termux" formatted="false">Real Termux</string>
     <string name="real_termux_will_call_com_termux_t" formatted="false">Real Termux: plugins run inside the installed Termux (com.termux). Requires com.termux installed and configured.</string>
-    <string name="builtin_termux_is_a_simplified_li" formatted="false">Built-in Termux: a simplified Linux environment bundled with this app (Proot Alpine container). No extra install needed.</string>
+    <string name="builtin_termux_is_a_simplified_li" formatted="false">Built-in Termux: a simplified Linux environment bundled with this app (Proot Debian container). No extra install needed.</string>
     <string name="proot_container_name" formatted="false">Proot Container Name</string>
-    <string name="run_proot_distro_list_in_termux_t" formatted="false">Run "proot-distro list" in Termux to check your container name.</string>
+    <string name="run_proot_distro_list_in_termux_t" formatted="false">Run "proot-distro list" in Termux (Real Termux mode only) to check your container name.</string>
     <string name="idle_recycle_timeout_minutes" formatted="false">Idle Recycle Timeout</string>
     <string name="min_" formatted="false">min</string>
     <string name="idle_infinite" formatted="false">Infinite</string>
@@ -165,10 +152,7 @@
     <string name="keep_alive_privilege_shizuku" formatted="false">Shizuku available</string>
     <string name="keep_alive_privilege_dhizuku" formatted="false">Dhizuku available</string>
     <string name="keep_alive_privilege_none" formatted="false">None (only battery-optimization exemption + notification)</string>
-    <string name="real_termux_probe_failed_error" formatted="false">Real Termux not ready: %1$s</string>
-    <string name="real_termux_command_started" formatted="false">Backend command sent to Real Termux, waiting for ready</string>
-    <string name="real_termux_start_failed_e_message" formatted="false">Failed to start command in Real Termux: %1$s</string>
-    <string name="real_termux_backend_not_ready_pluginid" formatted="false">Real Termux backend not ready (timeout): %1$s</string>
+    <string name="real_termux_probe_failed_error" formatted="false">Real Termux not ready: %1$s</string>    <string name="real_termux_backend_not_ready_pluginid" formatted="false">Real Termux backend not ready (timeout): %1$s</string>
     <string name="skipping_lingering_cleanup_real_termux" formatted="false">Skipping lingering backend cleanup (Real Termux, cross-app cannot kill)</string>
     <string name="backend_dead_idle_recycled_pluginid" formatted="false">Backend dead, state recycled: %1$s</string>
     <string name="backend_idle_recycling_pluginid" formatted="false">Backend idle for too long, recycling: %1$s</string>
@@ -179,7 +163,7 @@
     <string name="real_termux_run_command_permission_grant_guide" formatted="false">To run commands in Real Termux, UIN Tool needs the "com.termux.permission.RUN_COMMAND" permission.\n\nThis permission is declared by the Termux app itself, not by UIN Tool, so grant it from inside Termux:\n1. Open the Termux app.\n2. Long-press the terminal area -> More -> Allow external apps (or Termux Settings -> Allow external apps).\n3. Confirm "Allow run commands" when prompted, then return and retry.\n\nAlso make sure "allow-external-apps=true" is set in ~/.termux/termux.properties.</string>
     <string name="failed_to_start_real_termux_probe_e" formatted="false">Failed to probe Real Termux: %1$s</string>
     <string name="allow_external_apps_not_enabled" formatted="false">allow-external-apps is not enabled. Add "allow-external-apps=true" to ~/.termux/termux.properties</string>
-    <string name="real_termux_not_initialized" formatted="false">Termux bootstrap not initialized. Open Termux once and let it install the base packages</string>
+    <string name="real_termux_not_initialized" formatted="false">Termux not initialized. Open Termux once and let it install the base packages</string>
     <string name="backend_health_check_url">📡 Health check URL: %1$s</string>
     <string name="backend_message_service_ready" formatted="false">✅ Backend message service ready</string>
     <string name="backend_message_service_started" formatted="false">📡 Backend message service started</string>
@@ -252,19 +236,7 @@ Size: %s</string>
     <string name="bluetooth" formatted="false">Bluetooth</string>
     <string name="bluetooth_management" formatted="false">Bluetooth management</string>
     <string name="body_font_size" formatted="false">Body Font Size</string>
-    <string name="bold_text" formatted="false">Bold Text</string>
-    <string name="bootstrap_error_abort" formatted="false">Abort</string>
-    <string name="bootstrap_error_body" formatted="false">&TERMUX_APP_NAME; was unable to install bootstrap packages.</string>
-    <string name="bootstrap_error_installed_on_portable_sd">&TERMUX_APP_NAME; cannot be installed on external/portable/removable storage.
-Bootstrap binaries compiled for &TERMUX_APP_NAME; have hardcoded $PREFIX paths and cannot be installed in any path other than:
-%1$s.</string>
-    <string name="bootstrap_error_not_primary_user_message">&TERMUX_APP_NAME; can only be run as the primary user.
-Bootstrap binaries compiled for &TERMUX_APP_NAME; have hardcoded $PREFIX paths and cannot be installed in any path other than:
-%1$s.</string>
-    <string name="bootstrap_error_title" formatted="false">Unable to install bootstrap packages</string>
-    <string name="bootstrap_error_try_again" formatted="false">Try again</string>
-    <string name="bootstrap_installer_body" formatted="false">Installing bootstrap packages...</string>
-    <string name="bottom_nav_selected_color" formatted="false">Bottom Nav Selected Color</string>
+    <string name="bold_text" formatted="false">Bold Text</string>    <string name="bottom_nav_selected_color" formatted="false">Bottom Nav Selected Color</string>
     <string name="bottom_nav_unselected_color" formatted="false">Bottom Nav Unselected Color</string>
     <string name="br_backend_info_getbackenddisplaynam">&lt;br>Backend: %1$s</string>
     <string name="br_includes_documentation" formatted="false">&lt;br>Includes documentation</string>
@@ -441,7 +413,7 @@ Note: these permissions are only used when your installed plugins need them.</st
     <string name="cui_terminal" formatted="false">CUI Terminal</string>
     <string name="cui_terminal_command_line" formatted="false">CUI Terminal (command line)</string>
     <string name="cui_terminal_plugin_example_fullscre" formatted="false">CUI terminal plugin example (fullscreen terminal running a script)</string>
-    <string name="cui_terminal_session_started" formatted="false">✅ CUI terminal session started</string>
+    <string name="cui_terminal_session_started" formatted="false">✅ Started</string>
     <string name="cui_terminal_start_error_e_message">❌ CUI terminal start error: %1$s</string>
     <string name="cui_terminal_start_failed_e_message">CUI terminal start failed: %1$s</string>
     <string name="current_theme" formatted="false">Current Theme</string>
@@ -592,13 +564,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="error_run_command_service_invalid_intent_action">Invalid Intent action passed to RunCommandService: `%1$s`</string>
     <string name="error_run_command_service_mandatory_extra_missing">Mandatory extra missing in intent passed to RunCommandService: "%1$s"</string>
     <string name="error_styling_not_installed" formatted="false">The &TERMUX_STYLING_APP_NAME; plugin app is not installed.</string>
-    <string name="error_termux_service_execution_command_shell_name_unset">Shell name not set but `%1$s` shell create mode was passed</string>
-    <string name="error_termux_service_invalid_execution_command_runner">Invalid execution command runner passed to TermuxService: `%1$s`</string>
-    <string name="error_termux_service_start_failed_bg" formatted="false">TermuxService cannot be started while the app is in the background due to Android background restrictions.</string>
-    <string name="error_termux_service_start_failed_general" formatted="false">Failed to start TermuxService. Check logcat for exceptions.</string>
-    <string name="error_termux_service_unsupported_execution_command_runner">Unsupported execution command runner passed to TermuxService: `%1$s`</string>
-    <string name="error_termux_service_unsupported_execution_command_shell_create_mode">Unsupported shell create mode passed to TermuxService: `%1$s`</string>
-    <string name="event_bus_cleared" formatted="false">Event bus cleared</string>
+    <string name="error_termux_service_execution_command_shell_name_unset">Shell name not set but `%1$s` shell create mode was passed</string>    <string name="event_bus_cleared" formatted="false">Event bus cleared</string>
     <string name="event_dispatch_error_e_message">Event dispatch error: %1$s</string>
     <string name="exception_e_message">Exception: %1$s</string>
     <string name="exception_message_throwable_message_">Exception message: %1$s\n</string>
@@ -653,9 +619,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="failed_to_copy_asset_assetpath">Failed to copy asset: %1$s</string>
     <string name="failed_to_copy_binary_file" formatted="false">Failed to copy binary file</string>
     <string name="failed_to_copy_directory" formatted="false">Failed to copy directory</string>
-    <string name="failed_to_copy_file_name_e_message">Failed to copy file: %1$s - %2$s</string>
-    <string name="failed_to_copy_offline_alpine_backup">Failed to copy offline Alpine backup: %1$s</string>
-    <string name="failed_to_copy_offline_package" formatted="false">Failed to copy offline package</string>
+    <string name="failed_to_copy_file_name_e_message">Failed to copy file: %1$s - %2$s</string>    <string name="failed_to_copy_offline_package" formatted="false">Failed to copy offline package</string>
     <string name="failed_to_copy_uri_to_file" formatted="false">Failed to copy Uri to file</string>
     <string name="failed_to_create_backup" formatted="false">Failed to create backup</string>
     <string name="failed_to_create_directory_e_message">Failed to create directory: %1$s</string>
@@ -839,9 +803,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="for_the_plugin_to_send_notifications" formatted="false">For the plugin to send notifications</string>
     <string name="for_the_plugin_to_send_sms" formatted="false">For the plugin to send SMS</string>
     <string name="for_the_plugin_to_show_overlays" formatted="false">For the plugin to show overlays</string>
-    <string name="for_the_plugin_to_take_photos_with_t" formatted="false">For the plugin to take photos with the camera</string>
-    <string name="found_alpine_offline_resource_assetn">Found Alpine offline resource: %1$s</string>
-    <string name="found_languagedirs_size_language_dir">Found %1$s language dirs</string>
+    <string name="for_the_plugin_to_take_photos_with_t" formatted="false">For the plugin to take photos with the camera</string>    <string name="found_languagedirs_size_language_dir">Found %1$s language dirs</string>
     <string name="found_pluginhostactivity_task_closin" formatted="false">Found PluginHostActivity task, closing...</string>
     <string name="found_python_path">✅ Found Python: %1$s</string>
     <string name="found_usable_default_mirror_mirror">Found usable default mirror: %1$s</string>
@@ -946,12 +908,8 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
 %3$s</string>
     <string name="import_successful_info_name">Import successful: %1$s</string>
     <string name="imported_count_mirror_s">Imported %1$s mirror(s)</string>
-    <string name="imported_count_mirror_s_2">Imported %1$s mirror(s)</string>
-    <string name="in_custom_mode_the_host_won_t_auto_s" formatted="false">In "Custom" mode the host won\'t auto-start the backend; this command starts the service in a Termux terminal and is skipped forever after first success</string>
-    <string name="include_app_settings" formatted="false">Include app settings</string>
-    <string name="include_ui_config" formatted="false">Include UI config</string>
-    <string name="incomplete_alpine_rootfs_found_clean" formatted="false">Incomplete Alpine rootfs found, cleaning up...</string>
-    <string name="info" formatted="false">Info</string>
+    <string name="imported_count_mirror_s_2">Imported %1$s mirror(s)</string>    <string name="include_app_settings" formatted="false">Include app settings</string>
+    <string name="include_ui_config" formatted="false">Include UI config</string>    <string name="info" formatted="false">Info</string>
     <string name="info_color" formatted="false">Info Color</string>
     <string name="info_name_directory_does_not_exist">%1$s (directory does not exist)</string>
     <string name="initial_editor_text_length_initialco">Initial editor text length: %1$s</string>
@@ -1088,9 +1046,7 @@ Grant it in Settings -> Apps -> &TERMUX_APP_NAME; -> Advanced.</string>
     <string name="missing_targetplugin_or_method" formatted="false">Missing targetPlugin or method</string>
     <string name="modified" formatted="false">Modified</string>
     <string name="modify_system_settings" formatted="false">Modify system settings</string>
-    <string name="more" formatted="false">More</string>
-    <string name="msg_add_termux_debug_info" formatted="false">Add Termux debug info to the report?</string>
-    <string name="msg_disabling_terminal_toolbar" formatted="false">Disabling terminal toolbar</string>
+    <string name="more" formatted="false">More</string>    <string name="msg_disabling_terminal_toolbar" formatted="false">Disabling terminal toolbar</string>
     <string name="msg_enabling_terminal_toolbar" formatted="false">Enabling terminal toolbar</string>
     <string name="msg_failed_to_focus_window" formatted="false">Could not focus window</string>
     <string name="msg_generating_report" formatted="false">Generating report</string>
@@ -1150,7 +1106,7 @@ Note: only used for plugin downloads and updates.</string>
     <string name="no_matching_plugins_2" formatted="false">No matching plugins</string>
     <string name="no_matching_plugins_found" formatted="false">No matching plugins found</string>
     <string name="no_mirrors_yet" formatted="false">No mirrors yet</string>
-    <string name="no_offline_package_found_assets_alpi" formatted="false">No offline package found (assets/alpine*). Put it into the APK assets folder first</string>
+    <string name="no_offline_package_found_assets_alpi" formatted="false">No offline package found (assets/debian*). Put it into the APK assets folder first</string>
     <string name="no_plugins_available" formatted="false">No plugins available</string>
     <string name="no_plugins_to_back_up" formatted="false">No plugins to back up</string>
     <string name="no_plugins_yet" formatted="false">No plugins yet</string>
@@ -1428,7 +1384,7 @@ Dependencies: %1$s
     <string name="project_dir_projectdir_absolutepath">  Project dir: %1$s</string>
     <string name="project_files_generated" formatted="false">Project files generated</string>
     <string name="project_files_generated_workdir_abso">Project files generated: %1$s</string>
-    <string name="proot_backend_runs_in_a_shared_alpin" formatted="false">Proot: backend runs in a shared Alpine container with isolated environment that doesn\'t affect the host</string>
+    <string name="proot_backend_runs_in_a_shared_alpin" formatted="false">Proot: backend runs in a shared Debian container with isolated environment that doesn\'t affect the host</string>
     <string name="proot_container" formatted="false">Proot Container</string>
     <string name="proot_distro_install_failed_check_ne" formatted="false">proot-distro install failed, check network and retry</string>
     <string name="proot_distro_installed" formatted="false">proot-distro installed</string>
@@ -1513,9 +1469,7 @@ Changelog:
     <string name="restoring_backup" formatted="false">Restoring backup...</string>
     <string name="restoring_mirror_config" formatted="false">Restoring mirror config...</string>
     <string name="restoring_plugins" formatted="false">Restoring plugins...</string>
-    <string name="restoring_plugins_2" formatted="false">Restoring plugins...</string>
-    <string name="restoring_shared_alpine_container_fi" formatted="false">Restoring shared Alpine container (first extraction ~a few minutes, please wait)...</string>
-    <string name="restoring_ui_config" formatted="false">Restoring UI config...</string>
+    <string name="restoring_plugins_2" formatted="false">Restoring plugins...</string>    <string name="restoring_ui_config" formatted="false">Restoring UI config...</string>
     <string name="restoring_will_overwrite_existing_pl" formatted="false">Restoring will overwrite existing plugins, config and UI theme!
 
 Continue?</string>
@@ -1822,9 +1776,7 @@ Note: we never read your personal files; we only touch files under the UIN_Tool 
     <string name="terminal_started" formatted="false">Terminal started</string>
     <string name="termux_api_preferences_summary" formatted="false">Preferences for the &TERMUX_API_APP_NAME; app</string>
     <string name="termux_api_preferences_title" formatted="false">&TERMUX_API_APP_NAME;</string>
-    <string name="termux_backend_plugin_example_python" formatted="false">Termux backend plugin example (Python backend)</string>
-    <string name="termux_command_failed_e_message">Termux command failed: %1$s</string>
-    <string name="termux_crash_report_notifications_enabled_off" formatted="false">Disable crash report notifications.</string>
+    <string name="termux_backend_plugin_example_python" formatted="false">Termux backend plugin example (Python backend)</string>    <string name="termux_crash_report_notifications_enabled_off" formatted="false">Disable crash report notifications.</string>
     <string name="termux_crash_report_notifications_enabled_on" formatted="false">Show crash report notifications. (Default)</string>
     <string name="termux_crash_report_notifications_enabled_title" formatted="false">Crash report notifications</string>
     <string name="termux_debugging_preferences_summary" formatted="false">Debugging preferences</string>
@@ -1838,14 +1790,12 @@ Note: we never read your personal files; we only touch files under the UIN_Tool 
     <string name="termux_local" formatted="false">Termux Local</string>
     <string name="termux_log_level_title" formatted="false">Log level</string>
     <string name="termux_logging_header" formatted="false">Logging</string>
-    <string name="termux_not_ready_initializing_bootst" formatted="false">Termux not ready, initializing bootstrap...</string>
+    <string name="termux_not_ready_initializing_bootst" formatted="false">Termux not ready, initializing environment...</string>
     <string name="termux_plugin_error_notifications_enabled_off" formatted="false">Disable alerts and notifications for plugin errors.</string>
     <string name="termux_plugin_error_notifications_enabled_on" formatted="false">Show alerts and notifications for plugin errors. (Default)</string>
     <string name="termux_plugin_error_notifications_enabled_title" formatted="false">Plugin error notifications</string>
     <string name="termux_preferences_summary" formatted="false">Preferences for the &TERMUX_APP_NAME; app</string>
-    <string name="termux_preferences_title" formatted="false">&TERMUX_APP_NAME;</string>
-    <string name="termux_ready_checking_alpine" formatted="false">✅ Termux ready, checking Alpine...</string>
-    <string name="termux_soft_keyboard_enabled_off" formatted="false">The soft keyboard will be disabled.</string>
+    <string name="termux_preferences_title" formatted="false">&TERMUX_APP_NAME;</string>    <string name="termux_soft_keyboard_enabled_off" formatted="false">The soft keyboard will be disabled.</string>
     <string name="termux_soft_keyboard_enabled_on" formatted="false">The soft keyboard will be enabled. (Default)</string>
     <string name="termux_soft_keyboard_enabled_only_if_no_hardware_off" formatted="false">The soft keyboard will be enabled even when a hardware keyboard is connected. (Default)</string>
     <string name="termux_soft_keyboard_enabled_only_if_no_hardware_on" formatted="false">The soft keyboard will be enabled only when no hardware keyboard is connected.</string>
@@ -2311,7 +2261,7 @@ Please import plugins in the app first</string>
     <string name="your_launcher_doesn_t_support_pinnin" formatted="false">Your launcher doesn\'t support pinning widgets; long-press the home screen to add them manually</string>
     <string name="your_launcher_doesn_t_support_pinnin_2" formatted="false">Your launcher doesn\'t support pinning shortcuts; long-press the home screen to add them manually</string>
     <string name="onboarding_author_words" formatted="false">I have always wanted a truly free tool platform on my phone,\none that can be extended anytime to fit your needs, instead of waiting for developer updates.\n\nUIN Tool is my answer to that idea,\nit is just a framework; the real soul is you — every user.\n\nI hope you can create something of your own with it,\nand share your plugins with more people.\n\n— UIN Team</string>
-    <string name="onboarding_terminal_notice" formatted="false">Due to a package name change, pkg cannot install packages in the terminal yet,\nthis issue may be fixed in a future version (we may build some packages for download)</string>
+    <string name="onboarding_terminal_notice" formatted="false">You can install packages in the terminal using:\napt install &lt;package_name&gt;</string>
     <string name="dev_create_plugin_steps" formatted="false">1. Tap "Create Plugin" to choose a type\n2. Fill in basic plugin info\n3. Write code or pick a binary file\n4. Export a TPK file\n5. Import and run it in "Manage" > "Plugins"</string>
     <string name="widget_1x1_desc" formatted="false">Takes little home screen space, great for frequently used plugins\nOpen with one tap, no need to enter the app\nPlace several, each pointing to a different plugin</string>
     <string name="widget_3x3_desc" formatted="false">Shows 3 plugins at once for quick switching\nAuto-rotates to show plugin status\nTap a plugin card to open it directly</string>
@@ -2393,4 +2343,76 @@ Please import plugins in the app first</string>
     <string name="reset_default_settings" formatted="false">Reset default settings</string>
     <string name="menu" formatted="false">Menu</string>
     <string name="ui_personalization" formatted="false">UI Personalization</string>
+
+    <string name="container_current_default">Current Default Container</string>
+    <string name="container_default_label">Default</string>
+    <string name="container_default_switched">Switched to %1$s</string>
+    <string name="container_delete">Delete</string>
+    <string name="container_delete_confirm_message">Delete container "%1$s"? This cannot be undone.</string>
+    <string name="container_delete_confirm_title">Delete Container</string>
+    <string name="container_deleted">Container "%1$s" deleted</string>
+    <string name="container_download_failed">Download failed: %1$s</string>
+    <string name="container_downloading">Downloading %1$s...</string>
+    <string name="container_download_success">Container "%1$s" downloaded</string>
+    <string name="container_export">Export</string>
+    <string name="container_export_confirm">Export container "%1$s" as archive?</string>
+    <string name="container_export_failed">Export failed: %1$s</string>
+    <string name="container_exporting">Exporting %1$s...</string>
+    <string name="container_export_progress">%1$d / %2$d files</string>
+    <string name="container_export_scanning">Scanning files...</string>
+    <string name="container_export_success">Container "%1$s" exported</string>
+    <string name="container_import">Import</string>
+    <string name="container_import_entry_count">%1$d entries processed</string>
+    <string name="container_import_failed">Import failed: %1$s</string>
+    <string name="container_importing">Importing container...</string>
+    <string name="container_import_success">Container "%1$s" imported</string>
+    <string name="container_info_files">Files</string>
+    <string name="container_info_modified">Last Modified</string>
+    <string name="container_info_path">Path</string>
+    <string name="container_info_size">Size</string>
+    <string name="container_info_status">Status</string>
+    <string name="container_install_completed">Installation complete</string>
+    <string name="container_installed_list">Installed Containers</string>
+    <string name="container_installing_please_wait">Installing, please wait...</string>
+    <string name="container_management_desc">Manage Linux containers (Proot)</string>
+    <string name="container_not_ready">Not Ready</string>
+    <string name="container_ready">Ready</string>
+    <string name="container_rename">Rename</string>
+    <string name="container_renamed">Renamed to "%1$s"</string>
+    <string name="container_rename_empty">Name cannot be empty</string>
+    <string name="container_rename_duplicate">Name already exists</string>
+    <string name="container_reset">Reset</string>
+    <string name="container_reset_confirm">Reset container "%1$s"? This will reinstall the container.</string>
+    <string name="container_reset_done">Container "%1$s" reset</string>
+    <string name="debian_container_install_failed_make">Debian container install failed. Make sure the APK assets folder includes the Debian offline package and retry.</string>
+    <string name="download_linux_distro">Download Linux Distribution</string>
+    <string name="linux_container_installing">Installing Linux container, please wait...</string>
+    <string name="preparing_linux_environment">Preparing Linux environment...</string>
+    <string name="proot_container_management">Proot Container Management</string>
+    <string name="proot_install_button">Install Proot</string>
+    <string name="proot_install_failed">Proot installation failed</string>
+    <string name="proot_install_success">Proot installed successfully</string>
+    <string name="proot_status_not_installed">Proot not installed</string>
+    <string name="proot_status_ready">Proot ready</string>
+    <string name="select_distro_to_download">Select a distribution to download:</string>
+    <string name="source_management">Source Management</string>
+    <string name="source_management_desc">Manage app data sources and repositories</string>
+    <string name="source_management_feature_developing">Source management feature under development</string>
+    <string name="terminal_close">Close Terminal</string>
+    <string name="terminal_container_not_ready">Container not ready. Please install a container first.</string>
+    <string name="terminal_log_copied">Terminal log copied</string>
+    <string name="terminal_log_empty">Clipboard is empty</string>
+    <string name="terminal_proot_not_installed">Proot not installed. Please install Proot first.</string>
+    <string name="terminal_rename_session">Rename Session</string>
+    <string name="terminal_session_number">#%1$d</string>
+    <string name="terminal_session_pid">Session %1$s | PID: %2$s</string>
+    <string name="trust_community">Community</string>
+    <string name="trust_official">Official</string>
+    <string name="trust_verified">Verified</string>
+
+    <string name="terminal_sessions">Sessions</string>
+    <string name="terminal_new_session">New Session</string>
+    <string name="real_termux_command_started">Command started</string>
+    <string name="real_termux_start_failed_e_message">Failed to start real Termux: %1$s</string>
+
 </resources>

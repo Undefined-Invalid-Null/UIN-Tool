@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.ui.components.unified.*
+import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.utils.UIConfig
 
@@ -101,7 +102,7 @@ fun NeumorphismPreviewSection() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .neuInput(isDark, neuIntensity)
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                            .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
                             .padding(14.dp)
                     ) {
                         UnifiedCaptionText(
@@ -120,7 +121,7 @@ fun NeumorphismPreviewSection() {
                                     .neuChip(isDark, neuIntensity)
                                     .background(
                                         if (index == 0) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surface,
+                                        else if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
                                         RoundedCornerShape(20.dp)
                                     )
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -141,7 +142,7 @@ fun NeumorphismPreviewSection() {
                             .fillMaxWidth()
                             .neuProgressTrack(isDark, neuIntensity)
                             .height(8.dp)
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
+                            .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
                     ) {
                         Box(
                             modifier = Modifier

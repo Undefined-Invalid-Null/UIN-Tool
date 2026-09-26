@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-5.7.0-blue)
-![Build](https://img.shields.io/badge/build-23-green)
+![Version](https://img.shields.io/badge/version-6.0.0-blue)
+![Build](https://img.shields.io/badge/build-24-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -9,7 +9,7 @@
 
 ## 应用简介
 
-UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框架应用，允许用户动态加载和运行第三方插件。无论是原生 Java 插件还是 Web 技术栈（HTML/CSS/JS）的插件，都能在 UIN Tool 中无缝运行。它提供了一个完整的插件生态系统，包括插件开发、管理、运行、权限控制以及 **Termux 后端集成**。
+UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框架应用，允许用户动态加载和运行第三方插件。无论是原生 Java 插件还是 Web 技术栈（HTML/CSS/JS）的插件，都能在 UIN Tool 中无缝运行。它提供了一个完整的插件生态系统，包括插件开发、管理、运行、权限控制以及 **PRoot 容器后端**。
 
 ### 核心理念
 
@@ -20,14 +20,14 @@ UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框
 - **灵活**：支持网格/列表视图切换，支持分类管理
 - **现代化**：基于 Jetpack Compose 构建，Material 3 设计语言，支持新拟态风格
 - **国际化**：支持应用内多语言切换，无需更改系统语言
-- **强大**：内置 Termux 终端环境，支持 Python/Node.js/PHP 后端
+- **强大**：内置 PRoot Linux 环境，支持 Python/Node.js/PHP 后端
 - **持久化**：插件数据独立存储，更新时自动保留用户数据
 
 ---
 
-## 终端功能（基于 Termux）
+## 终端功能（基于 PRoot）
 
-UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://github.com/termux/termux-app) 改编，为用户提供强大的 Linux 命令行体验。
+UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/proot-me/proot) 实现用户空间 Linux 系统，无需 Root 即可运行完整的 Debian/Ubuntu/Arch Linux。
 
 ### 终端特性
 
@@ -53,19 +53,19 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 ### 致谢 Termux
 
-> 终端功能的实现基于 [Termux](https://github.com/termux/termux-app) 项目，这是一个知名的 Android 终端模拟器和 Linux 环境。UIN Tool 在 Termux 核心代码的基础上进行了适配和增强，将其无缝集成到插件化框架中。感谢 Termux 团队的开源贡献！
+> 终端功能使用 PRoot 实现用户空间 Linux 环境。`terminal-emulator` 和 `terminal-view` 模块基于 [Termux](https://github.com/termux/termux-app) 项目改编。感谢 Termux 团队的开源贡献！
 
 ---
 
 ## 版本信息
 
-### 当前版本：v5.7.0 (Build 23)
+### 当前版本：v6.0.0 (Build 24)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 5.7.0 |
-| 版本代码 | 23 |
-| 更新日期 | 2026年8月31日 |
+| 版本号 | 6.0.0 |
+| 版本代码 | 24 |
+| 更新日期 | 2026年9月26日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 9 (API 28) |
 | 编译 SDK 版本 | 36 (Android 16) |
@@ -75,6 +75,7 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 
 | 版本 | 构建号 | 日期 | 亮点 |
 |------|--------|------|------|
+| v6.0.0 | 24 | 2026-09-26 | 去除 Termux 依赖、PRoot 容器系统、容器管理 UI、rootfs 导出压缩级别 |
 | v5.7.0 | 23 | 2026-08-31 | 多源仓库聚合、插件图标缓存、增量 CI 构建、UI 优化 |
 | v5.6.0 | 22 | 2026-08-28 | 新拟态风格、多语言切换、半透明效果控制 |
 | v5.5.0 | 21 | 2026-08-22 | 崩溃修复、剪贴板伪权限、开发向导补全、实体 Termux 共享 Supervisor |
@@ -111,14 +112,14 @@ UIN Tool **内置完整的终端环境**，核心引擎基于 [Termux](https://g
 | GitHub 加速 | 自定义镜像 | 已实现 | 手动添加镜像 |
 | GitHub 加速 | 导入/导出 | 已实现 | TXT 格式 |
 | GitHub 加速 | CDN 加速 | 已实现 | 可开关 |
-| 终端 (Termux) | 终端模拟器 | 已实现 | 基于 Termux 适配 |
-| 终端 (Termux) | Linux 环境 | 已实现 | APT 包管理 |
-| 终端 (Termux) | 多会话支持 | 已实现 | 多个会话同时运行 |
-| 终端 (Termux) | 多窗口支持 | 已实现 | Android 7.0+ |
-| 终端 (Termux) | 终端设置 | 已实现 | 字体/配色/快捷键 |
-| 后端集成 | Python 后端 | 已实现 | 自动启动 Termux Python |
-| 后端集成 | Node.js 后端 | 已实现 | 自动启动 Termux Node.js |
-| 后端集成 | PHP 后端 | 已实现 | 自动启动 Termux PHP |
+| 终端 | 终端模拟器 | 已实现 | 基于 PRoot |
+| 终端 | Linux 环境 | 已实现 | APT 包管理 |
+| 终端 | 多会话支持 | 已实现 | 多个会话同时运行 |
+| 终端 | 多窗口支持 | 已实现 | Android 7.0+ |
+| 终端 | 终端设置 | 已实现 | 字体/配色/快捷键 |
+| 后端集成 | Python 后端 | 已实现 | 自动启动 Python |
+| 后端集成 | Node.js 后端 | 已实现 | 自动启动 Node.js |
+| 后端集成 | PHP 后端 | 已实现 | 自动启动 PHP |
 | 后端集成 | 二进制后端 | 已实现 | 选择可执行文件 |
 | 后端集成 | 健康检查 | 已实现 | /health 端点 |
 | 后端集成 | 进程管理 | 已实现 | 自动启动/停止 |

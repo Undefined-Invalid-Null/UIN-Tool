@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 5.7.0 |
-| Corresponding App Version | v5.7.0 (Build 23) |
-| Last Updated | August 31, 2026 |
+| Document Version | 6.0.0 |
+| Corresponding App Version | v6.0.0 (Build 24) |
+| Last Updated | September 26, 2026 |
 
 ---
 
@@ -33,7 +33,7 @@
 - [4.2 Usage](#42-usage)
 - [4.3 Dynamic Plugin Shortcuts](#43-dynamic-plugin-shortcuts)
 
-### V. Terminal Features (Based on Termux)
+### V. Terminal Features (Based on PRoot)
 - [5.1 Access Method](#51-access-method)
 - [5.2 Terminal Features](#52-terminal-features)
 - [5.3 Common Commands](#53-common-commands)
@@ -135,9 +135,9 @@ UIN Tool is a lightweight plugin framework that lets you dynamically load and ru
 |----------------|-------------|
 | Plugin System | Native (Java/Kotlin) and Web (HTML/CSS/JS) plugins |
 | Data Persistence | Independent data/ directory per plugin, preserved on update |
-| Terminal Environment | Built-in Linux terminal based on Termux |
-| Backend Integration | Unified startup command mode, built-in/real Termux globally selectable |
-| Container Runtime | Proot shared Alpine container, backend and host isolated |
+| Terminal | Built-in Linux terminal powered by PRoot |
+| Backend Integration | Unified startup command mode, built-in Debian container/real Termux globally selectable |
+| Container Runtime | Proot shared Debian container, backend and host isolated |
 | Plugin Repository | Browse, search, install from GitHub sources |
 | Development Tools | Creation wizard, code editor (Sora Editor), template export |
 | Permission Management | App + plugin permissions, state persistence |
@@ -218,12 +218,12 @@ The bottom navigation has a **floating style**: style completely follows the car
 
 | Function | Description |
 |----------|-------------|
-| Open Terminal | Launch Termux terminal environment |
+| Open Terminal | Launch terminal environment |
 | Terminal Settings | Configure terminal font, color scheme, keyboard, etc. |
 | Create Plugin | Unified entry, select frontend type and fill in backend startup command |
 | Export Template | Export built-in packaged plugin templates (with README.txt description) |
 
-> 💡 **Tip**: When creating plugins, you can choose from four modes: "Native UI", "Pure WebView", "WebView + Backend", "CUI Terminal". The backend runtime environment (built-in Termux / real Termux) for WebView + Backend plugins is globally configured in "Backend Runtime Settings" on the "Manage" page.
+> 💡 **Tip**: When creating plugins, you can choose from four modes: "Native UI", "Pure WebView", "WebView + Backend", "CUI Terminal". The backend runtime environment (built-in Debian container / real Termux) for WebView + Backend plugins is globally configured in "Backend Runtime Settings" on the "Manage" page.
 
 ### 3.3 Tools Page
 
@@ -254,7 +254,7 @@ The bottom navigation has a **floating style**: style completely follows the car
 | Documentation Center | User guide, development docs, etc. |
 | GitHub Acceleration | Configure mirror sites and CDN acceleration |
 | Development Tools | Runtime log viewing (export/clear) + developer options (signature verification toggle, etc.) |
-| Backend Runtime Settings | Globally switch built-in Termux / real Termux, idle timeout, etc. |
+| Backend Runtime Settings | Globally switch built-in Debian container / real Termux, idle timeout, etc. |
 | Backup & Restore | Backup/restore plugins and configurations |
 | UI Personalization | Customize theme colors and corner radius |
 | Widget Configuration | Widget configuration and usage guide |
@@ -271,7 +271,7 @@ Long-pressing the app icon brings up a shortcut menu (Android 7.1+) for quick ac
 | Shortcut | Function |
 |----------|----------|
 | Docs | Open documentation browser (DocBrowserActivity) |
-| Terminal | Open built-in terminal (TermuxActivity) |
+| Terminal | Open built-in terminal |
 | Backend Settings | Open backend runtime settings page (BackendSettingsActivity) |
 | UI Personalization | Open UI personalization settings page (UIConfigActivity) |
 
@@ -287,7 +287,7 @@ You can create desktop icon shortcuts for individual plugins via "Manage" > "Plu
 
 ---
 
-## V. Terminal Features (Based on Termux)
+## V. Terminal Features (Based on PRoot)
 
 > 🔥 **New in v4.0.0**: UIN Tool includes a complete terminal environment.
 
@@ -309,28 +309,24 @@ You can create desktop icon shortcuts for individual plugins via "Manage" > "Plu
 | Network Tools | curl, wget, openssh, etc. |
 | Multi-Session | Multiple terminal sessions running simultaneously |
 | Multi-Window | Android 7.0+ multi-window support |
-| Custom Shortcuts | Configurable hardware/software keyboard shortcuts |
 
 ### 5.3 Common Commands
 
 ```bash
 # Update package sources
-pkg update
+apt update
 
 # Install Python
-pkg install python
+apt install python3
 
 # Install Node.js
-pkg install nodejs
+apt install nodejs
 
 # Install git
-pkg install git
+apt install git
 
 # SSH to server
 ssh user@hostname
-
-# View storage directory
-ls ~/storage/shared/
 ```
 
 ### 5.4 Terminal Settings
@@ -590,7 +586,7 @@ The **`+` button** on the right side of each plugin list item in the "Plugin Man
    · Pure WebView: HTML/CSS/JS only, no backend
    · WebView + Backend: HTML/CSS/JS + backend service
    · CUI Terminal: Full-screen terminal running scripts (new in v4.5.0)
-4. If selecting WebView + Backend, fill in the **backend startup command** (default `sh scripts/start.sh`, customizable); the backend runtime environment (built-in Termux / real Termux) is globally configured in "Backend Runtime Settings" on the "Manage" page
+4. If selecting WebView + Backend, fill in the **backend startup command** (default `sh scripts/start.sh`, customizable); the backend runtime environment (built-in Debian container / real Termux) is globally configured in "Backend Runtime Settings" on the "Manage" page
 5. Fill in plugin information according to the wizard
 6. Click "Finish" to generate project files
 
@@ -734,14 +730,14 @@ Plugins with backends (WebView + Backend, CUI) need to start a backend service (
 
 > ⚠️ Since v5.2.0, "Backend Runtime Settings" has been changed to a **standalone page** (`BackendSettingsActivity`), only available on the management page; the development page no longer has an entry point.
 
-#### 12.5.1 Backend Implementation: Built-in Termux or Real Termux
+#### 12.5.1 Backend Implementation: Built-in Debian Container or Real Termux
 
 | Option | Description | Suitable Scenario |
 |--------|-------------|-------------------|
-| **Built-in Termux** (default) | Uses the app's built-in lightweight Termux, forces Proot shared Alpine container to run the backend, **no need to install anything** | Out-of-the-box, want to save trouble |
+| **Built-in Debian container** (default) | Uses the app's built-in Debian container via PRoot, **no need to install anything** | Out-of-the-box, want to save trouble |
 | **Real Termux** | Calls Termux installed on the device (`com.termux`) to run the backend, can use native Termux ecosystem | Needs pip/npm/apk and other complete package ecosystem |
 
-- **Built-in Termux**: Alpine rootfs is built into the app (offline recovery from assets, about 19MB, one-time decompression), no network installation required
+- **Built-in Debian container**: Debian rootfs is built into the app (offline recovery from assets), no network installation required
 - **Real Termux**: Requires Termux to be installed on the device with initialization completed, otherwise a guide will pop up automatically if startup fails
 
 #### 12.5.2 Backend Environment (Real Termux Only)
@@ -749,17 +745,16 @@ Plugins with backends (WebView + Backend, CUI) need to start a backend service (
 | Option | Description |
 |--------|-------------|
 | **Termux Native** | Run directly in the Termux native environment |
-| **Proot Container** | Run inside a Proot container (container name configurable, default `alpine`, e.g., `ubuntu` needs to be installed first) |
+| **Proot Container** | Run inside a Proot container (container name configurable, default `debian`) |
 
-- Selecting Proot container requires filling in the container name; use `proot-distro list` to view installed containers
-- Built-in Termux **forces** Proot Alpine container, this option is not applicable
+- Built-in Debian container **forces** direct PRoot execution, this option is not applicable
 
 #### 12.5.3 Idle Auto Reclamation
 
 The backend automatically stops after being idle for the set duration to avoid long-term resource usage; plugin activity requests refresh the timer. After exiting the plugin for the set duration, its backend is automatically cleaned up. Duration options include preset 3 / 5 / 10 / 15 minutes (default 5 minutes), or enter any number of minutes in the "Custom (minutes)" input box; selecting "**Unlimited**" means the backend will never be automatically reclaimed, only stopping when actively stopped.
 
 - When stopping, the host first calls the HTTP `/stop` endpoint for **graceful shutdown**
-- **Built-in Termux**: Additionally terminates by process group `SIGKILL`
+- **Built-in Debian container**: Additionally terminates by process group `SIGKILL`
 - **Real Termux**: Idle reclamation is managed uniformly by the shared supervisor (see 12.5.5), with independent timeout recursive process tree killing per plugin based on `idle/<key>.start` startup timestamps, **does not depend on the plugin implementing `/stop`**; the host only does port detection and state cleanup. Selecting "Unlimited" does not write idle files. Please ensure `com.termux.permission.RUN_COMMAND` is granted and "Allow external apps to run commands" is enabled
 
 #### 12.5.4 Real Termux Initialization Command
@@ -779,7 +774,7 @@ This command completes the following in order:
 
 #### 12.5.5 Real Termux Shared Supervisor
 
-Real Termux (proot or native mode) uses a **single resident shared supervisor**: the container/session is only initialized once, and all plugin backends run as supervisor child processes. Subsequent plugin startup saves proot initialization overhead (cold startup about 5s). Built-in Termux (alpine, about 2s) remains unchanged (each plugin has its own proot).
+Real Termux (proot or native mode) uses a **single resident shared supervisor**: the container/session is only initialized once, and all plugin backends run as supervisor child processes. Subsequent plugin startup saves proot initialization overhead (cold startup about 5s). Built-in Debian container remains unchanged (each plugin has its own proot).
 
 - Communication protocol (control directory `<plugins_root>/.uin/`): `cmd/<key>.cmd` (startup command), `pid/<key>` (backend PID), `stop/<key>` (stop request), `idle/<key>` (idle minutes), `idle/<key>.start` (startup timestamp), `alive` (supervisor alive marker), `host_alive` (host heartbeat, touch every 30s, supervisor auto-exits on 300s timeout), `shutdown` (exit marker), `keep_alive` (background keep-alive marker)
 - proot startup: `proot-distro login <container> --bind '<plugins_root>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`
@@ -794,7 +789,7 @@ Real Termux (proot or native mode) uses a **single resident shared supervisor**:
 
 After a plugin is opened, the host selects the execution path based on global settings and uniformly injects `$PORT`, `$PLUGIN_ID`, `$PLUGIN_DIR`, `$WORK_DIR` environment variables:
 
-- **Built-in Termux**: `proot-distro login alpine --bind <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`
+- **Built-in Debian container**: `proot --link2symlink -0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`
 - **Real Termux + Native**: `bash -lc "<startup command>"` (working directory = plugin directory)
 - **Real Termux + Proot Container**: `proot-distro login <containerName> --bind <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`
 
@@ -1188,7 +1183,7 @@ Q20: How to view version update content?
 A: Click "Manage" > "Documentation Center" > "Changelog"
 
 Q21: How to create a Web plugin with backend?
-A: Click "Create Plugin" > Select "WebView + Backend" > Fill in backend startup command (default `sh scripts/start.sh`). The wizard auto-generates `scripts/start.sh` and `scripts/backend/server.py`; the backend runtime environment (built-in Termux / real Termux) is globally configured in "Backend Runtime Settings" on the "Manage" page.
+A: Click "Create Plugin" > Select "WebView + Backend" > Fill in backend startup command (default `sh scripts/start.sh`). The wizard auto-generates `scripts/start.sh` and `scripts/backend/server.py`; the backend runtime environment (built-in Debian container / real Termux) is globally configured in "Backend Runtime Settings" on the "Manage" page.
 
 Q22: What needs to be installed for the backend?
 A: The startup script `scripts/start.sh` automatically detects and installs dependencies (`pkg install python` / `apk add python3`), no need to manually install third-party libraries.

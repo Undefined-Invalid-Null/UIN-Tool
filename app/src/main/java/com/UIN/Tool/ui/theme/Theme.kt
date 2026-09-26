@@ -72,6 +72,7 @@ val DarkSurface = Color(0xFF363636)
 val DarkTextPrimary = Color(0xFFE8E8E8)
 val DarkTextSecondary = Color(0xFFA8A8A8)
 val DarkSurfaceVariant = Color(0xFF3F3F3F)
+val DarkOutline = Color(0xFF484848)
 
 // ==================== 卡片相关 ====================
 val CardShadow = Color(0x1A000000)

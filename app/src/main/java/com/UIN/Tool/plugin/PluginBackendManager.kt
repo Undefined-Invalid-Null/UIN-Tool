@@ -567,20 +567,19 @@ object PluginBackendManager {
     }
 
     // ============================================================
-    // 新式后端启动（内置 Termux，强制 proot Alpine 容器）
+    // 新式后端启动（内置 proot 直接调用）
     // ============================================================
 
     private fun startScriptInBuiltin(context: Context, info: PluginInfo, pluginDir: File, port: Int, key: String): Boolean {
-        val container = BackendConfig.getBuiltinContainer()
         val startCmd = info.getStartCommandText()
-        val inner = buildScriptCommand(info, "/plugins/${info.pluginId}", port, startCmd)
-        val command = listOf(
-            "/data/data/${context.packageName}/files/usr/bin/proot-distro",
-            "login", container,
-            "--bind", "${pluginDir.absolutePath}:/plugins/${info.pluginId}",
-            "--", "sh", "-lc", inner
+        val command = ProotContainerManager.buildBackendCommand(
+            context = context,
+            pluginDir = pluginDir.absolutePath,
+            pluginId = info.pluginId,
+            port = port,
+            startCommand = startCmd
         )
-        Logger.d(TAG, Str.get(R.string.executing_command, command.joinToString(" ")))
+        Logger.d(TAG, "Executing proot command: ${command.joinToString(" ")}")
         return launchBuiltinProcess(context, info, pluginDir, port, command, key = key, isProot = true)
     }
 
@@ -703,30 +702,43 @@ object PluginBackendManager {
 
             val termuxHomeDir = "/data/data/${context.packageName}/files/home"
             val termuxPrefixDir = "/data/data/${context.packageName}/files/usr"
-            env["TERMUX_HOME"] = termuxHomeDir
-            env["TERMUX_PREFIX"] = termuxPrefixDir
 
-            // proot 运行时需完整的 Termux 环境变量，否则 proot-distro 会按默认 com.termux
-            // 前缀解析容器目录（CONTAINERS_DIR），导致 login 报 "container 'alpine' is not installed"。
+            if (!isProot) {
+                env["TERMUX_HOME"] = termuxHomeDir
+                env["TERMUX_PREFIX"] = termuxPrefixDir
+            }
+
+            // proot 容器使用自带的 Debian rootfs，不需要宿主 Termux 环境变量
+            // 清除会污染容器的宿主路径
             if (isProot) {
-                env["PREFIX"] = termuxPrefixDir
-                env["HOME"] = termuxHomeDir
-                env["TMPDIR"] = "$termuxPrefixDir/tmp"
-                env["TERMUX__PREFIX"] = termuxPrefixDir
-                env["TERMUX__HOME"] = termuxHomeDir
-                env["TERMUX_APP__PACKAGE_NAME"] = context.packageName
-                env["TERMUX_VERSION"] = try {
-                    context.packageManager.getPackageInfo(context.packageName, 0).versionName
-                } catch (_: Exception) {
-                    null
-                } ?: "1"
+                env.remove("PREFIX")
+                env.remove("TERMUX_HOME")
+                env.remove("TERMUX_PREFIX")
+                env.remove("TERMUX__PREFIX")
+                env.remove("TERMUX__HOME")
+                env.remove("TERMUX_APP__PACKAGE_NAME")
+                env.remove("TERMUX_VERSION")
+                env.remove("TMPDIR")
+                // 容器内 PATH 由 proot 的 -r rootfs 和 shell login 决定
+                env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                // proot 需要临时目录和 link2symlink 目录
+                val prootTmpDir = java.io.File(context.cacheDir, "proot_tmp").apply { mkdirs() }
+                env["PROOT_TMP_DIR"] = prootTmpDir.absolutePath
+                val containersDir = java.io.File(context.filesDir, "containers")
+                val debianDir = java.io.File(containersDir, "debian")
+                val rootfsDir = java.io.File(debianDir, "rootfs")
+                val l2sDir = java.io.File(rootfsDir, ".l2s").apply { mkdirs() }
+                env["PROOT_L2S_DIR"] = l2sDir.absolutePath
+                // proot 宿主侧需要的基本环境变量
+                env["HOME"] = "/root"
+                env["SHELL"] = "/bin/sh"
             }
 
             info.backendEnv.forEach { (k, v) -> env[k] = v }
 
             Logger.d(TAG, "🔧 PATH: ${env["PATH"]}")
             if (isProot) {
-                Logger.d(TAG, Str.get(R.string.proot_env_prefix, env["PREFIX"], env["TERMUX__PREFIX"], env["TERMUX_APP__PACKAGE_NAME"], env["HOME"], env["TMPDIR"]))
+                Logger.d(TAG, "proot env: HOME=${env["HOME"]}, SHELL=${env["SHELL"]}")
             }
 
             Logger.i(TAG, Str.get(R.string.starting_process))
@@ -738,7 +750,7 @@ object PluginBackendManager {
 
             monitorOutput(key, process, isProot)
 
-            // proot 容器运行时冷启动较慢（proot-distro login + proot chroot + 链接转换 + 解释器），
+            // proot 容器运行时冷启动较慢（proot 启动 + rootfs 解压 + 链接转换 + 解释器），
             // 放宽就绪超时（至少 120s）
             val readyTimeout = if (isProot) {
                 maxOf(info.backendTimeout, 120)

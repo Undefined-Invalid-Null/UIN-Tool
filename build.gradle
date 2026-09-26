@@ -1,4 +1,4 @@
-// Termux/build.gradle
+// UIN Tool/build.gradle
 
 buildscript {
     repositories {

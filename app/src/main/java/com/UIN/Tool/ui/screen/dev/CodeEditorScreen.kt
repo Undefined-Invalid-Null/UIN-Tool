@@ -297,7 +297,7 @@ fun ThemeSelectionDialog(
                     text = Str.get(R.string.select_theme),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A1A)
+                        color = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -312,30 +312,30 @@ fun ThemeSelectionDialog(
                     Text(
                         text = Str.get(R.string.current_theme),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF666666)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Surface(
-                        color = Color(0xFFE8F0FE),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(AppDimens.radiusMedium)
                     ) {
                         Text(
                             text = currentTheme,
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0xFF1A3A4A)
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             ),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                         )
                     }
                 }
 
-                Divider(color = Color(0xFFEEEEEE), modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 Text(
                     text = Str.get(R.string.dark_theme),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF333333)
+                        color = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -365,7 +365,7 @@ fun ThemeSelectionDialog(
                     text = Str.get(R.string.light_theme),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF333333)
+                        color = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -395,9 +395,7 @@ fun ThemeSelectionDialog(
                     text = Str.get(R.string.close),
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
-                    variant = ButtonVariant.Secondary,
-                    containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else Color(0xFFF0F0F0),
-                    contentColor = Color(0xFF333333)
+                    variant = ButtonVariant.Secondary
                 )
             }
         }
@@ -416,14 +414,14 @@ fun ThemeChip(
         modifier = modifier
             .clickable { onClick() }
             .padding(vertical = 4.dp),
-        color = if (isSelected) Color(0xFF1A3A4A) else if (AppColors.glassEnabled()) AppColors.glassBackground() else Color(0xFFF5F5F5),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(AppDimens.radiusSmall),
         tonalElevation = if (isSelected) 2.dp else 0.dp
     ) {
         Text(
             text = name,
             fontSize = AppDimens.captionTextSize.sp,
-            color = if (isSelected) Color.White else Color(0xFF666666),
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp, vertical = 6.dp),
@@ -747,7 +745,7 @@ fun CodeEditorScreen(
                             )
                         }
 
-                        Divider()
+                        HorizontalDivider()
 
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -850,7 +848,7 @@ fun CodeEditorScreen(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 // ============================================================
                 // ✅ 修复：AndroidView 使用 key 强制重建

@@ -2,6 +2,7 @@
 package com.UIN.Tool.ui.screen.manage
 
 import com.UIN.Tool.R
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,11 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -45,8 +48,10 @@ import com.UIN.Tool.plugin.PluginPermissionManager
 import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -58,6 +63,52 @@ import com.UIN.Tool.ui.theme.gradientBackgroundBrush
 
 
 private const val TAG = "PluginManageScreen"
+
+/**
+ * 从插件目录异步加载图标，失败时显示首字母
+ */
+@Composable
+private fun PluginIcon(plugin: PluginInfo, size: Dp) {
+    val context = LocalContext.current
+    var bitmap by remember(plugin.pluginId) { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    LaunchedEffect(plugin.pluginId) {
+        withContext(Dispatchers.IO) {
+            val pluginDir = File(Constants.PLUGIN_DIR, plugin.pluginId)
+            if (pluginDir.exists()) {
+                val iconPath = plugin.icon.ifEmpty { "icon.png" }
+                val iconFile = File(pluginDir, iconPath)
+                if (iconFile.exists()) {
+                    try {
+                        bitmap = BitmapFactory.decodeFile(iconFile.absolutePath)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
+    val currentBitmap = bitmap
+    Box(
+        modifier = Modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        if (currentBitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = currentBitmap.asImageBitmap(),
+                contentDescription = plugin.name,
+                modifier = Modifier
+                    .size(size)
+                    .clip(RoundedCornerShape(AppDimens.radiusSmall))
+            )
+        } else {
+            Text(
+                plugin.name.take(1).uppercase(),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1399,13 +1450,7 @@ fun PluginManageItem(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    plugin.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                PluginIcon(plugin, 44.dp)
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -1752,7 +1797,7 @@ fun PluginDetailDialog(
                     }
 
                     item {
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )
@@ -1770,7 +1815,7 @@ fun PluginDetailDialog(
                     }
 
                     item {
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )

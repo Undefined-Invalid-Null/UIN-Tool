@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/terminal_drawer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/terminal_background">
+
+    <!-- 主终端区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/terminal_background">
+
+        <!-- 精简工具栏：仅关闭 + 状态 -->
+        <LinearLayout
+            android:id="@+id/terminal_toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@color/terminal_toolbar"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/terminal_close_button"
+                android:layout_width="40dp"
+                android:layout_height="28dp"
+                android:text="@string/terminal_close"
+                android:textColor="@color/terminal_accent"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/terminal_status_text"
+                android:layout_width="0dp"
+                android:layout_height="28dp"
+                android:layout_weight="1"
+                android:textColor="@color/terminal_text_muted"
+                android:textSize="10sp"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="8dp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <!-- 终端视图 -->
+        <com.UIN.Tool.view.TerminalView
+            android:id="@+id/terminal_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@color/terminal_background"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <!-- 底部额外按键 -->
+        <LinearLayout
+            android:id="@+id/extra_keys_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/terminal_keys"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="4dp" />
+    </LinearLayout>
+
+    <!-- 侧边栏：会话列表 -->
+    <LinearLayout
+        android:id="@+id/terminal_sidebar"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:orientation="vertical"
+        android:background="@color/terminal_sidebar"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/terminal_sessions"
+            android:textColor="@color/terminal_text_bright"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingBottom="12dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/session_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/new_session_button"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:text="@string/terminal_new_session"
+            android:textColor="@color/terminal_accent"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+</androidx.drawerlayout.widget.DrawerLayout>

@@ -12,6 +12,87 @@ This document records all important version updates and feature changes of UIN T
 
 ---
 
+## [6.0.0] - 2026-09-26
+
+> This version is a **major architectural overhaul**: completely removes dependency on the Termux environment (bootstrap, proot-distro, TermuxActivity, etc.), introduces a self-contained proot container system with direct Debian rootfs support, and adds a full container management UI. The application no longer extends TermuxApplication and directly inherits from Android Application. The terminal is rewritten in Kotlin (SimpleTerminalActivity). Total of 100+ files modified, 3000+ lines added, 5000+ lines removed.
+
+### Removing Termux Environment Dependency
+
+- **Removed Termux bootstrap**: No longer requires `bootstrap-aarch64.zip` or native `termux-bootstrap.c`/`termux-bootstrap-zip.S` code; environment auto-installation changed from bootstrap + Alpine pipeline to proot binary + Debian rootfs direct pipeline
+- **Removed proot-distro dependency**: No longer needs `proot-distro install/restore` commands; rootfs extracted directly via `RootfsManager.extractTar()` from built-in `debian-rootfs.tar.xz`
+- **Removed TermuxActivity**: Old Java-based terminal (`app/` directory, 32 files) deleted; replaced by `SimpleTerminalActivity` (Kotlin, 1 file) using `TerminalView` + `TerminalSession` directly
+- **Removed TermuxService & RunCommandService**: No longer needed for backend process management
+- **Removed TermuxApplication base class**: `UinApplication` now directly extends `android.app.Application` instead of `TermuxApplication`
+- **Removed Termux shared library bloat**: Reduced from 121 to 83 source files; deleted `crash/`, `data/`, `extrakeys/`, `file/`, `interact/`, `models/`, `notification/`, `plugins/`, `shell/`, `terminal/`, `theme/` subdirectories and `TermuxAppSharedProperties`/`TermuxSharedProperties`
+- **Removed Android components**: `DocumentsProvider`, `ContentProvider`, `TermuxOpenReceiver`, `RealTermuxProbeReceiver`, `SystemEventReceiver` all removed
+- **Removed permissions**: `MANAGE_DOCUMENTS`, `RUN_COMMAND` no longer declared
+- **Removed assets**: `alpine.tar.xz` (Alpine rootfs backup), `xz-aarch64/` decompressor
+
+### PRoot Container System (New)
+
+- **New `proot/` module** with 6 files:
+  - `ContainerConfig.kt` — Container configuration data class (name, rootfs path, bind mounts, env vars)
+  - `ProotInstaller.kt` — Installs proot binary from assets to app's files directory
+  - `ProotRuntime.kt` — Builds proot command lines with bind mounts, fake kernel release, env vars; uses `--link2symlink`, `--sysvipc`, `--change-id=0:0`
+  - `RootfsManager.kt` — Full container lifecycle: create, delete, list, export/import tar archives; extracts tar.gz/tar.xz/tar.zst with proper hard link handling
+  - `RootfsSetup.kt` — Post-extraction fixups (resolv.conf, hosts, /tmp permissions, /root, /etc/shells)
+  - `FakeSysdata.kt` — Creates fake /proc and /sys entries for proot compatibility on Android
+- **Default container changed from Alpine to Debian** (`BackendConfig.kt`: `CONTAINER_DEFAULT = "debian"`)
+- **Container stored at**: `context.filesDir/containers/debian/rootfs` (internal storage for symlink compatibility)
+
+### Container Management UI (New)
+
+- **New `ui/screen/proot/` module**:
+  - `ContainerManagementActivity.kt` — Activity wrapper
+  - `ContainerManagementScreen.kt` — Full Compose UI for managing containers (list, download distros, export/import, delete, set default)
+- **Features**: Download distros from online sources, export containers as `.tar.zst` (shareable), import from `.tar.zst`/`.tar.xz`/`.tar.gz`, delete containers, set default container
+- **Export compression level**: Adjustable 0-22 (zstd), default 9; lower = faster, higher = smaller; auto-caps based on device memory to prevent OOM
+
+### Terminal Rewrite
+
+- **New `SimpleTerminalActivity.kt`**: Kotlin terminal using `TerminalView` + `TerminalSession` classes with Compose UI, integrates directly with proot containers
+- **New layout files**: `terminal_activity_layout.xml`, `terminal_session_item.xml`, `terminal_key_bg.xml`, `terminal_key_ripple.xml`
+- **Removed layout**: `activity_termux.xml`, `view_terminal_toolbar_extra_keys.xml`
+
+### Plugin System Updates
+
+- **`ProotContainerManager.kt` rewritten**: No longer depends on Termux prefix (`/data/data/.../files/usr/bin/proot-distro`); directly uses `ProotInstaller`, `ProotRuntime`, `RootfsManager`
+- **`PluginHostActivity.kt` updated**: Uses `MainScope().launch` coroutines; progress shown via `AppToast`
+- **`DevScreen.kt` updated**: Terminal button launches `SimpleTerminalActivity` instead of `TermuxActivity`
+
+### Plugin Backend Startup Fix
+
+- **Environment variables injected into proot command**: `PORT`, `PLUGIN_ID`, `PLUGIN_DIR`, `WORK_DIR`, `HOME`, `PYTHONUNBUFFERED` are now exported before the startup command runs inside the container
+- **Host environment cleanup for proot**: Removed host Termux-specific paths (`PREFIX`, `TMPDIR`, `TERMUX_*`) that contaminated the container; set clean container PATH and `PROOT_TMP_DIR`/`PROOT_L2S_DIR`
+- **Shell detection fixed**: `findShell()` now prioritizes `/bin/sh` and validates symlink targets to avoid broken symlinks (e.g., `/bin/bash` -> `/usr/bin/bash` in minimal Debian rootfs)
+- **`PluginInfo.getInstallCommand()` updated**: Package manager commands changed from `pkg install` to `apt install` with correct Debian package names
+
+### CUI Plugin Improvements
+
+- **Removed placeholder page**: CUI plugins no longer show "正在全屏终端执行命令" placeholder; terminal launches directly
+- **Startup command passed to terminal**: `SimpleTerminalActivity` now accepts an optional command via Intent extras; CUI plugins pass `backendPreCommand` with environment variable exports
+- **Host path used for plugin directory**: CUI terminal uses `/storage/emulated/0/UIN_Tool/plugins/<id>` (accessible via `/storage/emulated/0` bind mount) instead of non-existent `/plugins/<id>` container path
+
+### Plugin Icon Loading
+
+- **New `PluginIcon` composable**: Asynchronously loads plugin icons from `plugins/<id>/icon.png` using `BitmapFactory` on `Dispatchers.IO`, falls back to first letter of plugin name
+- **Applied to**: `PluginListItem`, `PluginGridItem` (ToolsScreen), `PluginManageItem` (PluginManageScreen)
+
+### Documentation Updates
+
+- Version updated to 6.0.0 (build 24) across all docs
+- Terminal section: "Based on Termux" → "Based on PRoot"
+- Package commands: `pkg` → `apt` throughout
+- Alpine → Debian references updated in active documentation
+- Changelog written for v6.0.0
+
+### Other Changes
+
+- `termux-shared` module retained (for `terminal-emulator` and `terminal-view` JNI) but significantly trimmed
+- Comments cleaned: `build.gradle` header changed from `// Termux/build.gradle` to `// UIN Tool/build.gradle`
+
+---
+
 ## [5.7.0] - 2026-08-31
 
 > This version focuses on **plugin distribution system restructuring, update detection, CI automation, and network cache optimization**: switches from single-repo-single-plugin model to source-based multi-plugin model, supports multi-source aggregation, automatic version update detection, GitHub Actions CI auto-build, and icon disk caching with HTTP conditional requests. Total of 50+ files modified, 2500+ lines added.

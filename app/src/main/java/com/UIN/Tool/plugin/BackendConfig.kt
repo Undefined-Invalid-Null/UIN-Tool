@@ -8,7 +8,7 @@ import android.content.SharedPreferences
  * 全局后端运行配置。
  *
  * 用户在插件管理页设置，对所有插件生效：
- * - 后端实现：内置简化版 Termux（默认，强制 proot Alpine 容器） / 实体 Termux（com.termux）
+ * - 后端实现：内置 proot（默认，Debian 容器） / 实体 Termux（com.termux）
  * - 实体 Termux 的后端环境：Termux 本机 / Proot 容器（需填容器名）
  * - 空闲自动回收时长（分钟，默认 5；0 = 无限时长永不回收；支持自定义分钟数）
  */
@@ -20,14 +20,14 @@ object BackendConfig {
     const val ENV_TERMUX = "termux"
     const val ENV_PROOT = "proot"
 
-    const val CONTAINER_DEFAULT = "alpine"
+    const val CONTAINER_DEFAULT = "debian"
     const val IDLE_TIMEOUT_DEFAULT_MIN = 5
 
     /** 空闲回收时长取值：0 表示无限时长（永不自动回收） */
     const val IDLE_TIMEOUT_INFINITE = 0
 
-    /** 内置简化版 Termux 的固定容器名（从 assets 离线恢复） */
-    const val BUILTIN_CONTAINER = "alpine"
+    /** 内置 proot 的固定容器名（从 assets 离线恢复） */
+    const val BUILTIN_CONTAINER = "debian"
 
     private const val PREFS = "uin_backend_prefs"
     private const val KEY_IMPL = "backend_impl"
@@ -79,7 +79,7 @@ object BackendConfig {
     }
 
     /**
-     * 内置简化版 Termux 强制使用 proot Alpine 容器，返回其容器名。
+     * 内置简化版强制使用 proot Debian 容器，返回其容器名。
      */
     fun getBuiltinContainer(): String = BUILTIN_CONTAINER
 

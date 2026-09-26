@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 5.7.0 |
-| 对应应用版本 | v5.7.0 (Build 23) |
-| 最后更新 | 2026年8月31日 |
+| 文档版本 | 6.0.0 |
+| 对应应用版本 | v6.0.0 (Build 24) |
+| 最后更新 | 2026年9月26日 |
 
 ---
 
@@ -149,7 +149,7 @@
    - **纯 WebView**：仅 HTML/CSS/JS，无后端
    - **WebView + 后端**：HTML/CSS/JS + 后端服务
    - **CUI 终端**：全屏终端中运行脚本（v4.5.0 新增）
-5. 如选择「WebView + 后端」，向导中填写**后端启动命令**（默认 `sh scripts/start.sh`），后端运行环境在「管理」页的「后端运行设置」中全局配置（内置 Termux / 实体 Termux）
+5. 如选择「WebView + 后端」，向导中填写**后端启动命令**（默认 `sh scripts/start.sh`），后端运行环境在「管理」页的「后端运行设置」中全局配置（内置 Debian 容器 / 实体 Termux）
 6. 按照向导完成配置
 
 ### 1.2 配置插件信息
@@ -604,7 +604,7 @@ window.addEventListener('destroy', () => { console.log('插件销毁'); });
 Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统命令执行等能力。v5.1.0 起后端运行架构重构为**统一的「启动命令」模式**：
 
 · 所有后端插件统一走 `backend: "other"` + `backendStartCommand` 单一路径，不再按语言解释器（python/node/php/…）区分启动方式
-· 运行环境由用户在软件内**全局设定**（内置 Termux / 实体 Termux），插件无需关心
+· 运行环境由用户在软件内**全局设定**（内置 Debian 容器 / 实体 Termux），插件无需关心
 · 宿主执行 `sh -lc "<启动命令>"`，并注入 `$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR` 等环境变量
 · 旧式后端（`backend: "python"` 等语言后端）在加载时自动迁移为启动命令模式，无需改动已发布插件
 
@@ -618,10 +618,10 @@ Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统�
 
 | 设置项 | 选项 | 说明 |
 |------|------|------|
-| **后端实现** | **内置 Termux**（默认） | 使用应用**内置的精简版 Termux**（无需安装任何东西），强制通过 **Proot 共享 Alpine 容器**（固定容器名 `alpine`）运行插件后端，实现环境隔离 |
-| | **实体 Termux** | 调用外部安装的 **Termux**（`com.termux`）的 `RUN_COMMAND` 服务运行插件后端，适合需要原生 Termux 生态（pip/npm/apk 等）的场景 |
+| **后端实现** | **内置 Debian 容器**（默认） | 使用应用**内置的 Debian 容器**（无需安装任何东西），通过 **Proot 共享 Debian 容器**（固定容器名 `debian`）运行插件后端，实现环境隔离 |
+| | **实体 Termux** | 调用外部安装的 **Termux**（`com.termux`）的 `RUN_COMMAND` 服务运行插件后端，适合需要原生 Termux 生态（pip/npm 等）的场景 |
 
-- **内置 Termux**：首装无需联网，Alpine rootfs 从应用 assets 离线恢复（约 19MB，一次性解压）；首次安装耗时不涉及网络
+- **内置 Debian 容器**：首装无需联网，Debian rootfs 从应用 assets 离线恢复（约 19MB，一次性解压）；首次安装耗时不涉及网络
 - **实体 Termux**：需要设备已安装 Termux，并完成一次初始化（见 5.2.4 初始化命令），否则启动失败会弹出引导
 
 #### 5.2.2 后端环境（仅实体 Termux）
@@ -629,10 +629,10 @@ Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统�
 | 设置项 | 选项 | 说明 |
 |------|------|------|
 | **后端环境** | **Termux 本机** | 直接在 Termux 原生环境中运行启动命令 |
-| | **Proot 容器** | 在 Proot 容器中运行（如 `alpine`、`ubuntu` 等），容器名可配置，需先在 Termux 中用 `proot-distro install <容器名>` 安装 |
+| | **Proot 容器** | 在 Proot 容器中运行（如 `debian`、`ubuntu` 等），容器名可配置 |
 
-- 选择 Proot 容器时需填写**容器名**（默认 `alpine`）；可用 `proot-distro list` 查看已安装容器
-- 内置 Termux **强制**走 Proot Alpine 容器，此设置项不适用
+- 选择 Proot 容器时需填写**容器名**（默认 `debian`）
+- 内置 Debian 容器**强制**走 Proot Debian 容器，此设置项不适用
 
 #### 5.2.3 空闲自动回收
 
@@ -641,7 +641,7 @@ Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统�
 | **空闲回收超时** | 3 / 5 / 10 / 15 分钟（默认 5）/ 无限 | 后端空闲超过该时长自动停止，节省资源；活动请求会刷新计时；支持自定义任意分钟数，选「无限」则永不自动回收 |
 
 - 停止时优先调用约定的 HTTP `/stop` 端点优雅退出（推荐在启动脚本里实现，见 5.6）
-- **内置 Termux**：额外按进程组 `SIGKILL` 终止
+- **内置 Debian 容器**：额外按进程组 `SIGKILL` 终止
 - **实体 Termux**：空闲回收由共享 supervisor 统一管理（见 5.2.5），按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树，**不依赖插件实现 `/stop`**；宿主只做端口探测与状态清理
 
 #### 5.2.4 实体 Termux 初始化命令
@@ -656,11 +656,11 @@ mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.propert
 1. 在 `~/.termux/termux.properties` 写入 `allow-external-apps=true`（允许外部应用通过 `RUN_COMMAND` 拉起 Termux）
 2. 执行 `termux-setup-storage` 授权存储访问
 3. `termux-reload-settings` 重载配置
-> 启动失败时宿主会自动探测缺失项并给出对应引导（`allow-external-apps`、`termux-setup-storage`、`proot-distro install`、`RUN_COMMAND` 权限）。
+> 启动失败时宿主会自动探测缺失项并给出对应引导（`allow-external-apps`、`termux-setup-storage`、`RUN_COMMAND` 权限）。
 
 #### 5.2.5 实体 Termux 共享 Supervisor
 
-实体 Termux（proot 或本机模式）改用**单个常驻共享 supervisor**：容器/会话只初始化一次，所有插件后端作为 supervisor 的子进程运行，后续插件启动省掉 proot 初始化开销（冷启动约 5s）。内置 Termux（alpine，约 2s）保持不变（每插件独立 proot）。
+实体 Termux（proot 或本机模式）改用**单个常驻共享 supervisor**：容器/会话只初始化一次，所有插件后端作为 supervisor 的子进程运行，后续插件启动省掉 proot 初始化开销（冷启动约 5s）。内置 Debian 容器（debian，约 2s）保持不变（每插件独立 proot）。
 
 - 通信协议（控制目录 `<plugins根>/.uin/`）：`cmd/<key>.cmd`（启动命令）、`pid/<key>`（后端 PID）、`stop/<key>`（停止请求）、`idle/<key>`（空闲分钟数）、`idle/<key>.start`（启动时间戳）、`alive`（supervisor 存活标记）、`host_alive`（宿主心跳，每 30s touch，超时 300s supervisor 自退）、`shutdown`（退出标记）、`keep_alive`（后台保活标记）
 - proot 启动：`proot-distro login <container> --bind '<plugins根>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`
@@ -675,7 +675,7 @@ mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.propert
 
 插件打开后，宿主按全局设置选择执行路径：
 
-- **内置 Termux**：`proot-distro login alpine --bind <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`，插件目录以只读绑定挂载进容器
+- **内置 Debian 容器**：`proot --link2symlink -0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`，插件目录以只读绑定挂载进容器
 - **实体 Termux + Termux 本机**：`/bin/bash -lc "<启动命令>"`（工作目录 = 插件目录）
 - **实体 Termux + Proot 容器**：`proot-distro login <容器名> --bind <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`
 
@@ -704,7 +704,7 @@ your-plugin/
 # 宿主已注入环境变量：PORT（动态端口）、PLUGIN_ID、PLUGIN_DIR、WORK_DIR
 set -e
 cd "$(dirname "$0")"
-# ---- 依赖检测：动态查找解释器，环境无关（Termux 用 pkg，容器用 apk） ----
+# ---- 依赖检测：动态查找解释器，环境无关（用 apt/dpkg 或 apt） ----
 if ! command -v python3 >/dev/null 2>&1; then
     echo "[start.sh] python3 not found, installing..."
     pkg install python -y 2>/dev/null || apk add python3 -y 2>/dev/null || {
@@ -853,21 +853,21 @@ function callBackend() {
 
 **环境变量注入方式（按运行环境）**
 
-- **内置 Termux（proot Alpine 容器）**：宿主通过 `ProcessBuilder` 进程环境注入（含 `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR` 及 Termux 专有变量），再以 `proot-distro login alpine --bind <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器；容器继承进程环境。后端实际运行时位于容器内，`PLUGIN_DIR`/`WORK_DIR` 为 `/plugins/{pluginId}`。
+- **内置 Debian 容器（proot）**：宿主通过 `ProcessBuilder` 进程环境注入（含 `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR`），再以 `proot --link2symlink -0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器；容器继承进程环境。后端实际运行时位于容器内，`PLUGIN_DIR`/`WORK_DIR` 为 `/plugins/{pluginId}`。
 - **实体 Termux 本机**：宿主发起 `com.termux.RUN_COMMAND`，由于 intent **无环境变量通道**，宿主会把环境变量内联进 `sh -lc` 命令字符串（`export PORT=...; export PLUGIN_ID=...; cd <插件目录> && <启动命令>`）。
 - **实体 Termux proot 容器**：同上，在 `sh -lc` 内联注入后由 `proot-distro login <容器> --bind <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器。
 
 **运行环境约束（实体 Termux）**
 
 - 需在实体 Termux 中设置 `allow-external-apps=true`（`.termux/termux.properties`）、执行 `termux-setup-storage` 授予存储权限，并授予 `com.termux.permission.RUN_COMMAND`。插件位于共享存储（`/storage/emulated/0/UIN_Tool/plugins/`），Termux 需能读取该目录。
-- 实体 Termux 的进程**无法被宿主跨应用终止**，停止后端只能靠后端自己响应 `/stop` 端点退出——因此实体 Termux 后端**必须实现 `/stop`**（内置 Termux 在 `/stop` 之外还会按进程组 `SIGKILL` 兜底）。
+- 实体 Termux 的进程**无法被宿主跨应用终止**，停止后端只能靠后端自己响应 `/stop` 端点退出——因此实体 Termux 后端**必须实现 `/stop`**（内置 Debian 容器在 `/stop` 之外还会按进程组 `SIGKILL` 兜底）。
 - 实体 Termux 后端冷启动较慢（尤其 proot 容器），就绪超时已按 `max(backendTimeout, 60/120)` 放宽，超时未就绪时宿主会提示但**不会自动杀掉已启动的进程**（内置版若进程已退出则会清理）。
 
 **后端生命周期**
 
 - 插件打开 → 宿主自动启动后端（`backendAutoStart: true`）；实体 Termux 由共享 supervisor 统一管理（见 5.2.5），首次启动约 5s 初始化容器/会话，后续插件启动即时可用
 - 就绪判定：先做 TCP 端口探测（500ms 连接超时），端口打开后再发 **GET** 健康检查（不用 HEAD，避免 501），返回 200 即视为就绪；每 200ms 重试直到超时
-- 插件关闭 → 宿主调用 `GET http://127.0.0.1:<port>/stop` 优雅退出（内置 Termux 额外按进程组终止进程；实体 Termux 由 supervisor 按 PID 递归杀进程树）
+- 插件关闭 → 宿主调用 `GET http://127.0.0.1:<port>/stop` 优雅退出（内置 Debian 容器额外按进程组终止进程；实体 Termux 由 supervisor 按 PID 递归杀进程树）
 - 空闲回收：后端超过「空闲回收超时」（全局设置，默认 5 分钟，预设 3/5/10/15 分钟或自定义任意分钟数；设为「无限」则永不自动回收）未被调用时自动停止；WebView 直连请求也会刷新计时，防止误回收。**实体 Termux**：由共享 supervisor 按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树（不依赖插件实现 `/stop`）；宿主只做端口探测与状态清理。「无限」时不写 idle 文件，后端只在主动停止时结束
 
 
@@ -926,7 +926,7 @@ plugin.tpk
 | `entry` | CUI 插件没有页面入口，留空 |
 | `backendPreCommand` | **启动命令**：插件每次打开时，在插件目录中执行 `bash -lc "<此命令>"`。必须用 `export PLUGIN_ID=... PLUGIN_DIR=$(pwd)` 自行注入环境变量，因为终端会话不会自动注入 |
 | `backend` | 可选。填 `""` 表示纯终端；也可配合后端字段同时启动一个 HTTP 后端 |
-| `backendRuntime` | `"termux"`（默认）或 `"proot"`（在 Alpine 容器中执行） |
+| `backendRuntime` | `"termux"`（默认）或 `"proot"`（在 Debian 容器中执行） |
 
 ### 6.3 创建 CUI 插件（向导）
 
@@ -1001,15 +1001,15 @@ python3 scripts/tool.py
 ### 6.5 运行流程与生命周期
 
 1. 用户打开 CUI 插件 → `PluginHostActivity` 显示占位视图：「正在打开全屏终端执行命令...」
-2. 宿主按全局「后端运行设置」选择执行环境：内置 Termux 走环境流水线（Termux 就绪 → Alpine 就绪，若配置了 `backendRuntime: "proot"`）；实体 Termux 直接调用 `RUN_COMMAND`
-3. 通过 `RunCommandService` 以 `bash -lc "<启动命令>"`（`backendPreCommand`）在插件目录启动**全屏终端会话**，前台直接拉起 `TermuxActivity` / `com.termux` 全屏终端（不再依赖悬浮窗权限）；启动命令留空时以 `bash -l` 打开交互式登录 Shell
+2. 宿主按全局「后端运行设置」选择执行环境：内置 Debian 容器走环境流水线（Debian 就绪，若配置了 `backendRuntime: "proot"`）；实体 Termux 直接调用 `RUN_COMMAND`
+3. 通过 `RunCommandService` 以 `bash -lc "<启动命令>"`（`backendPreCommand`）在插件目录启动**全屏终端会话**，前台直接拉起 `SimpleTerminalActivity` / `com.termux` 全屏终端（不再依赖悬浮窗权限）；启动命令留空时以 `bash -l` 打开交互式登录 Shell
 4. 终端会话独立于插件页存活：脚本/Shell 退出即关闭；插件页关闭**不会**强制杀死终端（会话归 TermuxService 管理）
 
 ### 6.6 CUI 与后端/Proot 的关系
 
 - **纯 CUI**：`backend` 留空，只有终端，无 HTTP 后端
 - **CUI + 后端**：`backend: "other"` + `backendStartCommand` + `backendAutoStart: true`，宿主在拉起终端的同时后台启动后端
-- **CUI + Proot**：`backendRuntime: "proot"`，启动命令在 Alpine 容器内执行，适合需要隔离环境的场景
+- **CUI + Proot**：`backendRuntime: "proot"`，启动命令在 Debian 容器内执行，适合需要隔离环境的场景
 - **CUI + other**：`backend: "other"` 时宿主不自动启动后端，启动命令通常是常驻服务，由终端自行拉起
 
 注意：CUI 的 `backendPreCommand` 是「每次打开都执行的启动命令」，与 Web 插件后端的 `backendStartCommand`（宿主后台 `sh -lc` 执行，用于启动 HTTP 服务）语义不同。
@@ -1983,12 +1983,12 @@ plugin.tpk
 | `backendStartCommand` | string | `""` | web+后端✅ | **启动命令**：宿主以 `sh -lc` 在插件目录执行（依赖检测 + 启动后端）。留空时默认 `sh scripts/start.sh`。宿主注入 `$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR`。 |
 | `backendStartEntry` | string | `scripts/start.sh` | ❌ | 启动脚本在插件目录内的相对路径。 |
 | `backendAutoStart` | boolean | `true` | ❌ | 打开插件时是否自动启动后端。 |
-| `backendTimeout` | int | `30` | ❌ | 后端就绪等待超时（秒）。实际生效值按运行环境放宽（见 5.6）：内置 Termux 恒为 proot 容器 → `max(backendTimeout, 120)` 秒；实体 Termux proot → `max(backendTimeout, 120)` 秒；实体 Termux 本机 → `max(backendTimeout, 60)` 秒。 |
+| `backendTimeout` | int | `30` | ❌ | 后端就绪等待超时（秒）。实际生效值按运行环境放宽（见 5.6）：内置 Debian 容器恒为 proot 容器 → `max(backendTimeout, 120)` 秒；实体 Termux proot → `max(backendTimeout, 120)` 秒；实体 Termux 本机 → `max(backendTimeout, 60)` 秒。 |
 | `backendHealthCheck` | string | `/health` | ❌ | 健康检查端点路径。宿主轮询该路径返回 200 即视为就绪。 |
 | `backendMaxRetries` | int | `3` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未实现重试逻辑（失败即提示，不自动重试）。 |
 | `backendLogLevel` | string | `info` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未按其切换日志级别（日志固定输出，不读取该值）。 |
 | `backendKeepAlive` | boolean | `false` | ❌ | 插件关闭后是否保持后端运行。`true` 时宿主不在 onDestroy 时停止后端。 |
-| `backendEnv` | object | `{}` | ❌ | **注意：当前不读取该 JSON 字段，且 `fromJson()`/`toJson()` 尚未读写它，写在 plugin.json 中不会生效**（仅能由宿主程序内部设置）。透传行为分环境：内置 Termux 经 `ProcessBuilder` 进程环境注入，proot 容器继承该环境生效；**实体 Termux 走 `RUN_COMMAND` intent，无环境变量通道，`backendEnv` 完全不透传**——需要变量时请直接写进 `backendStartCommand`（如 `export KEY=value; ...`）。 |
+| `backendEnv` | object | `{}` | ❌ | **注意：当前不读取该 JSON 字段，且 `fromJson()`/`toJson()` 尚未读写它，写在 plugin.json 中不会生效**（仅能由宿主程序内部设置）。透传行为分环境：内置 Debian 容器经 `ProcessBuilder` 进程环境注入，proot 容器继承该环境生效；**实体 Termux 走 `RUN_COMMAND` intent，无环境变量通道，`backendEnv` 完全不透传**——需要变量时请直接写进 `backendStartCommand`（如 `export KEY=value; ...`）。 |
 
 > 旧式字段（仍可被读取并在加载时自动迁移，不建议新插件使用）：`backendRuntime`（`termux`/`proot`）、`backendPort`、`backendEntry`、`backendPreCommand`、`backendBinary`、`backendInstallCmd`、`backendCheckCmd`、`backendPhpDocRoot`、`backendJavaClass`、`backendJavaJar`、`backendArgs`。
 
@@ -2212,7 +2212,7 @@ UIN Tool 内置完整的终端环境，核心引擎基于 Termux 改编。
 | 多窗口 | Android 7.0+ 多窗口支持（新建窗口按钮） |
 | 安全模式 | 新建会话可开启安全模式 |
 
-终端环境变量：`HOME=/data/data/com.UIN.Tool/files/home`、`PREFIX=/data/data/com.UIN.Tool/files/usr`、`TMPDIR=$PREFIX/tmp`、`PATH=$PREFIX/bin` 等。会话由 `TermuxService`（前台服务 + 通知）管理，`TermuxActivity` 销毁/重建不会中断会话。
+终端环境变量：`HOME=/data/data/com.UIN.Tool/files/home`、`PREFIX=/data/data/com.UIN.Tool/files/usr`、`TMPDIR=$PREFIX/tmp`、`PATH=$PREFIX/bin` 等。会话由 `TermuxService`（前台服务 + 通知）管理，`SimpleTerminalActivity` 销毁/重建不会中断会话。
 
 ### 14.3 常用命令
 

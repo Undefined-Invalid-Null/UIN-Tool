@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-5.7.0-blue)
-![Build](https://img.shields.io/badge/build-23-green)
+![Version](https://img.shields.io/badge/version-6.0.0-blue)
+![Build](https://img.shields.io/badge/build-24-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -9,7 +9,7 @@
 
 ## App Introduction
 
-UIN Tool is an Android plugin framework application rebuilt with Kotlin + Jetpack Compose, allowing users to dynamically load and run third-party plugins. Whether it's native Java plugins or Web technology stack (HTML/CSS/JS) plugins, they can run seamlessly in UIN Tool. It provides a complete plugin ecosystem, including plugin development, management, runtime, permission control, and **Termux backend integration**.
+UIN Tool is an Android plugin framework application rebuilt with Kotlin + Jetpack Compose, allowing users to dynamically load and run third-party plugins. Whether it's native Java plugins or Web technology stack (HTML/CSS/JS) plugins, they can run seamlessly in UIN Tool. It provides a complete plugin ecosystem, including plugin development, management, runtime, permission control, and **PRoot container backend**.
 
 ### Core Philosophy
 
@@ -20,14 +20,14 @@ UIN Tool is an Android plugin framework application rebuilt with Kotlin + Jetpac
 - **Flexible**: Supports grid/list view switching, supports category management
 - **Modern**: Built on Jetpack Compose, Material 3 design language, supports neumorphism style
 - **Internationalized**: Supports in-app language switching without changing system language
-- **Powerful**: Built-in Termux terminal environment, supports Python/Node.js/PHP backends
+- **Powerful**: Built-in PRoot Linux environment, supports Python/Node.js/PHP backends
 - **Persistent**: Plugin data independently stored, user data automatically preserved on updates
 
 ---
 
-## Terminal Features (Based on Termux)
+## Terminal Features (Based on PRoot)
 
-UIN Tool **includes a complete terminal environment**, with its core engine adapted from [Termux](https://github.com/termux/termux-app), providing users with a powerful Linux command-line experience.
+UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://github.com/proot-me/proot) for user-space Linux without root access.
 
 ### Terminal Features
 
@@ -53,19 +53,19 @@ UIN Tool **includes a complete terminal environment**, with its core engine adap
 
 ### Termux Acknowledgments
 
-> The terminal feature implementation is based on the [Termux](https://github.com/termux/termux-app) project, a well-known Android terminal emulator and Linux environment. UIN Tool has adapted and enhanced Termux's core code, seamlessly integrating it into the plugin framework. Thanks to the Termux team for their open-source contribution!
+> The terminal feature uses PRoot for user-space Linux environments. The `terminal-emulator` and `terminal-view` modules are adapted from the [Termux](https://github.com/termux/termux-app) project. Thanks to the Termux team for their open-source contribution!
 
 ---
 
 ## Version Information
 
-### Current Version: v5.7.0 (Build 23)
+### Current Version: v6.0.0 (Build 24)
 
 | Item | Info |
 |------|------|
-| Version Number | 5.7.0 |
-| Version Code | 23 |
-| Update Date | August 31, 2026 |
+| Version Number | 6.0.0 |
+| Version Code | 24 |
+| Update Date | September 26, 2026 |
 | Minimum Android Version | 6.0 (API 23) |
 | Target Android Version | 9 (API 28) |
 | Compile SDK Version | 36 (Android 16) |
@@ -75,6 +75,7 @@ UIN Tool **includes a complete terminal environment**, with its core engine adap
 
 | Version | Build | Date | Highlights |
 |---------|-------|------|------------|
+| v6.0.0 | 24 | 2026-09-26 | Remove Termux dependency, PRoot container system, container management UI, rootfs export compression level |
 | v5.7.0 | 23 | 2026-08-31 | Multi-source repo aggregation, plugin icon caching, incremental CI build, UI refinements |
 | v5.6.0 | 22 | 2026-08-28 | Neumorphism style, multilingual switching, translucent effect control |
 | v5.5.0 | 21 | 2026-08-22 | Crash fixes, clipboard pseudo-permissions, development wizard completion, real Termux shared supervisor |
@@ -111,14 +112,14 @@ UIN Tool **includes a complete terminal environment**, with its core engine adap
 | GitHub Acceleration | Custom Mirrors | Implemented | Manual mirror addition |
 | GitHub Acceleration | Import/Export | Implemented | TXT format |
 | GitHub Acceleration | CDN Acceleration | Implemented | Toggleable |
-| Terminal (Termux) | Terminal Emulator | Implemented | Based on Termux adaptation |
-| Terminal (Termux) | Linux Environment | Implemented | APT package management |
-| Terminal (Termux) | Multi-Session Support | Implemented | Multiple sessions simultaneously |
-| Terminal (Termux) | Multi-Window Support | Implemented | Android 7.0+ |
-| Terminal (Termux) | Terminal Settings | Implemented | Font/color/shortcuts |
-| Backend Integration | Python Backend | Implemented | Auto-starts Termux Python |
-| Backend Integration | Node.js Backend | Implemented | Auto-starts Termux Node.js |
-| Backend Integration | PHP Backend | Implemented | Auto-starts Termux PHP |
+| Terminal | Terminal Emulator | Implemented | Based on PRoot |
+| Terminal | Linux Environment | Implemented | APT package management |
+| Terminal | Multi-Session Support | Implemented | Multiple sessions simultaneously |
+| Terminal | Multi-Window Support | Implemented | Android 7.0+ |
+| Terminal | Terminal Settings | Implemented | Font/color/shortcuts |
+| Backend Integration | Python Backend | Implemented | Auto-starts Python |
+| Backend Integration | Node.js Backend | Implemented | Auto-starts Node.js |
+| Backend Integration | PHP Backend | Implemented | Auto-starts PHP |
 | Backend Integration | Binary Backend | Implemented | Select executable files |
 | Backend Integration | Health Check | Implemented | /health endpoint |
 | Backend Integration | Process Management | Implemented | Auto-start/stop |

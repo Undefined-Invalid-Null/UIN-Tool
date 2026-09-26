@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#2A2A2A"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="8dp">
+
+    <EditText
+        android:id="@+id/rename_input"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#363636"
+        android:textColor="#E8E8E8"
+        android:textColorHint="#A8A8A8"
+        android:textSize="14sp"
+        android:paddingHorizontal="16dp"
+        android:singleLine="true"
+        android:imeOptions="actionDone"
+        android:inputType="text" />
+
+</LinearLayout>
