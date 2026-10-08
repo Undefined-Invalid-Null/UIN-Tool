@@ -27,7 +27,6 @@ sealed class Destinations(val route: String) {
     object PluginManage : Destinations("plugin_manage")
     object PermissionManager : Destinations("permission_manager")
     object PluginPermission : Destinations("plugin_permission")
-    object PermissionExplain : Destinations("permission_explain")
     object LogViewer : Destinations("log_viewer")
     object Backup : Destinations("backup")
     object UIConfig : Destinations("ui_config")

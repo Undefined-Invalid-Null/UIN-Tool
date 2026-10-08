@@ -18,23 +18,44 @@ object FakeSysdata {
 
     private const val FAKE_LOADAVG = "0.12 0.07 0.02 2/165 765\n"
 
-    private const val FAKE_STAT = """cpu  1957 0 2877 93280 262 342 254 87 0 0
-cpu0 31 0 226 12027 82 10 4 9 0 0
-cpu1 45 0 664 11144 21 263 233 12 0 0
-cpu2 494 0 537 11283 27 10 3 8 0 0
-cpu3 359 0 234 11723 24 26 5 7 0 0
-cpu4 295 0 268 11772 10 12 2 12 0 0
-cpu5 270 0 251 11833 15 3 1 10 0 0
-cpu6 430 0 520 11386 30 8 1 12 0 0
-cpu7 30 0 172 12108 50 8 1 13 0 0
-intr 127541 38 290 0 0 0 0 4 0 1 0 0 25329 258 0 5777 277 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-ctxt 140223
-btime 1680020856
-processes 772
-procs_running 2
-procs_blocked 0
-softirq 75663 0 5903 6 25375 10774 0 243 11685 0 21677
-"""
+    /**
+     * D-37：/proc/stat 按**真实核数**生成（原先写死 8 核，
+     * 4 核真机上 nproc=8 会让 make -j 等过度并行、观感与调度都不对）。
+     */
+    private val FAKE_STAT: String by lazy { buildFakeStat() }
+
+    private fun buildFakeStat(): String {
+        val cpus = Runtime.getRuntime().availableProcessors().coerceIn(1, 64)
+        val total = LongArray(10)
+        val perCpu = ArrayList<String>(cpus)
+        for (i in 0 until cpus) {
+            val user = 30L + (i * 17) % 400
+            val nice = 0L
+            val system = 10L + (i * 7) % 60
+            val idle = 11_000L + (i * 137) % 900
+            val ioWait = 10L + i % 5
+            val irq = 20L + i % 7
+            val softirq = 5L + i % 4
+            val steal = 0L
+            val guest = 0L
+            val guestNice = 0L
+            val values = longArrayOf(user, nice, system, idle, ioWait, irq, softirq, steal, guest, guestNice)
+            perCpu.add("cpu$i " + values.joinToString(" "))
+            for (j in values.indices) total[j] += values[j]
+        }
+        val aggregate = "cpu  " + total.joinToString(" ")
+        return (listOf(aggregate) + perCpu + listOf(TAIL_LINES)).joinToString("\n") + "\n"
+    }
+
+    private val TAIL_LINES = """
+        |intr 127541 38 290 0 0 0 0 4 0 1 0 0 25329 258 0 5777 277 0 0
+        |ctxt 140223
+        |btime 1680020856
+        |processes 772
+        |procs_running 2
+        |procs_blocked 0
+        |softirq 75663 0 5903 6 25375 10774 0 243 11685 0 21677
+    """.trimMargin()
 
     private const val FAKE_UPTIME = "124.08 932.80\n"
 
@@ -93,7 +114,9 @@ pgreuse 19230
 oom_kill 0
 """
 
-    private const val FAKE_VERSION = "Linux version 6.2.1-android14-9-gcff1ef7 (proot@uin-tool) (gcc (Ubuntu 13.2.0-23ubuntu4) 13.2.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #1 SMP PREEMPT\n"
+    // D-37：内核串与 ProotRuntime.DEFAULT_KERNEL_RELEASE(6.17.0-UIN-Tool) 对齐，
+    // 原先 fake version 写 6.2.1 与 --kernel-release 报的 6.17.0 互相打架
+    private const val FAKE_VERSION = "Linux version 6.17.0-UIN-Tool (proot@uin-tool) (gcc (Ubuntu 13.2.0-23ubuntu4) 13.2.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #1 SMP PREEMPT_DYNAMIC\n"
 
     private data class FakeEntry(
         val filename: String,

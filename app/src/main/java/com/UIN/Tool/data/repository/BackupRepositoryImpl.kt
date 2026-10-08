@@ -64,9 +64,9 @@ class BackupRepositoryImpl(
                     ?: emptyList()
 
                 _backups.value = backups
-                Logger.i(TAG, Str.get(R.string.loading_backups_size_backup_file_s, backups.size))
+                Logger.i(TAG, "Loading ${backups.size} backup file(s)")
             } catch (e: Exception) {
-                Logger.e(TAG, Str.get(R.string.failed_to_load_backup_list), e)
+                Logger.e(TAG, "Failed to load backup list", e)
             }
         }
     }
@@ -80,7 +80,7 @@ class BackupRepositoryImpl(
                 JSONObject(content)
             }
         } catch (e: Exception) {
-            Logger.w(TAG, Str.get(R.string.failed_to_read_backup_manifest, e.message ?: ""))
+            Logger.w(TAG, "Failed to read backup manifest: ${e.message ?: ""}")
             null
         }
     }
@@ -108,7 +108,7 @@ class BackupRepositoryImpl(
                 progress(Str.get(R.string.backing_up_plugins_plugins_size, plugins.size))
                 val pluginDir = File(Constants.PLUGIN_DIR)
                 if (pluginDir.exists() && !fileManager.copyDirectory(pluginDir, pluginsStage)) {
-                    Logger.e(TAG, Str.get(R.string.backup_creation_failed))
+                    Logger.e(TAG, "Backup creation failed")
                     return@withContext null
                 }
 
@@ -132,15 +132,15 @@ class BackupRepositoryImpl(
                         pluginCount = plugins.size
                     )
                     _backups.value = (_backups.value + backupInfo).sortedByDescending { it.date }
-                    Logger.success(TAG, Str.get(R.string.backup_created_backupfile_name, backupFile.name))
+                    Logger.success(TAG, "Backup created: ${backupFile.name}")
                     progress(Str.get(R.string.backup_complete))
                     return@withContext backupInfo
                 } else {
-                    Logger.e(TAG, Str.get(R.string.backup_creation_failed))
+                    Logger.e(TAG, "Backup creation failed")
                     return@withContext null
                 }
             } catch (e: Exception) {
-                Logger.e(TAG, Str.get(R.string.failed_to_create_backup), e)
+                Logger.e(TAG, "Failed to create backup", e)
                 return@withContext null
             } finally {
                 stageDir?.let { fileManager.deleteRecursively(it) }
@@ -153,6 +153,9 @@ class BackupRepositoryImpl(
             var tempDir: File? = null
             var stageDir: File? = null
             var oldDir: File? = null
+            // G-03：顶替是否已发生 —— 回滚条件靠它判断（原条件 stageDir!=null && oldDir!=null
+            // 在成功置 null 之后恒为假，回滚实为死代码）
+            var swapped = false
             try {
                 progress(Str.get(R.string.preparing_restore))
 
@@ -161,7 +164,7 @@ class BackupRepositoryImpl(
 
                 progress(Str.get(R.string.extracting_backup_file))
                 if (!fileManager.unzipFile(backup.file, tempDir)) {
-                    Logger.e(TAG, Str.get(R.string.failed_to_extract_backup))
+                    Logger.e(TAG, "Failed to extract backup")
                     return@withContext false
                 }
 
@@ -182,7 +185,7 @@ class BackupRepositoryImpl(
                 stageDir = File(Constants.TEMP_DIR, "restore_stage_${System.currentTimeMillis()}")
                 stageDir.mkdirs()
                 if (!fileManager.copyDirectory(pluginsRoot, stageDir)) {
-                    Logger.e(TAG, Str.get(R.string.failed_to_stage_backup_content))
+                    Logger.e(TAG, "Failed to stage backup content")
                     return@withContext false
                 }
 
@@ -192,19 +195,21 @@ class BackupRepositoryImpl(
                 oldDir = File(oldName)
                 if (pluginDir.exists()) {
                     if (!pluginDir.renameTo(oldDir)) {
-                        Logger.e(TAG, Str.get(R.string.failed_to_atomically_swap_plugin_dir))
+                        Logger.e(TAG, "Failed to atomically replace plugin directory")
+                        oldDir = null
                         return@withContext false
                     }
                 }
                 if (!stageDir.renameTo(pluginDir)) {
                     // 顶替失败：回滚旧目录
-                    Logger.e(TAG, Str.get(R.string.failed_to_atomically_swap_plugin_dir))
+                    Logger.e(TAG, "Failed to atomically replace plugin directory")
                     if (oldDir.exists()) oldDir.renameTo(pluginDir)
+                    oldDir = null
                     return@withContext false
                 }
                 stageDir = null
-                oldDir?.let { fileManager.deleteRecursively(it) }
-                oldDir = null
+                swapped = true
+                // G-03：oldDir 保留到后续步骤全部成功后再清理，中途异常才有东西可回滚
 
                 progress(Str.get(R.string.refreshing_plugin_list))
                 pluginManager.refreshPlugins()
@@ -215,20 +220,29 @@ class BackupRepositoryImpl(
 
                 loadBackups()
 
-                Logger.success(TAG, Str.get(R.string.backup_restore_successful))
+                // 恢复全流程成功 → 才回收被顶替的旧目录
+                oldDir?.let { fileManager.deleteRecursively(it) }
+                oldDir = null
+
+                Logger.success(TAG, "Backup restore successful")
                 progress(Str.get(R.string.restore_complete))
                 return@withContext true
             } catch (e: Exception) {
-                Logger.e(TAG, Str.get(R.string.failed_to_restore_backup), e)
-                // 回滚：如果已顶替但后续异常，恢复旧目录
+                Logger.e(TAG, "Failed to restore backup", e)
+                // G-03：状态机回滚 —— 已顶替且旧目录仍在时，删除新目录并把旧目录改名还原
                 try {
-                    val pluginDir = File(Constants.PLUGIN_DIR)
-                    if (stageDir != null && stageDir.exists() && oldDir != null && oldDir.exists()) {
+                    if (swapped && oldDir != null && oldDir.exists()) {
+                        val pluginDir = File(Constants.PLUGIN_DIR)
                         fileManager.deleteRecursively(pluginDir)
-                        oldDir.renameTo(pluginDir)
+                        if (oldDir.renameTo(pluginDir)) {
+                            Logger.i(TAG, "restore: rollback succeeded, previous plugin dir restored")
+                            oldDir = null
+                        } else {
+                            Logger.e(TAG, "Failed to rollback restore")
+                        }
                     }
                 } catch (rollback: Exception) {
-                    Logger.e(TAG, Str.get(R.string.failed_to_rollback_restore), rollback)
+                    Logger.e(TAG, "Failed to rollback restore", rollback)
                 }
                 return@withContext false
             } finally {
@@ -250,12 +264,12 @@ class BackupRepositoryImpl(
             if (!entry.isDirectory) continue
             val pluginId = entry.name
             if (!pluginId.isValidPluginId()) {
-                Logger.e(TAG, Str.get(R.string.invalid_plugin_id_format_pluginid, pluginId))
+                Logger.e(TAG, "Invalid plugin ID format: $pluginId")
                 return Str.get(R.string.backup_contains_invalid_plugin_id_pluginid, pluginId)
             }
             val configFile = File(entry, Constants.PLUGIN_CONFIG_FILE)
             if (!configFile.exists() || !configFile.isFile) {
-                Logger.e(TAG, Str.get(R.string.missing_plugin_json))
+                Logger.e(TAG, "Missing plugin.json")
                 return Str.get(R.string.backup_plugin_missing_config_pluginid, pluginId)
             }
             val info = try {
@@ -275,12 +289,12 @@ class BackupRepositoryImpl(
             try {
                 if (backup.file.delete()) {
                     _backups.value = _backups.value.filter { it.file != backup.file }
-                    Logger.success(TAG, Str.get(R.string.deleting_backup_backup_name, backup.name))
+                    Logger.success(TAG, "Deleting backup: ${backup.name}")
                     return@withContext true
                 }
                 return@withContext false
             } catch (e: Exception) {
-                Logger.e(TAG, Str.get(R.string.failed_to_delete_backup), e)
+                Logger.e(TAG, "Failed to delete backup", e)
                 return@withContext false
             }
         }

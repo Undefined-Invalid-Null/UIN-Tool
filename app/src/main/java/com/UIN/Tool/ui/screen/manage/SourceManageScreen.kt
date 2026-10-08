@@ -31,7 +31,7 @@ import org.json.JSONObject
 @Composable
 fun SourceManageScreen() {
     val context = LocalContext.current
-    val preferenceManager = remember { PreferenceManager(context) }
+    val preferenceManager = remember { com.UIN.Tool.core.di.ServiceLocator.getPreferenceManager() }
     
     var sources by remember { mutableStateOf<List<SourceInfo>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }

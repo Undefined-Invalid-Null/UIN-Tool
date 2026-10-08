@@ -11,8 +11,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
@@ -24,15 +25,16 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -45,21 +47,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selectableGroup
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.UIN.Tool.R
 import com.UIN.Tool.core.di.ServiceLocator
-import com.UIN.Tool.core.update.UpdateChecker
-import com.UIN.Tool.core.update.UpdateDownloader
 import com.UIN.Tool.data.local.PreferenceManager
-import com.UIN.Tool.domain.model.ReleaseInfo
-import com.UIN.Tool.domain.repository.IConfigRepository
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginHostActivity
 import com.UIN.Tool.plugin.PluginManager
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.UpdateDialog
 import com.UIN.Tool.ui.components.unified.UnifiedAlertDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
@@ -69,20 +71,21 @@ import com.UIN.Tool.ui.screen.manage.ManageScreen
 import com.UIN.Tool.ui.screen.repo.RepoScreen
 import com.UIN.Tool.ui.screen.tools.ToolsScreen
 import com.UIN.Tool.ui.theme.UINToolTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.UIN.Tool.ui.viewmodel.UpdateViewModel
 import com.UIN.Tool.ui.theme.dynamicColor
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.components.unified.NeuDefaults
 import com.UIN.Tool.ui.components.unified.neuRaised
 import com.UIN.Tool.utils.AppLog
-import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.CrashLogUtils
+import com.UIN.Tool.utils.formatFileSize
 import com.UIN.Tool.utils.UIConfig
 import java.io.File
-import java.time.LocalDate
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
@@ -93,7 +96,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private val pluginManager: PluginManager by lazy { ServiceLocator.getPluginManager() }
-    private val configRepository: IConfigRepository by lazy { ServiceLocator.getConfigRepository() }
     
     private lateinit var preferenceManager: PreferenceManager
     private var selectedTab by mutableStateOf(1)
@@ -112,7 +114,7 @@ class MainActivity : ComponentActivity() {
             checkAndSetWorkFolder()
         } else {
             AppLog.w(TAG, Str.get(R.string.storage_permission_denied))
-            android.widget.Toast.makeText(this, Str.get(R.string.storage_permission_is_required_for_n), android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(this, Str.get(R.string.storage_permission_is_required_for), android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -122,22 +124,31 @@ class MainActivity : ComponentActivity() {
         val hasCrashed = CrashLogUtils.shouldNavigateToLogs(this)
         if (hasCrashed) {
             CrashLogUtils.clearNavigateFlag(this)
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            // B-15：原 Handler.postDelayed 未在 onDestroy 移除，Activity 已销毁仍会 startActivity；
+            // 改 lifecycleScope（随销毁自动取消）并补 isDestroyed/isFinishing 双保险
+            lifecycleScope.launch {
+                delay(500)
+                if (isDestroyed || isFinishing) return@launch
                 try {
-                    startActivity(Intent(this, DevToolsActivity::class.java).apply {
+                    startActivity(Intent(this@MainActivity, DevToolsActivity::class.java).apply {
                         putExtra("auto_open", true)
                     })
                 } catch (e: Exception) {
                     AppLog.e(TAG, Str.get(R.string.failed_to_open_log_page), e)
                 }
-            }, 500)
+            }
         }
 
         preferenceManager = PreferenceManager(this)
 
-        UIConfig.init(this)
-        val uiConfig = UIConfig.getInstance()
-        applyTheme(uiConfig)
+        // B-17：UIConfig.init 在 UinApplication 里失败只记日志就被吞了，
+        // 这里直接 getInstance() 会在 onResume/onCreate 抛 IllegalStateException（启动即崩且无归因）
+        try {
+            UIConfig.init(this)
+        } catch (e: Exception) {
+            AppLog.e(TAG, Str.get(R.string.uiconfig_initialized), e)
+        }
+        uiConfigOrNull()?.let { applyTheme(it) }
 
         Logger.init(Constants.LOG_DIR)
         AppLog.i(TAG, "══════════════════════════════════════════════════")
@@ -151,11 +162,11 @@ class MainActivity : ComponentActivity() {
         
         AppLog.d(TAG, "onCreate - pluginId: $pluginId, openPlugin: $openPlugin")
         
-        val isFromLauncher = intent.action == Intent.ACTION_MAIN && 
+        val isFromLauncher = intent.action == Intent.ACTION_MAIN &&
                              intent.hasCategory(Intent.CATEGORY_LAUNCHER)
         
         if (isFromLauncher) {
-            AppLog.i(TAG, Str.get(R.string.launched_from_desktop_icon_closing_a))
+            AppLog.i(TAG, Str.get(R.string.launched_from_desktop_icon_closing_all))
             closeAllPluginActivities()
         }
         
@@ -166,23 +177,33 @@ class MainActivity : ComponentActivity() {
         }
 
         handleShortcutIntent(intent)
+        // B-19：深链覆盖 shortcut extra 指定的 tab
+        applyDeepLink(intent)
 
         setContent {
             UINToolTheme {
-                MainContent(
-                    initialTab = selectedTab,
-                    tabSignal = tabSignal,
-                    checkUpdate = intent.getBooleanExtra(EXTRA_CHECK_UPDATE, false),
-                    showExitDialog = showExitDialog,
-                    onExitConfirm = { 
-                        showExitDialog = false
-                        com.UIN.Tool.plugin.SharedSupervisor.onHostExit()
-                        finishAffinity()
-                    },
-                    onExitDismiss = { 
-                        showExitDialog = false
-                    }
-                )
+                // F-16：统一长任务宿主挂根部，浮于 MainContent 之上（模态遮罩）
+                Box(modifier = Modifier.fillMaxSize()) {
+                    MainContent(
+                        initialTab = selectedTab,
+                        tabSignal = tabSignal,
+                        checkUpdate = intent.getBooleanExtra(EXTRA_CHECK_UPDATE, false),
+                        showExitDialog = showExitDialog,
+                        onBackRequest = {
+                            AppLog.d(TAG, "back pressed")
+                            showExitDialog = true
+                        },
+                        onExitConfirm = { 
+                            showExitDialog = false
+                            com.UIN.Tool.plugin.SharedSupervisor.onHostExit()
+                            finishAffinity()
+                        },
+                        onExitDismiss = { 
+                            showExitDialog = false
+                        }
+                    )
+                    com.UIN.Tool.ui.components.LongTaskHost()
+                }
             }
 
             // 配置变更时即时刷新状态栏/导航栏/任务描述颜色
@@ -190,14 +211,20 @@ class MainActivity : ComponentActivity() {
                 UIConfig.configVersion.collect {
                     if (UIConfig.isInitialized()) {
                         applyTheme(UIConfig.getInstance())
+                        // E-09（方案B）：主题设置变化即重挂夜间模式，AppCompat 会
+                        // 自动重建已启动的界面（XML/Compose 双侧同源切换）
+                        UinApplication.getInstance().applyNightMode()
                     }
                 }
             }
         }
 
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        // B-14：原 Handler.postDelayed 后直接 AlertDialog.show()，销毁后弹窗 WindowLeaked
+        lifecycleScope.launch {
+            delay(1000)
+            if (isDestroyed || isFinishing) return@launch
             checkPermissions()
-        }, 1000)
+        }
 
         // 实体 Termux 模式：后台预热共享 supervisor（容器只初始化一次，后续插件启动更快）
         com.UIN.Tool.plugin.SharedSupervisor.prewarm(applicationContext)
@@ -211,29 +238,54 @@ class MainActivity : ComponentActivity() {
         val pluginId = intent.getStringExtra(EXTRA_PLUGIN_ID)
         val openPlugin = intent.getBooleanExtra(EXTRA_OPEN_PLUGIN, false)
         
-        val isFromLauncher = intent.action == Intent.ACTION_MAIN && 
+        val isFromLauncher = intent.action == Intent.ACTION_MAIN &&
                              intent.hasCategory(Intent.CATEGORY_LAUNCHER)
         
         if (isFromLauncher) {
-            AppLog.i(TAG, Str.get(R.string.onnewintent_launched_from_desktop_ic))
+            AppLog.i(TAG, Str.get(R.string.onnewintent_launched_from_desktop_icon))
             closeAllPluginActivities()
         }
         
         if (!pluginId.isNullOrEmpty() && openPlugin) {
-            AppLog.i(TAG, Str.get(R.string.onnewintent_opening_plugin_from_shor, pluginId))
+            AppLog.i(TAG, Str.get(R.string.onnewintent_opening_plugin_from_shortcut, pluginId))
             openPluginDirectly(pluginId)
             return
         }
         
         handleShortcutIntent(intent)
         selectedTab = getTabFromIntent(intent)
+        applyDeepLink(intent)
         showExitDialog = false
         // 通过 tabSignal 驱动已有组合响应导航，不再重建 setContent（避免丢失组合内状态）
         tabSignal++
     }
 
+    /**
+     * B-16：原先方法体为空，但两处日志都写着「关闭所有插件页面」——实际什么都没关。
+     * PluginHostActivity 用 documentLaunchMode=always 各自成 task，这里按 baseIntent/topActivity
+     * 的组件名把插件宿主任务逐个 finishAndRemoveTask。
+     */
     private fun closeAllPluginActivities() {
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+            var closed = 0
+            for (task in am.appTasks) {
+                val base = task.taskInfo.baseIntent?.component?.className
+                val top = task.taskInfo.topActivity?.className
+                if (base?.contains("PluginHostActivity") == true || top?.contains("PluginHostActivity") == true) {
+                    task.finishAndRemoveTask()
+                    closed++
+                }
+            }
+            if (closed > 0) AppLog.i(TAG, "closed $closed plugin host task(s)")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "closeAllPluginActivities failed", e)
+        }
     }
+
+    /** B-17：UIConfig 未初始化（Application 段 init 失败被吞）时返回 null，调用方降级跳过主题应用 */
+    private fun uiConfigOrNull(): UIConfig? =
+        if (UIConfig.isInitialized()) UIConfig.getInstance() else null
 
     private fun openPluginDirectly(pluginId: String) {
         AppLog.i(TAG, Str.get(R.string.opening_plugin_directly_pluginid, pluginId))
@@ -285,10 +337,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * B-19：Manifest 声明了 uin://tools 与 uin://check_update 两个深链，但代码从未读 intent.data，
+     * 浏览器点开等于没反应。这里按 host 路由到对应 tab（深链优先级高于 shortcut extra）。
+     * 返回 true 表示本次 intent 是深链。
+     */
+    private fun applyDeepLink(intent: Intent): Boolean {
+        val data = intent.data ?: return false
+        if (data.scheme != "uin") return false
+        return when (data.host) {
+            "tools" -> {
+                selectedTab = 1
+                AppLog.i(TAG, "deep link uin://tools -> tab=tools")
+                true
+            }
+            "check_update" -> {
+                selectedTab = 3
+                AppLog.i(TAG, "deep link uin://check_update -> tab=manage(check update)")
+                true
+            }
+            else -> {
+                AppLog.w(TAG, "unknown deep link: $data")
+                false
+            }
+        }
+    }
+
     private fun handleShortcutIntent(intent: Intent) {
         if (intent == null) return
         
-        AppLog.d(TAG, "handleShortcutIntent - Extras: ${intent.extras}")
+        // B-18：原直接打印 intent.extras（可能含文件 URI/插件参数等），日志会落共享存储；
+        // 改为只打印参与路由的白名单字段
+        AppLog.d(TAG, "handleShortcutIntent - data=${intent.data} action=${intent.action}")
         
         val selectedTab = intent.getStringExtra(EXTRA_SELECTED_TAB)
         val checkUpdate = intent.getBooleanExtra(EXTRA_CHECK_UPDATE, false)
@@ -375,10 +455,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showPermissionDialog() {
+        if (isDestroyed || isFinishing) return
         AppLog.d(TAG, Str.get(R.string.showing_permission_request_dialog))
         AlertDialog.Builder(this)
             .setTitle(Str.get(R.string.storage_permission_required))
-            .setMessage(Str.get(R.string.uin_tool_needs_access_to_all_files_t))
+            .setMessage(Str.get(R.string.uin_tool_needs_access_to_all_files_to))
             .setPositiveButton(Str.get(R.string.grant)) { _, _ ->
                 AppLog.action(TAG, Str.get(R.string.user_tapped), Str.get(R.string.grant))
                 requestManageStoragePermission()
@@ -444,14 +525,18 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         AppLog.d(TAG, "onResume")
 
-        val uiConfig = UIConfig.getInstance()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val dark = uiConfig.shouldUseDarkTheme(uiConfig.isSystemDark())
-            window.statusBarColor = uiConfig.getColorForMode("status_bar", dark)
-            window.navigationBarColor = uiConfig.getColorForMode("navigation_bar", dark)
+        // B-17：init 失败被吞时这里原先必抛 IllegalStateException
+        uiConfigOrNull()?.let { uiConfig ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val dark = uiConfig.shouldUseDarkTheme(uiConfig.isSystemDark())
+                window.statusBarColor = uiConfig.getColorForMode("status_bar", dark)
+                window.navigationBarColor = uiConfig.getColorForMode("navigation_bar", dark)
+            }
         }
 
         pluginManager.refreshPlugins()
+        // C-03：登记前台宿主，供插件权限弹窗解析 Activity（PluginManager 只持有 applicationContext）
+        pluginManager.onHostActivityResumed(this)
     }
 
     override fun onPause() {
@@ -461,14 +546,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        com.UIN.Tool.plugin.SharedSupervisor.onHostExit()
-        AppLog.i(TAG, Str.get(R.string.app_exit))
-    }
-
-    override fun onBackPressed() {
-        AppLog.d(TAG, "onBackPressed")
-        // ✅ 直接修改状态，不需要重新 setContent
-        showExitDialog = true
+        // B-13/C-21：只有真正退出（而非旋转/系统重建）才通知后端宿主退出，
+        // 否则配置变更会误杀 supervisor 与全部插件后端。
+        if (isFinishing && !isChangingConfigurations) {
+            com.UIN.Tool.plugin.SharedSupervisor.onHostExit()
+            AppLog.i(TAG, Str.get(R.string.app_exit))
+        }
+        pluginManager.onHostActivityDestroyed(this)
     }
 
     @Deprecated("Using Activity Result API")
@@ -479,13 +563,17 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         AppLog.d(TAG, "onRequestPermissionsResult, requestCode: $requestCode")
+        // C-03：插件声明权限的真实回执（PluginPermissionDetail / PluginManage 在本 Activity 内发起）
+        if (pluginManager.dispatchPermissionResult(requestCode, grantResults)) {
+            return
+        }
         if (requestCode == 100) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 AppLog.success(TAG, Str.get(R.string.storage_permission_granted))
                 checkAndSetWorkFolder()
             } else {
                 AppLog.w(TAG, Str.get(R.string.storage_permission_denied))
-                android.widget.Toast.makeText(this, Str.get(R.string.storage_permission_is_required_for_n), android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, Str.get(R.string.storage_permission_is_required_for), android.widget.Toast.LENGTH_SHORT).show()
                 finishAffinity()
             }
         }
@@ -494,8 +582,6 @@ class MainActivity : ComponentActivity() {
 
 // ==================== MainContent ====================
 
-private const val MAIN_CONTENT_TAG = "MainContent"
-
 @Composable
 fun MainContent(
     initialTab: Int = 1,
@@ -503,9 +589,13 @@ fun MainContent(
     checkUpdate: Boolean = false,
     showExitDialog: Boolean = false,
     onExitConfirm: () -> Unit = {},
-    onExitDismiss: () -> Unit = {}
+    onExitDismiss: () -> Unit = {},
+    // B-27：返回键处理随组合走，替代 Activity 上已废弃的 onBackPressed 重写
+    onBackRequest: () -> Unit = {}
 ) {
-    var selectedTab by remember { mutableStateOf(initialTab) }
+    // B-26：用 rememberSaveable——旋转/进程重建后保留用户所在 tab，
+    // 原 remember 会退回 intent 里的 initialTab（外部导航参数），一旋转就被重置
+    var selectedTab by rememberSaveable { mutableStateOf(initialTab) }
 
     val tabs = listOf(
         Str.get(R.string.developer) to R.drawable.ic_terminal_prompt,
@@ -526,122 +616,72 @@ fun MainContent(
     }
 
     // ==================== 静默更新检测（每天一次） ====================
+    // B-79：检查/下载/弹窗状态全部下沉 UpdateViewModel，组合只负责渲染；
+    // 旋转或重建时进行中的检查与下载不再丢失（原 remember { mutableStateOf } 会被重置）。
     val context = LocalContext.current
-    val preferenceManager = ServiceLocator.getPreferenceManager()
-    var silentUpdate by remember { mutableStateOf<ReleaseInfo?>(null) }
-    var silentForce by remember { mutableStateOf(false) }
-    var silentProgress by remember { mutableStateOf(false) }
-    var silentProgressPct by remember { mutableStateOf(0) }
+    val updateViewModel: UpdateViewModel = viewModel()
+    val updateState by updateViewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        try {
-            // 仅当今天尚未静默检测过才执行，避免重复弹窗。
-            // 注意：日期在联网成功后才写入（onCheckSuccess/onNoUpdate），
-            // 避免离线时白白消耗当日额度。
-            val today = LocalDate.now().toEpochDay()
-            if (preferenceManager.getLastUpdateCheckDay() == today) return@LaunchedEffect
-
-            val checker = UpdateChecker(context, preferenceManager)
-            checker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
-                override fun onCheckStart() {}
-
-                override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
-                    preferenceManager.setLastUpdateCheckDay(today)
-                    if (!hasNewer || releases.isEmpty()) return
-                    val latest = releases.first()
-                    if (!forceUpdate && latest.versionName == preferenceManager.getIgnoredVersion()) return
-                    preferenceManager.setLastChangelog(latest.releaseNotes ?: "")
-                    silentUpdate = latest
-                    silentForce = forceUpdate
-                }
-
-                override fun onCheckFailed(error: String) {}
-
-                override fun onNoUpdate(currentVersion: String) {
-                    preferenceManager.setLastUpdateCheckDay(today)
-                }
-            })
-            checker.checkUpdate()
-        } catch (e: Exception) {
-            AppLog.e(MAIN_CONTENT_TAG, Str.get(R.string.update_check_failed), e)
-        }
+        updateViewModel.checkSilentlyIfNeeded()
     }
 
     // 静默检测到新版本时显示更新弹窗
-    val silentTarget = silentUpdate
+    val silentTarget = updateState.pending
     if (silentTarget != null) {
         UpdateDialog(
             releaseInfo = silentTarget,
-            forceUpdate = silentForce,
-            onDismiss = { if (!silentForce) silentUpdate = null },
-            onDownload = {
-                silentUpdate = null
-                silentProgress = true
-                val downloader = UpdateDownloader(context)
-                downloader.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
-                    override fun onStart() {}
-
-                    override fun onProgress(progress: Int, downloaded: Long, total: Long) {
-                        silentProgressPct = progress
-                    }
-
-                    override fun onSuccess(file: java.io.File) {
-                        silentProgress = false
-                        downloader.installApk(file)
-                    }
-
-                    override fun onFailed(error: String) {
-                        silentProgress = false
-                        AppToast.error(context, Str.get(R.string.download_failed_error, error))
-                    }
-                })
-                downloader.startDownload(silentTarget.downloadUrl, silentTarget.versionName, silentTarget.sha256)
-            },
-            onManualDownload = {
-                silentUpdate = null
-                try {
-                    val url = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/${silentTarget.tagName}"
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                } catch (e: Exception) {
-                    AppLog.e(MAIN_CONTENT_TAG, Str.get(R.string.failed_to_open_browser), e)
-                }
-            },
-            onIgnore = {
-                preferenceManager.setIgnoredVersion(silentTarget.versionName)
-                silentUpdate = null
-            }
+            forceUpdate = updateState.force,
+            onDismiss = { updateViewModel.dismissPending() },
+            onDownload = { updateViewModel.startDownload(context) },
+            onManualDownload = { updateViewModel.openReleasePage(context) },
+            onIgnore = { updateViewModel.ignoreCurrent() }
         )
     }
 
     // 静默下载进度提示
-    if (silentProgress) {
+    if (updateState.downloading) {
         UnifiedAlertDialog(
             onDismissRequest = { },
             title = { Text(Str.get(R.string.downloading_update)) },
             text = {
                 Column {
                     LinearProgressIndicator(
-                        progress = { silentProgressPct / 100f },
+                        progress = { updateState.progressPct / 100f },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${silentProgressPct}%",
+                        text = Str.get(
+                            R.string.downloading_release_versionname_prog,
+                            updateState.downloadingVersion,
+                            updateState.progressPct.toString(),
+                            formatFileSize(updateState.downloadedBytes),
+                            formatFileSize(updateState.totalBytes)
+                        ),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             },
             confirmButton = {
-                UnifiedDialogTextButton(onClick = { silentProgress = false }) {
+                UnifiedDialogTextButton(onClick = {
+                    // B-23：原只把进度弹窗关掉，后台继续下载、下完还会拉起安装
+                    updateViewModel.cancelDownload()
+                }) {
                     Text(Str.get(R.string.cancel))
                 }
             }
         )
     }
 
-    // ✅ 退出对话框 - 使用 UIComponents.ConfirmDialog
+    // B-27：改用 Compose BackHandler（与组合同生命周期），不再重写 deprecated onBackPressed
+    BackHandler {
+        onBackRequest()
+    }
+
+    // ✅ 退出对话框 - 使用 UnifiedConfirmDialog
     if (showExitDialog) {
-        UIComponents.ConfirmDialog(
+        UnifiedConfirmDialog(
             title = Str.get(R.string.exit_app),
             message = Str.get(R.string.exit_uin_tool),
             confirmText = Str.get(R.string.exit),
@@ -699,6 +739,8 @@ fun MainContent(
                 .then(if (neuNav) Modifier.neuRaised(navShape, isDarkNav, NeuDefaults.Intensity.LIGHT, cornerRadius = AppDimens.cardCornerRadius, backgroundColor = Color.Transparent) else Modifier.shadow(AppDimens.cardElevation, navShape))
                 .clip(navShape)
                 .background(AppColors.cardBackground(), navShape)
+                // F-17/E-07：把 4 个 tab 声明成一个可选组，读屏可播报「第 n 项，共 4 项」
+                .semantics { selectableGroup() }
                 .height(AppDimens.bottomNavHeight)
         ) {
             tabs.forEachIndexed { index, (label, icon) ->
@@ -723,11 +765,14 @@ fun MainContent(
                             scaleX = tabScale
                             scaleY = tabScale
                         }
-                        .semantics { role = Role.Tab }
-                        .clickable(
+                        // F-17：原 clickable + 手动 role 无法表达「已选中」，改 selectable——
+                        // 选中态进入语义树，读屏会朗读「已选择」，且按 Tab 角色归组
+                        .selectable(
+                            selected = isSelected,
                             interactionSource = interactionSource,
                             indication = null,
-                            onClick = { selectedTab = index }
+                            onClick = { selectedTab = index },
+                            role = Role.Tab
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center

@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 6.0.0 |
-| Corresponding App Version | v6.0.0 (Build 24) |
-| Last Updated | September 26, 2026 |
+| Document Version | 6.1.0 |
+| Corresponding App Version | v6.1.0 (Build 25) |
+| Last Updated | October 7, 2026 |
 
 ---
 
@@ -2156,7 +2156,7 @@ context.startActivity(intent)
 
 ### 12.4 Export Built-in Templates (v4.5.0)
 
-Click "**Export Template**" on the "Dev" page; the app copies built-in packaged plugins from `assets/test_plugins/` to `/storage/emulated/0/UIN_Tool/templates/` and auto-generates a `README.txt` description. These templates can be directly imported for experience, covering CUI terminal, custom backend, Termux backend, full API test, storage test, native plugin, Web pure frontend, and other types.
+Click "**Export Template**" on the "Dev" page; the app copies built-in packaged plugins from `assets/test_plugins/` (bundled in both debug and release builds) to `/storage/emulated/0/UIN_Tool/templates/` and auto-generates a `README.txt` description. These templates can be directly imported for experience, covering CUI terminal, custom backend, Termux backend, full API test, storage test, native plugin, Web pure frontend, and other types.
 
 | Template File | Description |
 |---------------|-------------|
@@ -2452,9 +2452,9 @@ Document Information
 
 | Item | Info |
 |------|------|
-| Document Version | 5.7.0 |
-| Corresponding App Version | v5.7.0 (Build 23) |
-| Last Updated | August 31, 2026 |
+| Document Version | 6.1.0 |
+| Corresponding App Version | v6.1.0 (Build 25) |
+| Last Updated | October 7, 2026 |
 
 ---
 

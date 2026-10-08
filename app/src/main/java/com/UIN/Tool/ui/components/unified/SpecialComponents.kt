@@ -2,6 +2,8 @@ package com.UIN.Tool.ui.components.unified
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -19,6 +21,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -179,29 +182,35 @@ fun SkeletonItem(
         AppColors.cardBackground().copy(alpha = 0.6f),
         AppColors.cardBackground()
     )
-    val transition = rememberInfiniteTransition(label = "skeleton")
-    val translateAnim by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutLinearInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "skeleton_shimmer"
-    )
-    Box(
+    // E-04：渐变 brush 只 remember 一次，位移改由 graphicsLayer 完成 ——
+    // 原先每帧在 background() 里重建 Brush.linearGradient，导致该节点每帧重组而非仅重绘。
+    val brush = remember(shimmerColors) { Brush.linearGradient(colors = shimmerColors) }
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth(widthFraction)
             .height(14.dp)
             .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    colors = shimmerColors,
-                    start = Offset(translateAnim - 200f, 0f),
-                    end = Offset(translateAnim, 0f)
-                )
-            )
-    )
+    ) {
+        val viewport = maxWidth
+        val transition = rememberInfiniteTransition(label = "skeleton")
+        val translateAnim by transition.animateFloat(
+            // 内层宽度为视口 3 倍，位移区间 [-2w, 0] 始终覆盖视口，不会露白
+            initialValue = -2f,
+            targetValue = 0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = FastOutLinearInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "skeleton_shimmer"
+        )
+        val viewportPx = with(LocalDensity.current) { viewport.toPx() }
+        Box(
+            modifier = Modifier
+                .size(width = viewport * 3f, height = 14.dp)
+                .graphicsLayer { translationX = translateAnim * viewportPx }
+                .background(brush)
+        )
+    }
 }
 
 @Composable
@@ -279,6 +288,99 @@ fun Modifier.elasticOverscroll(
             )
         } else {
             scaleY = 1f
+        }
+    }
+}
+
+// ==================== 列表空态 / 错误卡（F-04 统一口径） ====================
+
+/**
+ * F-04：插件库、插件管理等列表页共用的空态。
+ * 原先各页各写一套（图标 64dp、标题/副标题层级、文案口径不一），此处统一：
+ * 图标 → 标题 → 可选副标题，垂直居中。
+ */
+@Composable
+fun UnifiedEmptyState(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * F-04：列表页错误卡（源加载失败 / 安装失败等）。
+ * 标题 + 详情 + 可选操作按钮（重试 / 我知道了），图标与文案色统一走 colorScheme.error。
+ */
+@Composable
+fun UnifiedErrorCard(
+    title: String,
+    message: String? = null,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    UnifiedCard(modifier = modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (message != null) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (actionLabel != null && onAction != null) {
+                TextButton(onClick = onAction) {
+                    Text(actionLabel)
+                }
+            }
         }
     }
 }

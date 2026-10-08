@@ -55,7 +55,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_1_name"
@@ -89,7 +89,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_2_name"
@@ -123,7 +123,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_3_name"
@@ -157,7 +157,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_4_name"
@@ -191,7 +191,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_5_name"
@@ -225,7 +225,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_6_name"
@@ -259,7 +259,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_7_name"
@@ -293,7 +293,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_8_name"
@@ -327,7 +327,7 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:src="@drawable/ic_extension"
-                android:contentDescription="插件图标" />
+                android:contentDescription="@string/plugin_icon" />
 
             <TextView
                 android:id="@+id/slot_9_name"

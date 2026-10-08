@@ -2,11 +2,19 @@ package com.UIN.Tool.data.remote
 
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.domain.model.SourceInfo
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * 源索引获取器
@@ -30,8 +38,15 @@ class SourceIndexFetcher(
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    // 内存缓存：sourceId -> (plugins, timestamp)
-    private val cache = mutableMapOf<String, CacheEntry>()
+    // D-09④：普通 mutableMap 在并发拉取多源时会互相踩踏 → 换 ConcurrentHashMap
+    private val cache = ConcurrentHashMap<String, CacheEntry>()
+
+    /** D-09①：sourceId -> ETag，配合 If-None-Match 走 304 */
+    private val etags = ConcurrentHashMap<String, String>()
+
+    /** D-09②：GitHub API 限流截止时间（epoch ms），到期前直接跳过 API 调用 */
+    @Volatile
+    private var rateLimitedUntilMs = 0L
 
     private data class CacheEntry(
         val plugins: List<Map<String, Any>>,
@@ -76,28 +91,46 @@ class SourceIndexFetcher(
      * 通过 GitHub API 获取 source.json（带 base64 解码）
      */
     private suspend fun fetchViaApi(source: SourceInfo): List<Map<String, Any>>? {
+        // D-09②：命中限流冷却期就不再打 API（未认证仅 60 次/小时）
+        if (System.currentTimeMillis() < rateLimitedUntilMs) {
+            Logger.d(TAG, "API rate limited, skip for ${source.sourceId}")
+            return null
+        }
         return try {
-            val request = Request.Builder()
+            val builder = Request.Builder()
                 .url(source.getApiIndexUrl())
                 .header("Accept", "application/vnd.github.v3+json")
                 .header("User-Agent", "UIN-Tool-Android")
-                .build()
+            // D-09①：注释一直说"带 ETag"，实际从未发送 If-None-Match
+            etags[source.sourceId]?.let { builder.header("If-None-Match", it) }
 
-            apiClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
+            // D-09③：execute() 是阻塞调用且协程取消时无法中断 → enqueue + 挂起
+            executeAsync(apiClient, builder.build()).use { response ->
+                when {
+                    response.code == 304 -> {
+                        Logger.d(TAG, "Not modified (ETag) for ${source.sourceId}")
+                        cache[source.sourceId]?.plugins
+                    }
+                    response.code == 403 || response.code == 429 -> {
+                        noteRateLimit(response)
+                        null
+                    }
+                    !response.isSuccessful -> null
+                    else -> {
+                        response.header("ETag")?.let { etags[source.sourceId] = it }
+                        val json = response.body?.string() ?: return@use null
+                        val obj = JSONObject(json)
+                        val content = obj.optString("content", "")
+                        if (content.isEmpty()) return@use null
 
-                val json = response.body?.string() ?: return@use null
-                val obj = JSONObject(json)
-                val content = obj.optString("content", "")
-                if (content.isEmpty()) return@use null
-
-                // base64 解码
-                val decoded = String(android.util.Base64.decode(
-                    content.replace("\n", ""),
-                    android.util.Base64.DEFAULT
-                ))
-
-                parseSourceJson(decoded)
+                        // base64 解码
+                        val decoded = String(android.util.Base64.decode(
+                            content.replace("\n", ""),
+                            android.util.Base64.DEFAULT
+                        ))
+                        parseSourceJson(decoded)
+                    }
+                }
             }
         } catch (e: Exception) {
             Logger.d(TAG, "API fetch failed for ${source.sourceId}, trying raw")
@@ -110,23 +143,63 @@ class SourceIndexFetcher(
      */
     private suspend fun fetchViaRaw(source: SourceInfo): List<Map<String, Any>>? {
         return try {
-            val url = "${source.getRawIndexUrl()}?t=${System.currentTimeMillis()}"
-            val request = Request.Builder()
-                .url(url)
+            val cached = cache[source.sourceId]
+            val builder = Request.Builder()
+                .url(source.getRawIndexUrl())
                 .header("User-Agent", "UIN-Tool-Android")
-                .build()
+            if (cached != null) {
+                etags[source.sourceId]?.let { builder.header("If-None-Match", it) }
+            }
 
-            rawClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-
-                val json = response.body?.string() ?: return@use null
-                parseSourceJson(json)
+            executeAsync(rawClient, builder.build()).use { response ->
+                when {
+                    response.code == 304 && cached != null -> cached.plugins
+                    response.code == 403 || response.code == 429 -> {
+                        noteRateLimit(response)
+                        null
+                    }
+                    !response.isSuccessful -> null
+                    else -> {
+                        response.header("ETag")?.let { etags[source.sourceId] = it }
+                        val json = response.body?.string() ?: return@use null
+                        parseSourceJson(json)
+                    }
+                }
             }
         } catch (e: Exception) {
             Logger.e(TAG, "Raw fetch failed for ${source.sourceId}", e)
             null
         }
     }
+
+    /** D-09②：记录限流恢复时间（优先 Retry-After / X-RateLimit-Reset） */
+    private fun noteRateLimit(response: Response) {
+        var until = System.currentTimeMillis() + 60_000L
+        response.header("Retry-After")?.toLongOrNull()?.let { retry ->
+            if (retry > 0) until = System.currentTimeMillis() + retry * 1000L
+        }
+        response.header("X-RateLimit-Reset")?.toLongOrNull()?.let { reset ->
+            if (reset > 0) until = maxOf(until, reset * 1000L)
+        }
+        rateLimitedUntilMs = until
+        Logger.w(TAG, "Rate limited (HTTP ${response.code}), backing off until $until")
+    }
+
+    /** D-09③：enqueue 封装为可取消的挂起调用 */
+    private suspend fun executeAsync(client: OkHttpClient, request: Request): Response =
+        suspendCancellableCoroutine { cont ->
+            val call = client.newCall(request)
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (cont.isActive) cont.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    if (cont.isActive) cont.resume(response) else response.close()
+                }
+            })
+        }
 
     /**
      * 解析 source.json 内容，提取插件列表

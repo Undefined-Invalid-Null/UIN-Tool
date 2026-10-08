@@ -23,8 +23,13 @@ object PluginEventBus {
     // 插件消息监听器（针对特定插件ID）
     private val pluginListeners = ConcurrentHashMap<String, MutableList<PluginMessageListener>>()
     
-    // 是否启用调试日志
-    var debugEnabled = false
+    // 是否启用调试日志（B-50：原先裸 public var，任何地方都能改）
+    @Volatile
+    private var debugEnabled = false
+
+    fun setDebugEnabled(enabled: Boolean) {
+        debugEnabled = enabled
+    }
     
     /**
      * 事件监听器接口
@@ -68,7 +73,7 @@ object PluginEventBus {
      */
     fun registerPluginListener(pluginId: String, listener: PluginMessageListener) {
         pluginListeners.getOrPut(pluginId) { CopyOnWriteArrayList() }.add(listener)
-        Logger.d(TAG, Str.get(R.string.registering_plugin_message_listener_, pluginId))
+        Logger.d(TAG, Str.get(R.string.registering_plugin_message_listener_num, pluginId))
     }
     
     /**
@@ -85,6 +90,19 @@ object PluginEventBus {
     fun unregisterPluginListener(pluginId: String, listener: PluginMessageListener) {
         pluginListeners[pluginId]?.remove(listener)
         Logger.d(TAG, Str.get(R.string.removing_plugin_message_listener_plu, pluginId))
+    }
+
+    /**
+     * B-50：插件卸载时清掉它名下的监听器与粘性事件。
+     * 原先静态 map 永不清理（`clearAll()` 全仓无调用），被删插件的监听器一直挂着。
+     */
+    fun removePlugin(pluginId: String) {
+        if (pluginListeners.remove(pluginId) != null) {
+            Logger.d(TAG, "B-50: removed listeners for uninstalled plugin $pluginId")
+        }
+        stickyEvents.keys
+            .filter { it.startsWith("$pluginId.") || it.startsWith("$pluginId:") }
+            .forEach { stickyEvents.remove(it) }
     }
     
     /**

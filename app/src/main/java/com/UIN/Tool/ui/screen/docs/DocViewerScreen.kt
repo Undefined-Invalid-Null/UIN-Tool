@@ -15,13 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.MarkdownRenderer
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +43,7 @@ fun DocViewerScreen() {
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = title,
                 onBack = { activity?.finish() }
             )
@@ -59,9 +57,6 @@ fun DocViewerScreen() {
             if (isLoading) {
                 UnifiedLoadingIndicator(message = Str.get(R.string.loading_document))
             } else {
-                val bgColor = try {
-                    com.UIN.Tool.utils.UIConfig.getBackgroundColor()
-                } catch (_: Exception) { 0xFFF5F5F5.toInt() }
                 AndroidView(
                     factory = { ctx ->
                         WebView(ctx).apply {
@@ -69,7 +64,10 @@ fun DocViewerScreen() {
                             settings.builtInZoomControls = true
                             settings.displayZoomControls = false
                             webViewClient = WebViewClient()
-                            setBackgroundColor(bgColor)
+                            // 透明底：MarkdownRenderer 的 body/.container 已是 transparent，
+                            // 透出 Scaffold 的 pageBackground()（渐变/深色随主题），
+                            // 修复深色模式下 WebView 矩形块残留白底（原取色只读浅色 theme 区）。
+                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
                             try {
                                 val html = MarkdownRenderer.toHtml(content)
@@ -87,28 +85,13 @@ fun DocViewerScreen() {
     }
 }
 
+// G-10：加载逻辑收口到 DocLoader（与 HelpScreen 共用同一语言判定与回退）
 private suspend fun loadDocument(docType: String, onResult: (String) -> Unit) {
-    val fileName = when (docType) {
-        "help" -> "Help.md"
-        "dev" -> "README.md"
-        "changelog" -> "CHANGELOG.md"
-        "about" -> "About.md"
-        "contributors" -> "CONTRIBUTORS.md"
-        else -> "README.md"
-    }
-
+    val fileName = DocLoader.fileNameFor(docType)
     try {
-        val appContext = com.UIN.Tool.UinApplication.getInstance()
-        val language = com.UIN.Tool.utils.UIConfig.getLanguage()
-        val isEnglish = language == "en" || (language == "system" && java.util.Locale.getDefault().language == "en")
-        val path = if (isEnglish && docType != "contributors") "docs/en/$fileName" else "docs/zh-cn/$fileName"
-        val inputStream = appContext.assets.open(path)
-        val reader = BufferedReader(InputStreamReader(inputStream, "UTF-8"))
-        val content = reader.readText()
-        reader.close()
-        onResult(content)
+        onResult(DocLoader.load(fileName))
     } catch (e: Exception) {
         AppLog.e("DocViewer", Str.get(R.string.failed_to_load_document_filename, fileName), e)
-        onResult(Str.get(R.string.failed_to_load_document_e_message, e.message))
+        onResult(DocLoader.errorText(e))
     }
 }

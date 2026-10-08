@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.UIN.Tool.core.di.ServiceLocator
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
@@ -204,7 +203,7 @@ fun PermissionManagerScreen() {
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.permission_management),
                 onBack = { activity?.finish() }
             )
@@ -218,7 +217,7 @@ fun PermissionManagerScreen() {
                     refreshKey++
                     AppToast.info(context, Str.get(R.string.permission_status_refreshed))
                     delay(400)
-                    lastRefreshTime = UIComponents.currentTimeString()
+                    lastRefreshTime = currentTimeString()
                     isRefreshing = false
                 }
             },
@@ -227,7 +226,7 @@ fun PermissionManagerScreen() {
                 .fillMaxSize()
                 .padding(paddingValues),
             indicator = {
-                UIComponents.PullRefreshIndicator(
+                PullRefreshIndicator(
                     isRefreshing = isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -243,7 +242,7 @@ fun PermissionManagerScreen() {
             ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
-                UIComponents.LastUpdatedCaption(time = lastRefreshTime)
+                LastUpdatedCaption(time = lastRefreshTime)
             }
 
             // 应用权限标题
@@ -358,7 +357,7 @@ fun PermissionManagerScreen() {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 UnifiedCaptionText(
-                    Str.get(R.string.note_some_permissions_e_g_overlay_wi)
+                    Str.get(R.string.note_some_permissions_e_g_overlay)
                 )
             }
             }

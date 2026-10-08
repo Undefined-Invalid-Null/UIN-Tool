@@ -27,6 +27,9 @@ import java.io.File
 object PluginShortcutHelper {
 
     private const val TAG = "PluginShortcutHelper"
+    // E-21①：快捷方式图标原为固定 72px（不随密度缩放，高密度屏被 launcher 放大发虚）
+    private const val SHORTCUT_ICON_SIZE_DP = 72
+    private const val SHORTCUT_ICON_MAX_PX = 256
     const val ACTION_WIDGET_1X1_PINNED = "com.UIN.Tool.WIDGET_1X1_PINNED"
 
     /**
@@ -39,15 +42,15 @@ object PluginShortcutHelper {
             if (pin1x1Widget(context, plugin)) {
                 return
             }
-            Logger.w(TAG, "小部件固定不可用，回退到 requestPinShortcut")
+            Logger.w(TAG, "widget pin unavailable, falling back to requestPinShortcut")
             if (!isShortcutSupported(context)) {
-                Logger.w(TAG, Str.get(R.string.this_device_does_not_support_shortcu))
-                Toast.makeText(context, Str.get(R.string.this_device_does_not_support_shortcu), Toast.LENGTH_SHORT).show()
+                Logger.w(TAG, Str.get(R.string.this_device_does_not_support_shortcuts))
+                Toast.makeText(context, Str.get(R.string.this_device_does_not_support_shortcuts), Toast.LENGTH_SHORT).show()
                 return
             }
             val created = createShortcutForOreoAndAbove(context, plugin)
             if (!created) {
-                Logger.w(TAG, "requestPinShortcut 失败或返回 false，回退到旧版广播方式")
+                Logger.w(TAG, "requestPinShortcut failed or returned false, falling back to legacy broadcast")
                 createShortcutForOldVersions(context, plugin)
             }
         } else {
@@ -60,7 +63,7 @@ object PluginShortcutHelper {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
             val appWidgetManager = AppWidgetManager.getInstance(context)
             if (!appWidgetManager.isRequestPinAppWidgetSupported()) {
-                Logger.w(TAG, "Launcher 不支持固定小部件")
+                Logger.w(TAG, "launcher does not support pinning shortcuts")
                 return false
             }
             val callbackIntent = Intent(context, WidgetPinnedReceiver::class.java).apply {
@@ -79,13 +82,13 @@ object PluginShortcutHelper {
             )
             Toast.makeText(
                 context,
-                Str.get(R.string.place_the_shortcut_on_your_home_scre),
+                Str.get(R.string.place_the_shortcut_on_your_home_screen),
                 Toast.LENGTH_LONG
             ).show()
-            Logger.success(TAG, "已请求固定 1x1 快捷方式: ${plugin.pluginId}")
+            Logger.success(TAG, "pin 1x1 shortcut requested: ${plugin.pluginId}")
             true
         } catch (e: Exception) {
-            Logger.e(TAG, "请求固定 1x1 快捷方式失败", e)
+            Logger.e(TAG, "failed to request pinning 1x1 shortcut", e)
             false
         }
     }
@@ -106,7 +109,7 @@ object PluginShortcutHelper {
         val existingShortcuts = shortcutManager.pinnedShortcuts
         for (info in existingShortcuts) {
             if (info.id == "plugin_${plugin.pluginId}") {
-                Logger.i(TAG, "快捷方式已存在: ${plugin.pluginId}")
+                Logger.i(TAG, "shortcut already exists: ${plugin.pluginId}")
                 Toast.makeText(context, Str.get(R.string.shortcut_already_exists), Toast.LENGTH_SHORT).show()
                 return true
             }
@@ -122,7 +125,7 @@ object PluginShortcutHelper {
 
         val icon = getPluginIcon(context, plugin)
         if (icon == null) {
-            Logger.w(TAG, "无法获取插件图标，使用默认图标 plugin=${plugin.pluginId}")
+            Logger.w(TAG, "cannot get plugin icon, using default icon plugin=${plugin.pluginId}")
         }
 
         val shortcut = ShortcutInfo.Builder(context, "plugin_${plugin.pluginId}")
@@ -134,13 +137,13 @@ object PluginShortcutHelper {
 
         return try {
             val success = shortcutManager.requestPinShortcut(shortcut, null)
-            Logger.i(TAG, "requestPinShortcut 返回: $success plugin=${plugin.pluginId}")
+            Logger.i(TAG, "requestPinShortcut returned: $success plugin=${plugin.pluginId}")
             if (success) {
                 Toast.makeText(context, Str.get(R.string.shortcut_created), Toast.LENGTH_SHORT).show()
             }
             success
         } catch (e: Exception) {
-            Logger.e(TAG, "requestPinShortcut 抛出异常 plugin=${plugin.pluginId}", e)
+            Logger.e(TAG, "requestPinShortcut threw exception plugin=${plugin.pluginId}", e)
             false
         }
     }
@@ -162,7 +165,8 @@ object PluginShortcutHelper {
 
         val bitmap = getPluginIconBitmap(context, plugin)
         if (bitmap != null) {
-            addIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, bitmap)
+            // E-21①：与 Oreo+ 路径同口径，按密度缩放后再交给 launcher
+            addIntent.putExtra(Intent.EXTRA_SHORTCUT_ICON, shortcutIconBitmap(context, bitmap))
         } else {
             addIntent.putExtra(
                 Intent.EXTRA_SHORTCUT_ICON_RESOURCE,
@@ -175,13 +179,20 @@ object PluginShortcutHelper {
         Toast.makeText(context, Str.get(R.string.shortcut_created), Toast.LENGTH_SHORT).show()
     }
 
+    /** E-21①：按屏幕密度把图标缩放到 72dp 等效像素（上限 256px），高密度屏不再发虚 */
+    private fun shortcutIconBitmap(context: Context, bitmap: Bitmap): Bitmap {
+        val density = context.resources.displayMetrics.density
+        val target = (SHORTCUT_ICON_SIZE_DP * density + 0.5f).toInt().coerceIn(SHORTCUT_ICON_SIZE_DP, SHORTCUT_ICON_MAX_PX)
+        if (bitmap.width == target && bitmap.height == target) return bitmap
+        return Bitmap.createScaledBitmap(bitmap, target, target, true)
+    }
+
     @SuppressLint("NewApi")
     private fun getPluginIcon(context: Context, plugin: PluginInfo): Icon? {
         return try {
             val bitmap = getPluginIconBitmap(context, plugin)
             if (bitmap != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val scaled = Bitmap.createScaledBitmap(bitmap, 72, 72, true)
-                Icon.createWithBitmap(scaled)
+                Icon.createWithBitmap(shortcutIconBitmap(context, bitmap))
             } else {
                 Icon.createWithResource(context, R.drawable.ic_extension)
             }

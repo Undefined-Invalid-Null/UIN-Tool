@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppToast
@@ -37,7 +36,7 @@ fun DevDocScreen() {
 
     val docs = listOf(
         DevDocItem(Icons.Default.Help, Str.get(R.string.help_2), Str.get(R.string.help_and_faq), "help"),
-        DevDocItem(Icons.Default.DeveloperMode, Str.get(R.string.development_docs), Str.get(R.string.plugin_development_docs_and_api_refe), "dev"),
+        DevDocItem(Icons.Default.DeveloperMode, Str.get(R.string.development_docs), Str.get(R.string.plugin_development_docs_and_api), "dev"),
         DevDocItem(Icons.Default.Update, Str.get(R.string.changelog), Str.get(R.string.version_history_and_changelog), "changelog"),
         DevDocItem(Icons.Default.Info, Str.get(R.string.about), Str.get(R.string.about_the_app_and_version_info), "about"),
         DevDocItem(Icons.Default.People, Str.get(R.string.contributors), Str.get(R.string.list_of_contributors), "contributors")
@@ -46,7 +45,7 @@ fun DevDocScreen() {
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.docs_center),
                 onBack = { activity?.finish() }
             )

@@ -5,15 +5,15 @@ package com.UIN.Tool.domain.model
  * 从 registry.json 或本地配置解析
  */
 data class SourceInfo(
-    var sourceId: String = "",
-    var name: String = "",
-    var owner: String = "",
-    var repo: String = "",
-    var branch: String = "dist",
-    var description: String = "",
-    var trustLevel: String = "community",
-    var addedAt: String = "",
-    var enabled: Boolean = true
+    val sourceId: String = "",
+    val name: String = "",
+    val owner: String = "",
+    val repo: String = "",
+    val branch: String = "dist",
+    val description: String = "",
+    val trustLevel: String = "community",
+    val addedAt: String = "",
+    val enabled: Boolean = true
 ) {
     /**
      * 源 index.json 的原始 URL

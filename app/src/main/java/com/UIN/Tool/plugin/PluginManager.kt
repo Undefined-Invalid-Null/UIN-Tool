@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.lang.ref.WeakReference
 
 class PluginManager private constructor(
@@ -73,12 +76,28 @@ class PluginManager private constructor(
          * 共享端口模式的「保留会话」WebView 缓存，键为插件 ID。
          * 关闭插件（最后一个实例）时若开启保留会话，WebView 不销毁而是移入此缓存；
          * 重开同一插件时直接取出复用，页面与会话状态得以保留。
+         *
+         * C-12：原为无界 static map —— 宿主 Activity 与其 WebView（数十 MB）每插件常驻；
+         * 现限制为 [MAX_RETAINED_WEB_VIEWS] 个，超限时淘汰最早的一份并 destroy。
+         * 表中只保存「宿主 Activity 已销毁、尚未被重开取走」的 WebView（take 即移出），
+         * 因此淘汰与清理均不会碰到正在显示的 WebView。
          */
-        private val retainedWebViews = mutableMapOf<String, WebView?>()
+        private const val MAX_RETAINED_WEB_VIEWS = 4
+        private val retainedWebViews = LinkedHashMap<String, WebView?>()
 
         @JvmStatic
         fun retainSharedWebView(pluginId: String, webView: WebView?) {
+            retainedWebViews.remove(pluginId)
+            if (webView == null) return
             retainedWebViews[pluginId] = webView
+            while (retainedWebViews.size > MAX_RETAINED_WEB_VIEWS) {
+                val iterator = retainedWebViews.entries.iterator()
+                if (!iterator.hasNext()) break
+                val eldest = iterator.next()
+                iterator.remove()
+                runCatching { eldest.value?.destroy() }
+                    .onFailure { Logger.e(TAG, "retained WebView destroy failed: ${eldest.key}", it) }
+            }
         }
 
         @JvmStatic
@@ -105,12 +124,6 @@ class PluginManager private constructor(
             retainedWebViews.remove(pluginId)?.destroy()
         }
 
-        @JvmStatic
-        fun clearWebViewCache() {
-            webViewCache.values.forEach { it?.destroy() }
-            webViewCache.clear()
-        }
-
         /** 从实例键中解析插件 ID（无冒号时本身即插件 ID） */
         @JvmStatic
         fun pluginIdOfInstance(instanceKey: String): String =
@@ -118,6 +131,14 @@ class PluginManager private constructor(
     }
 
     // ==================== 状态流 ====================
+
+    /**
+     * C-03：插件权限请求的待回执表（requestCode -> [宿主 Activity, 回调]）。
+     * 系统弹窗返回后由宿主 Activity 调用 [dispatchPermissionResult] 回填真实结果；
+     * 宿主销毁时由 [failPendingPermissionRequests] 仅清理自己发起的请求。
+     */
+    private val pendingPermissionRequests = java.util.concurrent.ConcurrentHashMap<
+        Int, Pair<WeakReference<android.app.Activity>, (Boolean) -> Unit>>()
 
     /** 原生插件当前存活宿主 Activity 的实例，用于默认单实例去重（pluginId -> instanceKey） */
     private val activeNativeInstances = mutableMapOf<String, String>()
@@ -166,6 +187,20 @@ class PluginManager private constructor(
     private var lastRefreshTime = 0L
     private val refreshDebounceMs = 500L
 
+    // C-26：防抖由「窗口内直接 return 丢弃」改为「pending 标记 + 到期必刷」，
+    // 否则安装/卸载后紧跟的那次刷新会被吞掉，列表不更新
+    private val refreshHandler = Handler(Looper.getMainLooper())
+    private var refreshScheduled = false
+    private var refreshPending = false
+    private val refreshRunnable = Runnable {
+        refreshScheduled = false
+        if (refreshPending) {
+            refreshPending = false
+            lastRefreshTime = System.currentTimeMillis()
+            performRefreshPlugins()
+        }
+    }
+
     init {
         refreshPlugins()
     }
@@ -174,8 +209,20 @@ class PluginManager private constructor(
 
     fun refreshPlugins() {
         val now = System.currentTimeMillis()
-        if (now - lastRefreshTime < refreshDebounceMs) return
+        if (now - lastRefreshTime < refreshDebounceMs) {
+            refreshPending = true
+            if (!refreshScheduled) {
+                refreshScheduled = true
+                refreshHandler.postDelayed(refreshRunnable, refreshDebounceMs - (now - lastRefreshTime))
+            }
+            return
+        }
+        refreshPending = false
         lastRefreshTime = now
+        performRefreshPlugins()
+    }
+
+    private fun performRefreshPlugins() {
         Logger.enter(TAG, "refreshPlugins")
         _isLoading.value = true
         _error.value = null
@@ -191,12 +238,12 @@ class PluginManager private constructor(
                         if (jsonFile.exists()) {
                             val json = try { jsonFile.readText() } catch (e: Exception) { null }
                             json?.let {
-                                val info = PluginInfo.fromJson(it)
-                                info?.let { pluginInfo ->
-                                    if (pluginInfo.pluginId.isEmpty()) {
-                                        pluginInfo.pluginId = dir.name
-                                    }
-                                    pluginList.add(pluginInfo)
+                                PluginInfo.fromJson(it)?.let { pluginInfo ->
+                                    // D-42A2：目录名回填改 copy（模型全 val）
+                                    pluginList.add(
+                                        if (pluginInfo.pluginId.isEmpty()) pluginInfo.copy(pluginId = dir.name)
+                                        else pluginInfo
+                                    )
                                 }
                             }
                         }
@@ -273,8 +320,10 @@ class PluginManager private constructor(
                 return null
             }
 
-            if (info.minHostVersion > android.os.Build.VERSION.SDK_INT) {
-                Logger.e(TAG, Str.get(R.string.android_version_too_old_info_minhost, info.minHostVersion, android.os.Build.VERSION.SDK_INT))
+            // C-25：minHostVersion 是「宿主应用版本号」，原先误比 Android API 级别
+            // （26>23 会把本该可用的插件全部拒装）。改比 BuildConfig.VERSION_CODE。
+            if (info.minHostVersion > com.UIN.Tool.BuildConfig.VERSION_CODE) {
+                Logger.e(TAG, Str.get(R.string.android_version_too_old_info_minhost, info.minHostVersion, com.UIN.Tool.BuildConfig.VERSION_CODE))
                 return null
             }
 
@@ -349,10 +398,15 @@ class PluginManager private constructor(
         }
     }
 
+    // F-15：安装单飞 —— 同一 pluginId 的并发安装只允许一个，后来的直接丢弃
+    //（原先 UI 层只是禁用按钮，多入口并发仍可触发两次安装，第二次会覆盖第一次的结果）
+    private val installingIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     suspend fun installPlugin(file: File, fileName: String): PluginInfo? {
         Logger.enter(TAG, "installPlugin")
         Logger.param(TAG, Str.get(R.string.file), file.absolutePath)
 
+        var inFlightId: String? = null
         return try {
             val pluginId = readPluginIdFromTpk(file)
             if (pluginId == null) {
@@ -367,6 +421,12 @@ class PluginManager private constructor(
                 _error.value = Str.get(R.string.plugin_signature_verification_failed_2)
                 return null
             }
+
+            if (!installingIds.add(pluginId)) {
+                Logger.w(TAG, "F-15: plugin '$pluginId' is already installing, drop duplicate trigger")
+                return null
+            }
+            inFlightId = pluginId
 
             val info = installPluginInternal(file, fileName)
 
@@ -383,6 +443,7 @@ class PluginManager private constructor(
             _error.value = e.message
             null
         } finally {
+            inFlightId?.let { installingIds.remove(it) }
             Logger.exit(TAG, "installPlugin", System.currentTimeMillis())
         }
     }
@@ -449,6 +510,8 @@ class PluginManager private constructor(
                 pluginInstances.remove(pluginId)
                 pluginInstancesByKey.entries.removeAll { pluginIdOfInstance(it.key) == pluginId }
                 removePluginWebViewsOf(pluginId)
+                // B-50：连带清掉该插件在事件总线上的监听器与粘性事件
+                com.UIN.Tool.core.plugin.PluginEventBus.removePlugin(pluginId)
                 preferenceManager.removePluginSignature(pluginId)
                 refreshPlugins()
                 notifyWidgetsRefresh()
@@ -474,72 +537,6 @@ class PluginManager private constructor(
 
     // ==================== 插件更新 ====================
 
-    /**
-     * 原子更新插件：先把旧目录改名暂存，新包安装到正式目录，成功后再清理旧目录；
-     * 任一步失败立即回滚旧目录，避免「先卸载后安装」导致的插件永久丢失。
-     * 用户数据（<plugins>/<id>/data）在更新中保留。
-     */
-    suspend fun updatePlugin(pluginId: String, newPluginFile: File): Boolean {
-        if (!pluginId.isValidPluginId()) {
-            Logger.e(TAG, Str.get(R.string.invalid_plugin_id_format_pluginid, pluginId))
-            return false
-        }
-
-        val newPluginId = readPluginIdFromTpk(newPluginFile)
-        if (newPluginId == null || newPluginId != pluginId) {
-            Logger.e(TAG, Str.get(R.string.plugin_update_id_mismatch_expected_pluginid, pluginId, newPluginId ?: ""))
-            _error.value = Str.get(R.string.plugin_update_id_mismatch_expected_pluginid, pluginId, newPluginId ?: "")
-            return false
-        }
-
-        if (!preferenceManager.isDevIgnoreSignatureEnabled() &&
-                !SecurityUtils.verifyFileSignature(pluginId, newPluginFile, preferenceManager)) {
-            Logger.e(TAG, Str.get(R.string.plugin_signature_verification_failed))
-            _error.value = Str.get(R.string.plugin_signature_verification_failed_2)
-            return false
-        }
-
-        val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
-        val backupDir = File(Constants.PLUGIN_DIR, ".$pluginId.backup.${System.currentTimeMillis()}")
-
-        if (pluginDir.exists() && !pluginDir.renameTo(backupDir)) {
-            Logger.e(TAG, Str.get(R.string.failed_to_stage_old_plugin_for_update))
-            return false
-        }
-
-        val info = try {
-            installPluginInternal(newPluginFile, newPluginFile.name)
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.plugin_install_error), e)
-            null
-        }
-
-        if (info == null || info.pluginId != pluginId) {
-            // 回滚：清理可能残留的新目录，恢复旧目录
-            fileManager.deleteRecursively(pluginDir)
-            if (backupDir.exists()) backupDir.renameTo(pluginDir)
-            Logger.e(TAG, Str.get(R.string.plugin_update_failed_rolled_back))
-            _error.value = Str.get(R.string.plugin_update_failed_rolled_back)
-            return false
-        }
-
-        // 更新成功：保留用户数据（data 目录），清除运行缓存以加载新 dex
-        preserveUserData(backupDir, pluginDir)
-        fileManager.deleteRecursively(backupDir)
-
-        // 清除旧 dex / WebView 缓存，下次打开加载新版本
-        classLoaders.remove(pluginId)
-        pluginInstances.remove(pluginId)
-        pluginInstancesByKey.entries.removeAll { pluginIdOfInstance(it.key) == pluginId }
-        removePluginWebViewsOf(pluginId)
-
-        checkPluginDependencies(info)
-        refreshPlugins()
-        notifyWidgetsRefresh()
-        Logger.success(TAG, Str.get(R.string.plugin_updated_info_name_info_versi, info.name, info.version))
-        return true
-    }
-
     /** 把旧插件目录中的用户数据（data）合并进新目录。 */
     private fun preserveUserData(oldDir: File, newDir: File) {
         try {
@@ -560,11 +557,6 @@ class PluginManager private constructor(
         } catch (e: Exception) {
             Logger.w(TAG, Str.get(R.string.failed_to_preserve_user_data_e_me, e.message))
         }
-    }
-
-    fun hasPluginUpdate(pluginId: String, newVersion: Int): Boolean {
-        val info = getPluginInfo(pluginId)
-        return info != null && newVersion > info.version
     }
 
     // ==================== 插件导出 ====================
@@ -619,7 +611,7 @@ class PluginManager private constructor(
         val info = getPluginInfo(pluginId) ?: return null
 
         if (info.uiType == "web") {
-            Logger.d(TAG, Str.get(R.string.web_plugins_handled_by_pluginhostact))
+            Logger.d(TAG, Str.get(R.string.web_plugins_handled_by))
             return null
         }
 
@@ -737,18 +729,24 @@ class PluginManager private constructor(
     }
 
     fun getPluginsByCategory(category: String): List<PluginInfo> {
-        return if (category == Str.get(R.string.all)) _plugins.value else _plugins.value.filter { it.category == category }
+        return if (category == Str.get(R.string.all)) _plugins.value else _plugins.value.filter { it.displayCategory() == category }
     }
 
     fun getAllCategories(): List<String> {
         val categories = mutableSetOf(Str.get(R.string.all), Str.get(R.string.uncategorized))
-        _plugins.value.forEach { categories.add(it.category.ifEmpty { Str.get(R.string.uncategorized) }) }
+        _plugins.value.forEach { categories.add(it.displayCategory()) }
         return categories.toList()
     }
 
     fun updatePluginCategory(pluginId: String, newCategory: String): Boolean {
         val plugin = getPluginInfo(pluginId) ?: return false
-        val updated = plugin.copy(category = newCategory)
+        // D-41：本地化「未分类」/空串统一存回稳定 key，避免把 UI 文案持久化成数据
+        val normalizedCategory = if (newCategory.isBlank() || newCategory == Str.get(R.string.uncategorized)) {
+            com.UIN.Tool.domain.model.PluginInfo.CATEGORY_UNCATEGORIZED
+        } else {
+            newCategory
+        }
+        val updated = plugin.copy(category = normalizedCategory)
         val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
         val jsonFile = File(pluginDir, Constants.PLUGIN_CONFIG_FILE)
         return try {
@@ -880,10 +878,36 @@ class PluginManager private constructor(
         return PluginPermissionManager.shouldShowPermissionDialog(context, pluginId)
     }
 
+    /**
+     * C-03：当前发起权限请求的宿主 Activity。
+     * PluginManager 构造时持的是 applicationContext（[getInstance]），`context as? Activity`
+     * 恒为 null，导致权限弹窗从未真正发起；这里由 MainActivity.onResume/onDestroy 维护弱引用。
+     */
+    private var hostActivity: WeakReference<android.app.Activity>? = null
+
+    fun onHostActivityResumed(activity: android.app.Activity) {
+        hostActivity = WeakReference(activity)
+    }
+
+    fun onHostActivityDestroyed(activity: android.app.Activity) {
+        if (hostActivity?.get() === activity) hostActivity = null
+        failPendingPermissionRequests(activity)
+    }
+
+    /** 解析可用于弹系统权限窗的 Activity：优先 applicationContext（若真是 Activity），否则取登记的宿主。 */
+    private fun resolveRequestActivity(): android.app.Activity? {
+        val fromContext = context as? android.app.Activity
+        if (fromContext != null && !fromContext.isFinishing && !fromContext.isDestroyed) {
+            return fromContext
+        }
+        val host = hostActivity?.get()
+        return host?.takeUnless { it.isFinishing || it.isDestroyed }
+    }
+
     fun requestPluginPermissions(pluginId: String, onResult: (Boolean) -> Unit) {
-        val activity = context as? android.app.Activity
+        val activity = resolveRequestActivity()
         if (activity == null) {
-            Logger.e(TAG, Str.get(R.string.context_is_not_an_activity_cannot_re))
+            Logger.e(TAG, Str.get(R.string.context_is_not_an_activity_cannot))
             onResult(false)
             return
         }
@@ -892,13 +916,43 @@ class PluginManager private constructor(
             onResult(true)
             return
         }
-        val requestCode = 2000 + pluginId.hashCode() % 1000
+        val requestCode = 2000 + Math.floorMod(pluginId.hashCode(), 1000)
+        // C-03：先登记回调，由 Activity.onRequestPermissionsResult 回填真实授权结果
+        // （原先请求后立即 onResult(true)，属假异步，调用方以为已授予）。
+        pendingPermissionRequests[requestCode] = WeakReference(activity) to onResult
         PluginPermissionManager.requestPermissions(
             activity,
             permissions.toTypedArray(),
             requestCode
         )
-        onResult(true)
+    }
+
+    /**
+     * C-03：系统权限请求结果回填入口，由宿主 Activity 调用。
+     * @return true 表示该 requestCode 由插件权限流程消费（调用方无需再处理）。
+     */
+    fun dispatchPermissionResult(requestCode: Int, grantResults: IntArray): Boolean {
+        val (owner, callback) = pendingPermissionRequests.remove(requestCode) ?: return false
+        owner.clear()
+        val granted = grantResults.isNotEmpty() &&
+            grantResults.all { it == android.content.pm.PackageManager.PERMISSION_GRANTED }
+        Logger.d(TAG, "permission request #$requestCode finished, granted=$granted")
+        callback(granted)
+        return true
+    }
+
+    /** 宿主 Activity 销毁时，仅中止由它发起的未决请求，避免回调持有 Compose 状态造成泄漏。 */
+    fun failPendingPermissionRequests(activity: android.app.Activity) {
+        if (pendingPermissionRequests.isEmpty()) return
+        pendingPermissionRequests.entries
+            .filter { it.value.first.get() === activity }
+            .map { it.key }
+            .forEach { code ->
+                pendingPermissionRequests.remove(code)?.second?.let { cb ->
+                    Logger.w(TAG, "pending permission request #$code aborted (activity destroyed)")
+                    cb(false)
+                }
+            }
     }
 
     fun requestPluginPermissionsByGroups(
@@ -906,9 +960,9 @@ class PluginManager private constructor(
         onProgress: ((String, Int, Int) -> Unit)? = null,
         onComplete: (Boolean) -> Unit
     ) {
-        val activity = context as? android.app.Activity
+        val activity = resolveRequestActivity()
         if (activity == null) {
-            Logger.e(TAG, Str.get(R.string.context_is_not_an_activity_cannot_re))
+            Logger.e(TAG, Str.get(R.string.context_is_not_an_activity_cannot))
             onComplete(false)
             return
         }
@@ -921,30 +975,35 @@ class PluginManager private constructor(
         
         val normal = permissions.filter { !PluginPermissionManager.isSpecialPermission(it) }
         val special = permissions.filter { PluginPermissionManager.isSpecialPermission(it) }
+        val hasSpecial = special.isNotEmpty()
         
         if (normal.isNotEmpty()) {
             onProgress?.invoke(Str.get(R.string.normal_permissions), 0, 2)
-            val requestCode = 3000 + pluginId.hashCode() % 1000
+            val requestCode = 3000 + Math.floorMod(pluginId.hashCode(), 1000)
+            // C-03：等系统真实回执后再报进度与完成，不再请求即刻报"已授予"
+            pendingPermissionRequests[requestCode] = WeakReference(activity) to { granted: Boolean ->
+                onProgress?.invoke(Str.get(R.string.normal_permissions_granted), 1, 2)
+                // 含特殊权限时必须手动在设置里开启，故整体结果恒为未完成
+                onComplete(granted && !hasSpecial)
+            }
             PluginPermissionManager.requestPermissions(
                 activity,
                 normal.toTypedArray(),
                 requestCode
             )
-            onProgress?.invoke(Str.get(R.string.normal_permissions_granted), 1, 2)
         }
-        
-        if (special.isNotEmpty()) {
-            onProgress?.invoke(Str.get(R.string.special_permissions), 1, 2)
+
+        if (hasSpecial) {
+            onProgress?.invoke(Str.get(R.string.special_permissions), if (normal.isNotEmpty()) 1 else 0, 2)
             PluginPermissionManager.openAppSettings(activity)
-            onProgress?.invoke(Str.get(R.string.please_enable_special_permissions_ma), 2, 2)
-            onComplete(false)
-        } else {
+            onProgress?.invoke(Str.get(R.string.please_enable_special_permissions), 2, 2)
+            if (normal.isEmpty()) {
+                // 只剩特殊权限：无法通过系统弹窗授权，引导用户手动开启，按未完成返回
+                onComplete(false)
+            }
+        } else if (normal.isEmpty()) {
             onComplete(true)
         }
-    }
-
-    fun showPermissionGuidance(pluginId: String, onReRequest: () -> Unit, onOpenSettings: () -> Unit) {
-        onReRequest()
     }
 
     fun savePluginPermissionConfig(pluginId: String, permission: String, granted: Boolean) {
@@ -974,7 +1033,7 @@ class PluginManager private constructor(
     }
 
     fun isBackendRunning(pluginId: String): Boolean {
-        return PluginBackendManager.isRunning(pluginId)
+        return PluginBackendManager.isAnyBackendRunningForPlugin(pluginId)
     }
 
     fun getBackendPort(pluginId: String): Int {
@@ -1012,11 +1071,11 @@ class PluginManager private constructor(
             return
         }
 
-        Logger.i(TAG, Str.get(R.string.conditions_met_calling_pluginbackend))
+        Logger.i(TAG, Str.get(R.string.conditions_met_calling))
         
         Thread {
             try {
-                Logger.d(TAG, Str.get(R.string.calling_pluginbackendmanager_startba))
+                Logger.d(TAG, Str.get(R.string.calling_pluginbackendmanager))
                 val startTime = System.currentTimeMillis()
                 val success = PluginBackendManager.startBackend(context, info)
                 val elapsed = System.currentTimeMillis() - startTime
@@ -1064,11 +1123,11 @@ class PluginManager private constructor(
             return
         }
 
-        Logger.i(TAG, Str.get(R.string.conditions_met_calling_pluginbackend))
+        Logger.i(TAG, Str.get(R.string.conditions_met_calling))
 
         Thread {
             try {
-                Logger.d(TAG, Str.get(R.string.calling_pluginbackendmanager_startba))
+                Logger.d(TAG, Str.get(R.string.calling_pluginbackendmanager))
                 val startTime = System.currentTimeMillis()
                 val success = PluginBackendManager.startBackendInstance(context, info, key)
                 val elapsed = System.currentTimeMillis() - startTime
@@ -1090,17 +1149,18 @@ class PluginManager private constructor(
     }
 
     fun stopBackend(pluginId: String) {
-        PluginBackendManager.stopBackend(pluginId)
+        // 独立端口多开：插件级停止 = 停该插件名下全部实例键的后端
+        PluginBackendManager.stopBackendsOfPlugin(pluginId)
     }
 
-    /** 共享端口模式：插件实例持有共享后端（每打开一个带后端的插件实例调用一次） */
-    fun acquireBackend(pluginId: String) {
-        PluginBackendManager.acquireHold(pluginId)
+    /** 独立端口多开：实例持有自己的后端键（每成功启动一个实例后端调用一次） */
+    fun acquireBackend(key: String) {
+        PluginBackendManager.acquireHold(key)
     }
 
     /** 共享端口模式：插件实例释放共享后端（最后一个实例关闭时停止后端） */
-    fun releaseBackend(pluginId: String) {
-        PluginBackendManager.releaseHold(pluginId)
+    fun releaseBackend(key: String) {
+        PluginBackendManager.releaseHold(key)
     }
 
     fun stopAllBackends() {
@@ -1147,16 +1207,6 @@ class PluginManager private constructor(
     }
 
     // ==================== 清理 ====================
-
-    fun clearAllPlugins() {
-        _plugins.value.forEach { plugin ->
-            onPluginDestroy(plugin.pluginId)
-            stopBackend(plugin.pluginId)
-        }
-        _plugins.value = emptyList()
-        _installedPluginIds.value = emptySet()
-        Logger.i(TAG, Str.get(R.string.all_plugins_cleaned))
-    }
 
     fun refreshWorkFolder() {
         Logger.i(TAG, Str.get(R.string.refreshing_work_dir_preferencemanage, preferenceManager.getWorkFolder()))

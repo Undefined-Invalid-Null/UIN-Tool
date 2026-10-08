@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.UIN.Tool.core.compiler.JavaToDexCompiler
+import com.UIN.Tool.compiler.JavaToDexCompiler
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.unified.*
@@ -38,6 +38,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import kotlinx.coroutines.Dispatchers
 
 private const val TAG = "BasePluginWizardScreen"
 
@@ -218,7 +219,7 @@ fun BasePluginWizardScreen(
     }
 
     fun startCompileAndPackage() {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 viewModel.isCompiling.value = true
                 viewModel.compileMessage.value = Str.get(R.string.preparing_build_environment)
@@ -265,7 +266,7 @@ fun BasePluginWizardScreen(
                     viewModel.compileMessage.value = Str.get(R.string.compiling_java_code)
                     viewModel.compileProgress.value = 40
 
-                    val compiler = JavaToDexCompiler(context)
+                    val compiler = JavaToDexCompiler(appContext)
 
                     compiler.setOnProgressListener { message ->
                         viewModel.compileMessage.value = message
@@ -283,6 +284,7 @@ fun BasePluginWizardScreen(
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
                         AppToast.success(context, Str.get(R.string.compile_and_package_successful_n_out, outputTpk.absolutePath))
+                        compiler.clearListeners()
                     }
 
                     compiler.setOnErrorListener { error ->
@@ -290,6 +292,7 @@ fun BasePluginWizardScreen(
                         viewModel.compileProgress.value = 0
                         viewModel.isCompiling.value = false
                         AppToast.error(context, Str.get(R.string.compilation_failed_error_2, error))
+                        compiler.clearListeners()
                     }
 
                     val srcDir = File(workDir, "src")
@@ -307,7 +310,7 @@ fun BasePluginWizardScreen(
                     viewModel.compileMessage.value = Str.get(R.string.packaging_plugin)
                     viewModel.compileProgress.value = 60
 
-                    val compiler = JavaToDexCompiler(context)
+                    val compiler = JavaToDexCompiler(appContext)
 
                     compiler.setOnProgressListener { message ->
                         viewModel.compileMessage.value = message
@@ -322,6 +325,7 @@ fun BasePluginWizardScreen(
                         viewModel.isCompiling.value = false
                         viewModel.tpkFile.value = outputTpk
                         AppToast.success(context, Str.get(R.string.packaging_successful_n_outputtpk_abs, outputTpk.absolutePath))
+                        compiler.clearListeners()
                     }
 
                     compiler.setOnErrorListener { error ->
@@ -329,6 +333,7 @@ fun BasePluginWizardScreen(
                         viewModel.compileProgress.value = 0
                         viewModel.isCompiling.value = false
                         AppToast.error(context, Str.get(R.string.packaging_failed_error_2, error))
+                        compiler.clearListeners()
                     }
 
                     compiler.packageTpk(
@@ -370,20 +375,20 @@ fun BasePluginWizardScreen(
 
     fun getStepDesc(): String {
         return when (currentStep) {
-            0 -> Str.get(R.string.fill_in_the_plugin_basic_configurati)
-            1 -> Str.get(R.string.choose_a_png_image_as_the_icon_optio)
+            0 -> Str.get(R.string.fill_in_the_plugin_basic_configuration)
+            1 -> Str.get(R.string.choose_a_png_image_as_the_icon_optional)
             2 -> when {
-                uiType == "web" && backendType == "binary" -> Str.get(R.string.select_a_compiled_executable_binary_)
-                uiType == "web" -> Str.get(R.string.edit_html_css_js_or_import_an_existi)
+                uiType == "web" && backendType == "binary" -> Str.get(R.string.select_a_compiled_executable_binary_file)
+                uiType == "web" -> Str.get(R.string.edit_html_css_js_or_import_an_existing)
                 uiType == "cui" -> Str.get(R.string.edit_the_terminal_launch_script_that)
                 else -> Str.get(R.string.implement_the_plugininterface)
             }
             3 -> when {
-                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> Str.get(R.string.generate_project_files_and_package_a)
-                uiType == "cui" -> Str.get(R.string.generate_project_files_and_package_a)
-                else -> Str.get(R.string.optional_resources_like_images_and_a)
+                uiType == "web" && (backendType == "binary" || backendType.isEmpty()) -> Str.get(R.string.generate_project_files_and_package_as)
+                uiType == "cui" -> Str.get(R.string.generate_project_files_and_package_as)
+                else -> Str.get(R.string.optional_resources_like_images_and_audio)
             }
-            4 -> Str.get(R.string.generate_the_project_structure_and_p)
+            4 -> Str.get(R.string.generate_the_project_structure_and)
             else -> Str.get(R.string.generate_project_files)
         }
     }
@@ -392,11 +397,11 @@ fun BasePluginWizardScreen(
         return when (currentStep) {
             0 -> {
                 if (viewModel.pluginId.value.isEmpty() || viewModel.pluginName.value.isEmpty()) {
-                    AppToast.warning(context, Str.get(R.string.please_fill_in_the_plugin_id_and_nam))
+                    AppToast.warning(context, Str.get(R.string.please_fill_in_the_plugin_id_and_name))
                     return false
                 }
                 if (!viewModel.pluginId.value.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                    AppToast.warning(context, Str.get(R.string.invalid_plugin_id_it_should_be_a_rev))
+                    AppToast.warning(context, Str.get(R.string.invalid_plugin_id_it_should_be_a))
                     return false
                 }
                 true
@@ -752,7 +757,7 @@ fun BasePluginWizardScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        Str.get(R.string.saved_values_are_synced_to_the_form_),
+                        Str.get(R.string.saved_values_are_synced_to_the_form),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -783,7 +788,7 @@ fun BasePluginWizardScreen(
     if (showStepOverview) {
         UnifiedAlertDialog(
             onDismissRequest = { showStepOverview = false },
-            title = { Text(Str.get(R.string.fill_in_the_plugin_basic_configurati)) },
+            title = { Text(Str.get(R.string.fill_in_the_plugin_basic_configuration)) },
             text = {
                 Column(
                     modifier = Modifier

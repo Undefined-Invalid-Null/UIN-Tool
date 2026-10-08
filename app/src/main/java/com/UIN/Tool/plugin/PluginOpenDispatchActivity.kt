@@ -34,7 +34,7 @@ import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.Str
@@ -364,7 +364,7 @@ class PluginOpenDispatchActivity : AppCompatActivity() {
         Scaffold(
             containerColor = AppColors.pageBackground(),
             topBar = {
-                UIComponents.ManageTopAppBar(
+                ManageTopAppBar(
                     titleText = Str.get(R.string.open_with_choose_title),
                     onBack = { finish() }
                 )
@@ -405,7 +405,7 @@ class PluginOpenDispatchActivity : AppCompatActivity() {
 
     @Composable
     private fun SummaryCard(icon: ImageVector, label: String, summary: String) {
-        UIComponents.Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        UnifiedCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(12.dp)
@@ -499,7 +499,7 @@ class PluginOpenDispatchActivity : AppCompatActivity() {
     @Composable
     private fun PluginRow(plugin: PluginInfo, onClick: () -> Unit) {
         val label = parseLabel(plugin)
-        UIComponents.Card(
+        UnifiedCard(
             onClick = onClick,
             modifier = Modifier
                 .fillMaxWidth()

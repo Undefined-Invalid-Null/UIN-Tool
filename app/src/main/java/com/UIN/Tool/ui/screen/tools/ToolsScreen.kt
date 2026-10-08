@@ -120,7 +120,7 @@ fun ToolsScreen() {
     val scope = rememberCoroutineScope()
 
     val categories = remember(plugins) {
-        listOf(Str.get(R.string.all)) + plugins.map { it.category }.distinct().filter { it != Str.get(R.string.uncategorized) } + listOf(Str.get(R.string.uncategorized))
+        listOf(Str.get(R.string.all)) + plugins.map { it.displayCategory() }.distinct().filter { it != Str.get(R.string.uncategorized) } + listOf(Str.get(R.string.uncategorized))
     }
 
     val filteredPlugins = remember(searchText, selectedCategory, plugins) {
@@ -130,7 +130,7 @@ fun ToolsScreen() {
             plugins
         }
         if (selectedCategory != Str.get(R.string.all)) {
-            result = result.filter { it.category == selectedCategory }
+            result = result.filter { it.displayCategory() == selectedCategory }
         }
         result
     }
@@ -300,7 +300,7 @@ fun ToolsScreen() {
                                 if (searchText.isNotEmpty()) Str.get(R.string.no_matching_plugins_found) else Str.get(R.string.no_plugins_yet)
                             )
                             UnifiedCaptionText(
-                                if (searchText.isNotEmpty()) Str.get(R.string.try_other_keywords) else Str.get(R.string.import_plugins_on_the_manage_page_fi)
+                                if (searchText.isNotEmpty()) Str.get(R.string.try_other_keywords) else Str.get(R.string.import_plugins_on_the_manage_page_first)
                             )
                         }
                     }
@@ -442,7 +442,7 @@ fun PluginListItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     UnifiedCaptionText("v${plugin.versionName}")
-                    UnifiedCaptionText(plugin.category)
+                    UnifiedCaptionText(plugin.displayCategory())
                     if (plugin.isWebPlugin()) {
                         UnifiedCaptionText(Str.get(R.string.web_label))
                     }

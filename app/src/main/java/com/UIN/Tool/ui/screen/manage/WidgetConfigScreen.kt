@@ -8,7 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,27 +19,30 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.R
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.unified.ButtonSize
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.widget.Widget1x1Provider
+import com.UIN.Tool.widget.WidgetRefreshScheduler
+import com.UIN.Tool.ui.screen.manage.uiconfig.BooleanPropertyRow
 import com.UIN.Tool.widget.WidgetProvider
 
 private const val TAG = "WidgetConfigScreen"
 
 @OptIn(ExperimentalMaterial3Api::class)
-class WidgetConfigActivity : ComponentActivity() {
+class WidgetConfigActivity : AppCompatActivity() {
 
     private lateinit var appWidgetManager: AppWidgetManager
 
@@ -69,7 +72,7 @@ class WidgetConfigActivity : ComponentActivity() {
             val componentName = ComponentName(this, WidgetProvider::class.java)
 
             if (!appWidgetManager.isRequestPinAppWidgetSupported()) {
-                AppToast.showLong(this, Str.get(R.string.your_launcher_doesn_t_support_pinnin))
+                AppToast.showLong(this, Str.get(R.string.your_launcher_doesn_t_support_pinning))
                 return
             }
 
@@ -101,7 +104,7 @@ class WidgetConfigActivity : ComponentActivity() {
             AppLog.i(TAG, Str.get(R.string.adding_shortcut))
             appWidgetManager.requestPinAppWidget(componentName, null, null)
 
-            AppToast.showLong(this, Str.get(R.string.place_the_shortcut_on_your_home_scre))
+            AppToast.showLong(this, Str.get(R.string.place_the_shortcut_on_your_home_screen))
 
         } catch (e: Exception) {
             AppLog.e(TAG, Str.get(R.string.failed_to_add_shortcut_e_message, e.message), e)
@@ -117,10 +120,14 @@ fun WidgetConfigScreen(
     onAddWidget: () -> Unit,
     onAddShortcut: () -> Unit
 ) {
+    // G-28：小部件后台自动刷新开关（变更即写 UIConfig 并重应用调度）
+    val context = LocalContext.current
+    var autoRefresh by remember { mutableStateOf(UIConfig.isWidgetAutoRefreshEnabled()) }
+
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.widget),
                 onBack = onBack
             )
@@ -166,7 +173,7 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = Str.get(R.string.a_1x1_shortcut_that_opens_a_plugin_w),
+                            text = Str.get(R.string.a_1x1_shortcut_that_opens_a_plugin_with),
                             fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp
@@ -226,7 +233,7 @@ fun WidgetConfigScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = Str.get(R.string.a_3x3_widget_showing_multiple_plugin),
+                            text = Str.get(R.string.a_3x3_widget_showing_multiple_plugins_on),
                             fontSize = AppDimens.bodyTextSize.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 20.sp
@@ -291,6 +298,22 @@ fun WidgetConfigScreen(
                         )
                     }
                 }
+            }
+
+            // ============================================================
+            // G-28：后台自动刷新
+            // ============================================================
+            item {
+                BooleanPropertyRow(
+                    label = Str.get(R.string.widget_auto_refresh),
+                    description = Str.get(R.string.widget_auto_refresh_desc),
+                    value = autoRefresh,
+                    onValueChange = {
+                        autoRefresh = it
+                        UIConfig.setWidgetAutoRefreshEnabled(it)
+                        WidgetRefreshScheduler.apply(context)
+                    }
+                )
             }
 
             item {

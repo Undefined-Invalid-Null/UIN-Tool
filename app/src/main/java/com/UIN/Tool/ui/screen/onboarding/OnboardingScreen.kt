@@ -54,7 +54,7 @@ fun OnboardingScreen(
     // 版本更新提示：优先以全屏方式展示 Markdown 变更日志（与「检查更新」弹窗共用渲染）
     if (isVersionUpdate && !releaseNotes.isNullOrBlank()) {
         VersionUpdateScreen(
-            versionName = versionName ?: "5.2.0",
+            versionName = versionName ?: com.UIN.Tool.BuildConfig.VERSION_NAME,
             releaseNotes = releaseNotes,
             onNavigateToMain = onNavigateToMain
         )
@@ -66,18 +66,18 @@ fun OnboardingScreen(
 
     val items = if (isVersionUpdate) {
         listOf(
-            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: "5.2.0"), Icons.Outlined.SystemUpdate),
+            OnboardingItem(Str.get(R.string.version_update), Str.get(R.string.onboarding_version_updated, versionName ?: com.UIN.Tool.BuildConfig.VERSION_NAME), Icons.Outlined.SystemUpdate),
             OnboardingItem(Str.get(R.string.plugin_management), Str.get(R.string.one_tap_import_export_plugins_n_supp), Icons.Outlined.Folder),
             OnboardingItem(Str.get(R.string.plugin_development), Str.get(R.string.visual_plugin_creation_wizard_n_buil), Icons.Outlined.DeveloperMode),
-            OnboardingItem(Str.get(R.string.get_started), Str.get(R.string.now_explore_the_new_features_of_uin_), Icons.Outlined.RocketLaunch)
+            OnboardingItem(Str.get(R.string.get_started), Str.get(R.string.now_explore_the_new_features_of_uin_tool), Icons.Outlined.RocketLaunch)
         )
     } else {
         listOf(
-            OnboardingItem(Str.get(R.string.welcome_to_uin_tool), Str.get(R.string.uin_tool_is_a_powerful_plugin_platfo), Icons.Outlined.RocketLaunch),
+            OnboardingItem(Str.get(R.string.welcome_to_uin_tool), Str.get(R.string.uin_tool_is_a_powerful_plugin_platform), Icons.Outlined.RocketLaunch),
             OnboardingItem(Str.get(R.string.plugin_management), Str.get(R.string.one_tap_import_export_plugins_n_supp_2), Icons.Outlined.Folder),
             OnboardingItem(Str.get(R.string.plugin_development_tools), Str.get(R.string.visual_plugin_creation_wizard_n_buil_2), Icons.Outlined.DeveloperMode),
             OnboardingItem(Str.get(R.string.web_plugin_support), Str.get(R.string.develop_with_html_css_js_n_no_compil), Icons.Outlined.Language),
-            OnboardingItem(Str.get(R.string.all_set), Str.get(R.string.now_explore_more_features_of_uin_too), Icons.Outlined.CheckCircle)
+            OnboardingItem(Str.get(R.string.all_set), Str.get(R.string.now_explore_more_features_of_uin_tool), Icons.Outlined.CheckCircle)
         )
     }
 
@@ -152,7 +152,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         UnifiedBodyText(
-                            text = "v${versionName ?: "5.2.0"}",
+                            text = "v${versionName ?: com.UIN.Tool.BuildConfig.VERSION_NAME}",
                             color = colorScheme.onSurfaceVariant
                         )
 

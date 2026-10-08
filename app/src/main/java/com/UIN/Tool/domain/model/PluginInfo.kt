@@ -10,77 +10,73 @@ import org.json.JSONObject  // ✅ 添加这个导入
  */
 data class PluginInfo(
     // ==================== 基础信息 ====================
-    var pluginId: String = "",
-    var version: Int = 1,
-    var versionName: String = "1.0.0",
-    var minHostVersion: Int = 1,
-    var name: String = "",
-    var author: String = "",
-    var description: String = "",
-    var icon: String = "icon.png",
-    var mainClass: String = "",
-    var updateUrl: String = "",
-    var apiLevel: Int = 21,
-    var category: String = Str.get(R.string.uncategorized),
-    var signature: String = "",
-    var uiType: String = "native",
-    var entry: String = "web/index.html",
-    var permissions: List<String> = emptyList(),
-    var dependencies: List<String> = emptyList(),
+    val pluginId: String = "",
+    val version: Int = 1,
+    val versionName: String = "1.0.0",
+    val minHostVersion: Int = 1,
+    val name: String = "",
+    val author: String = "",
+    val description: String = "",
+    val icon: String = "icon.png",
+    val mainClass: String = "",
+    val updateUrl: String = "",
+    val apiLevel: Int = 21,
+    // D-41：存稳定 key 而非本地化串（原 Str.get(...) 被 toJson 持久化，切语言后分类错乱）
+    val category: String = CATEGORY_UNCATEGORIZED,
+    // D-42③：原 signature 字段删除——plugin.json 自带、toJson 回写、全仓 0 消费者（自证
+    // 签名无锚点）；真校验由 SecurityUtils SHA-256 文件指纹 TOFU 钉扎承担（PluginManager 导入拦截）
+    val uiType: String = "native",
+    val entry: String = "web/index.html",
+    val permissions: List<String> = emptyList(),
+    val dependencies: List<String> = emptyList(),
     /** 来源源 ID（安装时记录） */
-    var sourceId: String = "",
+    val sourceId: String = "",
 
     // ==================== 插件说明 ====================
-    var notice: String = "",
+    val notice: String = "",
 
     // ==================== 后端配置 ====================
-    var backend: String = "",
-    var backendRuntime: String = "",
-    var backendPort: Int = 0,
+    val backend: String = "",
+    val backendRuntime: String = "",
+    val backendPort: Int = 0,
     // 启动命令：宿主用 sh -lc 执行插件内的启动脚本（依赖检测 + 真正后端启动），
     // 由插件配置，运行环境由用户在软件内全局设定。web+后端 插件必填。
-    var backendStartCommand: String = "",
-    var backendStartEntry: String = "scripts/start.sh",
-    var backendEntry: String = "scripts/backend/server.py",
-    var backendAutoStart: Boolean = true,
-    var backendKeepAlive: Boolean = false,
-    var backendPreCommand: String = "",
-    var backendEnv: Map<String, String> = emptyMap(),
-    var backendTimeout: Int = 30,
-    var backendHealthCheck: String = "/health",
-    var backendMaxRetries: Int = 3,
-    var backendLogLevel: String = "info",
-    var backendArgs: List<String> = emptyList(),
+    val backendStartCommand: String = "",
+    val backendStartEntry: String = "scripts/start.sh",
+    val backendEntry: String = "scripts/backend/server.py",
+    val backendAutoStart: Boolean = true,
+    val backendKeepAlive: Boolean = false,
+    val backendPreCommand: String = "",
+    val backendEnv: Map<String, String> = emptyMap(),
+    val backendTimeout: Int = 30,
+    val backendHealthCheck: String = "/health",
+    val backendMaxRetries: Int = 3,
+    val backendLogLevel: String = "info",
+    val backendArgs: List<String> = emptyList(),
 
     // ==================== 二进制程序配置 ====================
-    var backendBinary: String = "",
-    var backendInstallCmd: String = "",
-    var backendCheckCmd: String = "",
+    val backendBinary: String = "",
+    val backendInstallCmd: String = "",
+    val backendCheckCmd: String = "",
 
     // ==================== PHP 专用配置 ====================
-    var backendPhpDocRoot: String = "",
+    val backendPhpDocRoot: String = "",
 
     // ==================== Java 专用配置 ====================
-    var backendJavaClass: String = "",
-    var backendJavaJar: String = "",
+    val backendJavaClass: String = "",
+    val backendJavaJar: String = "",
 
     // ==================== 前端配置 ====================
-    var frontendConfig: Map<String, Any> = emptyMap(),
+    val frontendConfig: Map<String, Any> = emptyMap(),
 
     // ==================== 资源限制 ====================
-    var maxMemory: Int = 512,
-    var maxCpuTime: Int = 60,
-    var maxConcurrentTasks: Int = 5,
+    val maxMemory: Int = 512,
+    val maxCpuTime: Int = 60,
+    val maxConcurrentTasks: Int = 5,
 
     // ==================== 意图中转（openWith） ====================
     // 系统「分享 / 用其他应用打开」分发给插件的外部内容接收配置
-    var openWith: OpenWithConfig? = null,
-
-    // ==================== 运行时状态 ====================
-    var isBackendRunning: Boolean = false,
-    var currentBackendPort: Int = 0,
-    var backendPid: Int = -1,
-    var lastStartTime: Long = 0
+    val openWith: OpenWithConfig? = null
 ) {
 
     fun hasBackend(): Boolean = backend.isNotEmpty() && backendAutoStart
@@ -105,6 +101,14 @@ data class PluginInfo(
     fun isCui(): Boolean = uiType.equals("cui", ignoreCase = true)
 
     fun isWebPlugin(): Boolean = uiType == "web"
+
+    /** D-41：展示用分类（"uncategorized" → 本地化「未分类」） */
+    fun displayCategory(): String =
+        if (category.isEmpty() || category == CATEGORY_UNCATEGORIZED) {
+            Str.get(R.string.uncategorized)
+        } else {
+            category
+        }
     fun isNativePlugin(): Boolean = uiType == "native"
     fun hasNotice(): Boolean = notice.isNotEmpty()
 
@@ -229,8 +233,8 @@ data class PluginInfo(
      * - 旧式 other（由 pre-command 启动长驻服务）→ pre-command 即启动命令。
      * 迁移后宿主统一走「other + backendStartCommand」单一路径，旧式启动分支不再存在。
      */
-    fun migrateLegacyBackend() {
-        if (backend.isBlank() || backendStartCommand.isNotBlank()) return
+    fun migrateLegacyBackend(): PluginInfo {
+        if (backend.isBlank() || backendStartCommand.isNotBlank()) return this
 
         val lang = backend.lowercase()
         val cmd = if (lang == "other") {
@@ -258,11 +262,14 @@ data class PluginInfo(
             }
         }.trim()
 
-        backendStartCommand = cmd
-        backendStartEntry = backendEntry
-        backend = "other"
-        backendRuntime = ""
-        backendPreCommand = ""
+        // D-42A2：原地改字段改为 copy（模型全 val）
+        return copy(
+            backendStartCommand = cmd,
+            backendStartEntry = backendEntry,
+            backend = "other",
+            backendRuntime = "",
+            backendPreCommand = ""
+        )
     }
 
     fun toJson(): String {
@@ -279,7 +286,6 @@ data class PluginInfo(
             put("updateUrl", updateUrl)
             put("apiLevel", apiLevel)
             put("category", category)
-            put("signature", signature)
             put("uiType", uiType)
             put("entry", entry)
             put("permissions", permissions.joinToString(","))
@@ -309,6 +315,14 @@ data class PluginInfo(
             put("maxMemory", maxMemory)
             put("maxCpuTime", maxCpuTime)
             put("maxConcurrentTasks", maxConcurrentTasks)
+            // D-40：backendEnv / frontendConfig 原先既不解析也不序列化 → info.backendEnv 恒为空，
+            // 插件声明的后端环境变量永久失效（PluginBackendManager 注入 env 那一行从未拿到值）
+            if (backendEnv.isNotEmpty()) {
+                put("backendEnv", JSONObject().apply { backendEnv.forEach { (k, v) -> put(k, v) } })
+            }
+            if (frontendConfig.isNotEmpty()) {
+                put("frontendConfig", JSONObject().apply { frontendConfig.forEach { (k, v) -> put(k, v) } })
+            }
             openWith?.let { ow ->
                 put("openWith", JSONObject().apply {
                     put("enabled", ow.enabled)
@@ -323,6 +337,9 @@ data class PluginInfo(
     }
 
     companion object {
+        /** D-41：分类的稳定 key，展示时才映射为本地化文案 */
+        const val CATEGORY_UNCATEGORIZED = "uncategorized"
+
         /**
          * 解析字符串列表字段，兼容两种声明格式：
          * - JSON 数组：`"permissions": ["a", "b"]`
@@ -352,9 +369,42 @@ data class PluginInfo(
         /** 公开版本：供向导回读 plugin.json 时复用同一套兼容解析（JSON 数组 / 逗号字符串）。 */
         fun parseStringListCompat(obj: JSONObject, key: String): List<String> = parseStringList(obj, key)
 
+        /** D-40：解析 JSON 对象型字段为字符串映射 */
+        private fun parseStringMap(obj: JSONObject, key: String): Map<String, String> {
+            return try {
+                val raw = obj.optJSONObject(key) ?: return emptyMap()
+                val map = LinkedHashMap<String, String>()
+                val names = raw.keys()
+                while (names.hasNext()) {
+                    val k = names.next()
+                    map[k] = raw.optString(k, "")
+                }
+                map
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        }
+
+        /** D-40：解析 JSON 对象型字段为任意值映射（frontendConfig） */
+        private fun parseAnyMap(obj: JSONObject, key: String): Map<String, Any> {
+            return try {
+                val raw = obj.optJSONObject(key) ?: return emptyMap()
+                val map = LinkedHashMap<String, Any>()
+                val names = raw.keys()
+                while (names.hasNext()) {
+                    val k = names.next()
+                    map[k] = raw.opt(k) ?: continue
+                }
+                map
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        }
+
         fun fromJson(json: String): PluginInfo? {
             return try {
                 val obj = JSONObject(json)
+                // D-40：backendEnv/frontendConfig 随构造一并解析（原构造后补赋值）
                 val info = PluginInfo(
                     pluginId = obj.optString("pluginId", ""),
                     version = obj.optInt("version", 1),
@@ -367,8 +417,7 @@ data class PluginInfo(
                     mainClass = obj.optString("mainClass", ""),
                     updateUrl = obj.optString("updateUrl", ""),
                     apiLevel = obj.optInt("apiLevel", 21),
-                    category = obj.optString("category", Str.get(R.string.uncategorized)),
-                    signature = obj.optString("signature", ""),
+                    category = obj.optString("category", CATEGORY_UNCATEGORIZED),
                     uiType = obj.optString("uiType", "native"),
                     entry = obj.optString("entry", "web/index.html"),
                     permissions = parseStringList(obj, "permissions"),
@@ -407,9 +456,10 @@ data class PluginInfo(
                             acceptUrl = ow.optBoolean("acceptUrl", true),
                             acceptFile = ow.optBoolean("acceptFile", true)
                         )
-                    }
-                )
-                info.migrateLegacyBackend()
+                    },
+                    backendEnv = parseStringMap(obj, "backendEnv"),
+                    frontendConfig = parseAnyMap(obj, "frontendConfig")
+                ).migrateLegacyBackend()
                 info
             } catch (e: Exception) {
                 null

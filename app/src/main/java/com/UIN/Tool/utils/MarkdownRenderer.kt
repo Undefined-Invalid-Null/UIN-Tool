@@ -11,12 +11,25 @@ import java.util.regex.Pattern
  */
 object MarkdownRenderer {
 
+    // E-15：解析规模上限（行内正则 + 逐行扫描近似 O(n²)，超大文档会卡死渲染线程）
+    private const val MAX_PARSE_CHARS = 512 * 1024
+
     /**
      * 将 Markdown 转换为 HTML
      */
     fun toHtml(markdown: String): String {
         if (markdown.isEmpty()) {
             return getEmptyHtml()
+        }
+
+        var truncated = false
+        val source = if (markdown.length > MAX_PARSE_CHARS) {
+            var cut = markdown.lastIndexOf('\n', MAX_PARSE_CHARS)
+            if (cut <= 0) cut = MAX_PARSE_CHARS
+            truncated = true
+            markdown.substring(0, cut)
+        } else {
+            markdown
         }
 
         val html = StringBuilder()
@@ -39,7 +52,7 @@ object MarkdownRenderer {
         html.append("<div class='container'>\n")
 
         // 解析 Markdown
-        val result = parseMarkdownWithToc(markdown)
+        val result = parseMarkdownWithToc(source)
         val tocHtml = generateTocHtml(result.tocItems)
 
         // 添加目录
@@ -56,6 +69,12 @@ object MarkdownRenderer {
 
         html.append(result.content)
 
+        if (truncated) {
+            html.append("<p class='truncated'>")
+            html.append(Str.get(R.string.markdown_truncated_notice))
+            html.append("</p>\n")
+        }
+
         html.append("</div>\n")
         html.append("</body>\n")
         html.append("</html>")
@@ -64,12 +83,33 @@ object MarkdownRenderer {
     }
 
     private fun getCss(): String {
+        // E-14：全部颜色随深/浅主题切换（原为浅色硬编码 → 深色模式下黑字压深底读不清）
+        val dark = UIConfig.shouldUseDarkTheme()
+        val text = if (dark) "#E3E3E3" else "#333"
+        val textSecondary = if (dark) "#BDBDBD" else "#555"
+        val heading1 = if (dark) "#B0BEC5" else "#37474F"
+        val heading2 = if (dark) "#CFD8DC" else "#455A64"
+        val heading34 = if (dark) "#CFD8DC" else "#546E7A"
+        val heading56 = if (dark) "#B0BEC5" else "#78909C"
+        val headingBorder = if (dark) "#3A3F44" else "#E0E0E0"
+        val surface = if (dark) "#26282B" else "#FFFFFF"
+        val surfaceVariant = if (dark) "#2F3134" else "#F8F9FA"
+        val surfaceVariantHover = if (dark) "#3A3C40" else "#E9ECEF"
+        val listHoverBg = if (dark) "#33363A" else "#F0F0F0"
+        val link = if (dark) "#82B1FF" else "#37474F"
+        val linkBorder = if (dark) "#3A3F44" else "#CFD8DC"
+        val inlineCodeBg = if (dark) "#2B2E31" else "#F4F4F4"
+        val quoteBg = if (dark) "#26282B" else "#F5F5F5"
+        val tableBorder = if (dark) "#3A3F44" else "#DDDDDD"
+        val thBg = if (dark) "#2F3134" else "#F0F0F0"
+        val rowBg = if (dark) "#232527" else "#F9F9F9"
+        val strongColor = if (dark) "#ECEFF1" else "#2C3E50"
         return """
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; 
                 line-height: 1.6; 
-                color: #333; 
+                color: $text; 
                 background: transparent; 
                 padding: 16px; 
                 margin: 0;
@@ -84,7 +124,7 @@ object MarkdownRenderer {
                 border: none;
             }
             .toc-container { 
-                background: white; 
+                background: $surface; 
                 border-radius: 12px; 
                 margin: 16px 0 24px; 
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
@@ -92,7 +132,7 @@ object MarkdownRenderer {
             }
             .toc-header { 
                 padding: 12px 16px; 
-                background: #f8f9fa; 
+                background: $surfaceVariant; 
                 font-weight: 600; 
                 font-size: 16px; 
                 cursor: pointer; 
@@ -101,7 +141,7 @@ object MarkdownRenderer {
                 justify-content: space-between;
                 align-items: center;
             }
-            .toc-header:hover { background: #e9ecef; }
+            .toc-header:hover { background: $surfaceVariantHover; }
             .toc-toggle { font-size: 12px; transition: transform 0.2s; }
             .toc-toggle.collapsed { transform: rotate(-90deg); }
             .toc-content { padding: 8px 0 12px 0; }
@@ -111,16 +151,16 @@ object MarkdownRenderer {
             .toc-list a { 
                 display: block; 
                 padding: 6px 16px; 
-                color: #555; 
+                color: $textSecondary; 
                 text-decoration: none; 
                 font-size: 14px; 
                 border-left: 3px solid transparent; 
                 transition: all 0.2s;
             }
             .toc-list a:hover { 
-                background: #f0f0f0; 
-                color: #37474F; 
-                border-left-color: #37474F; 
+                background: $listHoverBg; 
+                color: $link; 
+                border-left-color: $link; 
             }
             .code-block-wrapper { 
                 position: relative; 
@@ -155,16 +195,16 @@ object MarkdownRenderer {
             h1, h2, h3, h4, h5, h6 { 
                 scroll-margin-top: 70px; 
             }
-            h1 { font-size: 28px; margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #37474F; color: #37474F; }
-            h2 { font-size: 24px; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e0e0e0; color: #455A64; }
-            h3 { font-size: 20px; margin: 16px 0 10px; color: #546E7A; }
-            h4 { font-size: 18px; margin: 14px 0 8px; color: #607D8B; }
-            h5 { font-size: 16px; margin: 12px 0 6px; color: #78909C; }
-            h6 { font-size: 14px; margin: 10px 0 4px; color: #90A4AE; }
+            h1 { font-size: 28px; margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 2px solid $heading1; color: $heading1; }
+            h2 { font-size: 24px; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid $headingBorder; color: $heading2; }
+            h3 { font-size: 20px; margin: 16px 0 10px; color: $heading34; }
+            h4 { font-size: 18px; margin: 14px 0 8px; color: $heading34; }
+            h5 { font-size: 16px; margin: 12px 0 6px; color: $heading56; }
+            h6 { font-size: 14px; margin: 10px 0 4px; color: $heading56; }
             p { margin: 12px 0; line-height: 1.7; }
-            a { color: #37474F; text-decoration: none; border-bottom: 1px solid #CFD8DC; }
+            a { color: $link; text-decoration: none; border-bottom: 1px solid $linkBorder; }
             code { 
-                background: #f4f4f4; 
+                background: $inlineCodeBg; 
                 padding: 2px 6px; 
                 border-radius: 4px; 
                 font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; 
@@ -190,9 +230,9 @@ object MarkdownRenderer {
             blockquote { 
                 margin: 16px 0; 
                 padding: 12px 20px; 
-                background: #f5f5f5; 
-                border-left: 4px solid #37474F; 
-                color: #555; 
+                background: $quoteBg; 
+                border-left: 4px solid $heading1; 
+                color: $textSecondary; 
             }
             table { 
                 width: 100%; 
@@ -204,13 +244,13 @@ object MarkdownRenderer {
                 -webkit-overflow-scrolling: touch;
             }
             th, td { 
-                border: 1px solid #ddd; 
+                border: 1px solid $tableBorder; 
                 padding: 10px 12px; 
                 text-align: left; 
             }
-            th { background: #f0f0f0; font-weight: 600; }
-            tr:nth-child(even) { background: #f9f9f9; }
-            hr { border: none; border-top: 1px solid #e0e0e0; margin: 24px 0; }
+            th { background: $thBg; font-weight: 600; }
+            tr:nth-child(even) { background: $rowBg; }
+            hr { border: none; border-top: 1px solid $headingBorder; margin: 24px 0; }
             img { 
                 max-width: 100%; 
                 height: auto; 
@@ -218,7 +258,7 @@ object MarkdownRenderer {
                 display: block;
                 margin: 12px 0;
             }
-            strong { font-weight: 700; color: #2c3e50; }
+            strong { font-weight: 700; color: $strongColor; }
             em { font-style: italic; }
             del { text-decoration: line-through; color: #999; }
             .table-wrapper { overflow-x: auto; margin: 16px 0; -webkit-overflow-scrolling: touch; }
@@ -768,6 +808,11 @@ object MarkdownRenderer {
     }
 
     private fun getEmptyHtml(): String {
+        // E-14：空文档页同样随主题切换
+        val dark = UIConfig.shouldUseDarkTheme()
+        val bg = if (dark) "#1E2124" else "#F5F5F5"
+        val cardBg = if (dark) "#26282B" else "#FFFFFF"
+        val body = if (dark) "#E3E3E3" else "#666666"
         return """
             <!DOCTYPE html>
             <html>
@@ -779,19 +824,19 @@ object MarkdownRenderer {
                         font-family: sans-serif; 
                         padding: 20px; 
                         text-align: center; 
-                        background: #f5f5f5; 
+                        background: $bg; 
                         margin: 0;
                     }
                     .card { 
                         max-width: 400px; 
                         margin: 0 auto; 
-                        background: white; 
+                        background: $cardBg; 
                         border-radius: 16px; 
                         padding: 32px; 
                         box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
                     }
                     h1 { color: #e74c3c; margin-bottom: 16px; }
-                    p { color: #666; margin-bottom: 24px; }
+                    p { color: $body; margin-bottom: 24px; }
                 </style>
             </head>
             <body>

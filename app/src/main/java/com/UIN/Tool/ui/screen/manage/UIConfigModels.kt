@@ -111,6 +111,7 @@ data class ConfigState(
 
 fun loadConfigFromUIConfig(): ConfigState {
     val uiConfig = UIConfig.getInstance()
+    val dark = uiConfig.shouldUseDarkTheme()
     return ConfigState(
         themeMode = uiConfig.getThemeMode(),
         primaryColor = uiConfig.getColorString("primary"),
@@ -186,11 +187,13 @@ fun loadConfigFromUIConfig(): ConfigState {
         enableRipple = uiConfig.isRippleEnabled(),
         enableBold = uiConfig.isBoldEnabled(),
         enableGradientBackground = uiConfig.isGradientBackgroundEnabled(),
-        gradientMode = uiConfig.getGradientMode(),
-        gradientColor = if (uiConfig.shouldUseDarkTheme()) uiConfig.getGradientColorStringDark() else uiConfig.getGradientColorString(),
-        gradientColors = uiConfig.getGradientColorsString(),
-        gradientFrom = uiConfig.getGradientFrom(),
-        gradientTo = uiConfig.getGradientTo(),
+        // 渐变单槽位按当前深浅模式取值（原 gradientMode/Colors/From/To 恒读浅键，
+        // 深色下任何一次保存都会把槽里浅值写进 *_dark —— 深色渐变被污染）
+        gradientMode = if (dark) uiConfig.getGradientModeDark() else uiConfig.getGradientMode(),
+        gradientColor = if (dark) uiConfig.getGradientColorStringDark() else uiConfig.getGradientColorString(),
+        gradientColors = if (dark) uiConfig.getGradientColorsStringDark() else uiConfig.getGradientColorsString(),
+        gradientFrom = if (dark) uiConfig.getGradientFromDark() else uiConfig.getGradientFrom(),
+        gradientTo = if (dark) uiConfig.getGradientToDark() else uiConfig.getGradientTo(),
         enableNeumorphism = uiConfig.isNeumorphismEnabled(),
         neumorphismIntensity = uiConfig.getNeumorphismIntensity(),
         enableNeumorphismInset = uiConfig.isNeumorphismInsetEnabled(),
@@ -199,6 +202,33 @@ fun loadConfigFromUIConfig(): ConfigState {
         fontFamily = uiConfig.getFontFamily(),
         language = uiConfig.getLanguage()
     )
+}
+
+/**
+ * 按当前深浅模式刷新渐变单槽位。
+ * ConfigState 的渐变只有一组字段，保存时按"保存瞬间的模式"分流写进浅/深键 ——
+ * 因此任何在模式切换、风格切换后拿到的陈旧槽值都必须先归位到当前模式，
+ * 否则浅值会被写进 color_dark/colors_dark（深色模式显示浅色渐变的根因）。
+ */
+fun ConfigState.refreshGradientForMode(): ConfigState {
+    val ui = UIConfig.getInstance()
+    return if (ui.shouldUseDarkTheme()) {
+        copy(
+            gradientMode = ui.getGradientModeDark(),
+            gradientColor = ui.getGradientColorStringDark(),
+            gradientColors = ui.getGradientColorsStringDark(),
+            gradientFrom = ui.getGradientFromDark(),
+            gradientTo = ui.getGradientToDark()
+        )
+    } else {
+        copy(
+            gradientMode = ui.getGradientMode(),
+            gradientColor = ui.getGradientColorString(),
+            gradientColors = ui.getGradientColorsString(),
+            gradientFrom = ui.getGradientFrom(),
+            gradientTo = ui.getGradientTo()
+        )
+    }
 }
 
 fun saveConfigToUIConfig(config: ConfigState) {

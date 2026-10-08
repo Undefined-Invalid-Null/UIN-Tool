@@ -68,10 +68,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
+import com.UIN.Tool.R
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.utils.AppToast
+import com.UIN.Tool.utils.Str
 import com.UIN.Tool.utils.UIConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -179,7 +181,7 @@ fun UIConfigPreviewScreen(
                     Column {
                         Text("UIN Tool", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
-                        Text("v5.6.0 Menu", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
+                        Text("v${com.UIN.Tool.BuildConfig.VERSION_NAME} Menu", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -281,7 +283,7 @@ fun UIConfigPreviewContent(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("UIN Tool 5.6.0", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("UIN Tool ${com.UIN.Tool.BuildConfig.VERSION_NAME}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text("v14: 所有UI组件优化", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
                 }
@@ -635,13 +637,13 @@ fun UIConfigPreviewContent(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ToastButton("成功 Toast", successColor, Color.White) {
-                        AppToast.success(context, "插件安装成功！")
+                        AppToast.success(context, Str.get(R.string.plugin_install_success))
                     }
                     ToastButton("错误 Toast", errorColor, Color.White) {
-                        AppToast.error(context, "连接失败")
+                        AppToast.error(context, Str.get(R.string.connection_failed))
                     }
                     ToastButton("信息 Toast", infoColor, Color.White) {
-                        AppToast.info(context, "有可用更新")
+                        AppToast.info(context, Str.get(R.string.update_available))
                     }
                 }
             }
@@ -856,7 +858,7 @@ fun UIConfigPreviewContent(
                         Text("📢 ", fontSize = 20.sp)
                         Column(modifier = Modifier.weight(1f)) {
                             Text("更新可用", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("UIN Tool v5.7.0 已准备安装", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                            Text("UIN Tool v${com.UIN.Tool.BuildConfig.VERSION_NAME} 已准备安装", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
                         }
                         Text("✕", color = Color.White, modifier = Modifier.clickable { showBanner = false }, fontSize = 16.sp)
                     }
@@ -1180,7 +1182,7 @@ fun UIConfigPreviewContent(
             SectionHeader("通知面板", textPrimary)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 NotificationRow(Color(0xFFE74C3C), "插件错误", "WebView插件加载失败", "2分钟前", isDark, neuIntensity) { }
-                NotificationRow(Color(0xFF3B82F6), "更新可用", "UIN Tool v5.7.0 已就绪", "1小时前", isDark, neuIntensity) { }
+                NotificationRow(Color(0xFF3B82F6), "更新可用", "UIN Tool v${com.UIN.Tool.BuildConfig.VERSION_NAME} 已就绪", "1小时前", isDark, neuIntensity) { }
                 NotificationRow(Color(0xFF27AE60), "备份完成", "已备份3个插件", "3小时前", isDark, neuIntensity) { }
             }
 

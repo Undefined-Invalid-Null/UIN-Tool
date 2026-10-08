@@ -2,13 +2,13 @@
 package com.UIN.Tool.ui.screen.manage
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.compose.rememberNavController
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.UIConfig
 
-class UIConfigActivity : ComponentActivity() {
+class UIConfigActivity : AppCompatActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

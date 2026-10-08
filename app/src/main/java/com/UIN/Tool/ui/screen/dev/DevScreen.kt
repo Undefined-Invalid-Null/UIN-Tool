@@ -19,12 +19,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
-import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -133,7 +133,7 @@ fun DevScreen() {
         ) {
             UnifiedSectionTitle(Str.get(R.string.plugin_development_tools))
             Text(
-                text = Str.get(R.string.create_uin_tool_plugins_with_native_),
+                text = Str.get(R.string.create_uin_tool_plugins_with_native_web),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -198,7 +198,8 @@ fun DevScreen() {
     }
 
     // ============================================================
-    // 创建插件对话框（白色背景）
+    // 创建插件对话框（四个前端类型选项直接复用 UnifiedCard——与本页其他卡片同一套
+    // 容器色/圆角/内边距代码，随深浅模式与玻璃效果自动一致）
     // ============================================================
     if (showCreatePluginDialog) {
         UnifiedAlertDialog(
@@ -221,60 +222,80 @@ fun DevScreen() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 原生 UI
-                    UnifiedButton(
-                        text = Str.get(R.string.native_ui_android_view),
+                    UnifiedCard(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             selectedUiType = "native"
                             showCreatePluginDialog = false
                             navigateToWizard(context, "native", "")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                    
+                        }
+                    ) {
+                        Text(
+                            text = Str.get(R.string.native_ui_android_view),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
                     // ✅ 纯 WebView（无后端）
-                    UnifiedButton(
-                        text = Str.get(R.string.web_ui_frontend_only_no_backend),
+                    UnifiedCard(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             selectedUiType = "web"
                             isWebViewOnly = true
                             showCreatePluginDialog = false
                             navigateToWizard(context, "web", "")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                    
+                        }
+                    ) {
+                        Text(
+                            text = Str.get(R.string.web_ui_frontend_only_no_backend),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
                     // WebView + 后端
-                    UnifiedButton(
-                        text = Str.get(R.string.web_ui_backend),
+                    UnifiedCard(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             selectedUiType = "web"
                             isWebViewOnly = false
                             showCreatePluginDialog = false
                             navigateToWizard(context, "web", "other")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                    
+                        }
+                    ) {
+                        Text(
+                            text = Str.get(R.string.web_ui_backend),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
                     // ✅ CUI 终端
-                    UnifiedButton(
-                        text = Str.get(R.string.cui_terminal_command_line),
+                    UnifiedCard(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             selectedUiType = "cui"
                             isWebViewOnly = false
                             showCreatePluginDialog = false
                             navigateToWizard(context, "cui", "")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                    
+                        }
+                    ) {
+                        Text(
+                            text = Str.get(R.string.cui_terminal_command_line),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
                     UnifiedDialogTextButton(
                         onClick = { showCreatePluginDialog = false },
                         modifier = Modifier.fillMaxWidth(),
@@ -308,6 +329,8 @@ private fun navigateToWizard(context: android.content.Context, uiType: String, b
 
 // ============================================================
 // 导出模板（从 assets/test_plugins 复制打包好的插件作为模板）
+// 下61（用户拍板）：该目录回 app/src/main/assets/ —— release 与 debug 均内置，
+// 便于用户借鉴参考；下方 no_tpk_templates 空列表分支仅作异常兜底保留
 // ============================================================
 private fun exportTemplates(
     context: android.content.Context
@@ -320,7 +343,7 @@ private fun exportTemplates(
             ?: emptyList()
 
         if (tpkNames.isEmpty()) {
-            AppToast.warning(context, Str.get(R.string.no_tpk_templates_in_assets_test_plug))
+            AppToast.warning(context, Str.get(R.string.no_tpk_templates_in_assets_test_plugins))
             return
         }
 
@@ -373,8 +396,8 @@ private fun exportTemplates(
 // ============================================================
 private fun buildTemplateReadme(files: List<String>): String {
     val descMap = mapOf(
-        "com.example.cuitest.tpk" to Str.get(R.string.cui_terminal_plugin_example_fullscre),
-        "com.example.othertest.tpk" to Str.get(R.string.custom_backend_plugin_example_other_),
+        "com.example.cuitest.tpk" to Str.get(R.string.cui_terminal_plugin_example_fullscreen),
+        "com.example.othertest.tpk" to Str.get(R.string.custom_backend_plugin_example_other_mode),
         "com.example.termuxtest.tpk" to Str.get(R.string.termux_backend_plugin_example_python),
         "com.test.allapi.tpk" to Str.get(R.string.full_api_test_plugin),
         "com.test.storage.tpk" to Str.get(R.string.storage_test_plugin),

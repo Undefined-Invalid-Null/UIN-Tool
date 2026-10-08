@@ -32,26 +32,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.UIN.Tool.core.di.ServiceLocator
-import com.UIN.Tool.core.update.UpdateChecker
-import com.UIN.Tool.core.update.UpdateDownloader
-import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.UpdateDialog
 import com.UIN.Tool.ui.screen.dev.DevToolsActivity
 import com.UIN.Tool.ui.screen.backup.BackupManagerActivity
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
+import com.UIN.Tool.ui.screen.log.LogViewerActivity
 import com.UIN.Tool.ui.screen.permission.PermissionManagerActivity
 import com.UIN.Tool.ui.screen.permission.PluginPermissionActivity
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
-import com.UIN.Tool.utils.formatFileSize
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.io.File
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.viewmodel.UpdateViewModel
 
 private const val TAG = "ManageScreen"
 
@@ -69,71 +66,49 @@ fun ManageScreen(
     checkUpdate: Boolean = false
 ) {
     val context = LocalContext.current
-    val preferenceManager = PreferenceManager(context)
+    val preferenceManager = com.UIN.Tool.core.di.ServiceLocator.getPreferenceManager()
 
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var isCheckingUpdate by remember { mutableStateOf(false) }
-    var showProgressDialog by remember { mutableStateOf(false) }
-    var progressMessage by remember { mutableStateOf("") }
     var downloadTarget by remember { mutableStateOf<ReleaseInfo?>(null) }
 
     var hasCheckedUpdate by remember { mutableStateOf(false) }
-    var hasNewVersion by remember { mutableStateOf(false) }
 
     val updateChecker = remember { ServiceLocator.getUpdateChecker() }
-    val updateDownloader = remember { ServiceLocator.getUpdateDownloader() }
+    // B-58/B-79：检查与下载的单例 listener 归 UpdateViewModel 独占（本页与静默检查同为
+    // Activity 级 viewModel()，实例共享），本页只发请求、通过一次性 handler 收结果，
+    // 不再 setOnUpdateListener/setOnDownloadListener 覆盖全局回调。
+    val updateViewModel: UpdateViewModel = viewModel()
 
     fun performCheckUpdate(showNoUpdateToast: Boolean = false) {
-        if (isCheckingUpdate) return
-        isCheckingUpdate = true
-        updateChecker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
-            override fun onCheckStart() {}
-
-            override fun onCheckSuccess(
-                releases: List<ReleaseInfo>,
-                hasNewer: Boolean,
-                forceUpdate: Boolean
-            ) {
-                isCheckingUpdate = false
+        updateViewModel.checkManually(object : UpdateViewModel.ManualCheckHandler {
+            override fun onUpdateAvailable(release: ReleaseInfo, forceUpdate: Boolean) {
                 hasCheckedUpdate = true
+                downloadTarget = release
+                showUpdateDialog = true
+            }
 
-                if (hasNewer && releases.isNotEmpty()) {
-                    hasNewVersion = true
-                    val latest = releases.first()
-                    downloadTarget = latest
-                    showUpdateDialog = true
-                } else {
-                    hasNewVersion = false
-                    if (showNoUpdateToast) {
-                        AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio))
+            override fun onNoUpdate(currentVersion: String) {
+                hasCheckedUpdate = true
+                downloadTarget = null
+                showUpdateDialog = false
+                if (showNoUpdateToast) {
+                    if (currentVersion.isNotEmpty()) {
+                        AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio_2, currentVersion))
+                    } else {
+                        AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_version))
                     }
                 }
             }
 
-            override fun onCheckFailed(error: String) {
-                isCheckingUpdate = false
+            override fun onFailed(error: String) {
                 hasCheckedUpdate = true
-                hasNewVersion = false
                 downloadTarget = null
                 showUpdateDialog = false
                 if (showNoUpdateToast) {
                     AppToast.error(context, Str.get(R.string.update_check_failed_error, error))
                 }
             }
-
-            override fun onNoUpdate(currentVersion: String) {
-                isCheckingUpdate = false
-                hasCheckedUpdate = true
-                hasNewVersion = false
-                downloadTarget = null
-                showUpdateDialog = false
-                if (showNoUpdateToast) {
-                    AppToast.info(context, Str.get(R.string.you_are_already_on_the_latest_versio_2, currentVersion))
-                }
-            }
         })
-
-        updateChecker.checkUpdate()
     }
 
     LaunchedEffect(checkUpdate) {
@@ -141,31 +116,6 @@ fun ManageScreen(
             delay(300)
             performCheckUpdate(showNoUpdateToast = false)
         }
-    }
-
-    fun startDownload(release: ReleaseInfo) {
-        showProgressDialog = true
-        progressMessage = Str.get(R.string.downloading_release_versionname, release.versionName)
-
-        updateDownloader.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
-            override fun onStart() {}
-
-            override fun onProgress(progress: Int, downloaded: Long, total: Long) {
-                progressMessage = Str.get(R.string.downloading_release_versionname_prog, release.versionName, progress, formatFileSize(downloaded), formatFileSize(total))
-            }
-
-            override fun onSuccess(file: File) {
-                showProgressDialog = false
-                updateDownloader.installApk(file)
-            }
-
-            override fun onFailed(error: String) {
-                showProgressDialog = false
-                AppToast.error(context, Str.get(R.string.download_failed_error, error))
-            }
-        })
-
-        updateDownloader.startDownload(release.downloadUrl, release.versionName, release.sha256)
     }
 
     fun openWidgetConfig() {
@@ -189,7 +139,7 @@ fun ManageScreen(
             try {
                 context.startActivity(Intent(context, PluginManageActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.plugin_management_feature_under_deve))
+                AppToast.warning(context, Str.get(R.string.plugin_management_feature_under))
             }
         },
         ManageMenuItem(
@@ -213,7 +163,7 @@ fun ManageScreen(
             try {
                 context.startActivity(Intent(context, PluginPermissionActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.permission_management_feature_under_))
+                AppToast.warning(context, Str.get(R.string.permission_management_feature_under))
             }
         },
         ManageMenuItem(
@@ -238,12 +188,39 @@ fun ManageScreen(
                 val intent = Intent(context, WidgetConfigActivity::class.java)
                 context.startActivity(intent)
             } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.widget_config_feature_under_developm))
+                AppToast.warning(context, Str.get(R.string.widget_config_feature_under_development))
             }
         }
     )
 
     val softwareItems = listOf(
+        // 文档中心置顶（用户拍板）：使用帮助不再单独留入口——文档中心首条目即
+        // 使用帮助（Help.md），"不要专门留个使用帮助的入口"；G-13 的运行日志紧随其后。
+        ManageMenuItem(
+            id = "docs",
+            title = Str.get(R.string.docs_center),
+            icon = Icons.Default.Info,
+            description = Str.get(R.string.help_and_development_docs)
+        ) {
+            try {
+                context.startActivity(Intent(context, DocBrowserActivity::class.java))
+            } catch (e: Exception) {
+                AppToast.warning(context, Str.get(R.string.docs_center_feature_under_development))
+            }
+        },
+        ManageMenuItem(
+            id = "log_viewer",
+            title = Str.get(R.string.runtime_logs),
+            icon = Icons.Default.List,
+            description = Str.get(R.string.runtime_log_desc)
+        ) {
+            try {
+                context.startActivity(Intent(context, LogViewerActivity::class.java))
+            } catch (e: Exception) {
+                AppLog.e(TAG, "failed to open log viewer", e)
+                AppToast.error(context, Str.get(R.string.failed_to_open_log_page))
+            }
+        },
         ManageMenuItem(
             id = "app_permissions",
             title = Str.get(R.string.app_permissions),
@@ -253,7 +230,7 @@ fun ManageScreen(
             try {
                 context.startActivity(Intent(context, PermissionManagerActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.permission_management_feature_under_))
+                AppToast.warning(context, Str.get(R.string.permission_management_feature_under))
             }
         },
         ManageMenuItem(
@@ -266,7 +243,7 @@ fun ManageScreen(
                 val intent = Intent(context, UIConfigActivity::class.java)
                 context.startActivity(intent)
             } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.ui_customization_feature_under_devel))
+                AppToast.warning(context, Str.get(R.string.ui_customization_feature_under))
             }
         },
         ManageMenuItem(
@@ -278,19 +255,7 @@ fun ManageScreen(
             try {
                 context.startActivity(Intent(context, DevToolsActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.dev_tools_feature_under_developmen))
-            }
-        },
-        ManageMenuItem(
-            id = "docs",
-            title = Str.get(R.string.docs_center),
-            icon = Icons.Default.Info,
-            description = Str.get(R.string.help_and_development_docs)
-        ) {
-            try {
-                context.startActivity(Intent(context, DocBrowserActivity::class.java))
-            } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.docs_center_feature_under_developmen))
+                AppToast.warning(context, Str.get(R.string.dev_tools_feature_under_development))
             }
         },
         ManageMenuItem(
@@ -315,7 +280,7 @@ fun ManageScreen(
             try {
                 context.startActivity(Intent(context, GitHubMirrorActivity::class.java))
             } catch (e: Exception) {
-                AppToast.warning(context, Str.get(R.string.github_acceleration_feature_under_de))
+                AppToast.warning(context, Str.get(R.string.github_acceleration_feature_under))
             }
         },
         ManageMenuItem(
@@ -443,15 +408,16 @@ fun ManageScreen(
             },
             onDownload = {
                 showUpdateDialog = false
-                startDownload(updateTarget)
+                updateViewModel.startDownload(context, updateTarget)
             },
             onManualDownload = {
                 showUpdateDialog = false
                 downloadTarget = null
                 try {
+                    // B-24：走探测到的镜像打开发布页，不再硬编码 GitHub 直连地址
                     val intent = Intent(
                         Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/${updateTarget.tagName}")
+                        android.net.Uri.parse(updateChecker.getReleasePageUrl(updateTarget.tagName))
                     )
                     context.startActivity(intent)
                 } catch (e: Exception) {
@@ -465,16 +431,7 @@ fun ManageScreen(
             }
         )
     }
-
-    if (showProgressDialog) {
-        UnifiedLoadingDialog(
-            message = progressMessage,
-            onCancel = {
-                showProgressDialog = false
-                updateDownloader.cancelDownload()
-            }
-        )
-    }
+    // 下载进度提示由 MainContent 的全局弹窗渲染（updateState.downloading），本页不再自建
 }
 
 @Composable

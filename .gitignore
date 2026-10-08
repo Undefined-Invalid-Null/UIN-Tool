@@ -1,6 +1,7 @@
 # 敏感文件（重要！）
 local.properties
 keystore.jks
+keystore.properties
 google-services.json
 
 # 构建输出

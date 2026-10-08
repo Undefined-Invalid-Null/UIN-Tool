@@ -139,166 +139,136 @@ permissions: List<String> = emptyList(),
     var showPermissionDialog by remember { mutableStateOf(false) }
 
     Column {
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = pluginId,
-                onValueChange = onPluginIdChange,
-                label = Str.get(R.string.plugin_id),
-                placeholder = "com.example.myplugin",
-                modifier = Modifier.fillMaxWidth(),
-                error = if (pluginId.isNotEmpty() && !pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                    Str.get(R.string.must_be_a_reversed_domain_name_e_g_c)
-                } else null
-            )
-        }
+        UnifiedTextField(
+            value = pluginId,
+            onValueChange = onPluginIdChange,
+            label = Str.get(R.string.plugin_id),
+            placeholder = "com.example.myplugin",
+            modifier = Modifier.fillMaxWidth(),
+            error = if (pluginId.isNotEmpty() && !pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
+                Str.get(R.string.must_be_a_reversed_domain_name_e_g_com)
+            } else null
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = pluginName,
-                onValueChange = onPluginNameChange,
-                label = Str.get(R.string.plugin_name),
-                placeholder = Str.get(R.string.my_plugins),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        UnifiedTextField(
+            value = pluginName,
+            onValueChange = onPluginNameChange,
+            label = Str.get(R.string.plugin_name),
+            placeholder = Str.get(R.string.my_plugins),
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = pluginAuthor,
-                onValueChange = onPluginAuthorChange,
-                label = Str.get(R.string.author),
-                placeholder = Str.get(R.string.developer_2),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        UnifiedTextField(
+            value = pluginAuthor,
+            onValueChange = onPluginAuthorChange,
+            label = Str.get(R.string.author),
+            placeholder = Str.get(R.string.developer_2),
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = pluginDescription,
-                onValueChange = onPluginDescriptionChange,
-                label = Str.get(R.string.description),
-                placeholder = Str.get(R.string.this_is_an_example_plugin),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = false
-            )
-        }
+        UnifiedTextField(
+            value = pluginDescription,
+            onValueChange = onPluginDescriptionChange,
+            label = Str.get(R.string.description),
+            placeholder = Str.get(R.string.this_is_an_example_plugin),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = false
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ConfigFieldRow(
-                modifier = Modifier.weight(1f)
-            ) {
-                UnifiedTextField(
-                    value = pluginVersion,
-                    onValueChange = onPluginVersionChange,
-                    label = Str.get(R.string.version_code),
-                    placeholder = "1",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            ConfigFieldRow(
-                modifier = Modifier.weight(1f)
-            ) {
-                UnifiedTextField(
-                    value = pluginVersionName,
-                    onValueChange = onPluginVersionNameChange,
-                    label = Str.get(R.string.version_name),
-                    placeholder = "1.0.0",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            UnifiedTextField(
+                value = pluginVersion,
+                onValueChange = onPluginVersionChange,
+                label = Str.get(R.string.version_code),
+                placeholder = "1",
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            )
+            UnifiedTextField(
+                value = pluginVersionName,
+                onValueChange = onPluginVersionNameChange,
+                label = Str.get(R.string.version_name),
+                placeholder = "1.0.0",
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
 
         if (uiType == "native") {
-            ConfigFieldRow {
-                UnifiedTextField(
-                    value = mainClass,
-                    onValueChange = onMainClassChange,
-                    label = Str.get(R.string.main_class),
-                    placeholder = "com.example.MainPlugin",
-                    modifier = Modifier.fillMaxWidth(),
+            UnifiedTextField(
+                value = mainClass,
+                onValueChange = onMainClassChange,
+                label = Str.get(R.string.main_class),
+                placeholder = "com.example.MainPlugin",
+                modifier = Modifier.fillMaxWidth(),
 error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
-                    Str.get(R.string.must_include_the_package_e_g_com_exa)
-                } else null
-                )
-            }
+                Str.get(R.string.must_include_the_package_e_g_com_example)
+            } else null
+            )
         } else if (uiType == "web") {
-            ConfigFieldRow {
-                UnifiedTextField(
-                    value = entryPath,
-                    onValueChange = onEntryPathChange,
-                    label = Str.get(R.string.entry_file),
-                    placeholder = "web/index.html",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            UnifiedTextField(
+                value = entryPath,
+                onValueChange = onEntryPathChange,
+                label = Str.get(R.string.entry_file),
+                placeholder = "web/index.html",
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // ==================== 最低宿主版本 ====================
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = minHostVersion,
-                onValueChange = onMinHostVersionChange,
-                label = Str.get(R.string.min_host_version),
-                placeholder = "1",
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        UnifiedTextField(
+            value = minHostVersion,
+            onValueChange = onMinHostVersionChange,
+            label = Str.get(R.string.min_host_version),
+            placeholder = "1",
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = category,
-                onValueChange = onCategoryChange,
-                label = Str.get(R.string.category),
-                placeholder = Str.get(R.string.uncategorized),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        UnifiedTextField(
+            value = category,
+            onValueChange = onCategoryChange,
+            label = Str.get(R.string.category),
+            placeholder = Str.get(R.string.uncategorized),
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = updateUrl,
-                onValueChange = onUpdateUrlChange,
-                label = Str.get(R.string.update_url),
-                placeholder = "https://example.com/plugin.json",
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        UnifiedTextField(
+            value = updateUrl,
+            onValueChange = onUpdateUrlChange,
+            label = Str.get(R.string.update_url),
+            placeholder = "https://example.com/plugin.json",
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
         // ==================== 权限选择（弹窗） ====================
-        ConfigFieldRow {
-            PermissionPickerField(
-                selected = permissions,
-                onOpenDialog = { showPermissionDialog = true }
-            )
-        }
+        PermissionPickerField(
+            selected = permissions,
+            onOpenDialog = { showPermissionDialog = true }
+        )
         Spacer(modifier = Modifier.height(8.dp))
 
         // ✅ 插件说明
-        ConfigFieldRow {
-            UnifiedTextField(
-                value = pluginNotice,
-                onValueChange = onPluginNoticeChange,
-                label = Str.get(R.string.plugin_notice_optional),
-                placeholder = Str.get(R.string.shown_on_first_launch_to_explain_the),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = false
-            )
-        }
+        UnifiedTextField(
+            value = pluginNotice,
+            onValueChange = onPluginNoticeChange,
+            label = Str.get(R.string.plugin_notice_optional),
+            placeholder = Str.get(R.string.shown_on_first_launch_to_explain_the),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = false
+        )
         UnifiedCaptionText(
-            Str.get(R.string.this_notice_appears_when_the_plugin_),
+            Str.get(R.string.this_notice_appears_when_the_plugin_is),
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
 
@@ -306,16 +276,14 @@ error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // ✅ 启动命令（必填）：宿主用 sh -lc 执行，运行环境由用户在开发页全局设定
-            ConfigFieldRow {
-                UnifiedTextField(
-                    value = backendStartCommand,
-                    onValueChange = onBackendStartCommandChange,
-                    label = Str.get(R.string.start_command_required),
-                    placeholder = "sh scripts/start.sh",
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = false
-                )
-            }
+            UnifiedTextField(
+                value = backendStartCommand,
+                onValueChange = onBackendStartCommandChange,
+                label = Str.get(R.string.start_command_required),
+                placeholder = "sh scripts/start.sh",
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false
+            )
             UnifiedCaptionText(
                 Str.get(R.string.start_command_runs_in_sh_lc_to_s),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -326,18 +294,16 @@ error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // ✅ CUI 启动命令
-            ConfigFieldRow {
-                UnifiedTextField(
-                    value = backendPreCommand,
-                    onValueChange = onBackendPreCommandChange,
-                    label = Str.get(R.string.start_command_run_in_terminal_when_t),
-                    placeholder = "python3 scripts/script.py",
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = false
-                )
-            }
+            UnifiedTextField(
+                value = backendPreCommand,
+                onValueChange = onBackendPreCommandChange,
+                label = Str.get(R.string.start_command_run_in_terminal_when_the),
+                placeholder = "python3 scripts/script.py",
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false
+            )
             UnifiedCaptionText(
-                Str.get(R.string.the_plugin_opens_a_fullscreen_termin),
+                Str.get(R.string.the_plugin_opens_a_fullscreen_terminal),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }
@@ -349,28 +315,20 @@ error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ConfigFieldRow(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    UnifiedTextField(
-                        value = backendTimeout,
-                        onValueChange = onBackendTimeoutChange,
-                        label = Str.get(R.string.backend_timeout),
-                        placeholder = "30",
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                ConfigFieldRow(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    UnifiedTextField(
-                        value = backendHealthCheck,
-                        onValueChange = onBackendHealthCheckChange,
-                        label = Str.get(R.string.backend_health_check),
-                        placeholder = "/health",
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                UnifiedTextField(
+                    value = backendTimeout,
+                    onValueChange = onBackendTimeoutChange,
+                    label = Str.get(R.string.backend_timeout),
+                    placeholder = "30",
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                )
+                UnifiedTextField(
+                    value = backendHealthCheck,
+                    onValueChange = onBackendHealthCheckChange,
+                    label = Str.get(R.string.backend_health_check),
+                    placeholder = "/health",
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                )
             }
         }
 
@@ -398,26 +356,22 @@ error = if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
         if (openWithEnabled) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            ConfigFieldRow {
-                UnifiedTextField(
-                    value = openWithLabel,
-                    onValueChange = onOpenWithLabelChange,
-                    label = Str.get(R.string.receiver_label_optional),
-                    placeholder = Str.get(R.string.receiver_label_placeholder),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            UnifiedTextField(
+                value = openWithLabel,
+                onValueChange = onOpenWithLabelChange,
+                label = Str.get(R.string.receiver_label_optional),
+                placeholder = Str.get(R.string.receiver_label_placeholder),
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(8.dp))
 
-            ConfigFieldRow {
-                UnifiedTextField(
-                    value = openWithMimeTypes,
-                    onValueChange = onOpenWithMimeTypesChange,
-                    label = Str.get(R.string.mime_types),
-                    placeholder = "text/*,application/pdf",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            UnifiedTextField(
+                value = openWithMimeTypes,
+                onValueChange = onOpenWithMimeTypesChange,
+                label = Str.get(R.string.mime_types),
+                placeholder = "text/*,application/pdf",
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -573,17 +527,6 @@ UnifiedButton(
             )
         }
     )
-}
-
-/** 每个配置字段：仅输入区（字段级信息图标已移除，仅保留标题行的总览按钮） */
-@Composable
-private fun ConfigFieldRow(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    Box(modifier = modifier) {
-        content()
-    }
 }
 
 /** 已知插件权限清单（用于配置页多选） */
@@ -950,7 +893,7 @@ fun PackageStep(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        UnifiedBodyText(Str.get(R.string.tap_the_finish_button_to_generate_th))
+                        UnifiedBodyText(Str.get(R.string.tap_the_finish_button_to_generate_the))
                         if (compileMessage.isNotEmpty() && !compileMessage.contains(Str.get(R.string.success))) {
                             Spacer(modifier = Modifier.height(8.dp))
                             UnifiedCaptionText(

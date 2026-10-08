@@ -19,7 +19,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,8 +42,12 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.UIN.Tool.R
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.ProotContainerManager
@@ -70,25 +74,8 @@ import com.UIN.Tool.view.TerminalView
 import com.UIN.Tool.view.TerminalViewClient
 import java.io.File
 
-class SimpleTerminalActivity : ComponentActivity() {
+class SimpleTerminalActivity : AppCompatActivity() {
 
-    override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(applyLocaleContext(newBase))
-    }
-
-    private fun applyLocaleContext(base: Context): android.content.Context {
-        val uiConfig = try { com.UIN.Tool.utils.UIConfig.getInstance() } catch (_: Exception) { return base }
-        val lang = uiConfig.getLanguage()
-        val locale = when (lang) {
-            "zh" -> java.util.Locale.CHINESE
-            "en" -> java.util.Locale.ENGLISH
-            else -> java.util.Locale.getDefault()
-        }
-        java.util.Locale.setDefault(locale)
-        val config = android.content.res.Configuration(base.resources.configuration)
-        config.setLocales(android.os.LocaleList(locale))
-        return base.createConfigurationContext(config)
-    }
 
     private var terminalView: TerminalView? = null
     private var drawerLayout: DrawerLayout? = null
@@ -106,7 +93,9 @@ class SimpleTerminalActivity : ComponentActivity() {
     private var altButton: TextView? = null
     private var textSizePx = 28
     private var sessionCounter = 0
-    private val sessionNames = mutableMapOf<Int, String>()
+    // D-21：会话名原先按列表下标（position）做 key，closeSession 删一条后
+    // 后面的名字全部错位到别的会话 → 改用会话唯一句柄 mHandle
+    private val sessionNames = mutableMapOf<String, String>()
 
     // ==================== Theme Colors (Dark) ====================
     private val colorBackground = DarkBackground
@@ -173,7 +162,7 @@ class SimpleTerminalActivity : ComponentActivity() {
         override fun onCopyTextToClipboard(session: TerminalSession, text: String?) {
             val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("terminal selection", text.orEmpty()))
-            com.UIN.Tool.utils.AppToast.success(this@SimpleTerminalActivity, getString(R.string.terminal_log_copied))
+            com.UIN.Tool.utils.AppToast.success(this@SimpleTerminalActivity, getString(R.string.copied_to_clipboard))
         }
         override fun onPasteTextFromClipboard(session: TerminalSession?) { pasteFromClipboard() }
         override fun onBell(session: TerminalSession) = Unit
@@ -209,7 +198,7 @@ class SimpleTerminalActivity : ComponentActivity() {
         setupSidebar()
         setupDialogHost()
 
-        if (!prepareRuntime()) return
+        // 环境检查（prepareRuntime）在 startSession 内统一执行
         startNewSession()
     }
 
@@ -241,7 +230,8 @@ class SimpleTerminalActivity : ComponentActivity() {
         terminalView?.apply {
             setBackgroundColor(colorBackground.toArgb())
             setTextSize(textSizePx)
-            keepScreenOn = true
+            // D-22：常亮改为「有活动会话才常亮」，全会话退出/挂掉后不再耗电
+            keepScreenOn = sessions.any { it.isRunning }
             isFocusable = true
             isFocusableInTouchMode = true
             setTerminalViewClient(terminalViewClient)
@@ -272,6 +262,7 @@ class SimpleTerminalActivity : ComponentActivity() {
 
     private var showRenameDialog by mutableStateOf(false)
     private var renamePosition by mutableStateOf(0)
+    private var renameHandle by mutableStateOf<String?>(null)
     private var renameText by mutableStateOf("")
     private var renameEditText: android.widget.EditText? = null
 
@@ -359,7 +350,7 @@ class SimpleTerminalActivity : ComponentActivity() {
                         onClick = {
                             val newName = renameEditText?.text?.toString()?.trim() ?: renameText
                             if (newName.isNotEmpty()) {
-                                sessionNames[renamePosition] = newName
+                                renameHandle?.let { sessionNames[it] = newName }
                                 updateSessionList()
                                 updateStatus()
                             }
@@ -398,7 +389,8 @@ class SimpleTerminalActivity : ComponentActivity() {
             }
             override fun onBindViewHolder(holder: SessionViewHolder, position: Int) {
                 val session = sessions[position]
-                val displayName = sessionNames.getOrDefault(position, getString(R.string.terminal_session_number, position + 1))
+                val displayName = sessionNames[session.mHandle]
+                    ?: getString(R.string.terminal_session_number, position + 1)
                 holder.nameText.text = displayName
                 holder.nameText.setTextColor(if (position == currentSessionIndex) colorPrimary.toArgb() else colorTextPrimary.toArgb())
                 holder.itemView.setOnClickListener {
@@ -407,7 +399,9 @@ class SimpleTerminalActivity : ComponentActivity() {
                 }
                 holder.itemView.setOnLongClickListener {
                     renamePosition = position
-                    renameText = sessionNames.getOrDefault(position, getString(R.string.terminal_session_number, position + 1))
+                    renameHandle = session.mHandle
+                    renameText = sessionNames[session.mHandle]
+                        ?: getString(R.string.terminal_session_number, position + 1)
                     showRenameDialog = true
                     true
                 }
@@ -424,49 +418,60 @@ class SimpleTerminalActivity : ComponentActivity() {
         val closeButton: TextView = view.findViewById(R.id.session_close)
     }
 
+    /** 会话启动前的阻塞计算结果（D-02：必须在 IO 线程构建） */
+    private class SessionPlan(
+        val command: String?,
+        val shellPath: String,
+        val cwd: String,
+        val args: Array<String>,
+        val env: Array<String>
+    )
+
     fun startNewSession() {
+        // D-20：intentCommand 只生效一次，否则后续每次新建会话都会重复执行插件命令
+        val command = intentCommand?.takeIf { it.isNotBlank() }
+        intentCommand = null
+        startSession(command)
+    }
+
+    /**
+     * D-02：proot 参数构建与 buildInteractiveShell 内部的 chmod(waitFor) +
+     * find 全树扫描原先在主线程执行，新建会话必然卡顿（低端机接近 ANR）。
+     * 拆成两段：IO 线程做计算，再回主线程创建会话并绑定 UI。
+     */
+    private fun startSession(command: String?) {
         if (!prepareRuntime()) return
-        sessionCounter++
+        lifecycleScope.launch(Dispatchers.IO) {
+            val plan = try {
+                buildSessionPlan(command)
+            } catch (e: Exception) {
+                Logger.e(TAG, "build session plan failed: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    val message = getString(R.string.terminal_session_start_failed, e.message ?: e.toString())
+                    Toast.makeText(this@SimpleTerminalActivity, message, Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+            withContext(Dispatchers.Main) { createSession(plan) }
+        }
+    }
+
+    private fun buildSessionPlan(command: String?): SessionPlan {
         val containerName = RootfsManager.getDefaultContainer(this)
         val rootfsDir = RootfsManager.rootfsDir(this, containerName).canonicalFile
         val prootTmpDir = File(cacheDir, "proot_tmp").apply { mkdirs() }.absolutePath
 
-        val command = if (!intentCommand.isNullOrBlank()) {
-            // CUI 插件：使用传入的启动命令（含环境变量 export）
-            val rootfs = RootfsManager.rootfsDir(this, containerName)
-            val shellPath = RootfsManager.findShell(rootfs) ?: "/bin/sh"
-            val prootBin = com.UIN.Tool.proot.ProotInstaller.prootBinaryPath(this)
-
-            // 构建 proot 参数
-            val args = mutableListOf<String>()
-            args.add(prootBin.absolutePath)
-            args.addAll(listOf("-L", "--kill-on-exit", "--link2symlink", "--sysvipc", "--change-id=0:0"))
-            args.addAll(listOf("--kernel-release=\\Linux\\uin-tool\\6.17.0-UIN-Tool\\#1 SMP PREEMPT_DYNAMIC\\aarch64\\localdomain\\-1\\"))
-            args.addAll(listOf("-r", rootfs.canonicalPath))
-
-            // 绑定挂载
-            val bindMounts = listOf("/dev", "/proc", "/sys", "/storage/emulated/0")
-            for (mount in bindMounts) {
-                args.addAll(listOf("-b", mount))
-            }
-            args.addAll(listOf("-b", "/dev/urandom:/dev/random"))
-            args.addAll(listOf("-b", "/proc/self/fd:/dev/fd"))
-            args.addAll(listOf("-b", "/proc/self/fd/0:/dev/stdin"))
-            args.addAll(listOf("-b", "/proc/self/fd/1:/dev/stdout"))
-            args.addAll(listOf("-b", "/proc/self/fd/2:/dev/stderr"))
-
-            // /dev/shm
-            val shmDir = java.io.File(rootfs.parentFile ?: rootfs, "shm").apply { mkdirs() }
-            args.addAll(listOf("-b", "${shmDir.absolutePath}:/dev/shm"))
-
-            args.addAll(listOf("-w", "/"))
-            args.addAll(listOf(shellPath, "-lc", intentCommand!!))
-            args
+        val cmd = if (!command.isNullOrBlank()) {
+            // D-19：CUI 分支原先手工重复拼装 proot 参数，**漏掉 FakeSysdata 挂载**
+            // （容器内 /proc/stat、/sys/fs/selinux 缺失 → top/htop/apt 表现异常）。
+            // 统一走 ProotRuntime.buildCommand，与交互式分支同一套参数。
+            val config = ProotContainerManager.getConfig(this, containerName).copy(workingDir = "/")
+            ProotRuntime.buildCommand(this, config, command)
         } else {
             ProotContainerManager.buildInteractiveShell(this, containerName)
         }
-        val shellPath = command[0]
-        val args = command.toTypedArray()
+        val shellPath = cmd[0]
+        val args = cmd.toTypedArray()
         val cwd = RootfsManager.rootfsDir(this, containerName).absolutePath
 
         // 环境变量通过 JNI env 参数传递（进程级），proot 直接继承
@@ -474,7 +479,13 @@ class SimpleTerminalActivity : ComponentActivity() {
         val mergedEnv = defaultEnv.toMutableMap().apply { put("PROOT_TMP_DIR", prootTmpDir) }
         val env = mergedEnv.map { (k, v) -> "$k=$v" }.toTypedArray()
 
-        val session = TerminalSession(shellPath, cwd, args, env, 4000, terminalSessionClient)
+        return SessionPlan(command, shellPath, cwd, args, env)
+    }
+
+    private fun createSession(plan: SessionPlan) {
+        sessionCounter++
+        activeSessionCommand = plan.command
+        val session = TerminalSession(plan.shellPath, plan.cwd, plan.args, plan.env, 4000, terminalSessionClient)
         sessions.add(session)
         currentSessionIndex = sessions.size - 1
         currentSession = session
@@ -502,7 +513,10 @@ class SimpleTerminalActivity : ComponentActivity() {
 
     private fun closeSession(index: Int) {
         if (index < 0 || index >= sessions.size) return
-        sessions[index].finishIfRunning()
+        val closing = sessions[index]
+        closing.finishIfRunning()
+        // D-21：按句柄清掉会话名，避免残留映射
+        sessionNames.remove(closing.mHandle)
         sessions.removeAt(index)
         if (sessions.isEmpty()) {
             finish()
@@ -516,7 +530,8 @@ class SimpleTerminalActivity : ComponentActivity() {
         currentSession?.finishIfRunning()
         currentSession?.let { sessions.remove(it) }
         currentSession = null
-        startNewSession()
+        // 重启沿用当前会话的命令（intentCommand 已一次性消费，见 D-20）
+        startSession(activeSessionCommand)
     }
 
     private fun setupExtraKeys() {
@@ -608,13 +623,16 @@ class SimpleTerminalActivity : ComponentActivity() {
     }
 
     private fun updateStatus() {
-        val name = sessionNames.getOrDefault(currentSessionIndex, getString(R.string.terminal_session_number, currentSessionIndex + 1))
+        val name = currentSession?.mHandle?.let { sessionNames[it] }
+            ?: getString(R.string.terminal_session_number, currentSessionIndex + 1)
         val s = currentSession
         statusText?.text = if (s != null && s.pid > 0) {
             getString(R.string.terminal_session_pid, "$name (${currentSessionIndex + 1}/${sessions.size})", "${s.pid}")
         } else {
             "$name (${currentSessionIndex + 1}/${sessions.size})"
         }
+        // D-22：随会话状态同步常亮
+        terminalView?.keepScreenOn = sessions.any { it.isRunning }
     }
 
     private fun showError(message: String) {
@@ -706,4 +724,7 @@ class SimpleTerminalActivity : ComponentActivity() {
     }
 
     private var intentCommand: String? = null
+
+    /** 当前会话的启动命令（CUI 插件用），重启会话时沿用；普通会话为 null */
+    private var activeSessionCommand: String? = null
 }

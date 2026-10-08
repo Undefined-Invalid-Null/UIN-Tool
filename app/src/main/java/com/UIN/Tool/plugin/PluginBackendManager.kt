@@ -35,6 +35,9 @@ object PluginBackendManager {
     private const val CLEANUP_INTERVAL_MS = 30000L
 
     /** 写性能日志到 logs/perf_<date>.log */
+    private const val PERF_LOG_MAX_BYTES = 1L * 1024 * 1024
+    private const val PERF_LOG_RETENTION_DAYS = 7L
+
     private fun perfLog(msg: String) {
         try {
             val dir = File(Constants.LOG_DIR)
@@ -43,6 +46,19 @@ object PluginBackendManager {
             val file = File(dir, "perf_$date.log")
             val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             FileWriter(file, true).use { it.appendLine("[$ts] [Host] $msg") }
+            // C-31：perf_*.log 原先既无大小上限也无清理，按天堆积到把存储吃满；
+            // 超 1MB 截尾保留 512KB，超期文件顺手删除
+            if (file.length() > PERF_LOG_MAX_BYTES) {
+                val bytes = file.readBytes()
+                file.writeBytes(bytes.copyOfRange(bytes.size / 2, bytes.size))
+            }
+            val cutoff = System.currentTimeMillis() - PERF_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000L
+            dir.listFiles()?.forEach { f ->
+                val n = f.name
+                if (n.startsWith("perf_") && n.endsWith(".log") && f.lastModified() < cutoff) {
+                    f.delete()
+                }
+            }
         } catch (_: Exception) {
         }
     }
@@ -58,6 +74,8 @@ object PluginBackendManager {
     private val lastRequestTimes = ConcurrentHashMap<String, Long>()
     /** 共享端口模式下，同一插件被多少个实例持有的引用计数（>0 表示仍在被使用） */
     private val holdCounts = ConcurrentHashMap<String, Int>()
+    /** C-33：每个后端的停止令牌（随启动命令注入 UIN_TOKEN，/stop 与健康检查带上） */
+    private val backendTokens = ConcurrentHashMap<String, String>()
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
@@ -69,7 +87,11 @@ object PluginBackendManager {
     // ==================== 消息存储 (内存) ====================
     
     private val messageQueues = ConcurrentHashMap<String, ConcurrentLinkedQueue<StoredMessage>>()
-    private val messageListeners = ConcurrentHashMap<String, MutableList<(PluginMessage) -> Unit>>()
+    /** 实例键 → 插件 ID 反查表（独立端口多开后，插件级停止/状态按此归组）。 */
+    private val keyToPluginIds = ConcurrentHashMap<String, String>()
+    // C-39：外层是 ConcurrentHashMap 但内层 MutableList 的注册/注销/遍历无同步，
+    // 消息分发时插件恰好注册/注销会 ConcurrentModificationException → 改写时安全的 CopyOnWriteArrayList
+    private val messageListeners = ConcurrentHashMap<String, java.util.concurrent.CopyOnWriteArrayList<(PluginMessage) -> Unit>>()
     
     private var isMessageServiceRunning = false
     private lateinit var context: Context
@@ -132,12 +154,23 @@ object PluginBackendManager {
 
     // ==================== 定时清理任务 ====================
     
+    // C-24：原先用主 Looper Handler 跑 checkIdleBackends，每个端口最多 500ms socket connect，
+    // 30s 一次的周期性主线程阻塞可达 ~1s。移到专用后台 HandlerThread。
+    private val cleanupWorker: android.os.HandlerThread by lazy {
+        android.os.HandlerThread("uin-backend-cleanup").apply { start() }
+    }
+    private val cleanupHandler: android.os.Handler by lazy { android.os.Handler(cleanupWorker.looper) }
+
     private fun startCleanupTask() {
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(object : Runnable {
+        cleanupHandler.postDelayed(object : Runnable {
             override fun run() {
-                cleanupExpiredMessages()
-                checkIdleBackends()
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, CLEANUP_INTERVAL_MS)
+                try {
+                    cleanupExpiredMessages()
+                    checkIdleBackends()
+                } catch (e: Exception) {
+                    Logger.e(TAG, "cleanup task failed: ${e.message}")
+                }
+                cleanupHandler.postDelayed(this, CLEANUP_INTERVAL_MS)
             }
         }, CLEANUP_INTERVAL_MS)
     }
@@ -167,6 +200,7 @@ object PluginBackendManager {
                 startTimes.remove(pluginId)
                 processPids.remove(pluginId)
                 lastRequestTimes.remove(pluginId)
+                keyToPluginIds.remove(pluginId)
                 if (isRealTermux) {
                     SharedSupervisor.clearBackendRecord(pluginId)
                 }
@@ -421,7 +455,9 @@ object PluginBackendManager {
     }
 
     fun registerMessageListener(pluginId: String, listener: (PluginMessage) -> Unit) {
-        messageListeners.computeIfAbsent(pluginId) { mutableListOf() }.add(listener)
+        messageListeners.computeIfAbsent(pluginId) {
+            java.util.concurrent.CopyOnWriteArrayList()
+        }.add(listener)
         Logger.d(TAG, Str.get(R.string.registering_listener_pluginid, pluginId))
     }
 
@@ -464,13 +500,6 @@ object PluginBackendManager {
         }
     }
 
-    fun shutdown() {
-        isMessageServiceRunning = false
-        messageQueues.clear()
-        messageListeners.clear()
-        Logger.i(TAG, Str.get(R.string.backend_message_service_stopped))
-    }
-
     // ==================== 核心后端管理方法 ====================
     
     fun isRunning(pluginId: String): Boolean {
@@ -508,7 +537,7 @@ object PluginBackendManager {
 
     private fun startBackendInternal(context: Context, info: PluginInfo, key: String): Boolean {
         Logger.d(TAG, "========================================")
-        Logger.d(TAG, Str.get(R.string.pluginbackendmanager_startbackend_ca))
+        Logger.d(TAG, Str.get(R.string.pluginbackendmanager_startbackend_called))
         Logger.d(TAG, "📦 pluginId: ${info.pluginId}")
         Logger.d(TAG, "🔑 instanceKey(backend key): $key")
         Logger.d(TAG, "🐍 backend: ${info.backend}")
@@ -518,7 +547,7 @@ object PluginBackendManager {
 
         // 确保消息服务已启动
         if (!isMessageServiceRunning) {
-            Logger.d(TAG, Str.get(R.string.message_service_not_running_initiali))
+            Logger.d(TAG, Str.get(R.string.message_service_not_running_initializing))
             init(context)
         }
 
@@ -558,6 +587,7 @@ object PluginBackendManager {
                 startScriptInBuiltin(context, info, pluginDir, port, key)
             }
             if (success) {
+                keyToPluginIds[key] = info.pluginId
                 Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, key, port))
             } else {
                 runningPorts.remove(key)
@@ -631,12 +661,17 @@ object PluginBackendManager {
             info.backendTimeout,
             if (BackendConfig.getEnvironment(context) == BackendConfig.ENV_PROOT) 120 else 60
         )
-        val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
+        val ready = waitForReady(port, readyTimeout, info.backendHealthCheck, info.pluginId)
         if (ready) {
             Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, info.pluginId, port))
             return true
         }
+        // C-30：supervisor 回传的退出码 —— 后端没起来时给出具体原因，而不是只有轮询超时
+        val exitCode = SharedSupervisor.readExitCode(key)
         Logger.w(TAG, Str.get(R.string.real_termux_backend_not_ready_pluginid, info.pluginId))
+        if (exitCode != null) {
+            Logger.e(TAG, "backend $key exited before ready (supervisor rc=$exitCode)")
+        }
         return false
     }
 
@@ -645,27 +680,21 @@ object PluginBackendManager {
      * @param baseDir 后端运行所在目录（proot 内为 /plugins/<id>，实体 Termux 为宿主插件目录）
      */
     private fun buildScriptCommand(info: PluginInfo, baseDir: String, port: Int, startCmd: String): String {
+        val token = backendTokens.computeIfAbsent(info.pluginId) {
+            java.util.UUID.randomUUID().toString().replace("-", "")
+        }
         val exports = buildString {
             append("export PORT=$port; ")
             append("export PLUGIN_ID=${info.pluginId}; ")
             append("export PLUGIN_DIR=$baseDir; ")
             append("export WORK_DIR=$baseDir; ")
             append("export PYTHONUNBUFFERED=1; ")
+            // C-33：注入停止令牌，模板里的 /stop 据此拒绝未授权请求
+            append("export UIN_TOKEN=$token; ")
         }
         // cd 失败则 exit 1，避免在错误目录执行 exec；exec 让 sh 直接替换为启动命令（无 fork 孤儿）
-        return "$exports cd $baseDir && exec $startCmd"
-    }
-
-    // ============================================================
-    // 实体 Termux 前端探测：allow-external-apps / 已初始化。失败时返回 false 并记录原因。
-    // ============================================================
-    private fun probeRealTermux(context: Context): Boolean {
-        val probe = RealTermuxRuntime.probe(context)
-        if (!probe.ok) {
-            Logger.e(TAG, Str.get(R.string.real_termux_probe_failed_error, probe.error))
-            return false
-        }
-        return true
+        // C-32：baseDir 加引号，路径含空格时不再把命令拆散（startCmd 保持原样，由用户书写）
+        return "$exports cd \"$baseDir\" && exec $startCmd"
     }
 
     /**
@@ -721,14 +750,9 @@ object PluginBackendManager {
                 env.remove("TMPDIR")
                 // 容器内 PATH 由 proot 的 -r rootfs 和 shell login 决定
                 env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-                // proot 需要临时目录和 link2symlink 目录
+                // proot 临时目录（D-17：--link2symlink 已移除，不再需要 PROOT_L2S_DIR）
                 val prootTmpDir = java.io.File(context.cacheDir, "proot_tmp").apply { mkdirs() }
                 env["PROOT_TMP_DIR"] = prootTmpDir.absolutePath
-                val containersDir = java.io.File(context.filesDir, "containers")
-                val debianDir = java.io.File(containersDir, "debian")
-                val rootfsDir = java.io.File(debianDir, "rootfs")
-                val l2sDir = java.io.File(rootfsDir, ".l2s").apply { mkdirs() }
-                env["PROOT_L2S_DIR"] = l2sDir.absolutePath
                 // proot 宿主侧需要的基本环境变量
                 env["HOME"] = "/root"
                 env["SHELL"] = "/bin/sh"
@@ -759,14 +783,14 @@ object PluginBackendManager {
             }
             Logger.d(TAG, Str.get(R.string.starting_health_check_timeout_readyt, readyTimeout))
             Logger.d(TAG, Str.get(R.string.backend_health_check_url, "http://127.0.0.1:$port${info.backendHealthCheck}"))
-            val ready = waitForReady(port, readyTimeout, info.backendHealthCheck)
+            val ready = waitForReady(port, readyTimeout, info.backendHealthCheck, info.pluginId)
 
             if (ready) {
                 Logger.success(TAG, Str.get(R.string.backend_started_pluginid_port_port, key, port))
                 return true
             } else {
                 if (process.isAlive) {
-                    Logger.w(TAG, Str.get(R.string.backend_running_but_health_check_tim))
+                    Logger.w(TAG, Str.get(R.string.backend_running_but_health_check_timed))
                     return true
                 } else {
                     Logger.e(TAG, Str.get(R.string.backend_process_exited))
@@ -806,61 +830,98 @@ object PluginBackendManager {
             processPids.remove(pluginId)
             lastRequestTimes.remove(pluginId)
             holdCounts.remove(pluginId)
+            backendTokens.remove(pluginId)
+            keyToPluginIds.remove(pluginId)
             Logger.i(TAG, Str.get(R.string.stopping_backend_pluginid, pluginId))
         }
     }
 
     // ============================================================
-    // 共享端口模式下的引用计数
-    // （同一插件多实例共享一个后端进程，最后一个实例关闭时停止后端）
+    // 实例持有引用计数（独立端口多开）
+    // （每个实例持有自己的后端键，归零时停止该实例的后端；
+    //   保留 WebView 存在时维持存活，等待下一实例接管）
     // ============================================================
 
-    /** 记录一个插件实例“持有”了共享后端（每次成功关联后端后调用一次）。 */
-    fun acquireHold(pluginId: String) {
-        synchronized(holdCounts) {
-            holdCounts[pluginId] = (holdCounts[pluginId] ?: 0) + 1
+    /** 插件级停止：停掉该插件名下全部实例键的后端（多开后的卸载/全清入口）。 */
+    fun stopBackendsOfPlugin(pluginId: String) {
+        val keys = keyToPluginIds.entries
+            .filter { it.value == pluginId }
+            .map { it.key }
+            .toMutableSet()
+        if (runningPorts.containsKey(pluginId) || runningProcesses.containsKey(pluginId)) {
+            keys.add(pluginId)
         }
-        Logger.d(TAG, "acquireHold($pluginId) = ${holdCounts[pluginId]}")
+        if (keys.isEmpty()) return
+        Logger.i(TAG, "stopBackendsOfPlugin($pluginId): ${keys.size} backend(s)")
+        keys.forEach { stopBackend(it) }
     }
 
-    /** 释放一个插件实例对共享后端的持有，归零时停止该后端。 */
-    fun releaseHold(pluginId: String) {
+    /** 该插件名下是否仍有任一实例后端在跑（实例键后 isRunning(pluginId) 恒 false，卸载守卫改用此）。 */
+    fun isAnyBackendRunningForPlugin(pluginId: String): Boolean {
+        if (isRunning(pluginId)) return true
+        return keyToPluginIds.entries.any { it.value == pluginId && isRunning(it.key) }
+    }
+
+    /** 记录一个插件实例「持有」了自己的实例后端（每次成功关联后端后调用一次）。 */
+    fun acquireHold(key: String) {
         synchronized(holdCounts) {
-            val count = (holdCounts[pluginId] ?: 1) - 1
+            holdCounts[key] = (holdCounts[key] ?: 0) + 1
+        }
+        Logger.d(TAG, "acquireHold($key) = ${holdCounts[key]}")
+    }
+
+    /** 释放一个实例对其后端的持有，归零时停止该实例后端（保留 WebView 存在时维持存活）。 */
+    fun releaseHold(key: String) {
+        // 保留 WebView 是插件级缓存（retainedWebViews[pluginId]），判定需要插件 ID
+        val pluginId = keyToPluginIds[key] ?: key
+        synchronized(holdCounts) {
+            val count = (holdCounts[key] ?: 1) - 1
             if (count <= 0) {
-                // 共享端口模式 + 保留会话：即使最后一个实例关闭，只要还留有
-                // 保留的 WebView（页面/会话），后端继续存活，由保留会话持有。
+                // 保留会话：即使本实例关闭，只要还留有保留的 WebView（页面/会话），
+                // 本实例后端继续存活，由保留会话持有，等待下一实例接管后由空闲回收清理。
                 if (PluginManager.hasRetainedSharedWebView(pluginId)) {
-                    holdCounts[pluginId] = 1
+                    holdCounts[key] = 1
                 } else {
-                    holdCounts.remove(pluginId)
-                    Thread { stopBackend(pluginId) }.start()
+                    holdCounts.remove(key)
+                    Thread { stopBackend(key) }.start()
                 }
             } else {
-                holdCounts[pluginId] = count
+                holdCounts[key] = count
             }
         }
-        Logger.d(TAG, "releaseHold($pluginId) -> ${holdCounts[pluginId]}")
+        Logger.d(TAG, "releaseHold($key) -> ${holdCounts[key]}")
     }
 
     /** 向约定好的 HTTP /stop 端点发送请求，实现优雅退出（对实体 Termux 是唯一停止手段）。 */
     private fun requestGracefulStop(pluginId: String) {
         val port = runningPorts[pluginId] ?: return
-        if (port <= 0 || !isPortOpen(port)) return
+        if (port <= 0) return
+        // C-24：原先是「调用线程里 isPortOpen(最多500ms) → 起线程发请求 → 调用线程固定 sleep(400)」，
+        // 在主线程上调 stopBackend 最坏阻塞 ~900ms。改为探测+请求都在工作线程，
+        // 调用线程只做有界等待（通常几十毫秒就返回，上限 800ms）。
+        val done = java.util.concurrent.CountDownLatch(1)
         Thread {
             try {
-                val request = Request.Builder()
-                    .url("http://127.0.0.1:$port/stop")
-                    .get()
-                    .build()
-                val response = httpClient.newCall(request).execute()
-                response.close()
-                Logger.d(TAG, "graceful /stop sent for $pluginId")
-            } catch (_: Exception) {
+                if (isPortOpen(port)) {
+                    val request = Request.Builder()
+                        .url("http://127.0.0.1:$port/stop")
+                        .header("X-UIN-Token", backendTokens[pluginId] ?: "")
+                        .get()
+                        .build()
+                    httpClient.newCall(request).execute().use { resp ->
+                        Logger.d(TAG, "graceful /stop sent for $pluginId (code=${resp.code})")
+                    }
+                }
+            } catch (e: Exception) {
+                Logger.d(TAG, "graceful /stop failed for $pluginId: ${e.message}")
+            } finally {
+                done.countDown()
             }
-        }.start()
+        }.apply { name = "uin-graceful-stop"; start() }
         try {
-            Thread.sleep(400)
+            if (!done.await(800, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                Logger.d(TAG, "graceful stop wait timed out for $pluginId")
+            }
         } catch (_: InterruptedException) {
         }
     }
@@ -996,6 +1057,7 @@ object PluginBackendManager {
                 runningPorts.remove(pluginId)
                 startTimes.remove(pluginId)
                 processPids.remove(pluginId)
+                keyToPluginIds.remove(pluginId)
             } catch (_: Exception) { }
         }.start()
     }
@@ -1085,8 +1147,9 @@ object PluginBackendManager {
         }
     }
 
-    private fun waitForReady(port: Int, timeout: Int, healthPath: String): Boolean {
+    private fun waitForReady(port: Int, timeout: Int, healthPath: String, pluginId: String): Boolean {
         val startTime = System.currentTimeMillis()
+        val healthToken = backendTokens[pluginId] ?: ""
         val timeoutMs = timeout * 1000L
 
         Logger.d(TAG, Str.get(R.string.backend_waiting_for_ready, "http://127.0.0.1:$port$healthPath", timeout))
@@ -1110,6 +1173,7 @@ object PluginBackendManager {
                 // 用 GET 而非 HEAD：不少后端（如 Python http.server）未实现 do_HEAD，HEAD 会返回 501
                 val request = Request.Builder()
                     .url("http://127.0.0.1:$port$healthPath")
+                    .header("X-UIN-Token", healthToken)
                     .get()
                     .build()
                 val response = httpClient.newCall(request).execute()

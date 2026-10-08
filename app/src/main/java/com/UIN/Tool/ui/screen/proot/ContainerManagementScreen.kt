@@ -26,6 +26,7 @@ import com.UIN.Tool.log.Logger
 import com.UIN.Tool.proot.ProotInstaller
 import com.UIN.Tool.proot.RootfsManager
 import com.UIN.Tool.ui.components.unified.*
+import com.UIN.Tool.ui.components.LongTaskRegistry
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
 import kotlinx.coroutines.Dispatchers
@@ -38,26 +39,45 @@ data class DownloadableDistro(
     val displayName: String,
     val assetName: String,
     val descriptionKey: String,
-    val estimatedSize: String
+    val estimatedSize: String,
+    // F-01：是否随 APK 内置（只有 debian-rootfs.tar.xz 在 assets 里）。
+    // 其余发行版走 installFromAsset 必然 "No rootfs asset found"，原先界面却照常可选。
+    val bundled: Boolean = false
 )
 
-data class ProgressInfo(
-    val title: String,
-    val current: Int,
-    val total: Int,
-    val bytesProcessed: Long,
-    val totalBytes: Long,
-    val currentFile: String = ""
-)
+/** F-16：容器长任务统一注册表键（导入/导出/下载共用；isInstalling 串行门禁下同时只有一个） */
+private const val CONTAINER_TASK = "container_op"
+
+/**
+ * D-07：容器列表 + 默认容器的统一加载入口。
+ * listContainers 会对每个容器做全树扫描（size/count），必须在 IO 线程执行。
+ */
+private suspend fun loadContainerState(
+    context: android.content.Context
+): Pair<List<RootfsManager.ContainerInfo>, String> =
+    withContext(Dispatchers.IO) {
+        RootfsManager.listContainers(context) to RootfsManager.getDefaultContainer(context)
+    }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ContainerManagementScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var containers by remember { mutableStateOf(RootfsManager.listContainers(context)) }
+    // D-07：listContainers 会对每个容器做全树扫描（size+count），原先在 remember{} 里
+    // 同步执行＝主线程全树扫描；改为先空列表，再由 LaunchedEffect 在 IO 线程加载。
+    var containers by remember { mutableStateOf<List<RootfsManager.ContainerInfo>>(emptyList()) }
     var defaultContainer by remember { mutableStateOf(RootfsManager.getDefaultContainer(context)) }
-    var prootReady by remember { mutableStateOf(ProotInstaller.isInstalled(context)) }
+    // D-33：共享存储 bind 开关（与 ProotRuntime.bindMountsFor 读同一个 key）
+    var bindSharedStorage by remember {
+        mutableStateOf(
+            context.getSharedPreferences(
+                com.UIN.Tool.constants.AppConstants.PREF_NAME,
+                android.content.Context.MODE_PRIVATE
+            ).getBoolean(com.UIN.Tool.constants.AppConstants.KEY_PROOT_BIND_SHARED_STORAGE, true)
+        )
+    }
+    var prootReady by remember { mutableStateOf(false) }
     var showDownloadDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
     var showResetConfirm by remember { mutableStateOf<String?>(null) }
@@ -68,14 +88,50 @@ fun ContainerManagementScreen() {
     var exportContainerName by remember { mutableStateOf<String?>(null) }
     var exportCompressionLevel by remember { mutableIntStateOf(9) }
     var isInstalling by remember { mutableStateOf(false) }
+    // G-21：门禁与 RootfsManager 底层 per-container 锁联动（isInstalling 只是本屏幕的局部状态）
+    val rootfsLocked = isInstalling || RootfsManager.anyBusy()
     var statusMessage by remember { mutableStateOf<String?>(null) }
-    var progressInfo by remember { mutableStateOf<ProgressInfo?>(null) }
+    // F-16：RootfsManager 进度回调 → 统一长任务注册表（原局部进度状态 + 进度对话框由 LongTaskHost 接管）
+    fun publishContainerProgress(
+        title: String, current: Int, total: Int,
+        bytesProcessed: Long, totalBytes: Long, currentFile: String = ""
+    ) {
+        val sizeText = if (totalBytes > 0) "${formatSize(bytesProcessed)} / ${formatSize(totalBytes)}" else ""
+        val countText = when {
+            total > 0 -> context.getString(com.UIN.Tool.R.string.container_export_progress, current, total)
+            current > 0 -> context.getString(com.UIN.Tool.R.string.container_import_entry_count, current)
+            else -> ""
+        }
+        var detail = listOfNotNull(
+            countText.takeIf { it.isNotEmpty() },
+            sizeText.takeIf { it.isNotEmpty() }
+        ).joinToString(" · ")
+        if (detail.isEmpty()) detail = context.getString(com.UIN.Tool.R.string.container_export_scanning)
+        if (currentFile.isNotEmpty()) detail = "$detail · $currentFile"
+        LongTaskRegistry.update(CONTAINER_TASK, detail, if (total > 0) current.toFloat() / total else null)
+    }
 
+    /** D-07：容器列表/默认值刷新统一放 IO，避免主线程全树扫描 */
+    suspend fun refreshContainers() {
+        val (list, def) = loadContainerState(context)
+        containers = list
+        defaultContainer = def
+    }
+
+    LaunchedEffect(Unit) {
+        val (list, def) = loadContainerState(context)
+        containers = list
+        defaultContainer = def
+        prootReady = withContext(Dispatchers.IO) { ProotInstaller.isInstalled(context) }
+    }
+
+    // F-01：口径统一 —— Debian 是**内置资源**（assets 43MB，安装不走网络），
+    // 其余发行版并未内置、离线安装必然失败，这里标注出来并禁用选择。
     val downloadableDistros = listOf(
-        DownloadableDistro("debian", "Debian (trixie)", "debian-rootfs.tar.xz", "distro_debian_desc", "~27 MB"),
-        DownloadableDistro("alpine", "Alpine Linux", "alpine-minirootfs.tar.gz", "distro_alpine_desc", "~4 MB"),
-        DownloadableDistro("ubuntu", "Ubuntu (24.04 LTS)", "ubuntu-rootfs.tar.xz", "distro_ubuntu_desc", "~60 MB"),
-        DownloadableDistro("arch", "Arch Linux", "archlinux-rootfs.tar.xz", "distro_arch_desc", "~80 MB")
+        DownloadableDistro("debian", "Debian (trixie)", "debian-rootfs.tar.xz", "distro_debian_desc", "43 MB", bundled = true),
+        DownloadableDistro("alpine", "Alpine Linux", "alpine-minirootfs.tar.gz", "distro_alpine_desc", "~4 MB", bundled = false),
+        DownloadableDistro("ubuntu", "Ubuntu (24.04 LTS)", "ubuntu-rootfs.tar.xz", "distro_ubuntu_desc", "~60 MB", bundled = false),
+        DownloadableDistro("arch", "Arch Linux", "archlinux-rootfs.tar.xz", "distro_arch_desc", "~80 MB", bundled = false)
     )
 
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -111,20 +167,18 @@ fun ContainerManagementScreen() {
                             RootfsManager.countTarEntries(tempFile)
                         }
 
+                        LongTaskRegistry.begin(CONTAINER_TASK, context.getString(com.UIN.Tool.R.string.container_importing))
                         val result = RootfsManager.installFromFile(context, containerName, tempFile) { entryCount, entryName, bytesProcessed, totalBytes ->
-                            progressInfo = ProgressInfo(
-                                title = context.getString(com.UIN.Tool.R.string.container_importing),
-                                current = entryCount,
-                                total = totalEntries,
-                                bytesProcessed = bytesProcessed,
-                                totalBytes = totalBytes,
-                                currentFile = entryName
+                            publishContainerProgress(
+                                context.getString(com.UIN.Tool.R.string.container_importing),
+                                entryCount, totalEntries, bytesProcessed, totalBytes, entryName
                             )
                         }
-                        progressInfo = null
+                        if (result.isSuccess) LongTaskRegistry.finish(CONTAINER_TASK)
+                        else LongTaskRegistry.fail(CONTAINER_TASK, result.exceptionOrNull()?.message ?: "")
                         tempFile.delete()
 
-                        containers = RootfsManager.listContainers(context)
+                        refreshContainers()
                         statusMessage = if (result.isSuccess) {
                             context.getString(com.UIN.Tool.R.string.container_import_success, containerName)
                         } else {
@@ -132,8 +186,8 @@ fun ContainerManagementScreen() {
                         }
                     } catch (e: Exception) {
                         statusMessage = context.getString(com.UIN.Tool.R.string.container_import_failed, e.message ?: "")
+                        LongTaskRegistry.fail(CONTAINER_TASK, e.message ?: "")
                     } finally {
-                        progressInfo = null
                         isInstalling = false
                     }
                 }
@@ -149,23 +203,17 @@ fun ContainerManagementScreen() {
                 val name = exportContainerName ?: return@rememberLauncherForActivityResult
                 scope.launch {
                     isInstalling = true
-                    progressInfo = ProgressInfo(
-                        title = context.getString(com.UIN.Tool.R.string.container_exporting, name),
-                        current = 0, total = 0, bytesProcessed = 0, totalBytes = 0
-                    )
+                    LongTaskRegistry.begin(CONTAINER_TASK, context.getString(com.UIN.Tool.R.string.container_exporting, name))
                     try {
                         val exportDir = File(context.cacheDir, "export")
                         val result = RootfsManager.exportContainer(context, name, exportDir, exportCompressionLevel) { fileCount, totalFiles, bytesWritten, totalBytes, currentFile ->
-                            progressInfo = ProgressInfo(
-                                title = context.getString(com.UIN.Tool.R.string.container_exporting, name),
-                                current = fileCount,
-                                total = totalFiles,
-                                bytesProcessed = bytesWritten,
-                                totalBytes = totalBytes,
-                                currentFile = currentFile
+                            publishContainerProgress(
+                                context.getString(com.UIN.Tool.R.string.container_exporting, name),
+                                fileCount, totalFiles, bytesWritten, totalBytes, currentFile
                             )
                         }
-                        progressInfo = null
+                        if (result.isSuccess) LongTaskRegistry.finish(CONTAINER_TASK)
+                        else LongTaskRegistry.fail(CONTAINER_TASK, result.exceptionOrNull()?.message ?: "")
                         if (result.isSuccess) {
                             val exportedFile = result.getOrThrow()
                             withContext(Dispatchers.IO) {
@@ -180,8 +228,8 @@ fun ContainerManagementScreen() {
                         }
                     } catch (e: Exception) {
                         statusMessage = context.getString(com.UIN.Tool.R.string.container_export_failed, e.message ?: "")
+                        LongTaskRegistry.fail(CONTAINER_TASK, e.message ?: "")
                     } finally {
-                        progressInfo = null
                         isInstalling = false
                         exportContainerName = null
                     }
@@ -226,10 +274,17 @@ fun ContainerManagementScreen() {
                         text = context.getString(com.UIN.Tool.R.string.proot_install_button),
                         onClick = {
                             scope.launch {
-                                val result = ProotInstaller.ensureInstalled(context)
+                                // D-01/P0：ensureInstalled 是阻塞 IO（解压+chmod），放 IO 线程
+                                val result = withContext(Dispatchers.IO) {
+                                    ProotInstaller.ensureInstalled(context)
+                                }
                                 prootReady = result.isSuccess
                                 statusMessage = if (result.isSuccess) context.getString(com.UIN.Tool.R.string.proot_install_success)
-                                               else context.getString(com.UIN.Tool.R.string.proot_install_failed)
+                                               else {
+                                                   val reason = result.exceptionOrNull()?.message
+                                                   val base = context.getString(com.UIN.Tool.R.string.proot_install_failed)
+                                                   if (reason.isNullOrBlank()) base else "$base ($reason)"
+                                               }
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -250,6 +305,41 @@ fun ContainerManagementScreen() {
                 UnifiedBodyText(
                     text = defaultContainer,
                     color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        // D-33：是否把宿主共享存储挂进容器（关掉后容器内进程只能看到自己的 rootfs）
+        UnifiedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = AppDimens.spacingXLarge)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(AppDimens.cardPadding),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    UnifiedSectionTitle(text = context.getString(com.UIN.Tool.R.string.bind_shared_storage))
+                    Spacer(modifier = Modifier.height(AppDimens.spacingSmall))
+                    UnifiedBodyText(
+                        text = context.getString(com.UIN.Tool.R.string.bind_shared_storage_desc),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                UnifiedSwitch(
+                    checked = bindSharedStorage,
+                    onCheckedChange = { enabled ->
+                        bindSharedStorage = enabled
+                        context.getSharedPreferences(
+                            com.UIN.Tool.constants.AppConstants.PREF_NAME,
+                            android.content.Context.MODE_PRIVATE
+                        ).edit()
+                            .putBoolean(com.UIN.Tool.constants.AppConstants.KEY_PROOT_BIND_SHARED_STORAGE, enabled)
+                            .apply()
+                    }
                 )
             }
         }
@@ -310,6 +400,17 @@ fun ContainerManagementScreen() {
                                 onClick = { showExportConfirm = container.name }
                             )
                         }
+                        // F-02：重置按钮原先完全缺失，对话框状态永远无法置位（死开关）。
+                        // 仅对「存在内置 rootfs 资产」的容器开放：否则 reset 会先删除再安装失败＝数据丢失。
+                        if (container.ready &&
+                            com.UIN.Tool.plugin.ProotContainerManager.findRootfsAsset(context, container.name) != null
+                        ) {
+                            UnifiedIconButton(
+                                icon = Icons.Default.Refresh,
+                                onClick = { showResetConfirm = container.name },
+                                contentDescription = context.getString(com.UIN.Tool.R.string.container_reset)
+                            )
+                        }
                     }
                 }
             }
@@ -330,8 +431,17 @@ fun ContainerManagementScreen() {
                     filePickerLauncher.launch(intent)
                 },
                 modifier = Modifier.weight(1f),
-                enabled = !isInstalling,
+                enabled = !rootfsLocked,
                 icon = Icons.Default.FolderOpen
+            )
+            // F-02：下载对话框原先无任何入口（showDownloadDialog 永远为 false），补上触发按钮
+            // F-01：内置 Debian 的安装不走网络，按钮口径改为「安装」
+            UnifiedButton(
+                text = context.getString(com.UIN.Tool.R.string.install),
+                onClick = { showDownloadDialog = true },
+                modifier = Modifier.weight(1f),
+                enabled = !rootfsLocked,
+                icon = Icons.Default.Download
             )
         }
 
@@ -348,14 +458,27 @@ fun ContainerManagementScreen() {
             title = context.getString(com.UIN.Tool.R.string.container_delete_confirm_title),
             message = context.getString(com.UIN.Tool.R.string.container_delete_confirm_message, name),
             onConfirm = {
-                RootfsManager.deleteContainer(context, name)
-                containers = RootfsManager.listContainers(context)
-                if (defaultContainer == name) {
-                    defaultContainer = com.UIN.Tool.plugin.BackendConfig.BUILTIN_CONTAINER
-                    RootfsManager.setDefaultContainer(context, com.UIN.Tool.plugin.BackendConfig.BUILTIN_CONTAINER)
-                }
-                statusMessage = context.getString(com.UIN.Tool.R.string.container_deleted, name)
+                val target = name
                 showDeleteConfirm = null
+                scope.launch {
+                    // G-21：与底层锁联动，忙时不再叠第二条删除
+                    if (RootfsManager.isBusy(target)) {
+                        statusMessage = context.getString(com.UIN.Tool.R.string.container_busy)
+                        return@launch
+                    }
+                    isInstalling = true
+                    val ok = withContext(Dispatchers.IO) { RootfsManager.deleteContainer(context, target) }
+                    refreshContainers()
+                    if (defaultContainer == target) {
+                        defaultContainer = com.UIN.Tool.plugin.BackendConfig.BUILTIN_CONTAINER
+                        withContext(Dispatchers.IO) {
+                            RootfsManager.setDefaultContainer(context, com.UIN.Tool.plugin.BackendConfig.BUILTIN_CONTAINER)
+                        }
+                    }
+                    statusMessage = if (ok) context.getString(com.UIN.Tool.R.string.container_deleted, target)
+                                    else context.getString(com.UIN.Tool.R.string.delete_failed)
+                    isInstalling = false
+                }
             },
             onDismiss = { showDeleteConfirm = null },
             confirmText = context.getString(com.UIN.Tool.R.string.container_delete),
@@ -372,10 +495,13 @@ fun ContainerManagementScreen() {
             onConfirm = {
                 showResetConfirm = null
                 scope.launch {
+                    if (RootfsManager.isBusy(name)) {
+                        statusMessage = context.getString(com.UIN.Tool.R.string.container_busy)
+                        return@launch
+                    }
                     isInstalling = true
                     val result = RootfsManager.resetContainer(context, name)
-                    containers = RootfsManager.listContainers(context)
-                    defaultContainer = RootfsManager.getDefaultContainer(context)
+                    refreshContainers()
                     statusMessage = if (result.isSuccess) context.getString(com.UIN.Tool.R.string.container_reset_done, name)
                                    else context.getString(com.UIN.Tool.R.string.container_import_failed, result.exceptionOrNull()?.message ?: "")
                     isInstalling = false
@@ -572,18 +698,26 @@ fun ContainerManagementScreen() {
                 UnifiedButton(
                     text = context.getString(com.UIN.Tool.R.string.confirm),
                     onClick = {
-                        val oldDir = RootfsManager.containerDir(context, oldName)
-                        val newDir = File(oldDir.parent, trimmed)
-                        if (oldDir.exists() && !newDir.exists()) {
-                            oldDir.renameTo(newDir)
-                            if (defaultContainer == oldName) {
-                                RootfsManager.setDefaultContainer(context, trimmed)
-                                defaultContainer = trimmed
+                        scope.launch {
+                            val old = RootfsManager.containerDir(context, oldName)
+                            val newDir = File(old.parent, trimmed)
+                            if (old.exists() && !newDir.exists()) {
+                                val renamed = withContext(Dispatchers.IO) { old.renameTo(newDir) }
+                                if (renamed) {
+                                    if (defaultContainer == oldName) {
+                                        withContext(Dispatchers.IO) {
+                                            RootfsManager.setDefaultContainer(context, trimmed)
+                                        }
+                                        defaultContainer = trimmed
+                                    }
+                                    refreshContainers()
+                                    statusMessage = context.getString(com.UIN.Tool.R.string.container_renamed, trimmed)
+                                } else {
+                                    statusMessage = context.getString(com.UIN.Tool.R.string.delete_failed)
+                                }
                             }
-                            containers = RootfsManager.listContainers(context)
-                            statusMessage = context.getString(com.UIN.Tool.R.string.container_renamed, trimmed)
+                            showRenameDialog = null
                         }
-                        showRenameDialog = null
                     },
                     enabled = canConfirm,
                     modifier = Modifier.weight(1f)
@@ -609,64 +743,34 @@ fun ContainerManagementScreen() {
                 showDownloadDialog = false
                 scope.launch {
                     isInstalling = true
-                    statusMessage = context.getString(com.UIN.Tool.R.string.container_downloading, distro.displayName)
-                    val result = RootfsManager.installFromAsset(context, distro.name, distro.assetName)
-                    containers = RootfsManager.listContainers(context)
+                    val progressTitle = context.getString(com.UIN.Tool.R.string.container_downloading, distro.displayName)
+                    statusMessage = progressTitle
+                    LongTaskRegistry.begin(CONTAINER_TASK, progressTitle)
+                    // D-04/D-11：内置发行版安装原先完全无进度；每条目回调做 100ms 节流，避免刷爆重组
+                    var lastProgressAt = 0L
+                    val result = RootfsManager.installFromAsset(context, distro.name, distro.assetName) { count, file ->
+                        val now = System.currentTimeMillis()
+                        if (now - lastProgressAt >= 100) {
+                            lastProgressAt = now
+                            publishContainerProgress(progressTitle, count, 0, 0, 0, file)
+                        }
+                    }
+                    if (result.isSuccess) LongTaskRegistry.finish(CONTAINER_TASK)
+                    else LongTaskRegistry.fail(CONTAINER_TASK, result.exceptionOrNull()?.message ?: "")
+                    refreshContainers()
+                    // G-20：失败时把原因带上（原先只有笼统的「下载失败」，无从排查）
                     statusMessage = if (result.isSuccess) context.getString(com.UIN.Tool.R.string.container_download_success, distro.displayName)
-                                   else context.getString(com.UIN.Tool.R.string.container_download_failed, distro.assetName)
+                                   else {
+                                       val base = context.getString(com.UIN.Tool.R.string.container_download_failed, distro.assetName)
+                                       val reason = result.exceptionOrNull()?.message
+                                       if (reason.isNullOrBlank()) base else "$base ($reason)"
+                                   }
                     isInstalling = false
                 }
             }
         )
     }
 
-    // Progress dialog
-    progressInfo?.let { info ->
-        UnifiedDialog(
-            onDismissRequest = { /* 不可关闭 */ },
-            title = info.title,
-                content = {
-                Column {
-                    val progress = if (info.total > 0) info.current.toFloat() / info.total else 0f
-                    UnifiedLinearProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    val sizeText = if (info.totalBytes > 0) {
-                        "${formatSize(info.bytesProcessed)} / ${formatSize(info.totalBytes)}"
-                    } else ""
-                    val countText = when {
-                        info.total > 0 -> context.getString(com.UIN.Tool.R.string.container_export_progress, info.current, info.total)
-                        info.current > 0 -> context.getString(com.UIN.Tool.R.string.container_import_entry_count, info.current)
-                        else -> ""
-                    }
-
-                    val detailText = listOfNotNull(
-                        countText.takeIf { it.isNotEmpty() },
-                        sizeText.takeIf { it.isNotEmpty() }
-                    ).joinToString(" · ")
-
-                    if (detailText.isNotEmpty()) {
-                        UnifiedBodyText(text = detailText)
-                    } else {
-                        UnifiedBodyText(text = context.getString(com.UIN.Tool.R.string.container_export_scanning))
-                    }
-
-                    if (info.currentFile.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        UnifiedCaptionText(
-                            text = info.currentFile,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {}
-        )
-    }
 }
 
 private fun formatSize(bytes: Long): String {
@@ -718,14 +822,24 @@ fun DownloadDistroDialog(
                 ) {
                     NeuRadio(
                         selected = selected == distro,
-                        onClick = { selected = distro }
+                        // F-01：未内置的发行版没有可用资源，禁用选择
+                        onClick = { if (distro.bundled) selected = distro }
                     )
                     Spacer(modifier = Modifier.width(AppDimens.spacingMedium))
                     Column {
-                        UnifiedBodyText(text = distro.displayName)
+                        UnifiedBodyText(
+                            text = distro.displayName,
+                            color = if (distro.bundled) null
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
                         val descResId = context.resources.getIdentifier(distro.descriptionKey, "string", context.packageName)
                         val desc = if (descResId != 0) context.getString(descResId) else distro.descriptionKey
-                        UnifiedCaptionText(text = "$desc · ${distro.estimatedSize}")
+                        val hint = if (distro.bundled) {
+                            context.getString(com.UIN.Tool.R.string.distro_bundled_hint)
+                        } else {
+                            context.getString(com.UIN.Tool.R.string.distro_not_bundled)
+                        }
+                        UnifiedCaptionText(text = "$desc · ${distro.estimatedSize} · $hint")
                     }
                 }
             }
@@ -733,8 +847,8 @@ fun DownloadDistroDialog(
         confirmButton = {
             UnifiedButton(
                 text = context.getString(com.UIN.Tool.R.string.confirm),
-                onClick = { selected?.let { onSelect(it) } },
-                enabled = selected != null,
+                onClick = { selected?.takeIf { it.bundled }?.let { onSelect(it) } },
+                enabled = selected?.bundled == true,
                 variant = ButtonVariant.Primary
             )
         },

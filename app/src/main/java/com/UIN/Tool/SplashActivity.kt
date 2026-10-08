@@ -14,7 +14,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import android.graphics.drawable.ColorDrawable
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -55,8 +55,11 @@ import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.constants.AppConstants as Constants
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
@@ -65,7 +68,10 @@ import com.UIN.Tool.ui.theme.pageGradientBrush
 private const val SPLASH_DELAY = 700L
 private const val UPDATE_CHECK_TIMEOUT = 5000L
 
-class SplashActivity : ComponentActivity() {
+/** B-33：日常启动的更新检查只允许等这么久，超时直接进主界面（开屏不能被网络拖住） */
+private const val UPDATE_CHECK_TIMEOUT_FAST = 1500L
+
+class SplashActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "SplashActivity"
@@ -73,12 +79,12 @@ class SplashActivity : ComponentActivity() {
 
     private lateinit var preferenceManager: PreferenceManager
     private var updateDownloader: UpdateDownloader? = null
-    private var hasRequestedPermission = false
+    @Volatile private var workDirectoryReady = false
+    @Volatile private var workDirectoryInProgress = false
     private var isFirstLaunch = false
     
     private var showPermissionExplain by mutableStateOf(true)
     private var showPermissionDenied by mutableStateOf(false)
-    private var isCheckingPermission by mutableStateOf(false)
     private var hasNavigated = false
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -112,15 +118,6 @@ class SplashActivity : ComponentActivity() {
         checkPermissionAfterReturn()
     }
 
-    /** 自定义危险权限需运行时申请（本次新增 OPEN_PLUGIN / RUN_COMMAND 权限，便于本应用自启插件宿主） */
-    private val customPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        if (it[Constants.OPEN_PLUGIN_PERMISSION] == true || it[Constants.RUN_COMMAND_PERMISSION] == true) {
-            AppLog.i(TAG, Str.get(R.string.custom_permission_granted))
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -150,11 +147,10 @@ class SplashActivity : ComponentActivity() {
                 SplashScreenWithUpdate(
                     showPermissionExplain = showPermissionExplain,
                     showPermissionDenied = showPermissionDenied,
-                    isCheckingPermission = isCheckingPermission,
                     onRequestPermission = { requestStoragePermission() },
                     onDismissPermissionExplain = { showPermissionExplain = false },
                     onDismissPermissionDenied = { showPermissionDenied = false },
-                    onNavigate = { navigateToOnboardingOrMain() },
+                    onNavigate = { navigateToNext() },
                     onOpenBrowser = { url ->
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -179,6 +175,23 @@ class SplashActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * B-28/G-17：权限复检。
+     * 1) 已授权 → 收起所有权限弹窗，交给 LaunchedEffect 继续导航；
+     * 2) 未授权且当前没有任何可操作弹窗（典型场景：从系统设置返回却未授权）
+     *    → 重新显示权限说明，避免永久停留在无按钮的开屏页。
+     */
+    override fun onResume() {
+        super.onResume()
+        if (hasStoragePermission()) {
+            showPermissionExplain = false
+            showPermissionDenied = false
+            if (!workDirectoryReady) createWorkDirectory()
+        } else if (!showPermissionExplain && !showPermissionDenied) {
+            showPermissionExplain = true
+        }
+    }
+
     private fun checkPermissionAfterReturn() {
         if (hasStoragePermission()) {
             AppLog.success(TAG, Str.get(R.string.permission_granted))
@@ -193,11 +206,6 @@ class SplashActivity : ComponentActivity() {
         }
     }
 
-    private fun navigateToOnboardingOrMain() {
-        // 更新检查由 SplashScreenWithUpdate 的 LaunchedEffect 统一完成，这里只负责导航
-        navigateToNext()
-    }
-
     private fun hasStoragePermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Environment.isExternalStorageManager()
@@ -208,9 +216,6 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun requestStoragePermission() {
-        if (hasRequestedPermission) return
-        hasRequestedPermission = true
-
         AppLog.i(TAG, Str.get(R.string.request_storage_permission))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -220,7 +225,7 @@ class SplashActivity : ComponentActivity() {
                     intent.data = Uri.parse("package:$packageName")
                     manageStorageLauncher.launch(intent)
                 } catch (e: Exception) {
-                    AppLog.e(TAG, Str.get(R.string.failed_to_open_storage_permission_se), e)
+                    AppLog.e(TAG, Str.get(R.string.failed_to_open_storage_permission), e)
                     requestNormalStoragePermission()
                 }
             }
@@ -240,60 +245,78 @@ class SplashActivity : ComponentActivity() {
         if (permissions.isNotEmpty()) {
             requestPermissionLauncher.launch(permissions.toTypedArray())
         }
-        requestCustomPermissionIfNeeded()
-    }
-
-    /** 请求本应用自定义危险权限（OPEN_PLUGIN / RUN_COMMAND），授予与否不影响后续流程，仅门禁显式启动。 */
-    private fun requestCustomPermissionIfNeeded() {
-        try {
-            val pending = mutableListOf<String>()
-            if (checkSelfPermission(Constants.OPEN_PLUGIN_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
-                pending.add(Constants.OPEN_PLUGIN_PERMISSION)
-            }
-            if (checkSelfPermission(Constants.RUN_COMMAND_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
-                pending.add(Constants.RUN_COMMAND_PERMISSION)
-            }
-            if (pending.isNotEmpty()) {
-                customPermissionLauncher.launch(pending.toTypedArray())
-            }
-        } catch (e: Exception) {
-            AppLog.w(TAG, Str.get(R.string.custom_permission_request_failed, e.message ?: ""))
-        }
     }
 
     private fun createWorkDirectory() {
-        try {
-            val dirs = listOf(
-                Constants.WORK_DIR,
-                Constants.PLUGIN_DIR,
-                Constants.LOG_DIR,
-                Constants.BACKUP_DIR,
-                Constants.DOWNLOAD_DIR,
-                Constants.TEMP_DIR,
-                Constants.CACHE_DIR,
-                Constants.TPK_DIR
-            )
+        // B-35：批量 mkdirs + Logger.init 是首启最慢路径，移出主线程；
+        // workDirectoryReady/inProgress 两道闸避免重复进入（onResume 可能连触）
+        if (workDirectoryReady || workDirectoryInProgress) return
+        workDirectoryInProgress = true
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val dirs = listOf(
+                    Constants.WORK_DIR,
+                    Constants.PLUGIN_DIR,
+                    Constants.LOG_DIR,
+                    Constants.BACKUP_DIR,
+                    Constants.DOWNLOAD_DIR,
+                    Constants.TEMP_DIR,
+                    Constants.CACHE_DIR,
+                    Constants.TPK_DIR
+                )
 
-            dirs.forEach { path ->
-                val dir = File(path)
-                if (!dir.exists()) {
-                    dir.mkdirs()
-                    AppLog.d(TAG, Str.get(R.string.creating_directory_path, path))
+                dirs.forEach { path ->
+                    val dir = File(path)
+                    if (!dir.exists()) {
+                        dir.mkdirs()
+                        AppLog.d(TAG, Str.get(R.string.creating_directory_path, path))
+                    }
                 }
+
+                // 拍板2.0（下60）方向回调：下58 曾迁应用私有目录，此处反向兜底——
+                // 私有侧若有迁移残留（跑过迁移版本的构建）搬回共享工作目录；
+                // 从未跑过迁移的设备私有侧不存在 → 零开销。幂等：同名已存在即作废旧件
+                //（仅同日日志可能与 Logger.init 新建件碰撞），迁空后删除私有子目录。
+                listOf("logs", "backups", "tpk").forEach { name ->
+                    val privateDir = getExternalFilesDir(null)?.let { File(it, name) }
+                    if (privateDir == null || !privateDir.isDirectory) return@forEach
+                    val target = File(Constants.WORK_DIR, name)
+                    target.mkdirs()
+                    var moved = 0
+                    privateDir.listFiles()?.forEach { src ->
+                        if (!src.isFile) return@forEach
+                        val dst = File(target, src.name)
+                        when {
+                            dst.exists() -> src.delete()
+                            src.renameTo(dst) -> moved++
+                            else -> runCatching { src.copyTo(dst); src.delete() }
+                                .onSuccess { moved++ }
+                        }
+                    }
+                    privateDir.delete()
+                    if (moved > 0) {
+                        AppLog.i(TAG, Str.get(R.string.storage_migration_moved, name, moved))
+                    }
+                }
+
+                Logger.init(Constants.LOG_DIR)
+                AppLog.i(TAG, "══════════════════════════════════════════════════")
+                AppLog.i(TAG, Str.get(R.string.app_launch_uin_tool_v_constants_app_, Constants.APP_VERSION))
+                AppLog.i(TAG, Str.get(R.string.work_directory_constants_work_dir, Constants.WORK_DIR))
+                AppLog.i(TAG, "══════════════════════════════════════════════════")
+
+                preferenceManager.setWorkFolder(Constants.WORK_DIR)
+                AppLog.success(TAG, Str.get(R.string.work_directory_created))
+                workDirectoryReady = true
+
+            } catch (e: Exception) {
+                AppLog.e(TAG, Str.get(R.string.failed_to_create_work_directory), e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@SplashActivity, Str.get(R.string.failed_to_create_directory_e_message, e.message), Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                workDirectoryInProgress = false
             }
-
-            Logger.init(Constants.LOG_DIR)
-            AppLog.i(TAG, "══════════════════════════════════════════════════")
-            AppLog.i(TAG, Str.get(R.string.app_launch_uin_tool_v_constants_app_, Constants.APP_VERSION))
-            AppLog.i(TAG, Str.get(R.string.work_directory_constants_work_dir, Constants.WORK_DIR))
-            AppLog.i(TAG, "══════════════════════════════════════════════════")
-
-            preferenceManager.setWorkFolder(Constants.WORK_DIR)
-            AppLog.success(TAG, Str.get(R.string.work_directory_created))
-
-        } catch (e: Exception) {
-            AppLog.e(TAG, Str.get(R.string.failed_to_create_work_directory), e)
-            Toast.makeText(this, Str.get(R.string.failed_to_create_directory_e_message, e.message), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -302,11 +325,12 @@ class SplashActivity : ComponentActivity() {
 
         if (releaseInfo.downloadUrl.isNullOrEmpty()) {
             AppLog.e(TAG, Str.get(R.string.download_link_is_empty))
-            Toast.makeText(this, Str.get(R.string.invalid_download_link_please_try_aga), Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, Str.get(R.string.invalid_download_link_please_try_again), Toast.LENGTH_SHORT).show()
             return
         }
 
-        updateDownloader = UpdateDownloader(this)
+        // B-21：统一用 ServiceLocator 单例（避免每次下载 new 一个 OkHttp/下载线程体系）
+        updateDownloader = ServiceLocator.getUpdateDownloader()
         updateDownloader?.setOnDownloadListener(object : UpdateDownloader.OnDownloadListener {
             override fun onStart() {
                 AppLog.d(TAG, Str.get(R.string.start_download))
@@ -321,7 +345,9 @@ class SplashActivity : ComponentActivity() {
 
             override fun onFailed(error: String) {
                 AppLog.e(TAG, Str.get(R.string.download_failed_error_2, error))
-                Toast.makeText(this@SplashActivity, Str.get(R.string.download_failed_error_2, error), Toast.LENGTH_LONG).show()
+                // B-31：onFailed 在下载线程回调，原生 Toast 在 Android 11+ 非主线程直接抛异常
+                // （被 UinApplication 全局处理器吞掉 → 下载失败无任何提示）
+                com.UIN.Tool.utils.AppToast.error(this@SplashActivity, Str.get(R.string.download_failed_error_2, error))
             }
         })
 
@@ -365,6 +391,8 @@ class SplashActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         updateDownloader?.cancelDownload()
+        updateDownloader?.clearDownloadListener()
+        updateDownloader = null
         AppLog.d(TAG, "onDestroy")
     }
 }
@@ -375,7 +403,6 @@ class SplashActivity : ComponentActivity() {
 fun SplashScreenWithUpdate(
     showPermissionExplain: Boolean,
     showPermissionDenied: Boolean,
-    isCheckingPermission: Boolean,
     onRequestPermission: () -> Unit,
     onDismissPermissionExplain: () -> Unit,
     onDismissPermissionDenied: () -> Unit,
@@ -396,19 +423,33 @@ fun SplashScreenWithUpdate(
     var showDownloadProgress by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf(0) }
 
+    // B-58：checker 是单例，离开开屏必须清掉监听，否则回跳/销毁后仍回调本组合
+    DisposableEffect(Unit) {
+        onDispose { ServiceLocator.getUpdateChecker().clearUpdateListener() }
+    }
+
     LaunchedEffect(hasStoragePermission, isFirstLaunch) {
-        if (hasStoragePermission && isFirstLaunch) {
+        if (hasStoragePermission) {
             delay(SPLASH_DELAY)
 
-            val updateChecker = UpdateChecker(context, preferenceManager)
+            // B-33：原实现只在 isFirstLaunch 检查更新 —— 首次安装时根本不存在新版本，
+            // 「开屏更新弹窗」几乎必然形同虚设；改为每次开屏都查，但等待窗口区分：
+            // 首启/进引导页可多等（5s），日常启动最多 1.5s，超时直接进主界面
+            // （MainActivity 的每日静默检查会兜底，不会因此漏掉更新提示）。
+            val updateChecker = ServiceLocator.getUpdateChecker()
             var isCompleted = false
+            val timeout = if (isFirstLaunch) UPDATE_CHECK_TIMEOUT else UPDATE_CHECK_TIMEOUT_FAST
 
-            Handler(Looper.getMainLooper()).postDelayed({
+            // B-32：原 Handler.postDelayed 超时未随生命周期取消，组合销毁后仍回调 onNavigate()；
+            // 改成同一 LaunchedEffect 内的协程，离开组合即自动取消
+            launch {
+                delay(timeout)
                 if (!isCompleted) {
-                    AppLog.w("SplashScreen", Str.get(R.string.update_check_timed_out_update_check_, UPDATE_CHECK_TIMEOUT))
+                    isCompleted = true
+                    AppLog.w("SplashScreen", Str.get(R.string.update_check_timed_out_update_check_, timeout))
                     onNavigate()
                 }
-            }, UPDATE_CHECK_TIMEOUT)
+            }
 
             updateChecker.setOnUpdateListener(object : UpdateChecker.OnUpdateListener {
                 override fun onCheckStart() {
@@ -418,6 +459,8 @@ fun SplashScreenWithUpdate(
                 override fun onCheckSuccess(releases: List<ReleaseInfo>, hasNewer: Boolean, forceUpdate: Boolean) {
                     if (isCompleted) return
                     isCompleted = true
+                    // B-33：开屏已联网检查过 → 记为当日已检查，MainActivity 的每日静默检查不再重复请求
+                    preferenceManager.setLastUpdateCheckDay(java.time.LocalDate.now().toEpochDay())
 
                     if (hasNewer && releases.isNotEmpty()) {
                         val latest = releases.first()
@@ -449,15 +492,13 @@ fun SplashScreenWithUpdate(
                 override fun onNoUpdate(currentVersion: String) {
                     if (isCompleted) return
                     isCompleted = true
+                    preferenceManager.setLastUpdateCheckDay(java.time.LocalDate.now().toEpochDay())
                     AppLog.i("SplashScreen", Str.get(R.string.you_are_on_the_latest_version_curren, currentVersion))
                     onNavigate()
                 }
             })
 
             updateChecker.checkUpdate()
-        } else if (hasStoragePermission && !isFirstLaunch) {
-            delay(SPLASH_DELAY)
-            onNavigate()
         }
     }
 
@@ -478,8 +519,8 @@ fun SplashScreenWithUpdate(
                 onDismissPermissionDenied()
             },
             onExit = {
-                android.os.Process.killProcess(android.os.Process.myPid())
-                System.exit(1)
+                // B-34：killProcess+System.exit(1) 是硬杀，改 finishAffinity 走正常生命周期
+                (context as? android.app.Activity)?.finishAffinity()
             },
             onDismiss = onDismissPermissionDenied
         )
@@ -509,7 +550,7 @@ fun SplashScreenWithUpdate(
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_splash_foreground),
-                contentDescription = "App Icon",
+                contentDescription = Str.get(R.string.app_icon_desc),
                 colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .size(120.dp)
@@ -523,7 +564,7 @@ fun SplashScreenWithUpdate(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "UIN Tool",
+                text = Str.get(R.string.app_name),
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
@@ -557,7 +598,7 @@ fun SplashScreenWithUpdate(
                 },
                 onManualDownload = {
                     showUpdateDialog = false
-                    onOpenBrowser("https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/${updateInfo!!.tagName}")
+                    onOpenBrowser(ServiceLocator.getUpdateChecker().getReleasePageUrl(updateInfo!!.tagName))
                     scope.launch {
                         delay(500)
                         onNavigate()
@@ -591,6 +632,7 @@ fun PermissionExplainDialog(
     onDismiss: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
     
     Dialog(
         onDismissRequest = onDismiss,
@@ -646,7 +688,7 @@ fun PermissionExplainDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = Str.get(R.string.uin_tool_needs_storage_permission_fo),
+                    text = Str.get(R.string.uin_tool_needs_storage_permission_for),
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -686,7 +728,7 @@ fun PermissionExplainDialog(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = Str.get(R.string.after_tapping_grant_allow_storage_pe),
+                    text = Str.get(R.string.after_tapping_grant_allow_storage),
                     fontSize = 12.sp,
                     color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
@@ -701,8 +743,8 @@ fun PermissionExplainDialog(
                 ) {
                     Button(
                         onClick = {
-                            android.os.Process.killProcess(android.os.Process.myPid())
-                            System.exit(1)
+                            // B-34：同上，改 finishAffinity
+                            (context as? android.app.Activity)?.finishAffinity()
                         },
                         modifier = Modifier
                             .weight(1f)
@@ -787,7 +829,7 @@ fun PermissionDeniedDialog(
                         .size(72.dp)
                         .clip(CircleShape)
                         .background(
-                            Color(0xFFFFEBEE)
+                            colorScheme.errorContainer
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -795,7 +837,7 @@ fun PermissionDeniedDialog(
                         imageVector = Icons.Outlined.Warning,
                         contentDescription = null,
                         modifier = Modifier.size(36.dp),
-                        tint = Color(0xFFD32F2F)
+                        tint = colorScheme.onErrorContainer
                     )
                 }
 
@@ -805,13 +847,13 @@ fun PermissionDeniedDialog(
                     text = Str.get(R.string.permission_denied),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFD32F2F)
+                    color = colorScheme.error
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = Str.get(R.string.you_denied_storage_permission_some_f),
+                    text = Str.get(R.string.you_denied_storage_permission_some),
                     fontSize = 14.sp,
                     color = colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -821,7 +863,7 @@ fun PermissionDeniedDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = Str.get(R.string.you_can_enable_the_permission_manual),
+                    text = Str.get(R.string.you_can_enable_the_permission_manually),
                     fontSize = 13.sp,
                     color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
@@ -852,7 +894,7 @@ fun PermissionDeniedDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = Str.get(R.string.settings_apps_uin_tool_permissions_s),
+                            text = Str.get(R.string.settings_apps_uin_tool_permissions),
                             fontSize = 13.sp,
                             color = colorScheme.primary,
                             fontWeight = FontWeight.Medium
@@ -1038,16 +1080,15 @@ fun DownloadProgressDialog(
 
 // ==================== 工具函数 ====================
 
+// B-36：忽略版本的读写只保留 PreferenceManager 一套（原先直读 SharedPreferences + KEY_IGNORE_VERSION，
+// 与 PreferenceManager.get/setIgnoredVersion 并存两套实现）
 private fun isVersionIgnored(preferenceManager: PreferenceManager, versionName: String): Boolean {
     if (versionName.isEmpty()) return false
-    val prefs = preferenceManager.getPrefs()
-    val ignoredVersion = prefs.getString(Constants.KEY_IGNORE_VERSION, "")
-    return versionName == ignoredVersion
+    return versionName == preferenceManager.getIgnoredVersion()
 }
 
 private fun setVersionIgnored(preferenceManager: PreferenceManager, versionName: String) {
     if (versionName.isEmpty()) return
-    val prefs = preferenceManager.getPrefs()
-    prefs.edit().putString(Constants.KEY_IGNORE_VERSION, versionName).apply()
+    preferenceManager.setIgnoredVersion(versionName)
     AppLog.i("SplashScreen", Str.get(R.string.ignore_version_versionname, versionName))
 }

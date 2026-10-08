@@ -46,7 +46,7 @@ object UIConfig {
     
     fun getInstance(): UIConfig {
         if (!isInitialized) {
-            throw IllegalStateException(Str.get(R.string.uiconfig_not_initialized_call_init_f))
+            throw IllegalStateException(Str.get(R.string.uiconfig_not_initialized_call_init_first))
         }
         return this
     }
@@ -61,7 +61,7 @@ object UIConfig {
             try {
                 config = JSONObject(configJson)
             } catch (e: Exception) {
-                Logger.e(TAG, Str.get(R.string.failed_to_parse_config_using_default), e)
+                Logger.e(TAG, Str.get(R.string.failed_to_parse_config_using_defaults), e)
                 config = getDefaultConfig()
             }
         } else {
@@ -547,6 +547,20 @@ object UIConfig {
         } catch (e: Exception) { Logger.e(TAG, "Failed to set language", e) }
     }
 
+    // ==================== 小部件（G-28） ====================
+
+    /** G-28：小部件后台自动刷新开关（WorkManager 周期任务），默认开。 */
+    fun isWidgetAutoRefreshEnabled(): Boolean =
+        config.optJSONObject("widget")?.optBoolean("autoRefresh", true) ?: true
+
+    fun setWidgetAutoRefreshEnabled(enabled: Boolean) {
+        try {
+            if (!config.has("widget")) config.put("widget", JSONObject())
+            config.getJSONObject("widget").put("autoRefresh", enabled)
+            saveConfig()
+        } catch (e: Exception) { Logger.e(TAG, "Failed to set widget autoRefresh", e) }
+    }
+
     // ==================== 新拟态配置 ====================
 
     fun isNeumorphismEnabled(): Boolean = getBoolean("enableNeumorphism", false)
@@ -654,7 +668,8 @@ object UIConfig {
     fun getGradientColorsStringDark(): List<String> {
         val arr = config.optJSONObject("gradient")?.optJSONArray("colors_dark")
         if (arr == null) {
-            return getGradientColorsString()
+            // 旧配置缺 colors_dark 时必须回落到深色默认，回落浅色会让深色模式显示浅色渐变
+            return listOf("#FF4C4F51", "#FF5A5E62", "#FF6B6F73")
         }
         val list = mutableListOf<String>()
         for (i in 0 until arr.length()) {

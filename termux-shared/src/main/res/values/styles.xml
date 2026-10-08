@@ -11,7 +11,12 @@
         <item name="android:textSize">12sp</item>
     </style>
 
-
+    <!-- partial_primary_toolbar.xml 引用的 Toolbar 图标/文字叠色主题（白色控件 + ActionBar overlay）。
+         A-34 曾误判为死主题删除导致 :app:processDebugResources 链接失败（layout 在 termux-shared
+         模块，当时引用扫描只覆盖 app/res）——请勿再当死主题删除。 -->
+    <style name="ThemeOverlay.UIN.Tool.Toolbar" parent="ThemeOverlay.AppCompat.DayNight.ActionBar">
+        <item name="colorControlNormal">@color/white</item>
+    </style>
 
 
 

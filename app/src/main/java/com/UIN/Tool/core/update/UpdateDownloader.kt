@@ -22,7 +22,14 @@ import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
 class UpdateDownloader(
-    private val context: Context
+    private val context: Context,
+    // B-54/C-18：默认自建（保持旧调用可用），正式路径由 AppContainer 注入共享 client，
+    // 避免每个下载器各持一份连接池与缓存
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
 ) {
 
     companion object {
@@ -32,14 +39,22 @@ class UpdateDownloader(
     }
 
     private var onDownloadListener: OnDownloadListener? = null
+
+    /** B-60：cancelDownload() 在调用线程写、下载线程读，必须 volatile 才能立即生效 */
+    @Volatile
     private var isDownloading = false
+
+    @Volatile
     private var downloadThread: Thread? = null
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
-        .build()
+    /** B-62：回调统一切主线程，调用方（Compose 状态 / Toast / 安装跳转）不再在工作线程碰 UI */
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private fun notifyStart() = mainHandler.post { onDownloadListener?.onStart() }
+    private fun notifyProgress(progress: Int, downloaded: Long, total: Long) =
+        mainHandler.post { onDownloadListener?.onProgress(progress, downloaded, total) }
+    private fun notifySuccess(file: File) = mainHandler.post { onDownloadListener?.onSuccess(file) }
+    private fun notifyFailed(error: String) = mainHandler.post { onDownloadListener?.onFailed(error) }
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -56,6 +71,11 @@ class UpdateDownloader(
 
     fun setOnDownloadListener(listener: OnDownloadListener) {
         this.onDownloadListener = listener
+    }
+
+    /** B-58 同源：下载结束后（或页面销毁时）调用，避免回调已销毁的界面 */
+    fun clearDownloadListener() {
+        this.onDownloadListener = null
     }
 
     private fun createNotificationChannel() {
@@ -79,7 +99,7 @@ class UpdateDownloader(
         }
 
         isDownloading = true
-        onDownloadListener?.onStart()
+        notifyStart()
 
         // 创建下载目录
         val downloadDir = File(Constants.DOWNLOAD_DIR)
@@ -106,6 +126,9 @@ class UpdateDownloader(
 
         // 显示通知
         showNotification(versionName)
+        // B-61：切到前台服务持有通知，后台不被回收（ID 与进度通知同为 1001，进度可直接续上）
+        UpdateDownloadService.setCancelAction { cancelDownload() }
+        UpdateDownloadService.start(context, versionName)
 
         downloadThread = Thread {
             try {
@@ -147,7 +170,7 @@ class UpdateDownloader(
                             if (progress != lastProgress) {
                                 lastProgress = progress
                                 updateNotification(progress, downloaded, contentLength)
-                                onDownloadListener?.onProgress(progress, downloaded, contentLength)
+                                notifyProgress(progress, downloaded, contentLength)
                                 Logger.d(TAG, Str.get(R.string.download_progress_progress, progress))
                             }
                         }
@@ -168,8 +191,10 @@ class UpdateDownloader(
                 Logger.success(TAG, Str.get(R.string.download_complete_file_absolutepath, file.absolutePath))
 
                 notificationManager.cancel(NOTIFICATION_ID)
+                UpdateDownloadService.stop(context)
+                UpdateDownloadService.setCancelAction(null)
                 isDownloading = false
-                onDownloadListener?.onSuccess(file)
+                notifySuccess(file)
 
             } catch (e: Exception) {
                 Logger.e(TAG, Str.get(R.string.download_failed), e)
@@ -179,8 +204,10 @@ class UpdateDownloader(
                 } catch (_: Exception) {
                 }
                 notificationManager.cancel(NOTIFICATION_ID)
+                UpdateDownloadService.stop(context)
+                UpdateDownloadService.setCancelAction(null)
                 isDownloading = false
-                onDownloadListener?.onFailed(e.message ?: Str.get(R.string.download_failed))
+                notifyFailed(e.message ?: Str.get(R.string.download_failed))
             }
         }
 
@@ -212,6 +239,8 @@ class UpdateDownloader(
         isDownloading = false
         downloadThread?.interrupt()
         notificationManager.cancel(NOTIFICATION_ID)
+        UpdateDownloadService.stop(context)
+        UpdateDownloadService.setCancelAction(null)
         Logger.i(TAG, Str.get(R.string.download_cancelled))
     }
 
@@ -285,8 +314,8 @@ class UpdateDownloader(
         return when {
             size <= 0 -> "0 B"
             size < 1024 -> "$size B"
-            size < 1024 * 1024 -> String.format("%.2f KB", size / 1024.0)
-            else -> String.format("%.2f MB", size / (1024.0 * 1024.0))
+            size < 1024 * 1024 -> String.format(java.util.Locale.US, "%.2f KB", size / 1024.0)
+            else -> String.format(java.util.Locale.US, "%.2f MB", size / (1024.0 * 1024.0))
         }
     }
 }

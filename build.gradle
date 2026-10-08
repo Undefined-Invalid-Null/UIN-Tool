@@ -6,6 +6,10 @@ buildscript {
         google()
     }
     dependencies {
+        // A-16（列决策，不改版本）：AGP 8.9.1 官方配 Gradle 8.11.1+，项目 wrapper 是 gradle-9.0.0-bin。
+        // 实测本机 9.0.0 能完整跑完 6.0.0→6.1.0 构建（项目 .gradle/9.0.0 状态目录存在），
+        // 任意一侧改版本都要重新下发行版/依赖、有把可用构建改坏的风险，故保持现状，
+        // 待用户拍板：要么 wrapper 回退 8.11.1，要么 AGP 升到支持 Gradle 9 的版本。
         classpath "com.android.tools.build:gradle:8.9.1"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.0"
@@ -22,16 +26,7 @@ allprojects {
         maven { url "https://mirrors.tencent.com/nexus/repository/maven-public" }
     }
     
-    // ===== 添加这部分：在所有模块中禁用 Lint =====
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            android {
-                lintOptions {
-                    checkReleaseBuilds false
-                    abortOnError false
-                }
-            }
-        }
-    }
-    // ============================================
+    // A-17：原先这里用 afterEvaluate { lintOptions{} } 在根工程统一关 lint，
+    // lintOptions 在 AGP 8 已移除；lint 开关统一由 gradle.properties 与
+    // app/build.gradle 的 lint{} 管理，此处不再重复。
 }

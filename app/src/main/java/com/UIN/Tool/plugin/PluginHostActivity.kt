@@ -39,7 +39,8 @@ import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.ui.screen.permission.PluginPermissionActivity
 import com.UIN.Tool.constants.AppConstants as Constants
-import kotlinx.coroutines.MainScope
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -92,13 +93,17 @@ class PluginHostActivity : AppCompatActivity() {
     private var openDataJson: String? = null
 
 /**
- * 后端实例键：始终使用插件 ID（多实例共享同一后端端口/进程）。
+ * 后端实例键：按「实例」隔离（独立端口多开）。每个打开的插件实例拥有
+ * 独立的后端进程与端口；插件级操作（卸载/全清）在 PluginBackendManager
+ * 内按 keyToPluginIds 归组到该插件的全部实例键。
  */
 private val backendKey: String
-    get() = currentPluginId
+    get() = currentInstanceKey.ifEmpty { currentPluginId }
 
     /** backend 实际被当前实例持有时为 true，用于在 destroy 时决定停止/释放 */
     private var backendHeldByThisInstance = false
+    /** 本实例实际 acquire 的后端键（onNewIntent 可换 pluginId，释放必须用 acquire 时的键） */
+    private var heldBackendKey: String? = null
 
     private var pluginDialogRequest by mutableStateOf<PluginDialogRequest?>(null)
     private var dialogHost: ComposeView? = null
@@ -341,13 +346,13 @@ private val backendKey: String
             Logger.i(TAG, "📌 pluginInfo.hasBackend(): ${pluginInfo!!.hasBackend()}")
             Logger.i(TAG, "📌 isBackendReady: $isBackendReady")
         } else {
-            Logger.e(TAG, Str.get(R.string.plugininfo_is_null_cannot_check_back))
+            Logger.e(TAG, Str.get(R.string.plugininfo_is_null_cannot_check_backend))
         }
         Logger.separator(TAG)
         
         val info = pluginInfo
         if (info == null || !info.hasBackend() || isBackendReady) {
-            Logger.i(TAG, Str.get(R.string.conditions_not_met_skipping_backend_))
+            Logger.i(TAG, Str.get(R.string.conditions_not_met_skipping_backend))
             if (info == null) Logger.i(TAG, Str.get(R.string.plugininfo_is_null_2))
             if (info != null && !info.hasBackend()) Logger.i(TAG, Str.get(R.string.hasbackend_returns_false))
             if (isBackendReady) Logger.i(TAG, Str.get(R.string.isbackendready_is_true))
@@ -360,7 +365,7 @@ private val backendKey: String
 
         if (BackendConfig.isBuiltin(this)) {
             // 内置 proot 模式：走环境流水线（确保 proot + 容器）
-            Logger.i(TAG, Str.get(R.string.going_through_proot_other_environmen))
+            Logger.i(TAG, Str.get(R.string.going_through_proot_other_environment))
             runEnvironmentPipeline()
         } else {
             // 实体 Termux：直接启动后端（allow-external-apps 探测与配置引导在失败回调里处理）
@@ -370,7 +375,7 @@ private val backendKey: String
     }
 
     private fun startBackendInternal() {
-        showEnvProgress(Str.get(R.string.starting_backend_service_normal_runt))
+        showEnvProgress(Str.get(R.string.starting_backend_service_normal_runtime))
         // 后端实例键：共享端口模式按插件共享；独立端口模式按实例隔离
         val key = backendKey
         Logger.i(TAG, "🔑 startBackendInternal backendKey: $key")
@@ -382,8 +387,9 @@ private val backendKey: String
                 backendPort = port
                 backendHeldByThisInstance = true
                 isBackendReady = true
-                // 共享端口模式：每个实例持有一次共享后端（最后一个实例关闭时后端才停止）
-                pluginManager.acquireBackend(currentPluginId)
+                // 独立端口多开：每个实例持有自己的后端（release 时归零即停自己的）
+                pluginManager.acquireBackend(key)
+                heldBackendKey = key
                 Logger.success(TAG, Str.get(R.string.backend_ready_port_port, port))
                 sendBackendReadyToWebView(port)
             } else {
@@ -405,22 +411,23 @@ private val backendKey: String
         Logger.i(TAG, "🔍 runEnvironmentPipeline()")
 
         // 若后台正在安装环境，等待完成后再继续
-        if (com.UIN.Tool.UinApplication.isEnvironmentInstalling()) {
+        if (com.UIN.Tool.bootstrap.EnvironmentBootstrap.isEnvironmentInstalling()) {
             Logger.i(TAG, "runEnvironmentPipeline: waiting for background env install...")
             showEnvProgress(Str.get(R.string.initializing_termux_base_environment))
-            Thread {
-                while (com.UIN.Tool.UinApplication.isEnvironmentInstalling()) {
-                    Thread.sleep(300)
+            // C-20：原先自旋 Thread.sleep(300) 忙等；改协程 delay，宿主销毁即自动取消
+            lifecycleScope.launch {
+                while (com.UIN.Tool.bootstrap.EnvironmentBootstrap.isEnvironmentInstalling()) {
+                    delay(300)
                 }
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                if (!isFinishing && !isDestroyed) {
                     runEnvironmentPipeline()
                 }
-            }.start()
+            }
             return
         }
 
         // 内置 proot 模式：确保 proot 二进制和默认容器就绪
-        MainScope().launch {
+        lifecycleScope.launch {
             showEnvProgress(Str.get(R.string.preparing_linux_environment))
             val prootResult = com.UIN.Tool.proot.ProotInstaller.ensureInstalled(this@PluginHostActivity)
             if (prootResult.isFailure) {
@@ -462,12 +469,13 @@ private val backendKey: String
         pluginManager.startBackendFor(currentPluginId, key) { success, port, error ->
             isBackendStarting = false
             dismissEnvProgress()
-            Logger.i(TAG, Str.get(R.string.env_pipeline_backend_callback_succes, success, port, error))
+            Logger.i(TAG, Str.get(R.string.env_pipeline_backend_callback_success, success, port, error))
             if (success) {
                 backendPort = port
                 backendHeldByThisInstance = true
                 isBackendReady = true
-                pluginManager.acquireBackend(currentPluginId)
+                pluginManager.acquireBackend(key)
+                heldBackendKey = key
                 sendBackendReadyToWebView(port)
             } else {
                 Toast.makeText(this, Str.get(R.string.backend_start_failed_error_unknown_e, error ?: Str.get(R.string.unknown_error)), Toast.LENGTH_LONG).show()
@@ -505,6 +513,11 @@ private val backendKey: String
             if (isBackendStarting) {
                 Logger.i(TAG, Str.get(R.string.backend_start_timed_out))
                 isBackendStarting = false
+                // C-43：原先只把 isBackendStarting 置回 false，用户面对的是无提示的卡住
+                val message = Str.get(R.string.backend_start_timed_out)
+                if (!isDestroyed && !isFinishing) {
+                    com.UIN.Tool.utils.AppToast.error(this, message)
+                }
             }
         }
         backendTimeoutHandler?.postDelayed(
@@ -513,15 +526,50 @@ private val backendKey: String
         )
     }
 
-    /**
-     * 展示环境准备/后端启动进度弹窗，让用户始终知道当前在做什么。
-     */
+    // C-07：原先 showEnvProgress 只发 Toast，dismissEnvProgress 是空函数——
+    // 9 处调用点以为自己在收起进度弹窗，实际根本没有进度条，环境准备阶段
+    // 用户只看到一闪而过的 Toast、无法判断是否卡死。改为真实的不可取消进度对话框。
+    private var envProgressDialog: android.app.ProgressDialog? = null
+
     private fun showEnvProgress(message: String) {
         if (isDestroyed || isFinishing) return
-        com.UIN.Tool.utils.AppToast.show(this, message)
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            runOnUiThread { showEnvProgress(message) }
+            return
+        }
+        val existing = envProgressDialog
+        if (existing != null && existing.isShowing) {
+            try {
+                existing.setMessage(message)
+            } catch (_: Exception) {
+            }
+            return
+        }
+        try {
+            val dialog = android.app.ProgressDialog(this).apply {
+                isIndeterminate = true
+                setMessage(message)
+                setCancelable(false)
+                setCanceledOnTouchOutside(false)
+            }
+            envProgressDialog = dialog
+            dialog.show()
+        } catch (e: Exception) {
+            Logger.e(TAG, "failed to show env progress: ${e.message}")
+            envProgressDialog = null
+            com.UIN.Tool.utils.AppToast.show(this, message)
+        }
     }
 
     private fun dismissEnvProgress() {
+        val dialog = envProgressDialog
+        envProgressDialog = null
+        if (dialog == null) return
+        try {
+            if (dialog.isShowing) dialog.dismiss()
+        } catch (e: Exception) {
+            Logger.e(TAG, "failed to dismiss env progress: ${e.message}")
+        }
     }
 
     // ============================================================
@@ -972,7 +1020,7 @@ private val backendKey: String
             Logger.success(TAG, Str.get(R.string.going_web_plugin_branch))
             loadWebPlugin()
         } else if (info.isCui()) {
-            Logger.success(TAG, Str.get(R.string.going_cui_plugin_branch_embedded_ter))
+            Logger.success(TAG, Str.get(R.string.going_cui_plugin_branch_embedded))
             loadCuiPlugin()
         } else {
             Logger.i(TAG, Str.get(R.string.going_native_plugin_branch_uitype_in, info.uiType))
@@ -1074,7 +1122,7 @@ private val backendKey: String
             } else {
                 val defaultHtml = createDefaultHtml(pluginInfo!!)
                 wv.loadDataWithBaseURL("file://$pluginDir/", defaultHtml, "text/html", "UTF-8", null)
-                Logger.w(TAG, Str.get(R.string.entry_file_not_found_using_default_p_2))
+                Logger.w(TAG, Str.get(R.string.entry_file_not_found_using_default_page))
             }
         }
 
@@ -1085,7 +1133,7 @@ private val backendKey: String
                 ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
             host.visibility = if (pluginDialogRequest != null) View.VISIBLE else View.GONE
-            Logger.success(TAG, Str.get(R.string.compose_dialog_overlay_added_above_w) + (if (pluginDialogRequest != null) Str.get(R.string.show) else Str.get(R.string.hide)) + ")")
+            Logger.success(TAG, Str.get(R.string.compose_dialog_overlay_added_above) + (if (pluginDialogRequest != null) Str.get(R.string.show) else Str.get(R.string.hide)) + ")")
         }
         PluginManager.putPluginWebView(currentInstanceKey, webView)
         Logger.separator(TAG, Str.get(R.string.loadwebplugin_complete))
@@ -1271,7 +1319,7 @@ private val backendKey: String
         }
 
         // 内置 proot 模式：确保环境就绪后启动 CUI 终端会话
-        MainScope().launch {
+        lifecycleScope.launch {
             showEnvProgress(Str.get(R.string.preparing_linux_environment))
             val prootResult = com.UIN.Tool.proot.ProotInstaller.ensureInstalled(this@PluginHostActivity)
             if (prootResult.isFailure) {
@@ -1459,13 +1507,19 @@ private val backendKey: String
     }
 
     private fun injectJSInterface() {
-        webView?.let {
-            it.removeJavascriptInterface("UINPlugin")
-            val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
-            injectedJsInterface = jsInterface
-            it.addJavascriptInterface(jsInterface, "UINPlugin")
-            Logger.success(TAG, Str.get(R.string.uinplugin_js_interface_re_injected))
+        val wv = webView ?: return
+        // C-18：addJavascriptInterface 注册在整个 WebView 上、跨导航依然有效。
+        // 原先每次 onPageFinished 都 remove + new 一个桥 → 每次导航都新建
+        // OkHttpClient/PluginContext，旧实例无人关闭。本 Activity 内复用已注入的桥即可；
+        // 复用会话换新 Activity 时 injectedJsInterface 为空，会正常重建并重绑 Context。
+        if (injectedJsInterface != null) {
+            Logger.d(TAG, "js bridge already injected, reuse")
+            return
         }
+        val jsInterface = PluginJSInterface(this@PluginHostActivity, currentPluginId, pluginInfo!!)
+        injectedJsInterface = jsInterface
+        wv.addJavascriptInterface(jsInterface, "UINPlugin")
+        Logger.success(TAG, Str.get(R.string.uinplugin_js_interface_injected))
     }
 
     /**
@@ -1521,12 +1575,22 @@ private val backendKey: String
             return
         }
 
-        // WebView 直连请求也刷新空闲回收计时
-        PluginBackendManager.markActivity(backendKey)
+        // C-14：path 必须是规范的绝对路径。原先直接拼进 URL，
+        // 传 `@evil.com/` 会被 OkHttp 解析成 host=evil.com → 未声明 INTERNET 的插件
+        // 也能任意出站，绕过 CAPABILITY_MAP 校验。
+        val safePath = normalizeBackendPath(path)
+        if (safePath == null) {
+            Logger.e(TAG, "callBackendApi: rejected unsafe path=$path")
+            callback(false, Str.get(R.string.invalid_url_e_message, path))
+            return
+        }
+
+        // WebView 直连请求也刷新空闲回收计时（标本实例实际持有的键）
+        PluginBackendManager.markActivity(heldBackendKey ?: backendKey)
 
         Thread {
             try {
-                val url = "http://127.0.0.1:$backendPort$path"
+                val url = "http://127.0.0.1:$backendPort$safePath"
                 val builder = Request.Builder().url(url)
 
                 when (method.uppercase()) {
@@ -1559,6 +1623,22 @@ private val backendKey: String
                 callback(false, e.message)
             }
         }.start()
+    }
+
+    /**
+     * C-14：后端 path 规范化。
+     * 要求以单个 `/` 开头；拒绝 `@`、`//`、`:`、`\`、`..` 与控制字符，
+     * 否则 `http://127.0.0.1:PORT` + `@evil.com/` 会被解析成别的 host。
+     * 允许 query/fragment 中出现 `:`（插件常把回调地址放在 query 里）。
+     */
+    private fun normalizeBackendPath(path: String): String? {
+        if (path.isEmpty()) return null
+        path.forEach { c -> if (c.code < 0x20 || c.code == 0x7F) return null }
+        val pathPart = path.substringBefore('?').substringBefore('#')
+        if (!pathPart.startsWith("/") || pathPart.startsWith("//")) return null
+        if (pathPart.contains('@') || pathPart.contains(':') || pathPart.contains('\\')) return null
+        if (pathPart.contains("..")) return null
+        return path
     }
 
     fun getBackendPort(): Int {
@@ -1678,14 +1758,16 @@ private val backendKey: String
     override fun onResume() {
         super.onResume()
         if (!isDestroyed) {
-            pluginManager.onPluginResume(currentPluginId)
+            // C-02：生命周期按「实例键」隔离，原先传 currentPluginId 必 miss，
+            // WebView onResume/resumeTimers 与 resume 事件、原生 onResume 从未触发
+            pluginManager.onPluginResume(currentInstanceKey)
         }
     }
 
     override fun onPause() {
         super.onPause()
         if (!isDestroyed) {
-            pluginManager.onPluginPause(currentPluginId)
+            pluginManager.onPluginPause(currentInstanceKey)
         }
     }
 
@@ -1697,6 +1779,13 @@ private val backendKey: String
         backendTimeoutHandler = null
 
         dismissEnvProgress()
+
+        // C-03：中止本 Activity 发起、尚未回执的权限请求回调
+        try {
+            pluginManager.failPendingPermissionRequests(this)
+        } catch (e: Exception) {
+            // 忽略
+        }
 
         // 原生插件单实例追踪注销
         pluginManager.onNativePluginStopped(currentInstanceKey)
@@ -1720,8 +1809,9 @@ private val backendKey: String
         // 后端生命周期：只在当前实例“持有”时才停止/释放
         val keepAlive = pluginInfo?.backendKeepAlive ?: false
         if (backendHeldByThisInstance && !keepAlive) {
-            // 共享端口模式：释放本实例持有（归零时停止共享后端；保留会话时维持存活）
-            pluginManager.releaseBackend(currentPluginId)
+            // 独立端口多开：释放本实例持有的键（归零时停止本实例后端；保留会话时维持存活）
+            heldBackendKey?.let { pluginManager.releaseBackend(it) }
+            heldBackendKey = null
             backendHeldByThisInstance = false
         }
 
@@ -1789,14 +1879,22 @@ private val backendKey: String
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        // C-03：插件声明权限的真实回执，回填给 PluginManager 中登记的待处理回调
+        val consumed = try {
+            pluginManager.dispatchPermissionResult(requestCode, grantResults)
+        } catch (e: Exception) {
+            false
+        }
         // 路由到当前实例键对应的原生插件实例（多开隔离）
         val plugin = pluginManager.getPluginInstanceByKey(currentInstanceKey)
         plugin?.onRequestPermissionsResult(requestCode, permissions, grantResults)
         // 路由到实际注入的 JS 桥实例（而非新建），确保 WebView 中同一对象收到回调
-        try {
-            injectedJsInterface?.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        } catch (e: Exception) {
-            // 忽略
+        if (!consumed) {
+            try {
+                injectedJsInterface?.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            } catch (e: Exception) {
+                // 忽略
+            }
         }
     }
 }

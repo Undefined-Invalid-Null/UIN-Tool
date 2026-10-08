@@ -66,8 +66,28 @@ class PluginJSInterface(
 
     companion object {
         private const val TAG = "PluginJSInterface"
+
+        /** C-37：HTTP 响应体硬上限，超限直接报错，避免 body.string() 一次性读进内存 OOM */
+        private const val MAX_HTTP_RESPONSE_BYTES = 20L * 1024 * 1024
+        /** C-37：下载文件硬上限 */
+        private const val MAX_DOWNLOAD_BYTES = 200L * 1024 * 1024
+
+        /** C-18：全桥共享的 OkHttpClient（含唯一 Cache 句柄） */
+        private val SHARED_HTTP_CLIENT: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .cache(Cache(File(Constants.CACHE_DIR, "okhttp_cache"), Constants.CACHE_SIZE))
+                .proxy(java.net.Proxy.NO_PROXY)
+                .build()
+        }
+
         private const val NOTIFICATION_CHANNEL_ID = "plugin_notification_channel"
         private val NOTIFICATION_CHANNEL_NAME = Str.get(R.string.plugin_notification)
+
+        /** C-15：openUrl / callHost("openUrl") 的 scheme 白名单 */
+        private val ALLOWED_URL_SCHEMES = setOf("http", "https", "mailto", "tel")
 
         /**
          * 声明式能力注册表：桥方法名 → 所需的插件声明权限（任一满足即可放行）。
@@ -101,6 +121,16 @@ class PluginJSInterface(
             "httpPut" to listOf(Manifest.permission.INTERNET),
             "httpDelete" to listOf(Manifest.permission.INTERNET),
             "downloadFile" to listOf(Manifest.permission.INTERNET),
+            // C-16：网络探测原先完全不校验 → 未声明 INTERNET 的插件也能 ping/DNS 探测内网
+            "ping" to listOf(Manifest.permission.INTERNET),
+            "resolveDns" to listOf(Manifest.permission.INTERNET),
+            "dns" to listOf(Manifest.permission.INTERNET),
+            "dnsLookup" to listOf(Manifest.permission.INTERNET),
+            // C-16：发通知原先不查声明（含 Android 13+ POST_NOTIFICATIONS）
+            "sendNotification" to listOf(
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.VIBRATE
+            ),
             // 存储 / 文件（需声明存储权限；撤销/封禁后拒绝读写）
             "storage" to listOf(
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -130,13 +160,10 @@ class PluginJSInterface(
         }
     }
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
-        .cache(Cache(File(Constants.CACHE_DIR, "okhttp_cache"), Constants.CACHE_SIZE))
-        .proxy(java.net.Proxy.NO_PROXY)
-        .build()
+    // C-18：每个桥实例自己 new Client + 同名 Cache 目录 → 多实例并存时
+    // 抛 "CACHE DIRECTORY IS ALREADY IN USE"，旧 client/连接池也无人回收。
+    // 改为伴生对象共享一个实例（Cache 句柄只存在一份）。
+    private val httpClient = SHARED_HTTP_CLIENT
 
     init {
         createNotificationChannel()
@@ -497,7 +524,7 @@ class PluginJSInterface(
                 put("available", true)
             }.toString()
         } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
+            errJson(e.message)
         }
     }
 
@@ -656,7 +683,7 @@ class PluginJSInterface(
                 put("time", best.time)
             }.toString()
         } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
+            errJson(e.message)
         }
     }
 
@@ -686,7 +713,7 @@ class PluginJSInterface(
                 put("featureName", addr.featureName ?: "")
             }.toString()
         } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
+            errJson(e.message)
         }
     }
 
@@ -979,7 +1006,7 @@ class PluginJSInterface(
                 put("networkId", wifiInfo.networkId)
             }.toString()
         } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
+            errJson(e.message)
         }
     }
 
@@ -1016,7 +1043,7 @@ class PluginJSInterface(
                 }
             }.toString()
         } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
+            errJson(e.message)
         }
     }
 
@@ -1054,7 +1081,7 @@ class PluginJSInterface(
                 })
             }.toString()
         } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
+            errJson(e.message)
         }
     }
 
@@ -1202,7 +1229,7 @@ class PluginJSInterface(
                 put("sharedUserId", info.sharedUserId ?: "")
             }.toString()
         } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
+            errJson(e.message)
         }
     }
 
@@ -1518,20 +1545,9 @@ class PluginJSInterface(
 
     // ==================== 17. 文件操作 ====================
 
-    private fun getSafeFile(fileName: String): File? {
-        if (fileName.contains("..") || fileName.contains("/../") || fileName.startsWith("/")) {
-            Logger.w(TAG, Str.get(R.string.invalid_file_path_filename_2, fileName))
-            return null
-        }
-        val pctx = getPluginContext() ?: return null
-        val baseDir = pctx.getPluginDataDir()
-        val file = File(baseDir, fileName)
-        return try {
-            if (file.canonicalPath.startsWith(baseDir.canonicalPath)) file else null
-        } catch (e: Exception) {
-            null
-        }
-    }
+    /** C-41：收敛到 PluginContext 的单一实现，避免两份校验逻辑日后分叉 */
+    private fun getSafeFile(fileName: String): File? =
+        getPluginContext()?.resolveSafe(fileName)
 
     @JavascriptInterface
     fun writeFile(fileName: String, content: String): Boolean {
@@ -1746,11 +1762,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpGet(url: String, callbackId: String) {
         if (!checkCapability("httpGet")) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be))
             return
         }
         val request = try {
@@ -1769,11 +1785,17 @@ class PluginJSInterface(
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    sendCallback(callbackId, JSONObject().apply {
-                        put("success", true)
-                        put("statusCode", it.code)
-                        put("data", it.body?.string() ?: "")
-                    }.toString())
+                    val data = readBodyCapped(it)
+                    if (data == null) {
+                        // C-37：响应体超过 20MB，拒绝整块读入
+                        sendCallback(callbackId, errJson("response too large (>$MAX_HTTP_RESPONSE_BYTES bytes)"))
+                    } else {
+                        sendCallback(callbackId, JSONObject().apply {
+                            put("success", true)
+                            put("statusCode", it.code)
+                            put("data", data)
+                        }.toString())
+                    }
                 }
             }
         })
@@ -1782,11 +1804,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpPost(url: String, jsonBody: String, callbackId: String) {
         if (!checkCapability("httpPost")) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be))
             return
         }
         val mediaType = "application/json; charset=utf-8".toMediaType()
@@ -1807,11 +1829,17 @@ class PluginJSInterface(
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    sendCallback(callbackId, JSONObject().apply {
-                        put("success", true)
-                        put("statusCode", it.code)
-                        put("data", it.body?.string() ?: "")
-                    }.toString())
+                    val data = readBodyCapped(it)
+                    if (data == null) {
+                        // C-37：响应体超过 20MB，拒绝整块读入
+                        sendCallback(callbackId, errJson("response too large (>$MAX_HTTP_RESPONSE_BYTES bytes)"))
+                    } else {
+                        sendCallback(callbackId, JSONObject().apply {
+                            put("success", true)
+                            put("statusCode", it.code)
+                            put("data", data)
+                        }.toString())
+                    }
                 }
             }
         })
@@ -1820,11 +1848,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpPut(url: String, jsonBody: String, callbackId: String) {
         if (!checkCapability("httpPut")) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be))
             return
         }
         val mediaType = "application/json; charset=utf-8".toMediaType()
@@ -1845,11 +1873,17 @@ class PluginJSInterface(
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    sendCallback(callbackId, JSONObject().apply {
-                        put("success", true)
-                        put("statusCode", it.code)
-                        put("data", it.body?.string() ?: "")
-                    }.toString())
+                    val data = readBodyCapped(it)
+                    if (data == null) {
+                        // C-37：响应体超过 20MB，拒绝整块读入
+                        sendCallback(callbackId, errJson("response too large (>$MAX_HTTP_RESPONSE_BYTES bytes)"))
+                    } else {
+                        sendCallback(callbackId, JSONObject().apply {
+                            put("success", true)
+                            put("statusCode", it.code)
+                            put("data", data)
+                        }.toString())
+                    }
                 }
             }
         })
@@ -1858,11 +1892,11 @@ class PluginJSInterface(
     @JavascriptInterface
     fun httpDelete(url: String, callbackId: String) {
         if (!checkCapability("httpDelete")) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network))
             return
         }
         if (url.isEmpty()) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_url_must_not_be))
             return
         }
         val request = try {
@@ -1881,11 +1915,17 @@ class PluginJSInterface(
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    sendCallback(callbackId, JSONObject().apply {
-                        put("success", true)
-                        put("statusCode", it.code)
-                        put("data", it.body?.string() ?: "")
-                    }.toString())
+                    val data = readBodyCapped(it)
+                    if (data == null) {
+                        // C-37：响应体超过 20MB，拒绝整块读入
+                        sendCallback(callbackId, errJson("response too large (>$MAX_HTTP_RESPONSE_BYTES bytes)"))
+                    } else {
+                        sendCallback(callbackId, JSONObject().apply {
+                            put("success", true)
+                            put("statusCode", it.code)
+                            put("data", data)
+                        }.toString())
+                    }
                 }
             }
         })
@@ -1894,7 +1934,7 @@ class PluginJSInterface(
     @JavascriptInterface
     fun downloadFile(url: String, fileName: String, callbackId: String) {
         if (!checkCapability("downloadFile")) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_missing_network))
             return
         }
         if (url.isEmpty() || fileName.isEmpty()) {
@@ -1913,7 +1953,7 @@ class PluginJSInterface(
                         return@Thread
                     }
                     val body = response.body ?: run {
-                        sendCallback(callbackId, Str.get(R.string.success_false_error_empty_response_b))
+                        sendCallback(callbackId, Str.get(R.string.success_false_error_empty_response_body))
                         return@Thread
                     }
                     val pctx = getPluginContext()
@@ -1923,13 +1963,28 @@ class PluginJSInterface(
                     }
                     val safeFile = getSafeFile(fileName)
                     if (safeFile == null) {
-                        sendCallback(callbackId, Str.get(R.string.success_false_error_invalid_file_nam))
+                        sendCallback(callbackId, Str.get(R.string.success_false_error_invalid_file_name))
+                        return@Thread
+                    }
+                    // C-37：下载原先无任何上限（可把存储写满），Content-Length 与流式双重封顶
+                    if (body.contentLength() > MAX_DOWNLOAD_BYTES) {
+                        sendCallback(callbackId, errJson("file too large (>$MAX_DOWNLOAD_BYTES bytes)"))
                         return@Thread
                     }
                     safeFile.parentFile?.mkdirs()
                     FileOutputStream(safeFile).use { fos ->
                         body.byteStream().use { input ->
-                            input.copyTo(fos)
+                            val buf = ByteArray(8192)
+                            var total = 0L
+                            while (true) {
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                total += n
+                                if (total > MAX_DOWNLOAD_BYTES) {
+                                    throw java.io.IOException("download exceeds $MAX_DOWNLOAD_BYTES bytes")
+                                }
+                                fos.write(buf, 0, n)
+                            }
                         }
                     }
                     sendCallback(callbackId, JSONObject().apply {
@@ -1949,9 +2004,13 @@ class PluginJSInterface(
     @JavascriptInterface
     fun checkPermission(permission: String): Boolean {
         if (permission.isEmpty()) return false
+        // C-04：原先只有 requestPermission 校验 plugin.json 声明，checkPermission 不校验——
+        // 插件可在页面里盲探宿主已授权的任意权限（配合 isBlocked 还能看到撤销态）。
+        // 统一为「必须声明 + 未被封禁 + 系统已授予」。
+        if (!pluginInfo.permissions.contains(permission)) return false
         // 伪权限（剪贴板）仅需声明且未被撤销即可
         if (isPseudoPermission(permission)) {
-            return pluginInfo.permissions.contains(permission) && !isBlocked(permission)
+            return !isBlocked(permission)
         }
         return !isBlocked(permission) &&
                 (PermissionUtils.hasPermission(context, permission) ||
@@ -1961,7 +2020,7 @@ class PluginJSInterface(
     @JavascriptInterface
     fun requestPermission(permission: String, callbackId: String) {
         if (permission.isEmpty()) {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_permission_name_))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_permission_name_must))
             return
         }
         if (!pluginInfo.permissions.contains(permission)) {
@@ -1970,7 +2029,7 @@ class PluginJSInterface(
             return
         }
         if (checkPermission(permission)) {
-            sendCallback(callbackId, Str.get(R.string.success_true_message_permission_gran))
+            sendCallback(callbackId, Str.get(R.string.success_true_message_permission_granted))
             return
         }
         // 已被权限管理撤销（封禁）：不发起系统请求，直接拒绝
@@ -1983,7 +2042,7 @@ class PluginJSInterface(
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 intent.data = Uri.parse("package:${context.packageName}")
                 context.startActivity(intent)
-                sendCallback(callbackId, Str.get(R.string.success_false_message_please_enable_))
+                sendCallback(callbackId, Str.get(R.string.success_false_message_please_enable))
             } catch (e: Exception) {
                 sendCallback(callbackId, errJson(Str.get(R.string.failed_to_open_settings_e_message_2, e.message)))
             }
@@ -1995,10 +2054,10 @@ class PluginJSInterface(
                 activity.requestPermissions(arrayOf(permission), 1002)
                 Logger.i(TAG, Str.get(R.string.requesting_permission_permission, permission))
             } else {
-                sendCallback(callbackId, Str.get(R.string.success_true_message_permission_gran))
+                sendCallback(callbackId, Str.get(R.string.success_true_message_permission_granted))
             }
         } ?: run {
-            sendCallback(callbackId, Str.get(R.string.success_false_error_could_not_get_ac))
+            sendCallback(callbackId, Str.get(R.string.success_false_error_could_not_get))
         }
     }
 
@@ -2029,7 +2088,7 @@ class PluginJSInterface(
                     if (normalPerms.isNotEmpty()) {
                         requestNormalPermissions(normalPerms, callbackId)
                     } else {
-                        sendCallback(callbackId, Str.get(R.string.success_false_message_special_permis))
+                        sendCallback(callbackId, Str.get(R.string.success_false_message_special_permission))
                     }
                 }
                 return
@@ -2052,7 +2111,7 @@ class PluginJSInterface(
     private fun showSpecialPermissionDialog(permissions: List<String>, onComplete: () -> Unit) {
         val host = hostActivity() ?: return
         val message = buildString {
-            append(Str.get(R.string.the_following_permissions_must_be_en))
+            append(Str.get(R.string.the_following_permissions_must_be))
             permissions.forEach { perm ->
                 append("• ${PermissionUtils.getPermissionDisplayName(perm)}\n")
             }
@@ -2090,9 +2149,17 @@ class PluginJSInterface(
                     val callbackId = pendingPermissionCallbacks.remove(permission)
                     if (callbackId != null) {
                         val granted = grantResults.getOrNull(index) == PackageManager.PERMISSION_GRANTED
+                        // C-06：改走 JSONObject，消息含引号/换行时不再产出非法 JSON
                         sendCallback(
                             callbackId,
-                            "{\"success\":$granted,\"message\":\"${if (granted) Str.get(R.string.permission_granted) else Str.get(R.string.permission_denied)}\"}"
+                            JSONObject().apply {
+                                put("success", granted)
+                                put(
+                                    "message",
+                                    if (granted) Str.get(R.string.permission_granted)
+                                    else Str.get(R.string.permission_denied)
+                                )
+                            }.toString()
                         )
                     }
                 }
@@ -2130,8 +2197,12 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun showLoading(message: String) {
-        getActivity()?.runOnUiThread {
-            Toast.makeText(context, message ?: Str.get(R.string.loading), Toast.LENGTH_SHORT).show()
+        val text = message.ifEmpty { Str.get(R.string.loading) }
+        val act = getActivity()
+        if (act != null) {
+            act.runOnUiThread { Toast.makeText(context, text, Toast.LENGTH_SHORT).show() }
+        } else {
+            com.UIN.Tool.utils.AppToast.show(context, text)
         }
     }
 
@@ -2199,7 +2270,7 @@ class PluginJSInterface(
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("plugin_text", text))
             showToast(Str.get(R.string.copied_to_clipboard))
-            Logger.i(TAG, Str.get(R.string.copied_to_clipboard_text_take_50, text.take(50)))
+            Logger.i(TAG, "copied to clipboard (${text.length} chars)")
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.copy_failed), e)
             showToast(Str.get(R.string.copy_failed_e_message, e.message))
@@ -2250,16 +2321,23 @@ class PluginJSInterface(
     // ==================== 22. Toast ====================
 
     private fun showToast(message: String) {
-        getActivity()?.runOnUiThread {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        } ?: Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        val act = getActivity()
+        if (act != null) {
+            act.runOnUiThread { Toast.makeText(context, message, Toast.LENGTH_SHORT).show() }
+        } else {
+            // B-31：JS 线程直接 Toast 在 Android 11+ 会抛异常，AppToast 内部切主线程
+            com.UIN.Tool.utils.AppToast.show(context, message)
+        }
     }
 
     @JavascriptInterface
     fun showToastLong(message: String) {
-        getActivity()?.runOnUiThread {
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-        } ?: Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        val act = getActivity()
+        if (act != null) {
+            act.runOnUiThread { Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
+        } else {
+            com.UIN.Tool.utils.AppToast.showLong(context, message)
+        }
     }
 
     // ==================== 23. 振动 ====================
@@ -2293,6 +2371,11 @@ class PluginJSInterface(
 
     @JavascriptInterface
     fun sendNotification(title: String, message: String) {
+        // C-16：通知属敏感能力，纳入声明式能力校验（原先无任何校验）
+        if (!checkCapability("sendNotification")) {
+            Logger.w(TAG, "sendNotification denied for $pluginId")
+            return
+        }
         try {
             val pendingIntent = PendingIntent.getActivity(
                 context,
@@ -2369,6 +2452,15 @@ class PluginJSInterface(
             showToast(Str.get(R.string.url_must_not_be_empty))
             return
         }
+        // C-15：scheme 白名单。原先任意 scheme 都交给 ACTION_VIEW，
+        // `intent://` 可构造任意显式组件 + extras（绕过所有能力校验），
+        // `file://` / `market://` / `javascript:` 同样应拦截。
+        val scheme = url.substringBefore(':', missingDelimiterValue = "").lowercase()
+        if (scheme !in ALLOWED_URL_SCHEMES) {
+            Logger.w(TAG, "openUrl: blocked scheme='$scheme'")
+            showToast(Str.get(R.string.unable_to_open_link))
+            return
+        }
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -2393,7 +2485,7 @@ class PluginJSInterface(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(Intent.createChooser(intent, Str.get(R.string.share)))
-            Logger.i(TAG, Str.get(R.string.sharing_text_take_50, text.take(50)))
+            Logger.i(TAG, "sharing text (${text.length} chars)")
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.share_failed), e)
             showToast(Str.get(R.string.share_failed_e_message, e.message))
@@ -2440,11 +2532,11 @@ class PluginJSInterface(
     fun takeScreenshot() {
         val activity = getActivity()
         if (activity == null) {
-            showToast(Str.get(R.string.screenshot_failed_could_not_get_acti))
+            showToast(Str.get(R.string.screenshot_failed_could_not_get_activity))
             return
         }
         if (!hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-            showToast(Str.get(R.string.storage_permission_is_required_to_ta))
+            showToast(Str.get(R.string.storage_permission_is_required_to_take_a))
             return
         }
         activity.runOnUiThread {
@@ -2522,108 +2614,147 @@ class PluginJSInterface(
         Logger.d(TAG, Str.get(R.string.sending_event_eventname_data, eventName, data))
         val activity = context as? PluginHostActivity
         if (activity != null) {
+            // C-17：原先把 $eventName 直接塞进单引号、$data 当 JS 表达式拼接，
+            // 名字/内容含引号即脚本破损、非合法 JSON 直接 SyntaxError → 事件静默丢失
             val js = """
                 if (window.dispatchEvent) {
-                    window.dispatchEvent(new CustomEvent('$eventName', { detail: ${data ?: "null"} }));
+                    window.dispatchEvent(new CustomEvent(${jsString(eventName)}, { detail: ${toDetailJs(data)} }));
                 }
             """.trimIndent()
             activity.evaluateJavascript(js)
         }
     }
 
+    /** C-17：把 data 转成安全的 JS 表达式（对象/数组原样，其余按字符串字面量转义） */
+    private fun toDetailJs(data: String?): String {
+        if (data.isNullOrBlank()) return "null"
+        val trimmed = data.trim()
+        val looksLikeJson = (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+            (trimmed.startsWith("[") && trimmed.endsWith("]"))
+        if (looksLikeJson) {
+            val parsed = try {
+                org.json.JSONTokener(trimmed).nextValue()
+                true
+            } catch (e: Exception) {
+                false
+            }
+            if (parsed) return trimmed
+        }
+        if (trimmed.length > 1 && trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+            return trimmed
+        }
+        return JSONObject.quote(data)
+    }
+
     @JavascriptInterface
     fun addEventListener(eventName: String, callbackId: String) {
-        Logger.d(TAG, Str.get(R.string.adding_event_listener_eventname_call, eventName, callbackId))
+        // C-44：原先只打一行日志就"成功返回"，插件以为注册好了、实际宿主从不回调。
+        // 事件真实通道是 sendEvent → window.dispatchEvent(CustomEvent)，
+        // 这里如实告知不支持，让调用方改用 window.addEventListener。
+        Logger.w(TAG, "addEventListener($eventName) unsupported, use window.addEventListener instead")
+        sendCallback(callbackId, "{\"success\":false,\"error\":\"unsupported_use_window_addEventListener\"}")
     }
     
     @JavascriptInterface
-fun ping(host: String, callbackId: String) {
-    if (host.isEmpty()) {
-        sendCallback(callbackId, errJson(Str.get(R.string.host_must_not_be_empty)))
-        return
-    }
-
-    Thread {
-        try {
-            val startTime = System.currentTimeMillis()
-            val ip = try {
-                InetAddress.getByName(host).hostAddress ?: host
-            } catch (e: Exception) {
-                host
-            }
-
-            var success: Boolean
-            var timeMs = -1L
-            try {
-                val process = Runtime.getRuntime().exec(arrayOf("ping", "-c", "1", "-W", "5", host))
-                val output = process.inputStream.bufferedReader().use { it.readText() }
-                success = process.waitFor() == 0
-                Regex("time[=<]\\s*([0-9.]+)").find(output)?.let {
-                    timeMs = it.groupValues[1].toFloat().roundToInt().toLong()
-                }
-            } catch (e: Exception) {
-                // ping 二进制不可用时回退到 isReachable
-                success = try {
-                    InetAddress.getByName(host).isReachable(3000)
-                } catch (e2: Exception) {
-                    false
-                }
-            }
-
-            sendCallback(callbackId, JSONObject().apply {
-                put("success", success)
-                put("reachable", success)
-                put("host", host)
-                put("ip", ip)
-                put("time", if (success && timeMs >= 0) timeMs else System.currentTimeMillis() - startTime)
-            }.toString())
-        } catch (e: Exception) {
-            sendCallback(callbackId, errJson(e.message ?: Str.get(R.string.ping_failed)))
+    fun ping(host: String, callbackId: String) {
+        // C-16：网络探测纳入声明式能力校验（未声明 INTERNET 即拒绝）
+        if (!checkCapability("ping")) {
+            sendCallback(callbackId, permissionDeniedJson())
+            return
         }
-    }.start()
-}
+        if (host.isEmpty()) {
+            sendCallback(callbackId, errJson(Str.get(R.string.host_must_not_be_empty)))
+            return
+        }
+
+        Thread {
+            try {
+                val startTime = System.currentTimeMillis()
+                val ip = try {
+                    InetAddress.getByName(host).hostAddress ?: host
+                } catch (e: Exception) {
+                    host
+                }
+
+                var success: Boolean
+                var timeMs = -1L
+                try {
+                    val process = Runtime.getRuntime().exec(arrayOf("ping", "-c", "1", "-W", "5", host))
+                    val output = process.inputStream.bufferedReader().use { it.readText() }
+                    success = process.waitFor() == 0
+                    Regex("time[=<]\\s*([0-9.]+)").find(output)?.let {
+                        timeMs = it.groupValues[1].toFloat().roundToInt().toLong()
+                    }
+                } catch (e: Exception) {
+                    // ping 二进制不可用时回退到 isReachable
+                    success = try {
+                        InetAddress.getByName(host).isReachable(3000)
+                    } catch (e2: Exception) {
+                        false
+                    }
+                }
+
+                sendCallback(callbackId, JSONObject().apply {
+                    put("success", success)
+                    put("reachable", success)
+                    put("host", host)
+                    put("ip", ip)
+                    put("time", if (success && timeMs >= 0) timeMs else System.currentTimeMillis() - startTime)
+                }.toString())
+            } catch (e: Exception) {
+                sendCallback(callbackId, errJson(e.message ?: Str.get(R.string.ping_failed)))
+            }
+        }.start()
+    }
 
     @JavascriptInterface
-fun resolveDns(host: String, callbackId: String) {
-    if (host.isEmpty()) {
-        sendCallback(callbackId, errJson(Str.get(R.string.host_must_not_be_empty)))
-        return
+    fun resolveDns(host: String, callbackId: String) {
+        // C-16：同 ping，DNS 解析纳入声明式能力校验
+        if (!checkCapability("resolveDns")) {
+            sendCallback(callbackId, permissionDeniedJson())
+            return
+        }
+        if (host.isEmpty()) {
+            sendCallback(callbackId, errJson(Str.get(R.string.host_must_not_be_empty)))
+            return
+        }
+        Thread {
+            try {
+                val all = InetAddress.getAllByName(host)
+                val ips = JSONArray()
+                all.forEach { ips.put(it.hostAddress ?: "") }
+                sendCallback(callbackId, JSONObject().apply {
+                    put("success", true)
+                    put("host", host)
+                    put("ips", ips)
+                }.toString())
+            } catch (e: Exception) {
+                sendCallback(callbackId, errJson(e.message ?: Str.get(R.string.dns_resolution_failed)))
+            }
+        }.start()
     }
-    Thread {
-        try {
+
+    @JavascriptInterface
+    fun dns(host: String, callbackId: String) = resolveDns(host, callbackId)
+
+    @JavascriptInterface
+    fun dnsLookup(host: String): String {
+        // C-16：同 ping
+        if (!checkCapability("dnsLookup")) return permissionDeniedJson()
+        if (host.isEmpty()) return errJson(Str.get(R.string.host_must_not_be_empty))
+        return try {
             val all = InetAddress.getAllByName(host)
             val ips = JSONArray()
             all.forEach { ips.put(it.hostAddress ?: "") }
-            sendCallback(callbackId, JSONObject().apply {
+            JSONObject().apply {
                 put("success", true)
                 put("host", host)
                 put("ips", ips)
-            }.toString())
+            }.toString()
         } catch (e: Exception) {
-            sendCallback(callbackId, errJson(e.message ?: Str.get(R.string.dns_resolution_failed)))
+            errJson(e.message ?: Str.get(R.string.dns_resolution_failed))
         }
-    }.start()
-}
-
-    @JavascriptInterface
-fun dns(host: String, callbackId: String) = resolveDns(host, callbackId)
-
-    @JavascriptInterface
-fun dnsLookup(host: String): String {
-    if (host.isEmpty()) return errJson(Str.get(R.string.host_must_not_be_empty))
-    return try {
-        val all = InetAddress.getAllByName(host)
-        val ips = JSONArray()
-        all.forEach { ips.put(it.hostAddress ?: "") }
-        JSONObject().apply {
-            put("success", true)
-            put("host", host)
-            put("ips", ips)
-        }.toString()
-    } catch (e: Exception) {
-        errJson(e.message ?: Str.get(R.string.dns_resolution_failed))
     }
-}
 
     // ==================== 27. 私有方法 ====================
 
@@ -2645,6 +2776,32 @@ fun dnsLookup(host: String): String {
         }
     }
 
+    /** C-37：流式读响应体并按 [MAX_HTTP_RESPONSE_BYTES] 封顶；超限返回 null（调用方报错） */
+    private fun readBodyCapped(response: Response): String? {
+        val body = response.body ?: return ""
+        try {
+            if (body.contentLength() > MAX_HTTP_RESPONSE_BYTES) return null
+        } catch (_: Exception) {
+        }
+        return try {
+            body.byteStream().use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buf = ByteArray(8192)
+                var total = 0L
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    total += n
+                    if (total > MAX_HTTP_RESPONSE_BYTES) return null
+                    out.write(buf, 0, n)
+                }
+                out.toString("UTF-8")
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun jsString(value: String): String {
         val sb = StringBuilder(value.length + 8)
         sb.append('"')
@@ -2657,6 +2814,10 @@ fun dnsLookup(host: String): String {
                 '\t' -> sb.append("\\t")
                 '\b' -> sb.append("\\b")
                 '\u000C' -> sb.append("\\f")
+                // C-27：U+2028/U+2029 在 JS 字符串字面量里是行终止符，不转义会让
+                // evaluateJavascript 整段 SyntaxError、回调永久丢失
+                '\u2028' -> sb.append("\\u2028")
+                '\u2029' -> sb.append("\\u2029")
                 else -> if (c < ' ') sb.append("\\u%04x".format(c.code)) else sb.append(c)
             }
         }

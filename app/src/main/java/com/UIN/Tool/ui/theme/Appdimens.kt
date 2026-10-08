@@ -30,12 +30,13 @@ object AppDimens {
     // ==================== 圆角 ====================
     val radiusNone: Dp = 0.dp
     val radiusXSmall: Dp = 2.dp
+    // fallback ≡ UIConfig 默认（cornerRadiusSmall/Medium/Large = 8/12/16，E-13 对齐）
     val radiusSmall: Dp
-        get() = if (UIConfig.isInitialized()) UIConfig.getCornerRadiusSmall().dp else 4.dp
+        get() = if (UIConfig.isInitialized()) UIConfig.getCornerRadiusSmall().dp else 8.dp
     val radiusMedium: Dp
-        get() = if (UIConfig.isInitialized()) UIConfig.getCornerRadiusMedium().dp else 8.dp
+        get() = if (UIConfig.isInitialized()) UIConfig.getCornerRadiusMedium().dp else 12.dp
     val radiusLarge: Dp
-        get() = if (UIConfig.isInitialized()) UIConfig.getCornerRadiusLarge().dp else 12.dp
+        get() = if (UIConfig.isInitialized()) UIConfig.getCornerRadiusLarge().dp else 16.dp
     val radiusXLarge: Dp
         get() = if (UIConfig.isInitialized()) UIConfig.getCardCornerRadius().dp else 16.dp
     val radiusXXLarge: Dp

@@ -64,29 +64,27 @@
     <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
     <uses-permission android:name="com.android.launcher.permission.UNINSTALL_SHORTCUT" />
 
-    <!-- ==================== 小部件权限 ==================== -->
-    <uses-permission android:name="android.permission.BIND_APPWIDGET" />
+    <!-- A-42：本应用自定义的两个 dangerous 权限此前只声明 <permission>、没有
+         <uses-permission>，SplashActivity 的运行时申请因此拿不到授权；
+         两个权限由本应用自己定义，自启插件宿主 / 预留命令入口必须先请求 -->
+    <uses-permission android:name="com.UIN.Tool.permission.OPEN_PLUGIN" />
+    <uses-permission android:name="com.UIN.Tool.permission.RUN_COMMAND" />
 
     <!-- ==================== 开机启动权限 ==================== -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- ==================== Termux 相关权限 ==================== -->
-    <uses-permission android:name="android.permission.READ_LOGS" />
-    <uses-permission android:name="android.permission.DUMP" />
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- A-43 保留：PluginHostActivity 把已存在的插件任务带到前台需要 REORDER_TASKS -->
     <uses-permission android:name="android.permission.REORDER_TASKS" />
-    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!-- 实体 Termux RUN_COMMAND：由 com.termux 声明的 dangerous 权限，
          需要在 本应用 App Info -> 权限 -> 其他权限 中手动授予，否则启动 RunCommandService 会抛 SecurityException -->
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
-
-    <!-- ==================== MultiDex ==================== -->
-    <uses-permission android:name="android.permission.MULTI_DEX" />
 
     <!-- ==================== Shizuku / Dhizuku ==================== -->
     <uses-permission android:name="moe.shizuku.privileged.api.permission.API_V23" />
     <uses-permission android:name="com.rosan.dhizuku.permission.API" />
 
+    <!-- A-46：targetSdk=28 下 <queries> 尚不生效，为将来升级 targetSdk>=30 预留 -->
     <queries>
         <package android:name="moe.shizuku.privileged.api" />
         <package android:name="com.rosan.dhizuku" />
@@ -108,6 +106,8 @@
         android:networkSecurityConfig="@xml/network_security_config"
         tools:ignore="GoogleAppIndexingWarning"
         tools:targetApi="33">
+        <!-- A-46：tools:targetApi 仅静态检查用；A-47：dataExtractionRules(API31+) / allowBackup
+             白名单在 targetSdk=28 下按 backup_rules.xml 生效，升级 targetSdk 时按 data_extraction_rules 迁移 -->
 
         <!-- ==================== Shizuku Provider（Shizuku API 要求，用于获取 binder） ==================== -->
         <provider
@@ -144,6 +144,7 @@
         <activity
             android:name=".terminal.SimpleTerminalActivity"
             android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density|uiMode"
             android:theme="@style/Theme.UIN.Tool"
             android:windowSoftInputMode="adjustResize" />
 
@@ -169,11 +170,62 @@
             </intent-filter>
         </activity>
 
+        <!-- ==================== 分享 / 「用其他应用打开」中转页（C-11） ==================== -->
+        <!-- 该页 584 行实现完整、文档（docs/*/README.md）也已宣称下列 Intent-filter，
+             但从未在 Manifest 注册 → 全仓 0 调用、分享目标功能不可达，
+             连带 PluginHostActivity.EXTRA_OPEN_DATA 恒为 null。
+             此处按文档声明的 4 组 filter 注册；不加 OPEN_PLUGIN 权限（该权限为 dangerous，
+             加了会让普通分享方看不到本应用）；插件宿主自身已 exported=false（C-01），
+             外部只能停在本中转页，再由本应用内部显式跳转。 -->
+        <activity
+            android:name=".plugin.PluginOpenDispatchActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.UIN.Tool">
+            <!-- 分享纯文本 / 链接 -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+            <!-- 分享任意单文件 -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- 分享多文件 -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- 「用其他应用打开」文件（与文档一致，不含 */* 通配） -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="message/*" />
+                <data android:mimeType="multipart/*" />
+                <data android:mimeType="text/*" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+        </activity>
+
         <!-- ==================== 插件宿主Activity ==================== -->
+        <!-- C-01：exported 由 true 改 false，并移除挂在它身上的 OPEN_PLUGIN permission。
+             全仓 8 个启动点（MainActivity/Trampoline/WidgetProvider×2/PluginManager/
+             PluginOpenDispatchActivity/PluginJSInterface 等）全部是本应用内显式 Intent；
+             快捷方式指向的是 MainActivity，小部件用的是本应用创建的 PendingIntent，
+             都不需要 exported。第三方入口一律走 exported 的 PluginOpenDispatchActivity。
+             将来若真要开放外部直接拉起，须先开 exported 并挂 signature 级权限，
+             不能沿用 dangerous 级 OPEN_PLUGIN（A-45 已确认 Trampoline 侧的绕过路径）。 -->
         <activity
             android:name=".plugin.PluginHostActivity"
-            android:exported="true"
-            android:permission="com.UIN.Tool.permission.OPEN_PLUGIN"
+            android:exported="false"
             android:documentLaunchMode="always"
             android:theme="@style/Theme.UIN.Tool" />
 
@@ -229,11 +281,6 @@
             android:exported="false"
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/title_plugin_permission" />
-        <activity
-            android:name=".ui.screen.permission.PermissionExplainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.UIN.Tool"
-            android:label="@string/permission_explain_title" />
 
         <!-- ==================== 插件管理 ==================== -->
         <activity
@@ -246,7 +293,7 @@
             android:name=".ui.screen.manage.SourceManageActivity"
             android:exported="false"
             android:theme="@style/Theme.UIN.Tool"
-            android:label="源管理" />
+            android:label="@string/source_manage" />
 
         <!-- ==================== 备份管理 ==================== -->
         <activity
@@ -297,22 +344,6 @@
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/title_dev_doc" />
 
-        <!-- ==================== 跳板 Activity ==================== -->
-        <activity
-            android:name=".TrampolineActivity"
-            android:exported="true"
-            android:taskAffinity="com.UIN.Tool.trampoline"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:launchMode="singleInstance">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-            </intent-filter>
-        </activity>
-
         <!-- ==================== 小部件配置 ==================== -->
         <activity
             android:name=".widget.WidgetConfigureActivity"
@@ -344,9 +375,12 @@
         </provider>
 
         <!-- ==================== 小部件Provider ==================== -->
+        <!-- A-44/G-26：exported 由 true 改 false。REFRESH_WIDGET 自定义 action 原先暴露给全系统，
+        任意第三方可伪造广播触发刷新；改 false 后系统仍投递 APPWIDGET_UPDATE，
+        本应用自身的刷新广播（均带 setPackage）也不受影响 -->
         <receiver
             android:name=".widget.WidgetProvider"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/widget_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -357,9 +391,10 @@
                 android:resource="@xml/uin_widget_info" />
         </receiver>
 
+        <!-- A-44/G-26：同 WidgetProvider，伪造广播不再可达 -->
         <receiver
             android:name=".widget.Widget1x1Provider"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/widget_1x1_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -389,9 +424,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- B-61：更新下载前台服务——下载期间保持前台优先级，避免后台被回收导致静默中断 -->
+        <service
+            android:name=".core.update.UpdateDownloadService"
+            android:exported="false" />
+
         <!-- ==================== 无障碍服务 ==================== -->
         <service
-            android:name=".core.accessibility.UinAccessibilityService"
+            android:name=".accessibility.UinAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
@@ -428,7 +468,11 @@
         android:description="@string/custom_permission_open_plugin_description"
         android:protectionLevel="dangerous" />
 
-    <!-- RUN_COMMAND 服务保护权限：此前仅被引用未声明，导致内置插件终端流程必然抛 SecurityException -->
+    <!-- A-42：RUN_COMMAND 自定义权限。原注释称「保护 RUN_COMMAND 服务」，但全 Manifest 没有任何
+         组件用 android:permission 挂它（唯一 service 是无障碍服务）；SplashActivity 原先向自己申请它，
+         结果仅打日志（B-30 已删除该无用申请流，C-01 后宿主 exported=false，无第三方可拉起路径）。
+         当前保留声明 + uses-permission，作为将来导出命令入口的预留门禁；
+         真正对外的命令通道是实体 Termux 的 com.termux.permission.RUN_COMMAND（见 uses-permission）。 -->
     <permission
         android:name="com.UIN.Tool.permission.RUN_COMMAND"
         android:label="@string/custom_permission_run_command_label"

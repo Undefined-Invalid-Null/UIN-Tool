@@ -15,13 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.unified.UnifiedLoadingIndicator
 import com.UIN.Tool.ui.theme.AppColors
+import com.UIN.Tool.ui.screen.docs.DocLoader
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.MarkdownRenderer
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,15 +32,13 @@ fun HelpScreen() {
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
+        // G-10：与 DocViewerScreen 共用 DocLoader（语言判定/回退只此一份），
+        // A-01 的路径问题由 fileNameFor("help") → docs/<lang>/Help.md 解决
         try {
-            val appContext = com.UIN.Tool.UinApplication.getInstance()
-            val inputStream = appContext.assets.open("docs/Help.md")
-            val reader = BufferedReader(InputStreamReader(inputStream, "UTF-8"))
-            content = reader.readText()
-            reader.close()
+            content = DocLoader.load(DocLoader.fileNameFor("help"))
         } catch (e: Exception) {
             AppLog.e("HelpScreen", Str.get(R.string.failed_to_load_help_document), e)
-            content = Str.get(R.string.failed_to_load_help_document_e_messa, e.message)
+            content = DocLoader.errorText(e)
         }
         isLoading = false
     }
@@ -49,7 +46,7 @@ fun HelpScreen() {
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.help_2),
                 onBack = { activity?.finish() }
             )

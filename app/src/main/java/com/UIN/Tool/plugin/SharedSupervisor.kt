@@ -86,6 +86,8 @@ object SharedSupervisor {
 
     private fun stopDir(): File = File(ctrlDir(), "stop")
 
+    private fun rcDir(): File = File(ctrlDir(), "rc")
+
     private fun idleDir(): File = File(ctrlDir(), "idle")
 
     private fun aliveFile(): File = File(ctrlDir(), ALIVE_FILE)
@@ -135,16 +137,50 @@ object SharedSupervisor {
     @JvmStatic
     fun killStaleProcesses() {
         try {
-            // Android toybox ps: ps 包含进程名在最后一列，用 grep 匹配
-            val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c",
-                "for p in \$(ps 2>/dev/null | grep 'supervisor.sh' | grep -v grep | awk '{print \$1}'); do kill -9 \$p 2>/dev/null; done;" +
-                "for p in \$(ps 2>/dev/null | grep 'proot.*plugins' | grep -v grep | awk '{print \$1}'); do kill -9 \$p 2>/dev/null; done;" +
-                "for p in \$(ps 2>/dev/null | grep 'sh -c export PORT' | grep -v grep | awk '{print \$1}'); do kill -9 \$p 2>/dev/null; done;" +
-                "for p in \$(ps 2>/dev/null | grep 'python3 backend/server.py' | grep -v grep | awk '{print \$1}'); do kill -9 \$p 2>/dev/null; done"
-            ))
-            proc.waitFor()
-            Thread.sleep(300)
+            // C-22：keep_alive 开启时 supervisor/后端是「有意常驻」，不是残留进程；
+            // 原先无条件 kill 等于一重启宿主就掐掉用户刚开着的常驻服务。
+            if (keepAliveFile().exists() && isSupervisorAlive()) {
+                Logger.i(TAG, "keep_alive active, skip killing supervisor processes")
+                return
+            }
+            // B-01：原先无条件 `waitFor() + Thread.sleep(300)`，在主线程冷启动时固定卡 ≥300ms。
+            // 改为：脚本回显真正命中的 PID —— 没有残留进程时零等待；
+            // 命中时用轮询（kill -0，最多 6×50ms，通常首次即返回）替代固定 sleep。
+            val script = "exec 2>/dev/null;" +
+                "pids='';" +
+                "for pat in 'supervisor.sh' 'proot.*plugins' 'sh -c export PORT' 'python3 backend/server.py'; do" +
+                " m=\$(ps 2>/dev/null | grep \"\$pat\" | grep -v grep | awk '{print \$1}');" +
+                " [ -n \"\$m\" ] && pids=\"\$pids \$m\";" +
+                "done;" +
+                "if [ -n \"\$pids\" ]; then for p in \$pids; do kill -9 \$p 2>/dev/null; done; echo \$pids; fi"
+            val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c", script))
+            val killed = proc.inputStream.bufferedReader().readText().trim()
+            // C-09：无限 waitFor 可能在子进程僵住时把调用线程挂死，给 5s 上限
+            if (!proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                proc.destroy()
+                Logger.w(TAG, "killStaleProcesses script timed out")
+            }
+            if (killed.isNotEmpty()) {
+                var attempts = 0
+                while (attempts < 6 && anyPidsAlive(killed)) {
+                    Thread.sleep(50)
+                    attempts++
+                }
+            }
         } catch (_: Exception) {}
+    }
+
+    private fun anyPidsAlive(pids: String): Boolean {
+        return try {
+            val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c",
+                "exec 2>/dev/null; for p in $pids; do kill -0 \$p 2>/dev/null && echo \$p; done"
+            ))
+            val out = proc.inputStream.bufferedReader().readText()
+            if (!proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) proc.destroy()
+            out.isNotBlank()
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** 杀掉残留的旧 supervisor：写 shutdown 文件让其自行退出，再清 PID 残留。 */
@@ -382,11 +418,23 @@ object SharedSupervisor {
         }
     }
 
-    /** 直接清除某后端的 pid/idle 记录（端口已死时清理残留）。 */
+    /**
+     * C-30：读取 supervisor 回传的后端退出码（rc/<key>.rc，由 supervisor 在进程退出/被杀时写入）。
+     * 无记录返回 null。宿主据此在「端口就绪超时」时给出具体失败原因，而不只是轮询失败。
+     */
+    fun readExitCode(key: String): String? = try {
+        val f = File(rcDir(), "$key.rc")
+        if (f.isFile) f.readText().substringBefore(' ').trim().takeIf { it.isNotEmpty() } else null
+    } catch (_: Exception) {
+        null
+    }
+
+    /** 直接清除某后端的 pid/idle/rc 记录（端口已死时清理残留）。 */
     fun clearBackendRecord(key: String) {
         try {
             File(pidDir(), key).delete()
             File(idleDir(), key).delete()
+            File(rcDir(), "$key.rc").delete()
         } catch (_: Exception) {
         }
     }
@@ -397,6 +445,7 @@ object SharedSupervisor {
             pidDir().listFiles()?.forEach { it.delete() }
             idleDir().listFiles()?.forEach { it.delete() }
             stopDir().listFiles()?.forEach { it.delete() }
+            rcDir().listFiles()?.forEach { it.delete() }
         } catch (_: Exception) {
         }
     }

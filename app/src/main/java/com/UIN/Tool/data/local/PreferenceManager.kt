@@ -3,38 +3,68 @@ package com.UIN.Tool.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import com.UIN.Tool.constants.AppConstants as Constants
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class PreferenceManager(private val context: Context) {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(Constants.PREF_NAME, Context.MODE_PRIVATE)
-    private val signaturePrefs: SharedPreferences = context.getSharedPreferences(Constants.PREF_PLUGIN_SIGNATURES, Context.MODE_PRIVATE)
-    private val crashPrefs: SharedPreferences = context.getSharedPreferences(Constants.PREF_CRASH, Context.MODE_PRIVATE)
-    private val mirrorPrefs: SharedPreferences = context.getSharedPreferences(Constants.PREF_GITHUB_MIRROR, Context.MODE_PRIVATE)
+    // D-27：改为 lazy —— 原先构造即打开 4 个 SP，首次访问在主线程触发磁盘加载
+    private val prefs: SharedPreferences by lazy { context.getSharedPreferences(Constants.PREF_NAME, Context.MODE_PRIVATE) }
+    private val signaturePrefs: SharedPreferences by lazy { context.getSharedPreferences(Constants.PREF_PLUGIN_SIGNATURES, Context.MODE_PRIVATE) }
+    private val crashPrefs: SharedPreferences by lazy { context.getSharedPreferences(Constants.PREF_CRASH, Context.MODE_PRIVATE) }
+    private val mirrorPrefs: SharedPreferences by lazy { context.getSharedPreferences(Constants.PREF_GITHUB_MIRROR, Context.MODE_PRIVATE) }
+
+    // D-27⑤：类型安全读取 —— 历史上同 key 可能写过别的类型，直接 getString 会抛 ClassCastException
+    private fun getStringSafe(sp: SharedPreferences, key: String, def: String?): String? =
+        try { sp.getString(key, def) } catch (e: ClassCastException) { def }
+
+    private fun getBooleanSafe(sp: SharedPreferences, key: String, def: Boolean): Boolean =
+        try { sp.getBoolean(key, def) } catch (e: ClassCastException) { def }
+
+    private fun getLongSafe(sp: SharedPreferences, key: String, def: Long): Long =
+        try { sp.getLong(key, def) } catch (e: ClassCastException) { def }
+
+    private fun getIntSafe(sp: SharedPreferences, key: String, def: Int): Int =
+        try { sp.getInt(key, def) } catch (e: ClassCastException) { def }
 
     // ==================== 工作目录 ====================
 
+    // D-28：workFolder / viewMode 的唯一 StateFlow 源。
+    // 本类是两个值的唯一写入口，因此 MainActivity / SplashActivity / SettingsViewModel /
+    // ConfigRepository 等任何写入都会同步到这两个 Flow，消除「仓库缓存 StateFlow
+    // 永不更新」的双写源问题；仓库只负责转发。
+
     fun getWorkFolder(): String {
-        return prefs.getString(Constants.KEY_WORK_FOLDER, Constants.WORK_DIR) ?: Constants.WORK_DIR
+        return getStringSafe(prefs, Constants.KEY_WORK_FOLDER, Constants.WORK_DIR) ?: Constants.WORK_DIR
     }
 
     fun setWorkFolder(path: String) {
         prefs.edit().putString(Constants.KEY_WORK_FOLDER, path).apply()
+        _workFolderFlow.value = path
     }
+
+    private val _workFolderFlow = MutableStateFlow(getWorkFolder())
+    fun workFolderFlow(): StateFlow<String> = _workFolderFlow.asStateFlow()
 
     // ==================== 视图模式 ====================
 
     fun getViewMode(): String {
-        return prefs.getString(Constants.KEY_VIEW_MODE, "list") ?: "list"
+        return getStringSafe(prefs, Constants.KEY_VIEW_MODE, "list") ?: "list"
     }
 
     fun setViewMode(mode: String) {
         prefs.edit().putString(Constants.KEY_VIEW_MODE, mode).apply()
+        _viewModeFlow.value = mode
     }
+
+    private val _viewModeFlow = MutableStateFlow(getViewMode())
+    fun viewModeFlow(): StateFlow<String> = _viewModeFlow.asStateFlow()
 
     // ==================== 图标着色 ====================
 
     fun isUseCustomIconTint(): Boolean {
-        return prefs.getBoolean(Constants.KEY_USE_CUSTOM_ICON_TINT, true)
+        return getBooleanSafe(prefs, Constants.KEY_USE_CUSTOM_ICON_TINT, true)
     }
 
     fun setUseCustomIconTint(use: Boolean) {
@@ -44,7 +74,7 @@ class PreferenceManager(private val context: Context) {
     // ==================== 启动状态 ====================
 
     fun isFirstLaunch(): Boolean {
-        return prefs.getBoolean(Constants.KEY_FIRST_LAUNCH, true)
+        return getBooleanSafe(prefs, Constants.KEY_FIRST_LAUNCH, true)
     }
 
     fun setFirstLaunch(completed: Boolean) {
@@ -52,7 +82,7 @@ class PreferenceManager(private val context: Context) {
     }
 
     fun getLastVersion(): String {
-        return prefs.getString(Constants.KEY_LAST_VERSION, "") ?: ""
+        return getStringSafe(prefs, Constants.KEY_LAST_VERSION, "") ?: ""
     }
 
     fun setLastVersion(version: String) {
@@ -62,7 +92,7 @@ class PreferenceManager(private val context: Context) {
     // ==================== 更新相关 ====================
 
     fun getIgnoredVersion(): String {
-        return prefs.getString(Constants.KEY_IGNORE_VERSION, "") ?: ""
+        return getStringSafe(prefs, Constants.KEY_IGNORE_VERSION, "") ?: ""
     }
 
     fun setIgnoredVersion(version: String) {
@@ -70,7 +100,7 @@ class PreferenceManager(private val context: Context) {
     }
 
     fun getForceUpdateIgnored(): String {
-        return prefs.getString(Constants.KEY_FORCE_UPDATE_IGNORE, "") ?: ""
+        return getStringSafe(prefs, Constants.KEY_FORCE_UPDATE_IGNORE, "") ?: ""
     }
 
     fun setForceUpdateIgnored(tag: String) {
@@ -81,7 +111,7 @@ class PreferenceManager(private val context: Context) {
 
     /** 最近一次检测到的新版本变更日志（Markdown），供开屏页展示。 */
     fun getLastChangelog(): String {
-        return prefs.getString(Constants.KEY_LAST_CHANGELOG, "") ?: ""
+        return getStringSafe(prefs, Constants.KEY_LAST_CHANGELOG, "") ?: ""
     }
 
     fun setLastChangelog(notes: String) {
@@ -90,7 +120,7 @@ class PreferenceManager(private val context: Context) {
 
     /** 最近一次静默更新检测所在的天（epoch day = 距今天数）。无记录返回 -1。 */
     fun getLastUpdateCheckDay(): Long {
-        return prefs.getLong(Constants.KEY_LAST_UPDATE_CHECK, -1L)
+        return getLongSafe(prefs, Constants.KEY_LAST_UPDATE_CHECK, -1L)
     }
 
     fun setLastUpdateCheckDay(epochDay: Long) {
@@ -100,7 +130,7 @@ class PreferenceManager(private val context: Context) {
     // ==================== 崩溃相关 ====================
 
     fun hasJustCrashed(): Boolean {
-        return crashPrefs.getBoolean(Constants.KEY_JUST_CRASHED, false)
+        return getBooleanSafe(crashPrefs, Constants.KEY_JUST_CRASHED, false)
     }
 
     fun setJustCrashed(crashed: Boolean) {
@@ -110,7 +140,7 @@ class PreferenceManager(private val context: Context) {
     // ==================== 插件签名 ====================
 
     fun getPluginSignature(pluginName: String): String? {
-        return signaturePrefs.getString(pluginName, null)
+        return getStringSafe(signaturePrefs, pluginName, null)
     }
 
     fun savePluginSignature(pluginName: String, signature: String) {
@@ -141,9 +171,10 @@ class PreferenceManager(private val context: Context) {
 
     fun savePluginPermissions(pluginId: String, permissions: Map<String, Boolean>) {
         val prefs = context.getSharedPreferences("${Constants.KEY_PLUGIN_PERMISSIONS}$pluginId", Context.MODE_PRIVATE)
-        permissions.forEach { (key, value) ->
-            prefs.edit().putBoolean(key, value).apply()
-        }
+        // D-27：原先每个 key 单独 apply()（N 次磁盘写），改为一次 edit 批量提交
+        val editor = prefs.edit()
+        permissions.forEach { (key, value) -> editor.putBoolean(key, value) }
+        editor.apply()
     }
 
     fun clearPluginPermissions(pluginId: String) {
@@ -154,7 +185,7 @@ class PreferenceManager(private val context: Context) {
     // ==================== 镜像站 ====================
 
     fun getEnabledMirrors(): List<String> {
-        val str = mirrorPrefs.getString(Constants.KEY_ENABLED_MIRRORS, "") ?: ""
+        val str = getStringSafe(mirrorPrefs, Constants.KEY_ENABLED_MIRRORS, "") ?: ""
         return if (str.isEmpty()) emptyList() else str.split(",").filter { it.isNotEmpty() }
     }
 
@@ -163,7 +194,7 @@ class PreferenceManager(private val context: Context) {
     }
 
     fun isUseCdn(): Boolean {
-        return mirrorPrefs.getBoolean(Constants.KEY_USE_CDN, true)
+        return getBooleanSafe(mirrorPrefs, Constants.KEY_USE_CDN, true)
     }
 
     fun setUseCdn(use: Boolean) {
@@ -173,7 +204,7 @@ class PreferenceManager(private val context: Context) {
     // ==================== 自定义镜像站 ====================
 
     fun getCustomMirrors(): List<String> {
-        val str = prefs.getString("custom_mirrors", "") ?: ""
+        val str = getStringSafe(prefs, "custom_mirrors", "") ?: ""
         return if (str.isEmpty()) emptyList() else str.split("\n").filter { it.isNotEmpty() }
     }
 
@@ -184,7 +215,7 @@ class PreferenceManager(private val context: Context) {
     // ==================== 主题 ====================
 
     fun getCurrentTheme(): String {
-        return prefs.getString(Constants.KEY_CURRENT_THEME, "default") ?: "default"
+        return getStringSafe(prefs, Constants.KEY_CURRENT_THEME, "default") ?: "default"
     }
 
     fun setCurrentTheme(theme: String) {
@@ -195,7 +226,7 @@ class PreferenceManager(private val context: Context) {
 
     /** 原生插件是否允许多开（内置单实例限制，开发者选项可开启实验性支持） */
     fun isNativeMultiInstanceEnabled(): Boolean {
-        return prefs.getBoolean(Constants.KEY_NATIVE_MULTI_INSTANCE, false)
+        return getBooleanSafe(prefs, Constants.KEY_NATIVE_MULTI_INSTANCE, false)
     }
 
     fun setNativeMultiInstanceEnabled(enabled: Boolean) {
@@ -206,16 +237,25 @@ class PreferenceManager(private val context: Context) {
      * 默认开启：默认启用「关闭时保留会话」（同一 Web 插件只保留一个后台窗口，不默认多开）；
      * 用户显式关闭后才允许多开。 */
     fun isSharedSessionRetainEnabled(): Boolean {
-        return prefs.getBoolean(Constants.KEY_SHARED_SESSION_RETAIN, true)
+        return getBooleanSafe(prefs, Constants.KEY_SHARED_SESSION_RETAIN, true)
     }
 
     fun setSharedSessionRetainEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(Constants.KEY_SHARED_SESSION_RETAIN, enabled).apply()
     }
 
+    /** D-33：是否把宿主共享存储 (/storage/emulated/0) bind 进容器，默认开（保持旧行为） */
+    fun isProotBindSharedStorage(): Boolean {
+        return getBooleanSafe(prefs, Constants.KEY_PROOT_BIND_SHARED_STORAGE, true)
+    }
+
+    fun setProotBindSharedStorage(enabled: Boolean) {
+        prefs.edit().putBoolean(Constants.KEY_PROOT_BIND_SHARED_STORAGE, enabled).apply()
+    }
+
     /** 开发者选项：忽略签名验证（默认关闭；开启后安装/更新插件跳过签名校验） */
     fun isDevIgnoreSignatureEnabled(): Boolean {
-        return prefs.getBoolean(Constants.KEY_DEV_IGNORE_SIGNATURE, false)
+        return getBooleanSafe(prefs, Constants.KEY_DEV_IGNORE_SIGNATURE, false)
     }
 
     fun setDevIgnoreSignatureEnabled(enabled: Boolean) {
@@ -226,45 +266,42 @@ class PreferenceManager(private val context: Context) {
 
     /** 获取已保存的源列表 JSON 字符串 */
     fun getSourcesJson(): String {
-        return prefs.getString("sources_json", "") ?: ""
+        return getStringSafe(prefs, Constants.KEY_SOURCES_JSON, "") ?: ""
     }
 
     /** 保存源列表 JSON 字符串 */
     fun setSourcesJson(json: String) {
-        prefs.edit().putString("sources_json", json).apply()
+        prefs.edit().putString(Constants.KEY_SOURCES_JSON, json).apply()
     }
 
     /** 获取已启用的源 ID 列表 */
     fun getEnabledSourceIds(): List<String> {
-        val str = prefs.getString("enabled_source_ids", "") ?: ""
+        val str = getStringSafe(prefs, Constants.KEY_ENABLED_SOURCE_IDS, "") ?: ""
         return if (str.isEmpty()) emptyList() else str.split(",").filter { it.isNotEmpty() }
     }
 
     /** 保存已启用的源 ID 列表 */
     fun setEnabledSourceIds(ids: List<String>) {
-        prefs.edit().putString("enabled_source_ids", ids.joinToString(",")).apply()
+        prefs.edit().putString(Constants.KEY_ENABLED_SOURCE_IDS, ids.joinToString(",")).apply()
     }
 
     /** 获取上次刷新时间 */
     fun getLastRepoRefreshTime(): Long {
-        return prefs.getLong("last_repo_refresh_time", 0L)
+        return getLongSafe(prefs, Constants.KEY_LAST_REPO_REFRESH_TIME, 0L)
     }
 
     /** 保存上次刷新时间 */
     fun setLastRepoRefreshTime(time: Long) {
-        prefs.edit().putLong("last_repo_refresh_time", time).apply()
+        prefs.edit().putLong(Constants.KEY_LAST_REPO_REFRESH_TIME, time).apply()
     }
 
     // ==================== UI配置 ====================
 
     fun getUiConfig(): String {
-        return prefs.getString("ui_config", "") ?: ""
+        return getStringSafe(prefs, "ui_config", "") ?: ""
     }
 
     fun setUiConfig(config: String) {
         prefs.edit().putString("ui_config", config).apply()
     }
-    fun getPrefs(): SharedPreferences {
-    return prefs
-}
 }

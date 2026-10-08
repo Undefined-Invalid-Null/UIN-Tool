@@ -31,6 +31,17 @@ object Logger {
     private var isInitialized = false
     private var currentLevel = Level.INFO
 
+    /**
+     * B-68：原先每条日志都「新开 FileWriter → 写一行 → 关闭」，且发生在调用线程（多为主线程），
+     * 高频日志时是实打实的主线程磁盘 IO。改为单写线程 + 有界队列：
+     * 调用线程只入队（队列满则丢弃并 logcat 一次，绝不阻塞），写线程批量落盘并长持 FileWriter。
+     */
+    private val logQueue = java.util.concurrent.LinkedBlockingQueue<String>(4096)
+    @Volatile
+    private var writer: FileWriter? = null
+    @Volatile
+    private var writerThread: Thread? = null
+
     // ✅ SimpleDateFormat 非线程安全，多线程写日志用 ThreadLocal 隔离
     private val dateFormat = ThreadLocal.withInitial {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
@@ -56,8 +67,10 @@ object Logger {
                 logFile!!.createNewFile()
             }
             isInitialized = true
+            ensureWriterThread()
             i(TAG, Str.get(R.string.log_system_initialized_level_level_n, level.name))
-            i(TAG, Str.get(R.string.log_file_logfile_absolutepath, logFile!!.absolutePath))
+            // B-71：日志目录在共享存储，绝对路径（含用户名/包名目录）不再写进日志本身
+            i(TAG, Str.get(R.string.log_file_logfile_absolutepath, logFile!!.name))
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -73,22 +86,80 @@ object Logger {
     }
 
     private fun writeToFile(message: String) {
-        logFile?.let { file ->
-            try {
-                if (file.length() > Constants.LOG_MAX_SIZE) {
-                    rotateLogFile()
-                }
-                FileWriter(file, true).use { writer ->
-                    writer.write("$message\n")
-                }
-            } catch (e: Exception) {
-                // 忽略写入错误
+        if (logFile == null) return
+        if (!logQueue.offer(message)) {
+            // B-68/B-69：队列满说明写线程跟不上，丢弃本条并留下一次性痕迹，绝不阻塞调用线程
+            if (droppedCounter.getAndIncrement() == 0) {
+                Log.w(TAG, "log queue full, further file lines dropped until queue drains")
             }
+        }
+        ensureWriterThread()
+    }
+
+    private val droppedCounter = java.util.concurrent.atomic.AtomicInteger(0)
+
+    private fun ensureWriterThread() {
+        if (writerThread != null) return
+        synchronized(this) {
+            if (writerThread != null) return
+            writerThread = Thread {
+                try {
+                    val batch = ArrayList<String>(64)
+                    while (true) {
+                        batch.add(logQueue.take())
+                        logQueue.drainTo(batch)
+                        writeBatch(batch)
+                        batch.clear()
+                    }
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                } catch (e: Exception) {
+                    // B-69：写线程自身出错至少进 logcat，不再完全静默
+                    Log.e(TAG, "log writer thread failed", e)
+                }
+            }.apply {
+                name = "uin-logger-writer"
+                isDaemon = true
+                start()
+            }
+        }
+    }
+
+    private fun writeBatch(batch: List<String>) {
+        val file = logFile ?: return
+        try {
+            if (file.length() > Constants.LOG_MAX_SIZE) {
+                rotateLogFile()
+            }
+            var w = writer
+            if (w == null) {
+                w = FileWriter(file, true)
+                writer = w
+            }
+            for (line in batch) {
+                w.write("$line\n")
+            }
+            w.flush()
+        } catch (e: Exception) {
+            // B-69：不再吞掉异常（至少 logcat 一次），并释放句柄下次重建
+            Log.e(TAG, "log write failed: ${e.message}")
+            try {
+                writer?.close()
+            } catch (_: Exception) {
+            }
+            writer = null
         }
     }
 
     private fun rotateLogFile() {
         try {
+            // B-68：轮转前必须关掉指向旧文件的 writer，否则继续往已 rename 的句柄写
+            try {
+                writer?.flush()
+                writer?.close()
+            } catch (_: Exception) {
+            }
+            writer = null
             val dir = logFile?.parentFile ?: return
             val name = logFile?.nameWithoutExtension ?: return
             val ext = logFile?.extension ?: "log"
@@ -102,7 +173,8 @@ object Logger {
 
             cleanOldLogs(dir)
         } catch (e: Exception) {
-            e.printStackTrace()
+            // B-69：轮转失败不再 printStackTrace 了事，进 logcat 便于日志查看器排障
+            Log.e(TAG, "log rotate failed: ${e.message}")
         }
     }
 
@@ -121,7 +193,8 @@ object Logger {
                 }
             }
         } catch (e: Exception) {
-            // 忽略清理错误
+            // B-69：清理失败至少进 logcat
+            Log.e(TAG, "log cleanup failed: ${e.message}")
         }
     }
 
@@ -190,7 +263,7 @@ object Logger {
 
     fun file(tag: String, operation: String, file: File) {
         val size = if (file.exists() && file.isFile) {
-            Str.get(R.string.size_file_length_formatfilesize, file.length().formatFileSize())
+            Str.get(R.string.size_file_length_formatfilesize, formatFileSize(file.length()))
         } else ""
         i(tag, "📁 $operation: ${file.absolutePath}$size")
     }
@@ -233,9 +306,19 @@ object Logger {
             val files = getAllLogFiles()
             files.forEach { it.delete() }
             logFile?.delete()
+            // B-70：原先只把 isInitialized 置 false，logFile 仍指向已删文件 →
+            // 之后所有日志静默丢失。这里关掉 writer 并重新 init 出新文件。
+            try {
+                writer?.close()
+            } catch (_: Exception) {
+            }
+            writer = null
             isInitialized = false
+            val dir = logFile?.parent ?: Constants.LOG_DIR
+            init(dir)
             true
         } catch (e: Exception) {
+            Log.e(TAG, "clearAllLogs failed: ${e.message}")
             false
         }
     }
@@ -253,6 +336,11 @@ object Logger {
             if (logFile != null && logFile!!.exists()) {
                 logFile!!.delete()
             }
+            try {
+                writer?.close()
+            } catch (_: Exception) {
+            }
+            writer = null
             isInitialized = false
             val logDir = logFile?.parent ?: Constants.LOG_DIR
             init(logDir)
@@ -261,8 +349,4 @@ object Logger {
             e.printStackTrace()
         }
     }
-}
-
-fun Long.formatFileSize(): String {
-    return formatFileSize(this)
 }

@@ -17,11 +17,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.R
 import com.UIN.Tool.plugin.BackendConfig
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Str
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.UIN.Tool.ui.viewmodel.BackendSettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,27 +31,15 @@ fun BackendSettingsScreen(
 ) {
     val context = LocalContext.current
 
-    var impl by remember {
-        mutableStateOf(BackendConfig.getImplementation(context))
-    }
-    var env by remember {
-        mutableStateOf(BackendConfig.getEnvironment(context))
-    }
-    var container by remember {
-        mutableStateOf(BackendConfig.getContainer(context))
-    }
-    var idleMin by remember {
-        mutableStateOf(BackendConfig.getIdleTimeoutMinutes(context))
-    }
-    var idleInput by remember {
-        mutableStateOf(
-            if (BackendConfig.isInfiniteIdleTimeout(context)) ""
-            else BackendConfig.getIdleTimeoutMinutes(context).toString()
-        )
-    }
-    var keepAlive by remember {
-        mutableStateOf(BackendConfig.isKeepAliveEnabled(context))
-    }
+    // F-05：状态从 remember 挪进 ViewModel（MutableState 由 VM 持有），
+    // 旋转/重建后未保存的输入不再被重读配置覆盖；读写语法与原先完全一致。
+    val backendSettingsViewModel: BackendSettingsViewModel = viewModel()
+    var impl by backendSettingsViewModel.implState
+    var env by backendSettingsViewModel.envState
+    var container by backendSettingsViewModel.containerState
+    var idleMin by backendSettingsViewModel.idleMinState
+    var idleInput by backendSettingsViewModel.idleInputState
+    var keepAlive by backendSettingsViewModel.keepAliveState
 
     val isReal = impl == BackendConfig.IMPL_REAL
     val setupCode = BackendConfig.buildRealTermuxSetupCode(context)
@@ -87,7 +76,7 @@ fun BackendSettingsScreen(
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.backend_runtime_settings),
                 onBack = onBack
             )
@@ -260,7 +249,8 @@ fun BackendSettingsScreen(
                                 checked = keepAlive,
                                 onCheckedChange = {
                                     keepAlive = it
-                                    com.UIN.Tool.plugin.SharedSupervisor.setKeepAlive(it)
+                                    // C-23：开关即写 prefs（并由 BackendConfig 单向同步 keep_alive 文件）
+                                    com.UIN.Tool.plugin.BackendConfig.setKeepAliveEnabled(context, it)
                                     if (it) {
                                         requestIgnoreBatteryOptimizations(context)
                                     }
@@ -398,10 +388,18 @@ fun BackendSettingsScreen(
             UnifiedButton(
                 text = Str.get(R.string.save),
                 onClick = {
+                    // F-06：容器名格式校验，非法值会让 proot 挂载路径失败（保存前拦截）
+                    val trimmedContainer = container.trim()
+                    if (isReal && trimmedContainer.isNotEmpty() &&
+                        !trimmedContainer.matches(Regex("^[A-Za-z0-9._-]+$"))
+                    ) {
+                        AppToast.error(context, Str.get(R.string.invalid_container_name, trimmedContainer))
+                        return@UnifiedButton
+                    }
                     BackendConfig.setImplementation(context, impl)
                     if (isReal) {
                         BackendConfig.setEnvironment(context, env)
-                        BackendConfig.setContainer(context, container.trim())
+                        BackendConfig.setContainer(context, trimmedContainer)
                         BackendConfig.setKeepAliveEnabled(context, keepAlive)
                     }
                     BackendConfig.setIdleTimeoutMinutes(context, idleMin)

@@ -25,10 +25,9 @@
 
 # 插件接口契约（外部 dex 编译依赖 & 运行时转型目标，含全部方法签名）
 -keep public interface com.UIN.Tool.plugin.PluginInterface { public *; }
--keep public interface com.UIN.Tool.core.plugin.PluginInterface { public *; }
 
 # 宿主占位实现：插件管理器、宿主 Activity、插件上下文、JS 桥、
-# Web 代理、后端/权限/proot 容器、广播接收器等全部按原名保留
+# 后端/权限/proot 容器等全部按原名保留
 -keep class com.UIN.Tool.plugin.** { *; }
 -keep class com.UIN.Tool.core.plugin.** { *; }
 
@@ -57,12 +56,8 @@
 -keep public class * extends android.content.ContentProvider
 -keep public class * extends android.app.Application
 
-# 自定义 View（布局按类名 inflate）
--keep public class * extends android.view.View {
-    public <init>(android.content.Context);
-    public <init>(android.content.Context, android.util.AttributeSet);
-    public <init>(android.content.Context, android.util.AttributeSet, int);
-}
+# A-15：原「自定义 View 三构造器 keep」已删除——app 模块没有任何自定义 View
+# （布局全部由 Compose / 框架组件消费），该规则纯属噪音。
 
 # ============================================================
 # R8 基础保留

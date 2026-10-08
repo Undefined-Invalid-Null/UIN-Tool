@@ -134,7 +134,7 @@ fun UIConfigSidebar(
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    "v5.6.0",
+                                    "v${com.UIN.Tool.BuildConfig.VERSION_NAME}",
                                     color = textSecondary,
                                     fontSize = 13.sp
                                 )

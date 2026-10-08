@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.UIN.Tool.ui.screen.manage.ConfigState
+import com.UIN.Tool.ui.screen.manage.refreshGradientForMode
 import com.UIN.Tool.utils.UIConfig
 
 object StyleManager {
@@ -26,8 +27,12 @@ object StyleManager {
         _currentStyle = newStyleName
         UIConfig.getInstance().setCurrentStyle(newStyleName)
         val defaults = StylePresets.getDefaults(newStyleName).toConfigState()
-        val saved = styleCustomizations[newStyleName]
-        return saved ?: defaults
+        val result = styleCustomizations[newStyleName] ?: defaults
+        // 风格预设只带浅色一组渐变、themeMode="system"：切风格不得覆盖用户当前深浅
+        // 模式，也不得把浅色槽值在深色下写进 *__dark（默认→深色→新拟态→默认后
+        // 深色模式却显示浅色渐变的根因）—— 归位后再交给保存。
+        val ui = UIConfig.getInstance()
+        return result.copy(themeMode = ui.getThemeMode()).refreshGradientForMode()
     }
 
     fun saveCustomization(styleName: String, config: ConfigState) {

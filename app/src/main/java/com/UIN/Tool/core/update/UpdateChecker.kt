@@ -21,20 +21,21 @@ import java.util.concurrent.TimeUnit
 
 class UpdateChecker(
     private val context: Context,
-    private val preferenceManager: PreferenceManager
+    private val preferenceManager: PreferenceManager,
+    // B-54：OkHttpClient 由 AppContainer 注入（原先生了第二个 client 且与 AppContainer 指向
+    // 同一个 cacheDir/okhttp_cache，双 Cache 实例同目录会抛 CACHE DIRECTORY IS ALREADY IN USE）
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(Constants.NETWORK_TIMEOUT, TimeUnit.SECONDS)
+        .readTimeout(Constants.NETWORK_READ_TIMEOUT, TimeUnit.SECONDS)
+        .writeTimeout(Constants.NETWORK_WRITE_TIMEOUT, TimeUnit.SECONDS)
+        .cache(okhttp3.Cache(File(context.cacheDir, "update_okhttp_cache"), Constants.CACHE_SIZE))
+        .build()
 ) {
 
     companion object {
         private const val TAG = "UpdateChecker"
         private const val GITHUB_API = "https://api.github.com/repos/Undefined-Invalid-Null/UIN-Tool/releases"
     }
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(Constants.NETWORK_TIMEOUT, TimeUnit.SECONDS)
-        .readTimeout(Constants.NETWORK_READ_TIMEOUT, TimeUnit.SECONDS)
-        .writeTimeout(Constants.NETWORK_WRITE_TIMEOUT, TimeUnit.SECONDS)
-        .cache(okhttp3.Cache(File(context.cacheDir, "okhttp_cache"), Constants.CACHE_SIZE))
-        .build()
 
     private val mirrorManager = MirrorManager(client)
 
@@ -52,8 +53,15 @@ class UpdateChecker(
         this.onUpdateListener = listener
     }
 
+    /** B-58：Activity/页面销毁后调用，避免检查结束后仍回调已销毁的界面 */
+    fun clearUpdateListener() {
+        this.onUpdateListener = null
+    }
+
     fun checkUpdate() {
-        onUpdateListener?.onCheckStart()
+        // B-58：检查开始时快照 listener，期间被 clearUpdateListener() 清掉就不再回调
+        val listener = onUpdateListener
+        listener?.onCheckStart()
         Logger.enter(TAG, "checkUpdate")
 
         Thread {
@@ -68,7 +76,7 @@ class UpdateChecker(
                 if (workingUrl == null) {
                     Logger.e(TAG, Str.get(R.string.all_mirrors_are_unavailable))
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        onUpdateListener?.onCheckFailed(Str.get(R.string.network_connection_failed_check_your))
+                        listener?.onCheckFailed(Str.get(R.string.network_connection_failed_check_your))
                     }
                     return@Thread
                 }
@@ -77,7 +85,7 @@ class UpdateChecker(
                 val releases = fetchReleases(workingUrl)
                 if (releases.isEmpty()) {
                     android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        onUpdateListener?.onNoUpdate(currentVersionName)
+                        listener?.onNoUpdate(currentVersionName)
                     }
                     return@Thread
                 }
@@ -115,13 +123,13 @@ class UpdateChecker(
                 val finalForceUpdate = forceUpdate
 
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    onUpdateListener?.onCheckSuccess(finalReleases, finalHasNewer, finalForceUpdate)
+                    listener?.onCheckSuccess(finalReleases, finalHasNewer, finalForceUpdate)
                 }
 
             } catch (e: Exception) {
                 Logger.e(TAG, Str.get(R.string.update_check_failed), e)
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
-                    onUpdateListener?.onCheckFailed(e.message ?: Str.get(R.string.update_check_failed))
+                    listener?.onCheckFailed(e.message ?: Str.get(R.string.update_check_failed))
                 }
             } finally {
                 Logger.exit(TAG, "checkUpdate", System.currentTimeMillis())
@@ -130,46 +138,55 @@ class UpdateChecker(
     }
 
     private fun testMirrors(): String? {
-        // 先尝试直连
-        Logger.d(TAG, Str.get(R.string.testing_direct_connection_github_api, GITHUB_API))
-        if (testUrl(GITHUB_API)) {
-            Logger.success(TAG, Str.get(R.string.direct_connection_available))
-            return GITHUB_API
+        // B-57：原先直连 + 各镜像串行 HEAD 探测，每步 8s，最坏 8×N 秒卡在开屏；
+        // 改为「同一批候选并发竞速，第一个成功即返回」，单轮耗时 ≈ 单次超时。
+        data class Probe(val url: String, val mirror: String?)
+
+        fun race(candidates: List<Probe>): Probe? {
+            if (candidates.isEmpty()) return null
+            val pool = java.util.concurrent.Executors.newFixedThreadPool(candidates.size.coerceAtMost(4))
+            try {
+                return pool.invokeAny(candidates.map { c ->
+                    java.util.concurrent.Callable {
+                        if (testUrl(c.url)) c
+                        else throw java.util.concurrent.ExecutionException(java.io.IOException("probe failed: ${c.url}"))
+                    }
+                })
+            } catch (_: Exception) {
+                return null
+            } finally {
+                pool.shutdownNow()
+            }
         }
 
-        // 获取启用的镜像
+        // 第一轮：直连 + 用户启用的镜像（保持原有优先级：直连仍在候选里）
         val enabledMirrors = preferenceManager.getEnabledMirrors()
         val useCdn = preferenceManager.isUseCdn()
 
-        val mirrorsToTest = if (enabledMirrors.isNotEmpty() && useCdn) {
-            enabledMirrors
-        } else {
-            Constants.DEFAULT_MIRRORS
-        }
-
-        for (mirror in mirrorsToTest) {
-            val testUrl = mirrorManager.getMirrorUrl(mirror, GITHUB_API)
-            Logger.d(TAG, Str.get(R.string.testing_mirror_testurl, testUrl))
-            if (testUrl(testUrl)) {
-                currentMirror = mirror
-                Logger.success(TAG, Str.get(R.string.found_usable_mirror_mirror, mirror))
-                return testUrl
-            }
-        }
-
-        // 如果配置的镜像都不可用，尝试默认镜像
+        val wave1 = mutableListOf(Probe(GITHUB_API, null))
         if (enabledMirrors.isNotEmpty() && useCdn) {
-            Logger.d(TAG, Str.get(R.string.configured_mirror_unavailable_trying))
-            for (mirror in Constants.DEFAULT_MIRRORS) {
-                val testUrl = mirrorManager.getMirrorUrl(mirror, GITHUB_API)
-                if (testUrl(testUrl)) {
-                    currentMirror = mirror
-                    Logger.success(TAG, Str.get(R.string.found_usable_default_mirror_mirror, mirror))
-                    return testUrl
-                }
+            enabledMirrors.forEach { m -> wave1.add(Probe(mirrorManager.getMirrorUrl(m, GITHUB_API), m)) }
+        }
+        Logger.d(TAG, Str.get(R.string.testing_direct_connection_github_api, GITHUB_API))
+        race(wave1)?.let { winner ->
+            currentMirror = winner.mirror
+            if (winner.mirror == null) {
+                Logger.success(TAG, Str.get(R.string.direct_connection_available))
+            } else {
+                Logger.success(TAG, Str.get(R.string.found_usable_mirror_mirror, winner.mirror))
             }
+            return winner.url
         }
 
+        // 第二轮：默认镜像兜底（仅当配置镜像/直连全挂时）
+        val wave2 = Constants.DEFAULT_MIRRORS.map { m -> Probe(mirrorManager.getMirrorUrl(m, GITHUB_API), m) }
+        race(wave2)?.let { winner ->
+            currentMirror = winner.mirror
+            Logger.success(TAG, Str.get(R.string.found_usable_default_mirror_mirror, winner.mirror ?: ""))
+            return winner.url
+        }
+
+        Logger.e(TAG, Str.get(R.string.all_mirrors_are_unavailable))
         return null
     }
 
@@ -191,7 +208,7 @@ class UpdateChecker(
     }
 
     private fun fetchReleases(apiUrl: String): List<ReleaseInfo> {
-        try {
+        return try {
             val url = "$apiUrl?per_page=30"
             val request = Request.Builder()
                 .url(url)
@@ -199,13 +216,14 @@ class UpdateChecker(
                 .header("User-Agent", "UIN-Tool-Android")
                 .build()
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                throw Exception(Str.get(R.string.github_api_error_response_code, response.code))
+            // B-56：response 必须关闭，原非 2xx 分支直接 throw → 连接永不归还连接池
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw Exception(Str.get(R.string.github_api_error_response_code, response.code))
+                }
+                val body = response.body?.string() ?: return@use emptyList()
+                parseReleases(body)
             }
-
-            val body = response.body?.string() ?: return emptyList()
-            return parseReleases(body)
 
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.failed_to_fetch_releases), e)
@@ -261,7 +279,19 @@ class UpdateChecker(
             releases.add(info)
         }
 
-        releases.sortWith(compareByDescending { it.toComparableVersion() })
+        // B-59：双字段排序——两侧都有 versionCode 时比 code；任一侧缺失退回三元组比较。
+        // 两套刻度绝不混到同一数轴（原「code + 1e9 基线上移」hack 会把无 code 的
+        // 老 tag 挤进有 code 的序列，导致「最新版本」误判）。
+        releases.sortWith { a, b ->
+            val ac = a.versionCode.toIntOrNull()
+            val bc = b.versionCode.toIntOrNull()
+            if (ac != null && bc != null) {
+                bc.compareTo(ac)
+            } else {
+                val byName = compareVersionTriplets(b.versionName, a.versionName)
+                if (byName != 0) byName else (bc ?: -1).compareTo(ac ?: -1)
+            }
+        }
 
         // SHA-256 只需对最新一个 release 拉取即可（下载对话框固定用 releases.first()），
         // 逐条拉取会让每次更新检查都产生 N 次网络请求，导致「点击检查更新」迟迟不弹窗。
@@ -287,28 +317,6 @@ class UpdateChecker(
             return releaseCode > currentCode
         }
         return compareVersionTriplets(release.versionName, currentName) > 0
-    }
-
-    /**
-     * 提取可比较的版本数值。
-     * 注意两套刻度不能混排：带 versionCode 的 tag（如 `20-5.4.0-1`）code 是单调小整数，
-     * 而旧版无 code 的 tag（如 `V2.6.0`）按三元组能拼出百万级大数。
-     * 若直接返回原始值，`V2.6.0`(≈2,006,000) 会排在 `20-5.4.0-1`(code=20) 之上，
-     * 导致「最新版本」误判为 v2.6.0。修复：带 code 的 release 统一加 1e9 基线上移，
-     * 保证任何旧 tag 的三元组（<1e9）都排在其下。
-     */
-    private fun ReleaseInfo.toComparableVersion(): Long {
-        val code = versionCode.toIntOrNull()
-        if (code != null) return code.toLong() + 1_000_000_000L
-        val parts = versionName
-            .trim()
-            .trimStart('v', 'V')
-            .split('.')
-            .map { it.toIntOrNull() ?: 0 }
-        // 三元组拼成 大数：major*1000000 + minor*1000 + patch
-        return (parts.getOrNull(0) ?: 0) * 1_000_000L +
-            (parts.getOrNull(1) ?: 0) * 1_000L +
-            (parts.getOrNull(2) ?: 0)
     }
 
     /** 版本号三元组比较：a > b 返回正数，a < b 返回负数，相等返回 0 */
@@ -378,9 +386,19 @@ class UpdateChecker(
         }
     }
 
-    fun ignoreVersion(versionName: String) {
-        preferenceManager.setIgnoredVersion(versionName)
-        Logger.i(TAG, Str.get(R.string.ignore_version_versionname, versionName))
+    /**
+     * B-24：release 页面地址（手动下载入口用）——走本次检查探测到的镜像，
+     * 不再由调用方硬编码 https://github.com/... 绕过镜像；未命中镜像时返回原地址。
+     */
+    fun getReleasePageUrl(tagName: String): String {
+        val original = "https://github.com/Undefined-Invalid-Null/UIN-Tool/releases/tag/$tagName"
+        val mirror = currentMirror ?: return original
+        return try {
+            mirrorManager.getDownloadMirrorUrl(mirror, original, true)
+        } catch (e: Exception) {
+            Logger.e(TAG, "getReleasePageUrl mirror fallback: ${e.message}", e)
+            original
+        }
     }
 
     fun ignoreForceUpdate(tagName: String) {

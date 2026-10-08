@@ -234,11 +234,60 @@ public final class TerminalSession extends TerminalOutput {
     /** Finish this terminal session by sending SIGKILL to the shell. */
     public void finishIfRunning() {
         if (isRunning()) {
+            int pid = mShellPid;
             try {
-                Os.kill(mShellPid, OsConstants.SIGKILL);
+                // D-23：原先只 Os.kill(mShellPid)，ptracer 被杀后 tracee（容器内 shell 及其
+                // 子进程）可能成孤儿继续跑。改为杀整个进程组，失败再退回单进程。
+                // 注：Os.getpgid/Os.killpg 是 @hide API，compileSdk 36 的 android.jar 没有
+                // （首构 :terminal-emulator:compileDebugJavaWithJavac 报 cannot find symbol）。
+                // 改为读 /proc/<pid>/stat 取 pgrp，经 Os.kill(-pgid) 实现组杀——负号 pid 按
+                // POSIX libc kill(2) 对整个进程组发信号，Os.kill 为公开 API。
+                boolean killedGroup = false;
+                int pgid = readProcessGroup(pid);
+                int ownPgid = readProcessGroup(android.os.Process.myPid());
+                if (pgid > 0 && ownPgid > 0 && pgid != ownPgid) {
+                    // pgid == 本进程组（app 进程即组首，shell 未自立组）时不做组杀，
+                    // 否则 kill(-pgid) 会连自己一起杀；该场景退化为与改前相同的单杀。
+                    try {
+                        Os.kill(-pgid, OsConstants.SIGKILL);
+                        killedGroup = true;
+                    } catch (ErrnoException groupErr) {
+                        // 组杀失败（无权限/进程已退）→ 回退单杀
+                    }
+                }
+                if (!killedGroup) {
+                    Os.kill(pid, OsConstants.SIGKILL);
+                }
             } catch (ErrnoException e) {
                 Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL: " + e.getMessage());
             }
+        }
+    }
+
+    /**
+     * 读取 /proc/&lt;pid&gt;/stat 中的 pgrp（第 5 字段）。该文件格式为
+     * "pid (comm) state ppid pgrp ..."，comm 可含空格与右括号，故取最后一个
+     * ')' 之后按空白切分的第 3 个字段（state, ppid, pgrp）。进程不存在或不可
+     * 读时返回 -1，由调用方回退单杀。
+     */
+    private static int readProcessGroup(int pid) {
+        try (java.io.BufferedReader reader =
+                     new java.io.BufferedReader(new java.io.FileReader("/proc/" + pid + "/stat"))) {
+            String line = reader.readLine();
+            if (line == null) {
+                return -1;
+            }
+            int endComm = line.lastIndexOf(')');
+            if (endComm < 0) {
+                return -1;
+            }
+            String[] fields = line.substring(endComm + 1).trim().split("\\s+");
+            if (fields.length < 3) {
+                return -1;
+            }
+            return Integer.parseInt(fields[2]);
+        } catch (Exception e) {
+            return -1;
         }
     }
 

@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.plugin.PluginManager
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppLog
@@ -135,7 +134,7 @@ fun DevToolsScreen(
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.dev_tools),
                 onBack = onBack,
                 actions = {
@@ -161,14 +160,14 @@ fun DevToolsScreen(
                     isRefreshing = true
                     loadLogs()
                     delay(400)
-                    lastRefreshTime = UIComponents.currentTimeString()
+                    lastRefreshTime = currentTimeString()
                     isRefreshing = false
                 }
             },
             state = pullRefreshState,
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             indicator = {
-                UIComponents.PullRefreshIndicator(
+                PullRefreshIndicator(
                     isRefreshing = isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -290,7 +289,7 @@ fun DevToolsScreen(
                 }
 
                 item {
-                    UIComponents.LastUpdatedCaption(
+                    LastUpdatedCaption(
                         time = lastRefreshTime,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)
                     )

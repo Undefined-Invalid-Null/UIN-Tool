@@ -136,5 +136,9 @@ object BackendConfig {
 
     fun setKeepAliveEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_KEEP_ALIVE, enabled).apply()
+        // C-23：保活状态原先双源（UI 开关即时写 supervisor 的 keep_alive 文件、
+        // prefs 仅 Save 时写入）→ 显示与 supervisor 实际行为不一致。
+        // 现以 prefs 为唯一数据源，写入时单向同步到 supervisor 读取的标记文件。
+        SharedSupervisor.setKeepAlive(enabled)
     }
 }

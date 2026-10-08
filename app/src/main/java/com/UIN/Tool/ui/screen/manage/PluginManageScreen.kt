@@ -45,7 +45,6 @@ import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.plugin.PluginPermissionManager
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.*
 import kotlinx.coroutines.Dispatchers
@@ -118,7 +117,7 @@ fun PluginManageScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val pluginManager = ServiceLocator.getPluginManager()
-    val preferenceManager = PreferenceManager(context)
+    val preferenceManager = com.UIN.Tool.core.di.ServiceLocator.getPreferenceManager()
 
     var plugins by remember { mutableStateOf<List<PluginInfo>>(emptyList()) }
     var selectedPluginIds by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -157,7 +156,7 @@ fun PluginManageScreen(
     }
 
     val categories = remember(plugins) {
-        listOf(Str.get(R.string.all)) + plugins.map { it.category }.distinct()
+        listOf(Str.get(R.string.all)) + plugins.map { it.displayCategory() }.distinct()
     }
 
     val filteredPlugins = remember(searchText, selectedCategory, plugins) {
@@ -170,13 +169,14 @@ fun PluginManageScreen(
             }
         }
         if (selectedCategory != Str.get(R.string.all)) {
-            result = result.filter { it.category == selectedCategory }
+            result = result.filter { it.displayCategory() == selectedCategory }
         }
         result
     }
 
     fun importSinglePlugin(uri: Uri) {
-        scope.launch {
+        // F-03：copyUriToFile/installPlugin/refreshPlugins 均为磁盘 IO，原先在主线程执行
+        scope.launch(Dispatchers.IO) {
             try {
                 isLoading = true
                 val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "plugin.tpk"
@@ -203,7 +203,7 @@ fun PluginManageScreen(
     }
 
     fun batchImportPlugins(uris: List<Uri>) {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 isLoading = true
                 var successCount = 0
@@ -245,7 +245,7 @@ fun PluginManageScreen(
     }
 
     fun importPluginSet(uri: Uri) {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 isLoading = true
                 exportProgress = Str.get(R.string.processing_plugin_set)
@@ -339,11 +339,11 @@ fun PluginManageScreen(
     fun exportSelectedPlugins() {
         val selectedIds = selectedPluginIds.toList()
         if (selectedIds.isEmpty()) {
-            AppToast.warning(context, Str.get(R.string.please_select_plugins_to_export_firs))
+            AppToast.warning(context, Str.get(R.string.please_select_plugins_to_export_first))
             return
         }
 
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 isLoading = true
                 exportProgress = Str.get(R.string.exporting_plugins)
@@ -402,14 +402,20 @@ fun PluginManageScreen(
     }
 
     fun uninstallPlugin(plugin: PluginInfo) {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 isLoading = true
-                pluginManager.uninstallPlugin(plugin.pluginId)
-                loadPlugins()
-                refreshWidgets()
-                AppLog.success(TAG, Str.get(R.string.uninstall_successful_plugin_name, plugin.name))
-                showDeleteDialog = null
+                // F-07：uninstallPlugin 返回 false（ID 非法/目录删除失败）时原先完全静默
+                val ok = pluginManager.uninstallPlugin(plugin.pluginId)
+                if (ok) {
+                    loadPlugins()
+                    refreshWidgets()
+                    AppLog.success(TAG, Str.get(R.string.uninstall_successful_plugin_name, plugin.name))
+                    showDeleteDialog = null
+                } else {
+                    AppLog.e(TAG, Str.get(R.string.uninstall_failed))
+                    AppToast.error(context, Str.get(R.string.uninstall_failed_e_message, plugin.name))
+                }
             } catch (e: Exception) {
                 AppLog.e(TAG, Str.get(R.string.uninstall_failed), e)
                 AppToast.error(context, Str.get(R.string.uninstall_failed_e_message, e.message))
@@ -424,7 +430,7 @@ fun PluginManageScreen(
             batchDeleteIds = emptySet()
             return
         }
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
                 isLoading = true
                 val successList = pluginManager.uninstallPluginsBatch(ids.toList())
@@ -602,7 +608,7 @@ fun PluginManageScreen(
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.plugin_management),
                 onBack = onBack,
                 actions = {
@@ -629,11 +635,11 @@ fun PluginManageScreen(
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
-                scope.launch {
+                scope.launch(Dispatchers.IO) {
                     isRefreshing = true
                     loadPlugins()
                     delay(400)
-                    lastRefreshTime = UIComponents.currentTimeString()
+                    lastRefreshTime = currentTimeString()
                     isRefreshing = false
                 }
             },
@@ -642,7 +648,7 @@ fun PluginManageScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
             indicator = {
-                UIComponents.PullRefreshIndicator(
+                PullRefreshIndicator(
                     isRefreshing = isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -661,7 +667,7 @@ fun PluginManageScreen(
         ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
-                UIComponents.LastUpdatedCaption(
+                LastUpdatedCaption(
                     time = lastRefreshTime,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -857,42 +863,26 @@ fun PluginManageScreen(
 
         when {
             isLoading && plugins.isEmpty() -> item {
-                UIComponents.PluginListSkeleton(
+                PluginListSkeleton(
                     modifier = Modifier.fillParentMaxSize()
                 )
             }
+            // F-04：空态收口到 UnifiedEmptyState（与插件库页同口径）
             filteredPlugins.isEmpty() -> item {
-                Box(
-                    modifier = Modifier.fillParentMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.Extension,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = if (searchText.isNotEmpty() || selectedCategory != Str.get(R.string.all)) {
-                                Str.get(R.string.no_matching_plugins)
-                            } else {
-                                Str.get(R.string.no_installed_plugins)
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (searchText.isEmpty() && selectedCategory == Str.get(R.string.all)) {
-                            Text(
-                                text = Str.get(R.string.tap_the_import_button_to_import_plug),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                    }
-                }
+                UnifiedEmptyState(
+                    icon = Icons.Default.Extension,
+                    title = if (searchText.isNotEmpty() || selectedCategory != Str.get(R.string.all)) {
+                        Str.get(R.string.no_matching_plugins)
+                    } else {
+                        Str.get(R.string.no_installed_plugins)
+                    },
+                    subtitle = if (searchText.isEmpty() && selectedCategory == Str.get(R.string.all)) {
+                        Str.get(R.string.tap_the_import_button_to_import_plugin)
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.fillParentMaxSize()
+                )
             }
             else -> itemsIndexed(filteredPlugins, key = { _, plugin -> plugin.pluginId }) { index, plugin ->
                 PluginManageItem(
@@ -1224,7 +1214,7 @@ fun PermissionManagementDialog(
                     }
                     if (hasSpecial) {
                         UnifiedButton(
-                            text = Str.get(R.string.go_to_system_settings_to_enable_spec),
+                            text = Str.get(R.string.go_to_system_settings_to_enable_special),
                             onClick = {
                                 try {
                                     val intent = android.content.Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -1549,7 +1539,7 @@ fun PluginManageItem(
                         shape = RoundedCornerShape(AppDimens.radiusSmall)
                     ) {
                         Text(
-                            text = plugin.category,
+                            text = plugin.displayCategory(),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
@@ -1759,7 +1749,7 @@ fun PluginDetailDialog(
                             Str.get(R.string.description), plugin.description
                         )
                         DetailKeyValue(
-                            Str.get(R.string.category), plugin.category
+                            Str.get(R.string.category), plugin.displayCategory()
                         )
                         DetailKeyValue(
                             Str.get(R.string.ui_type), plugin.uiType

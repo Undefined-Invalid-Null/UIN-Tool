@@ -4,7 +4,7 @@ package com.UIN.Tool.ui.screen.permission
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginPermissionManager
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppToast
@@ -34,7 +33,7 @@ import kotlinx.coroutines.launch
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.AppColors
 
-class PluginPermissionDetailActivity : ComponentActivity() {
+class PluginPermissionDetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,7 +107,7 @@ fun PluginPermissionDetailScreen(
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = if (plugin != null) Str.get(R.string.plugin_name_permissions, plugin.name) else Str.get(R.string.permission_details),
                 onBack = onBack
             )
@@ -121,7 +120,7 @@ fun PluginPermissionDetailScreen(
                     isRefreshing = true
                     loadPermissions()
                     delay(400)
-                    lastRefreshTime = UIComponents.currentTimeString()
+                    lastRefreshTime = currentTimeString()
                     isRefreshing = false
                 }
             },
@@ -130,7 +129,7 @@ fun PluginPermissionDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
             indicator = {
-                UIComponents.PullRefreshIndicator(
+                PullRefreshIndicator(
                     isRefreshing = isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -147,7 +146,7 @@ fun PluginPermissionDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    UIComponents.LastUpdatedCaption(
+                    LastUpdatedCaption(
                         time = lastRefreshTime,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
@@ -412,7 +411,7 @@ fun PermissionDetailItem(
                 )
                 if (PluginPermissionManager.isSpecialPermission(permission)) {
                     Text(
-                        text = Str.get(R.string.special_permissions_enable_manually_),
+                        text = Str.get(R.string.special_permissions_enable_manually_in),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )

@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.unified.UnifiedBodyText
 import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
 import com.UIN.Tool.ui.components.unified.UnifiedCard
@@ -68,11 +68,12 @@ fun LogViewerScreen(
                 Constants.LOG_DIR,
                 "uin_tool_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log"
             )
-            logLines = if (logFile.exists()) logFile.readLines().reversed() else emptyList()
+            // G-12：只读末尾若干行（原来整文件 readLines 进内存，日志无限增长会 OOM）
+            logLines = readTailLines(logFile, maxLines = TAIL_LINES).asReversed()
 
             val crashLogFile = File(Constants.LOG_DIR, "crash_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log")
             if (crashLogFile.exists()) {
-                val crashLines = crashLogFile.readLines().reversed()
+                val crashLines = readTailLines(crashLogFile, maxLines = TAIL_LINES).asReversed()
                 if (crashLines.isNotEmpty()) {
                     logLines = (crashLines + listOf(Str.get(R.string.separator)) + logLines)
                 }
@@ -125,7 +126,7 @@ fun LogViewerScreen(
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.runtime_logs),
                 onBack = onBack,
                 actions = {
@@ -151,14 +152,14 @@ fun LogViewerScreen(
                     isRefreshing = true
                     loadLogs()
                     delay(400)
-                    lastRefreshTime = UIComponents.currentTimeString()
+                    lastRefreshTime = currentTimeString()
                     isRefreshing = false
                 }
             },
             state = pullRefreshState,
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             indicator = {
-                UIComponents.PullRefreshIndicator(
+                PullRefreshIndicator(
                     isRefreshing = isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -171,7 +172,7 @@ fun LogViewerScreen(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             item {
-                UIComponents.LastUpdatedCaption(
+                LastUpdatedCaption(
                     time = lastRefreshTime,
                     modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)
                 )
@@ -302,5 +303,35 @@ fun LogViewerScreen(
             onConfirm = { clearAllLogs(); showClearAllConfirm = false },
             onDismiss = { showClearAllConfirm = false }
         )
+    }
+}
+
+// G-12：日志只读末尾 N 行 / 最多 2MB，避免全量读入内存
+private const val TAIL_LINES = 2000
+private const val TAIL_MAX_BYTES = 2L * 1024 * 1024
+
+private fun readTailLines(file: File, maxLines: Int = TAIL_LINES, maxBytes: Long = TAIL_MAX_BYTES): List<String> {
+    if (!file.exists() || !file.isFile) return emptyList()
+    return try {
+        val len = file.length()
+        if (len == 0L) return emptyList()
+        val skip = maxOf(0L, len - maxBytes)
+        java.io.RandomAccessFile(file, "r").use { raf ->
+            raf.seek(skip)
+            val buf = ByteArray((len - skip).toInt())
+            raf.readFully(buf)
+            var text = String(buf, Charsets.UTF_8)
+            if (skip > 0) {
+                // 起点可能截断首行，丢掉这半行
+                val nl = text.indexOf('\n')
+                text = if (nl >= 0) text.substring(nl + 1) else ""
+            }
+            var lines = text.split('\n')
+            if (lines.isNotEmpty() && lines.last().isEmpty()) lines = lines.dropLast(1)
+            lines.takeLast(maxLines).map { it.removeSuffix("\r") }
+        }
+    } catch (e: Exception) {
+        AppLog.e("LogViewer", "readTailLines failed", e)
+        emptyList()
     }
 }

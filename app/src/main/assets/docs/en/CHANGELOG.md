@@ -12,6 +12,110 @@ This document records all important version updates and feature changes of UIN T
 
 ---
 
+## [6.1.0] - 2026-10-07
+
+> Maintenance release: a full defect-fix pass over the 6.0.0 codebase (all 233 checklist items closed) covering startup & permissions, main-thread/ANR risks, dark theme, plugin host correctness and security, backup/restore data safety, error visibility, and build hygiene — followed by dead-code & resource cleanup, architecture consolidation, i18n, accessibility and CI hardening. No new features.
+
+### Startup, Permissions & Logging
+
+- Splash no longer gets stuck: custom dangerous permissions (OPEN_PLUGIN / RUN_COMMAND) are requested on Android 11+ and for already-granted-storage users, permission results are re-checked in `onResume`, and a denied permission no longer permanently disables the Allow button
+- Plugin permission requests now deliver **real** callback results (the request was never actually dispatched), and progress/completion callbacks fire only after the real reply
+- `Logger.init()` moved to the start of `Application.onCreate` so startup-phase logs are kept
+- Rotating/recreating the Activity no longer kills the supervisor and every plugin backend
+- Cold-start process cleanup runs on a background thread with `kill -0` polling instead of a fixed sleep on the main thread
+
+### Main Thread / ANR
+
+- Terminal session creation splits command building (IO thread) from session creation (main thread); a failed command build now shows a Toast instead of failing silently, and intent commands are consumed only once
+- Plugin import/export/uninstall and backup/restore work moved off the main thread (single, batch, set import, export, refresh)
+- Container list loading and downloads report progress with throttled updates
+
+### Theme & Readability
+
+- Input text color follows `colorScheme.onSurface`; the Markdown renderer's 27 hardcoded light colors now switch with the dark theme
+- Help content is read from the language-matched `Help.md` (en / zh-cn)
+
+### Plugin Host
+
+- `onResume/onPause` now pass the instance key, so WebView resume/pause and plugin lifecycle events actually fire
+- Backend path normalization rejects `@`, `//`, `:`, `\`, `..` and control characters (blocks outbound host-redirect bypass), and `openUrl` enforces an `http/https/mailto/tel` scheme allowlist
+- Event payloads and error JSON are escaped properly (no more broken scripts on quotes/newlines)
+- Retained WebViews are capped at 4 (FIFO, destroyed on eviction) and flushed on `onTrimMemory`
+- A 90s backend start timeout now shows a Toast instead of hanging silently
+
+### Data & Backup
+
+- Restore rollback actually works again (the previous condition was dead code), and the replaced plugin directory is only deleted after a full success
+- Zip failures propagate instead of silently producing incomplete archives; unzip enforces entry-count and total-size limits (zip bomb protection)
+- Work folder / view mode flows now update reactively
+
+### Error Visibility
+
+- Plugin source load failures, disabled sources, download failures and install failures show inline banners with Retry/Dismiss instead of only writing logs (the download path previously erased its own error message)
+
+### Build
+
+- Removed ineffective multidex configuration (minSdk 23 uses platform multidex), `multidex-config.pro` renamed to `app-keep.pro`
+- Unified `core`/`core-ktx` to 1.13.1 and dropped the `resolutionStrategy.force`
+- Removed duplicate Markwon declarations from the app module and dead dependencies (`commons-lang3`, `error_prone_annotations`, `org.brotli:dec`)
+- Switched to `proguard-android-optimize.txt`; CI unit tests are no longer `continue-on-error`
+
+### Security & Plugin Entry Points
+
+- `PluginOpenDispatchActivity` is now properly registered in the manifest with `exported` disabled; external apps enter only via explicit Intents, and the documented Intent-filter list matches the actual declaration
+- Removed the orphan permission-explanation stack so the splash permission dialog is the single flow (user decision); removed the self permission-request flow
+- The 5 critical JS-bridge entry points (callHost / openUrl / getLocation / getSerialNumber / getMacAddress) passed the audit baseline check
+- Supervisor exit codes are propagated with zombie backend reclamation; log redaction and container status wording unified
+
+### Startup, Update & Long-running Tasks
+
+- Startup sequence rewritten as declarative tasks; all first-run IO moved off the main thread
+- Update download now runs as a foreground service with a notification cancel action; the update check runs on every launch with window-based freshness
+- Update list sorted on a dual-field comparison; silent-update and update-check listeners consolidated into `UpdateViewModel`
+- New unified long-task framework (registry + global host), adopted by backup export/restore and container import/export/download with inline progress and errors
+- Home-screen widget refresh now runs on WorkManager with a UIConfig switch
+- Backend settings and mirror screens moved their state and coroutines entirely into ViewModels
+
+### Architecture & State Consolidation
+
+- `core/` now keeps contract files only (3 non-contract units moved out); 8 dead files removed under `core/plugin`
+- Dead runtime fields removed from `PluginInfo` with state externalized; 74 `var`s in three models converted to `val` with mutation points collapsed
+- Network / preference singletons consolidated; environment orchestration sunk into `EnvironmentBootstrap`
+- Full migration to AppCompat with `AppCompatDelegate` night mode (user decision)
+- Storage migration executed as a group; log/backup/TPK storage-direction callbacks moved back to the shared work folder (user decision)
+
+### UI, Accessibility & Dark Theme
+
+- Empty and error states unified behind `UnifiedEmptyState`; added skeletons, uninstall feedback and inline backup errors
+- Back handling migrated to Compose `BackHandler`; tab state made savable; optional semantics added to bottom-nav items; shortcut icons scale per density
+- Theme trio (color / size / shape) key mapping split and collapsed to a single mapping, narrowing the configuration-save recomposition surface
+- **Root `LocalContentColor` fallback**: with gradients enabled the page container is transparent, so Material3 `contentColorFor` has no match and falls back to the root default black — uncolored text (e.g. plugin names) rendered black in dark mode. `onBackground` is now provided as the tree-wide fallback, so both light and dark render correctly
+- Default style's dark palette aligned to the neumorphic colors and lifted in three tiers (background < input < card) so cards are distinguishable again
+- Dark-gradient pollution prevented: the 5 gradient fields are mode-aware, style switching preserves the current theme mode, and missing values fall back to dark defaults
+- Desktop icon restored from Termux `>_` to the original UIN wordmark (vector + 5 density PNG sets)
+- Opaque wrapper layers that hid the themed root gradient removed from source-management and doc-viewer screens
+
+### Internationalization & Copy
+
+- Documentation kept in English/Chinese parity (5 files each under `en/` and `zh-cn/`); document loading consolidated
+- Logs and fixed copy converted to English; dual-use copy pinned to English; the three `locale` mechanisms collapsed to "in-app switch wins" (user decision)
+- English/Chinese string-key parity added as a CI gate to prevent key-set and placeholder regressions
+- "Documentation Center" moved to the top of the management screen's software group and the standalone "User Guide" entry removed (the guide is still the first document); group title renamed to **Software Management**
+- Terminal selection bar localized ("Copy / Paste / More", overriding the terminal-view module's English defaults); copy confirmation unified to "Copied to clipboard"
+- proot install copy fixed to "Installing proot container… / proot container installed"
+- The 4 frontend-type options in the create-plugin dialog converted to standard cards with centered text
+
+### Dead Code & Resource Cleanup
+
+- Removed dead Kotlin code (8 target groups), `TrampolineActivity`, dead colors and dead previews
+- Removed 186 unreferenced resources and 3 stale assets (proot assets and `host-sdk.jar` retained), plus resource normalization
+- Demo TPKs moved out of the release package; orphan layers deleted; dead runtime fields cleaned from `PluginInfo`
+
+### Build & CI
+
+- CI tightened, scripts relocated, compiler callbacks self-cleaned; string-key parity added as a gate
+- First real-device build fix chain: avoid `@hide` APIs (`Os.getpgid`/`killpg`), restore an accidentally deleted theme, fix unterminated nested comments caused by a bare `/*` inside a comment, collapse 58 compile errors into 9 root-cause clusters, add the missing `R` import, and eliminate the `getPrefs` JVM signature clash
+
 ## [6.0.0] - 2026-09-26
 
 > This version is a **major architectural overhaul**: completely removes dependency on the Termux environment (bootstrap, proot-distro, TermuxActivity, etc.), introduces a self-contained proot container system with direct Debian rootfs support, and adds a full container management UI. The application no longer extends TermuxApplication and directly inherits from Android Application. The terminal is rewritten in Kotlin (SimpleTerminalActivity). Total of 100+ files modified, 3000+ lines added, 5000+ lines removed.
@@ -993,9 +1097,9 @@ v4.0.0 is a major refactoring, please note before upgrading:
 
 | Item | Info |
 |------|------|
-| Document Version | 5.5.0 |
-| Last Updated | August 22, 2026 |
-| Corresponding App Version | v5.7.0 (Build 23) |
+| Document Version | 6.1.0 |
+| Last Updated | October 7, 2026 |
+| Corresponding App Version | v6.1.0 (Build 25) |
 
 ---
 

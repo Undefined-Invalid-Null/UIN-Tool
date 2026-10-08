@@ -39,11 +39,11 @@ fun validateCurrentStep(
     return when (currentStep) {
         0 -> {
             if (pluginId.isEmpty() || pluginName.isEmpty()) {
-                Toast.makeText(context, Str.get(R.string.please_fill_in_the_plugin_id_and_nam), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.please_fill_in_the_plugin_id_and_name), Toast.LENGTH_SHORT).show()
                 return false
             }
             if (!pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                Toast.makeText(context, Str.get(R.string.invalid_plugin_id_it_should_be_a_rev), Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Str.get(R.string.invalid_plugin_id_it_should_be_a), Toast.LENGTH_SHORT).show()
                 return false
             }
             true
@@ -56,14 +56,6 @@ fun validateCurrentStep(
             true
         }
         else -> true
-    }
-}
-
-fun formatFileSize(size: Long): String {
-    return when {
-        size < 1024 -> "$size B"
-        size < 1024 * 1024 -> String.format("%.2f KB", size / 1024.0)
-        else -> String.format("%.2f MB", size / (1024.0 * 1024.0))
     }
 }
 

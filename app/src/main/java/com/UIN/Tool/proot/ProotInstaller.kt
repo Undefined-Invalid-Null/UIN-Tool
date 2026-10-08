@@ -13,6 +13,13 @@ object ProotInstaller {
     private const val PROOT_BIN = "proot"
     private const val PROOT_ASSET_PREFIX = "proot-"
 
+    /**
+     * D-01：小于该大小视为「安装中断留下的残缺二进制」。
+     * 内置 proot asset 实测 229~289 KB，被截断的文件无法执行（ENOEXEC），
+     * 原先只要 `length() > 0` 就认为已安装 → 永久损坏且不再自愈。
+     */
+    private const val PROOT_MIN_VALID_SIZE = 64L * 1024L
+
     fun prootBinaryDir(context: Context): File =
         File(context.filesDir, PROOT_DIR)
 
@@ -21,74 +28,97 @@ object ProotInstaller {
 
     fun isInstalled(context: Context): Boolean {
         val bin = prootBinaryPath(context)
-        return bin.exists() && bin.length() > 0
+        return bin.exists() && bin.length() >= PROOT_MIN_VALID_SIZE
     }
 
     fun ensureInstalled(context: Context): Result<File> {
         val bin = prootBinaryPath(context)
-        if (bin.exists() && bin.length() > 0) {
-            Logger.i(TAG, "ProotInstaller: 已存在，跳过安装: ${bin.absolutePath} (${bin.length()} bytes)")
+        if (bin.exists() && bin.length() >= PROOT_MIN_VALID_SIZE) {
+            Logger.i(TAG, "ProotInstaller: already exists, skip install: ${bin.absolutePath} (${bin.length()} bytes)")
             chmodExecutable(bin)
             return Result.success(bin)
         }
-        Logger.i(TAG, "ProotInstaller: 开始安装 proot 二进制...")
+        if (bin.exists()) {
+            Logger.w(TAG, "ProotInstaller: truncated binary detected (${bin.length()} bytes < $PROOT_MIN_VALID_SIZE), reinstalling")
+        }
+        Logger.i(TAG, "ProotInstaller: installing proot binary...")
+        val dir = prootBinaryDir(context)
+        val tmp = File(dir, "$PROOT_BIN.tmp")
         return try {
-            val dir = prootBinaryDir(context)
             dir.mkdirs()
-            Logger.i(TAG, "ProotInstaller: 目标目录: ${dir.absolutePath} (exists=${dir.exists()})")
+            Logger.i(TAG, "ProotInstaller: target dir: ${dir.absolutePath} (exists=${dir.exists()})")
             val abi = getPrimaryAbi()
-            Logger.i(TAG, "ProotInstaller: 检测到 ABI: $abi (SUPPORTED_ABIS=${android.os.Build.SUPPORTED_ABIS.joinToString()})")
+            Logger.i(TAG, "ProotInstaller: detected ABI: $abi (SUPPORTED_ABIS=${android.os.Build.SUPPORTED_ABIS.joinToString()})")
             val assetName = findProotAsset(context)
                 ?: return Result.failure(IllegalStateException("No proot binary asset found for this device"))
-            Logger.i(TAG, "ProotInstaller: 正在从 assets 复制: $assetName → ${bin.absolutePath}")
-            context.assets.open(assetName).use { input ->
-                val size = input.available()
-                Logger.i(TAG, "ProotInstaller: asset 大小: $size bytes")
-                FileOutputStream(bin).use { output ->
-                    input.copyTo(output)
-                }
+            Logger.i(TAG, "ProotInstaller: copying from assets: $assetName -> ${bin.absolutePath}")
+            // D-01：先写 .tmp，校验大小后再原子改名，杜绝「半截 proot 却被判定已安装」
+            tmp.delete()
+            val copied = context.assets.open(assetName).use { input ->
+                FileOutputStream(tmp).use { output -> input.copyTo(output) }
             }
-            Logger.i(TAG, "ProotInstaller: 复制完成，文件大小: ${bin.length()} bytes")
+            if (copied < PROOT_MIN_VALID_SIZE) {
+                tmp.delete()
+                return Result.failure(java.io.IOException("proot asset content invalid: copied=$copied bytes"))
+            }
+            if (bin.exists() && !bin.delete()) {
+                tmp.delete()
+                return Result.failure(java.io.IOException("failed to replace truncated proot binary"))
+            }
+            if (!tmp.renameTo(bin)) {
+                tmp.delete()
+                return Result.failure(java.io.IOException("proot binary atomic rename failed"))
+            }
+            Logger.i(TAG, "ProotInstaller: copy done, size: ${bin.length()} bytes")
             chmodExecutable(bin)
-            Logger.i(TAG, "ProotInstaller: 安装完成: ${bin.absolutePath}")
+            Logger.i(TAG, "ProotInstaller: installed: ${bin.absolutePath}")
             Result.success(bin)
         } catch (e: Exception) {
-            Logger.e(TAG, "ProotInstaller: 安装失败: ${e.message}", e)
+            Logger.e(TAG, "ProotInstaller: install failed: ${e.message}", e)
+            tmp.delete()
+            if (bin.exists() && bin.length() < PROOT_MIN_VALID_SIZE) bin.delete()
             Result.failure(e)
         }
     }
 
     private fun findProotAsset(context: Context): String? {
         val abi = getPrimaryAbi()
-        val candidates = listOf(
-            "$PROOT_DIR/${PROOT_ASSET_PREFIX}$abi",
-            "$PROOT_DIR/$PROOT_BIN",
-            "${PROOT_ASSET_PREFIX}$abi",
-            PROOT_ASSET_PREFIX.removeSuffix("-"),
-            "proot"
-        )
+        // D-39：abi 未知时不拼带 abi 的候选名，避免匹配到别的架构的二进制
+        val candidates = buildList {
+            if (abi != null) {
+                add("$PROOT_DIR/${PROOT_ASSET_PREFIX}$abi")
+                add("${PROOT_ASSET_PREFIX}$abi")
+            }
+            add("$PROOT_DIR/$PROOT_BIN")
+            add(PROOT_ASSET_PREFIX.removeSuffix("-"))
+            add("proot")
+        }
         for (name in candidates) {
             try {
                 context.assets.open(name).use {
-                    Logger.i(TAG, "ProotInstaller: 找到 asset: $name")
+                    Logger.i(TAG, "ProotInstaller: found asset: $name")
                     return name
                 }
             } catch (e: Exception) {
-                Logger.d(TAG, "ProotInstaller: asset '$name' 不存在: ${e.message}")
+                Logger.d(TAG, "ProotInstaller: asset '$name' missing: ${e.message}")
             }
         }
-        Logger.e(TAG, "ProotInstaller: 未找到任何 proot asset，已尝试: $candidates")
+        Logger.e(TAG, "ProotInstaller: no proot asset found, tried: $candidates")
         return null
     }
 
-    private fun getPrimaryAbi(): String {
+    /** D-39：不支持的 ABI 不再兜底成 aarch64（会在 x86/riscv 设备上装错二进制、必然跑不起来） */
+    private fun getPrimaryAbi(): String? {
         val abis = android.os.Build.SUPPORTED_ABIS
         return when {
             abis.any { it.contains("arm64") || it.contains("aarch64") } -> "aarch64"
             abis.any { it.contains("arm") } -> "arm"
             abis.any { it.contains("x86_64") || it.contains("amd64") } -> "x86_64"
             abis.any { it.contains("x86") || it.contains("i686") || it.contains("i386") } -> "i686"
-            else -> "aarch64"
+            else -> {
+                Logger.w(TAG, "ProotInstaller: unsupported ABI: ${abis.joinToString()}")
+                null
+            }
         }
     }
 

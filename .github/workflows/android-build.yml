@@ -5,7 +5,7 @@
 #
 # 环境:
 #   - Ubuntu Latest
-#   - Java 17 (AGP 8.13 要求 JDK 17+)
+#   - Java 17 (AGP 8.9.1 要求 JDK 17+；与根 build.gradle 版本口径保持一致)
 #   - Gradle 缓存加速
 
 name: Android CI
@@ -24,6 +24,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# A-54：默认令牌只给读权限（本流水线只需 checkout，不需要写 contents/packages）
+permissions:
+  contents: read
+
 jobs:
   ###############################################################
   # 1. 质量检查 — lint + 单元测试
@@ -36,6 +40,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # A-22：.gitattributes 声明 *.tar.xz 走 LFS，不加 lfs:true 只会拿到指针文件，
+          # 打出来的 APK 内 rootfs 是坏的且不报错
+          lfs: true
+
+      # A-31：zh-rCN 与 default 字符串键/占位符必须对齐（6.1.0 质量基线），失败即止
+      - name: Check strings.xml parity
+        run: python3 scripts/check_strings_parity.py
+
+      # A-54：gradlew/wrapper jar 被篡改是最常见的 CI 供应链攻击面，先校验再执行
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -60,7 +76,6 @@ jobs:
 
       - name: Run unit tests
         run: ./gradlew test
-        continue-on-error: true
 
       - name: Upload lint results
         if: always()
@@ -90,6 +105,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # A-22：.gitattributes 声明 *.tar.xz 走 LFS，不加 lfs:true 只会拿到指针文件，
+          # 打出来的 APK 内 rootfs 是坏的且不报错
+          lfs: true
+
+      # A-54：gradlew/wrapper jar 被篡改是最常见的 CI 供应链攻击面，先校验再执行
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -108,12 +131,30 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Verify LFS assets are real files (not pointers)
+        run: |
+          f=app/src/main/assets/debian-rootfs.tar.xz
+          size=$(stat -c %s "$f")
+          echo "debian-rootfs.tar.xz = $size bytes"
+          if [ "$size" -lt 100000000 ]; then
+            echo "::error::$f is $size bytes - looks like an LFS pointer, check lfs:true"
+            exit 1
+          fi
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
+
+      # A-54：产物哈希随包发布，下载方可以校验 artifact 未被替换
+      - name: Generate APK checksum
+        run: |
+          cd app/build/outputs/apk/debug
+          sha256sum *.apk | tee sha256sum.txt
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: uin-tool-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/debug/sha256sum.txt
           retention-days: 30

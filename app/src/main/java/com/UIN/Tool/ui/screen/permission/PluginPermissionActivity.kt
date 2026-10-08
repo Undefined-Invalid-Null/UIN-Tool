@@ -2,11 +2,11 @@
 package com.UIN.Tool.ui.screen.permission
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import com.UIN.Tool.ui.theme.UINToolTheme
 
-class PluginPermissionActivity : ComponentActivity() {
+class PluginPermissionActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val pluginId = intent.getStringExtra(EXTRA_PLUGIN_ID)

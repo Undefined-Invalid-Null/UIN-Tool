@@ -38,6 +38,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -265,6 +266,7 @@ fun UnifiedCard(
                 Modifier.clickable(
                     interactionSource = interactionSource,
                     indication = LocalIndication.current,
+                    role = Role.Button,
                     onClick = onClick
                 )
             } else {
@@ -395,7 +397,8 @@ fun UnifiedTextField(
                     value = value,
                     onValueChange = onValueChange,
                     modifier = Modifier.weight(1f),
-                    textStyle = TextStyle(color = Color(0xFF333333), fontSize = 15.sp),
+                    // E-01：原先固定 0xFF333333，深色模式下深灰字压深底几乎不可读
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
                     singleLine = singleLine,
                     maxLines = if (singleLine) 1 else Int.MAX_VALUE,
                     enabled = enabled,
@@ -604,26 +607,34 @@ fun UnifiedSwitch(
             label = "switch_offset"
         )
 
+        // E-07：触控目标由 54x30 扩到最小 48x48（视觉轨道仍 54x30 居中，布局不塌）
         Box(
             modifier = modifier
-                .size(54.dp, 30.dp)
-                .clip(RoundedCornerShape(15.dp))
-                .background(trackColor, RoundedCornerShape(15.dp))
+                .minimumInteractiveComponentSize()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     enabled = enabled,
+                    role = Role.Switch,
                     onClick = { onCheckedChange(!checked) }
                 ),
-            contentAlignment = Alignment.CenterStart
+            contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .offset(x = thumbOffset.dp)
-                    .padding(3.dp)
-                    .size(24.dp)
-                    .background(thumbColor, CircleShape)
-            )
+                    .size(54.dp, 30.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(trackColor, RoundedCornerShape(15.dp)),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Box(
+                    modifier = Modifier
+                        .offset(x = thumbOffset.dp)
+                        .padding(3.dp)
+                        .size(24.dp)
+                        .background(thumbColor, CircleShape)
+                )
+            }
         }
     } else {
         Switch(
@@ -675,6 +686,7 @@ fun UnifiedChip(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = LocalIndication.current,
+                    role = Role.Button,
                     onClick = onClick
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -889,6 +901,7 @@ fun UnifiedIconButton(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = LocalIndication.current,
+                    role = Role.Button,
                     onClick = onClick
                 )
                 .padding(8.dp),

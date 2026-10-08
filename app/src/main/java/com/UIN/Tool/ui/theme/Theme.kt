@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -22,10 +21,7 @@ import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -40,26 +36,19 @@ val PrimaryLightBlue = Color(0xFF2D5A70)
 val AccentBlue = Color(0xFF4A8A9E)
 
 // ==================== 辅助色 ====================
-val SuccessGreen = Color(0xFF4CAF50)
-val WarningOrange = Color(0xFFFF9800)
 val ErrorRed = Color(0xFFF44336)
 val InfoBlue = Color(0xFF2196F3)
 
 // ==================== 文本颜色 ====================
 val TextPrimary = Color(0xFF212121)
 val TextSecondary = Color(0xFF757575)
-val TextHint = Color(0xFFBDBDBD)
-val TextDisabled = Color(0xFF9E9E9E)
 
 // ==================== 背景色 ====================
 val BackgroundGray = Color(0xFFF5F7FA)
-val BackgroundCardWhite = Color(0xFFFFFFFF)
-val BackgroundDarkGray = Color(0xFFE8ECF0)
 
 // ==================== 表面色 ====================
 val SurfaceWhite = Color(0xFFFFFFFF)
 val SurfaceVariantGray = Color(0xFFF5F7FA)
-val SurfaceCardWhite = Color(0xFFFFFFFF)
 
 // ==================== 边框和分割线 ====================
 val DividerGray = Color(0xFFE0E4E8)
@@ -73,36 +62,6 @@ val DarkTextPrimary = Color(0xFFE8E8E8)
 val DarkTextSecondary = Color(0xFFA8A8A8)
 val DarkSurfaceVariant = Color(0xFF3F3F3F)
 val DarkOutline = Color(0xFF484848)
-
-// ==================== 卡片相关 ====================
-val CardShadow = Color(0x1A000000)
-val CardRipple = Color(0x0D1A3A4A)
-
-// ==================== 玻璃效果 ====================
-val GlassBackground = Color(0xB3FFFFFF)
-val GlassBorder = Color(0x40FFFFFF)
-val GlassShadow = Color(0x20000000)
-
-// ==================== 叠加色 ====================
-val OverlayLight = Color(0x0D000000)
-val OverlayMedium = Color(0x1A000000)
-val OverlayDark = Color(0x33000000)
-
-// ==================== 灰色调 ====================
-val GrayLight = Color(0xFFF5F7FA)
-val GrayMedium = Color(0xFFEEF1F4)
-val GrayDark = Color(0xFF9AA6B2)
-val GrayText = Color(0xFF616F7E)
-
-// ==================== 导航栏 ====================
-val NavItemSelected = Color(0xFF1A3A4A)
-val NavItemUnselected = Color(0xFFB0BCC8)
-
-// ==================== 渐变 ====================
-val GradientStart = Color(0xFF1A3A4A)
-val GradientEnd = Color(0xFF2D5A70)
-val GradientAccentStart = Color(0xFF4A8A9E)
-val GradientAccentEnd = Color(0xFF6AAEC2)
 
 // ==================== 浅色主题配色方案 ====================
 val LightColorScheme = lightColorScheme(
@@ -298,6 +257,33 @@ fun isBoldEnabled(): Boolean {
     return UIConfig.isBoldEnabled()
 }
 
+/** E-08：buildDynamicColorScheme 的全部输入快照（结构相等比较，未变则复用旧实例） */
+private fun colorInputsSnapshot(dark: Boolean): List<Any> {
+    val keys = listOf(
+        "primary", "primary_dark", "primary_light", "accent", "info", "error",
+        "text_primary", "text_secondary", "text_primary_inverse",
+        "background", "surface", "surface_variant", "divider"
+    )
+    return listOf(dark) + keys.map { UIConfig.getColorStringForMode(it, dark) }
+}
+
+/** E-08：buildDynamicShapes 的全部输入快照 */
+private fun shapeInputsSnapshot(): List<Float> = listOf(
+    UIConfig.getCornerRadiusSmall(),
+    UIConfig.getCornerRadiusMedium(),
+    UIConfig.getCornerRadiusLarge(),
+    UIConfig.getCornerRadiusExtraLarge(),
+    UIConfig.getDialogCornerRadius()
+)
+
+/** E-08：buildDynamicTypography 的全部输入快照 */
+private fun typographyInputsSnapshot(): List<Float> = listOf(
+    UIConfig.getTitleTextSize(),
+    UIConfig.getBodyTextSize(),
+    UIConfig.getCaptionTextSize(),
+    UIConfig.getSectionTitleTextSize()
+)
+
 private fun buildDynamicColorScheme(uiConfig: UIConfig, dark: Boolean): ColorScheme {
     val base = if (dark) DarkColorScheme else LightColorScheme
 
@@ -339,39 +325,20 @@ private fun buildDynamicColorScheme(uiConfig: UIConfig, dark: Boolean): ColorSch
     )
 }
 
-private fun buildDynamicShapes(): Shapes {
-    return Shapes(
-        extraSmall = RoundedCornerShape(UIConfig.getCornerRadiusSmall().dp),
-        small = RoundedCornerShape(UIConfig.getCornerRadiusMedium().dp),
-        medium = RoundedCornerShape(UIConfig.getCornerRadiusLarge().dp),
-        large = RoundedCornerShape(UIConfig.getCornerRadiusExtraLarge().dp),
-        extraLarge = RoundedCornerShape(UIConfig.getDialogCornerRadius().dp)
-    )
-}
+private fun buildDynamicShapes(): Shapes = buildShapes(
+    cornerSmall = UIConfig.getCornerRadiusSmall(),
+    cornerMedium = UIConfig.getCornerRadiusMedium(),
+    cornerLarge = UIConfig.getCornerRadiusLarge(),
+    cornerExtraLarge = UIConfig.getCornerRadiusExtraLarge(),
+    dialog = UIConfig.getDialogCornerRadius()
+)
 
-private fun buildDynamicTypography(): Typography {
-    val title = UIConfig.getTitleTextSize()
-    val body = UIConfig.getBodyTextSize()
-    val caption = UIConfig.getCaptionTextSize()
-    val section = UIConfig.getSectionTitleTextSize()
-    return Typography(
-        displayLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = title.sp, letterSpacing = 0.sp),
-        displayMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = title.sp, letterSpacing = 0.sp),
-        displaySmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = title.sp, letterSpacing = 0.sp),
-        headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = section.sp, letterSpacing = 0.sp),
-        headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = section.sp, letterSpacing = 0.sp),
-        headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = section.sp, letterSpacing = 0.sp),
-        titleLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = body.sp, letterSpacing = 0.sp),
-        titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = body.sp, letterSpacing = 0.sp),
-        titleSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = body.sp, letterSpacing = 0.sp),
-        bodyLarge = TextStyle(fontSize = body.sp, letterSpacing = 0.sp),
-        bodyMedium = TextStyle(fontSize = body.sp, letterSpacing = 0.sp),
-        bodySmall = TextStyle(fontSize = caption.sp, letterSpacing = 0.sp),
-        labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = caption.sp, letterSpacing = 0.sp),
-        labelMedium = TextStyle(fontSize = caption.sp, letterSpacing = 0.sp),
-        labelSmall = TextStyle(fontSize = caption.sp, letterSpacing = 0.sp)
-    )
-}
+private fun buildDynamicTypography(): Typography = buildTypography(
+    title = UIConfig.getTitleTextSize(),
+    body = UIConfig.getBodyTextSize(),
+    caption = UIConfig.getCaptionTextSize(),
+    section = UIConfig.getSectionTitleTextSize()
+)
 
 // ==================== 主题函数 ====================
 
@@ -398,7 +365,7 @@ fun UINToolTheme(
     fillBackground: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    // 观察配置版本号：任何保存都会触发整个主题树重组，实现即时生效
+    // 观察配置版本号：订阅触发本组合重组（快照计算很廉价）
     val configVersion by UIConfig.configVersion.collectAsState()
 
     val resolvedDark = if (UIConfig.isInitialized()) {
@@ -407,16 +374,23 @@ fun UINToolTheme(
         darkTheme
     }
 
+    // E-08：configVersion 只负责「订阅 + 重算快照」，三类主题对象按**真实输入**做 remember 键：
+    // 改字号只换 typography、改圆角只换 shapes、改单色只换 colorScheme —— 未变的一类保持
+    // 同一实例，读该 Local 的组合树不再被连带重组（原实现三者共用 configVersion 粗键，
+    // 任何配置保存都会让 ColorScheme/Shapes/Typography 全部换实例）。
     val colorScheme = if (UIConfig.isInitialized()) {
-        remember(configVersion, resolvedDark) { buildDynamicColorScheme(UIConfig, resolvedDark) }
+        val colorKey = remember(configVersion, resolvedDark) { colorInputsSnapshot(resolvedDark) }
+        remember(colorKey) { buildDynamicColorScheme(UIConfig, resolvedDark) }
     } else if (resolvedDark) DarkColorScheme else LightColorScheme
 
     val shapes = if (UIConfig.isInitialized()) {
-        remember(configVersion) { buildDynamicShapes() }
+        val shapeKey = remember(configVersion) { shapeInputsSnapshot() }
+        remember(shapeKey) { buildDynamicShapes() }
     } else Shapes
 
     val typography = if (UIConfig.isInitialized()) {
-        remember(configVersion) { buildDynamicTypography() }
+        val typeKey = remember(configVersion) { typographyInputsSnapshot() }
+        remember(typeKey) { buildDynamicTypography() }
     } else Typography
 
     val view = LocalView.current
@@ -448,6 +422,12 @@ fun UINToolTheme(
             typography = typography,
             shapes = shapes,
             content = {
+                // 根级内容色基准：各页 Scaffold 用 pageBackground()（渐变开启时为 Transparent），
+                // m3 contentColorFor(Transparent) 无匹配会回落到 LocalContentColor——其根默认是
+                // Color.Black，导致深色下所有未显式着色的 Text（如插件名）渲染成黑色。
+                // 这里用 onBackground 作全树兜底：深色=浅字、浅色=深字，就近的 Surface/Card/
+                // Button 提供的 contentColor 仍然优先，不受影响。
+                CompositionLocalProvider(LocalContentColor provides colorScheme.onBackground) {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(lifecycleOwner, snackbarHostState) {
@@ -505,6 +485,7 @@ fun UINToolTheme(
                     }
                     } // key(isDark)
                 }
+                } // CompositionLocalProvider(LocalContentColor)
             }
         )
     }

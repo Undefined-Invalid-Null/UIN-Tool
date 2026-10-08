@@ -26,7 +26,7 @@ object SecurityUtils {
         } else {
             val verified = expectedHash == fileHash
             if (!verified) {
-                Logger.e(TAG, Str.get(R.string.signature_verification_failed_file_m, pluginId))
+                Logger.e(TAG, Str.get(R.string.signature_verification_failed_file_may, pluginId))
             } else {
                 Logger.success(TAG, Str.get(R.string.signature_verification_passed_file_n, pluginId))
             }

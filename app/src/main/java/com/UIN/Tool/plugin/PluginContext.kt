@@ -68,6 +68,8 @@ class PluginContext(
             this.pluginInflater = LayoutInflater.from(baseContext)
 
         } catch (e: Exception) {
+            // C-40：原先静默降级，插件资源错乱时无从排查
+            Logger.w(TAG, "plugin resources init failed, fallback to host: ${e.message}")
             this.pluginAssetManager = super.getAssets()
             this.pluginResources = super.getResources()
             this.pluginInflater = LayoutInflater.from(baseContext)
@@ -127,7 +129,8 @@ class PluginContext(
 
     fun putString(key: String, value: String) {
         lock.write { prefs.edit().putString(key, value).apply() }
-        Logger.d(TAG, "putString: $key = ${value.take(50)}")
+        // C-40：原先把值的前 50 字符打进宿主日志（可含 token/密码等），只留 key
+        Logger.d(TAG, "putString: $key (${value.length} chars)")
     }
 
     fun getString(key: String, defaultValue: String = ""): String {
@@ -202,6 +205,9 @@ class PluginContext(
 
     // ==================== 文件存储 API ====================
 
+    /** C-41：对插件暴露的安全路径解析（原先 PluginJSInterface/PluginContext 各有一份同名实现） */
+    fun resolveSafe(fileName: String): File? = getSafeFile(fileName)
+
     private fun getSafeFile(fileName: String): File? {
         if (fileName.contains("..") || fileName.contains("/../") || fileName.startsWith("/")) {
             Logger.w(TAG, Str.get(R.string.invalid_file_path_filename_2, fileName))
@@ -241,14 +247,16 @@ class PluginContext(
     fun writeFile(fileName: String, content: String): Boolean {
         synchronized(fileLock) {
             val file = getSafeFile(fileName) ?: return false
-            if (!hasEnoughSpace(content.length.toLong())) {
+            // C-40：原先用 content.length（字符数）当字节数预检，UTF-8 中文每字 3 字节 → 严重低估
+            val requiredBytes = content.toByteArray(Charsets.UTF_8).size.toLong()
+            if (!hasEnoughSpace(requiredBytes)) {
                 Logger.e(TAG, Str.get(R.string.insufficient_disk_space))
                 return false
             }
             return try {
                 file.parentFile?.mkdirs()
                 file.writeText(content)
-                Logger.d(TAG, Str.get(R.string.writing_file_filename_content_length, fileName, content.length))
+                Logger.d(TAG, Str.get(R.string.writing_file_filename_content_length, fileName, requiredBytes))
                 true
             } catch (e: Exception) {
                 Logger.e(TAG, Str.get(R.string.failed_to_write_file_filename, fileName), e)

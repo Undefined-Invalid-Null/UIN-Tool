@@ -5,9 +5,7 @@ import android.content.Context
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.data.remote.GitHubApiService
 import com.UIN.Tool.data.remote.MirrorManager
-import com.UIN.Tool.data.repository.ConfigRepositoryImpl
 import com.UIN.Tool.data.repository.PluginRepositoryImpl
-import com.UIN.Tool.domain.repository.IConfigRepository
 import com.UIN.Tool.domain.repository.IPluginRepository
 import com.UIN.Tool.plugin.PluginManager
 import okhttp3.OkHttpClient
@@ -32,10 +30,6 @@ class AppContainer(private val context: Context) {
     val mirrorManager: MirrorManager by lazy { MirrorManager(okHttpClient) }
 
     // ---------- 仓库 ----------
-    val configRepository: IConfigRepository by lazy {
-        ConfigRepositoryImpl(preferenceManager)
-    }
-
     val pluginRepository: IPluginRepository by lazy {
         PluginRepositoryImpl(PluginManager.getInstance(context))
     }
@@ -46,16 +40,13 @@ class AppContainer(private val context: Context) {
     }
 
     // ---------- 更新服务 ----------
+    // B-54：更新检查/下载共用同一 OkHttpClient（连接池 + 缓存单实例）
     val updateChecker by lazy {
-        com.UIN.Tool.core.update.UpdateChecker(context, preferenceManager)
+        com.UIN.Tool.core.update.UpdateChecker(context, preferenceManager, okHttpClient)
     }
 
     val updateDownloader by lazy {
-        com.UIN.Tool.core.update.UpdateDownloader(context)
+        com.UIN.Tool.core.update.UpdateDownloader(context, okHttpClient)
     }
 
-    // ---------- 编译服务 ----------
-    val javaToDexCompiler by lazy {
-        com.UIN.Tool.core.compiler.JavaToDexCompiler(context)
-    }
 }

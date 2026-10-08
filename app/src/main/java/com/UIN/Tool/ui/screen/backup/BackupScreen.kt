@@ -2,6 +2,7 @@
 package com.UIN.Tool.ui.screen.backup
 
 import com.UIN.Tool.R
+import com.UIN.Tool.ui.components.LongTaskRegistry
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,26 +32,30 @@ import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.BackupInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.plugin.PluginManager
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.unified.UnifiedBodyText
 import com.UIN.Tool.ui.components.unified.UnifiedButton
-import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
 import com.UIN.Tool.ui.components.unified.UnifiedCard
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
-import com.UIN.Tool.ui.components.unified.UnifiedLinearProgressIndicator
 import com.UIN.Tool.ui.components.unified.UnifiedTitleText
 import com.UIN.Tool.ui.components.unified.ButtonVariant
 import com.UIN.Tool.ui.components.unified.ButtonSize
 import com.UIN.Tool.utils.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
+
+/** F-16：长任务注册表键（备份导出/恢复各一） */
+private const val LONG_TASK_EXPORT = "backup_export"
+private const val LONG_TASK_RESTORE = "backup_restore"
 
 enum class RestoreMode { MERGE, REPLACE }
 
@@ -110,10 +115,9 @@ fun BackupScreen() {
     var isRefreshing by remember { mutableStateOf(false) }
     var lastRefreshTime by remember { mutableStateOf<String?>(null) }
     val pullRefreshState = rememberPullToRefreshState()
-    var progressMessage by remember { mutableStateOf("") }
-    var progressValue by remember { mutableStateOf(0f) }
-    var showProgress by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<BackupInfo?>(null) }
+    // G-07：备份/恢复/删除的失败原因内联保留（原先只弹 Toast，关掉就查不到了）
+    var lastError by remember { mutableStateOf<String?>(null) }
     var restoreTarget by remember { mutableStateOf<BackupInfo?>(null) }
     var showRestoreConfirm by remember { mutableStateOf(false) }
     var restoreMode by remember { mutableStateOf(RestoreMode.MERGE) }
@@ -131,8 +135,10 @@ fun BackupScreen() {
                 ?.filter { it.isFile && it.name.endsWith(".zip") }
                 ?.map { file ->
                     val pluginCount = try {
-                        val parts = file.nameWithoutExtension.split("_")
-                        parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 0
+                        // G-02：文件名形如 UIN_Tool_Backup_<数量>_<日期>_<时间>.zip，
+                        // 原先 split("_") 取倒数第二段实际拿到的是日期 → 恒为 0/错乱
+                        Regex("Backup_(\\d+)_").find(file.name)
+                            ?.groupValues?.get(1)?.toIntOrNull() ?: 0
                     } catch (e: Exception) { 0 }
 
                     BackupInfo(
@@ -154,20 +160,18 @@ fun BackupScreen() {
     }
 
     fun createBackup() {
-        scope.launch {
+        // G-05：整包 zip 打包原先跑在主线程 → 大备份期间 UI 冻结
+        scope.launch(Dispatchers.IO) {
             try {
                 AppLog.i("Backup", Str.get(R.string.start_creating_backup))
                 isLoading = true
-                showProgress = true
-                progressValue = 0f
-                progressMessage = Str.get(R.string.creating_backup)
+                LongTaskRegistry.begin(LONG_TASK_EXPORT, Str.get(R.string.creating_backup))
 
                 val plugins = pluginManager.plugins.value
                 val pluginDir = File(Constants.PLUGIN_DIR)
 
                 if (!pluginDir.exists()) {
-                    progressMessage = Str.get(R.string.no_plugins_to_back_up)
-                    showProgress = false
+                    LongTaskRegistry.dismiss()
                     isLoading = false
                     AppToast.info(context, Str.get(R.string.no_plugins_to_back_up))
                     return@launch
@@ -180,14 +184,12 @@ fun BackupScreen() {
                     java.io.FileOutputStream(backupFile)
                 ).use { zos ->
 
-                    progressValue = 0.1f
-                    progressMessage = Str.get(R.string.packing_plugins_size_plugin_s, plugins.size)
+                    LongTaskRegistry.update(LONG_TASK_EXPORT, Str.get(R.string.packing_plugins_size_plugin_s, plugins.size), 0.1f)
                     addDirToZip(zos, pluginDir, "plugins/")
                     AppLog.d("Backup", Str.get(R.string.plugin_directory_packed))
 
                     if (includeUiConfig) {
-                        progressValue = 0.4f
-                        progressMessage = Str.get(R.string.backing_up_ui_config)
+                        LongTaskRegistry.update(LONG_TASK_EXPORT, Str.get(R.string.backing_up_ui_config), 0.4f)
                         // ✅ 直接序列化 UIConfig.config（实际存储为 SharedPreferences，
                         //    原先备份 filesDir/ui_config.json 从不存在的双轨不一致问题）
                         if (UIConfig.isInitialized()) {
@@ -202,8 +204,7 @@ fun BackupScreen() {
                     }
 
                     if (includeSettings) {
-                        progressValue = 0.55f
-                        progressMessage = Str.get(R.string.backing_up_app_settings)
+                        LongTaskRegistry.update(LONG_TASK_EXPORT, Str.get(R.string.backing_up_app_settings), 0.55f)
                         val prefsDir = File(context.filesDir.parent, "shared_prefs")
                         if (prefsDir.exists()) {
                             prefsDir.listFiles()?.forEach { prefFile ->
@@ -219,8 +220,7 @@ fun BackupScreen() {
                         }
                     }
 
-                    progressValue = 0.7f
-                    progressMessage = Str.get(R.string.backing_up_work_directory_config)
+                    LongTaskRegistry.update(LONG_TASK_EXPORT, Str.get(R.string.backing_up_work_directory_config), 0.7f)
                     val configJson = org.json.JSONObject().apply {
                         put("work_folder", Constants.WORK_DIR)
                         put("backup_time", timestamp)
@@ -234,8 +234,7 @@ fun BackupScreen() {
                     tempConfig.delete()
 
                     if (includeSettings) {
-                        progressValue = 0.8f
-                        progressMessage = Str.get(R.string.backing_up_app_settings)
+                        LongTaskRegistry.update(LONG_TASK_EXPORT, Str.get(R.string.backing_up_app_settings), 0.8f)
                         val prefs = context.getSharedPreferences("uin_tool_prefs", Context.MODE_PRIVATE)
                         val settings = org.json.JSONObject().apply {
                             put("view_mode", prefs.getString("view_mode", "list"))
@@ -248,8 +247,7 @@ fun BackupScreen() {
                         tempSettings.delete()
                     }
 
-                    progressValue = 0.85f
-                    progressMessage = Str.get(R.string.backing_up_mirror_config)
+                    LongTaskRegistry.update(LONG_TASK_EXPORT, Str.get(R.string.backing_up_mirror_config), 0.85f)
                     val mirrorPrefs = context.getSharedPreferences("github_mirror", Context.MODE_PRIVATE)
                     val mirrorConfig = org.json.JSONObject().apply {
                         put("enabled_mirrors", mirrorPrefs.getString("enabled_mirrors", ""))
@@ -261,67 +259,52 @@ fun BackupScreen() {
                     tempMirror.delete()
                 }
 
-                progressValue = 0.95f
-                progressMessage = Str.get(R.string.backup_complete)
-                progressValue = 1f
+                LongTaskRegistry.update(LONG_TASK_EXPORT, Str.get(R.string.backup_complete), 1f)
+                LongTaskRegistry.finish(LONG_TASK_EXPORT)
 
                 loadBackups()
+                lastError = null
                 AppLog.success("Backup", Str.get(R.string.backup_created_successfully))
                 AppLog.d("Backup", Str.get(R.string.backup_file_size_formatfilesize_back, formatFileSize(backupFile.length())))
                 AppToast.success(context, Str.get(R.string.backup_successful_formatfilesize_bac, formatFileSize(backupFile.length())))
 
             } catch (e: Exception) {
                 AppLog.e("Backup", Str.get(R.string.backup_creation_exception), e)
-                progressMessage = Str.get(R.string.backup_failed_e_message, e.message)
+                LongTaskRegistry.fail(LONG_TASK_EXPORT, Str.get(R.string.backup_failed_e_message, e.message))
+                lastError = Str.get(R.string.backup_failed_e_message, e.message)
                 AppToast.error(context, Str.get(R.string.backup_failed_e_message, e.message))
             } finally {
-                showProgress = false
                 isLoading = false
-                progressValue = 0f
             }
         }
     }
 
     fun restoreBackup(backup: BackupInfo, mode: RestoreMode = RestoreMode.MERGE) {
-        scope.launch {
+        // G-05：解压 + 目录回写原先跑在主线程 → 恢复期间 UI 冻结
+        scope.launch(Dispatchers.IO) {
             try {
                 AppLog.i("Backup", Str.get(R.string.start_restoring_backup))
                 isLoading = true
-                showProgress = true
-                progressValue = 0f
-                progressMessage = Str.get(R.string.restoring_backup)
+                LongTaskRegistry.begin(LONG_TASK_RESTORE, Str.get(R.string.restoring_backup))
 
                 val tempDir = File(Constants.TEMP_DIR, "restore_${System.currentTimeMillis()}")
                 tempDir.mkdirs()
 
-                progressValue = 0.1f
-                progressMessage = Str.get(R.string.extracting_backup_file)
+                LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.extracting_backup_file), 0.1f)
 
-                java.util.zip.ZipFile(backup.file).use { zipFile ->
-                    val entries = zipFile.entries()
-                    while (entries.hasMoreElements()) {
-                        val entry = entries.nextElement()
-                        val targetFile = File(tempDir, entry.name)
-                        if (entry.isDirectory) {
-                            targetFile.mkdirs()
-                        } else {
-                            targetFile.parentFile?.mkdirs()
-                            zipFile.getInputStream(entry).use { input ->
-                                targetFile.outputStream().use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                        }
-                    }
+                // G-01：复用 FileManager.unzipFile（isSafeZipEntry + canonical 路径双重校验），
+                // 删除本文件里第二套无防护的解压实现（原先 ../ 即可写出 tempDir 之外）
+                if (!com.UIN.Tool.data.local.FileManager(context).unzipFile(backup.file, tempDir)) {
+                    throw java.io.IOException(
+                        Str.get(R.string.failed_to_unzip_zipfile_absolutepath, backup.file.absolutePath)
+                    )
                 }
 
-                progressValue = 0.3f
-                progressMessage = Str.get(R.string.extraction_complete_preparing_to_res)
+                LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.extraction_complete_preparing_to_restore), 0.3f)
 
                 val pluginsBackup = File(tempDir, "plugins")
                 if (pluginsBackup.exists()) {
-                    progressValue = 0.4f
-                    progressMessage = Str.get(R.string.restoring_plugins)
+                    LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.restoring_plugins), 0.4f)
                     val pluginDir = File(Constants.PLUGIN_DIR)
                     if (mode == RestoreMode.REPLACE && pluginDir.exists()) {
                         FileUtils.deleteRecursively(pluginDir)
@@ -333,8 +316,7 @@ fun BackupScreen() {
 
                 val uiConfigBackup = File(tempDir, "config/ui_config.json")
                 if (uiConfigBackup.exists()) {
-                    progressValue = 0.6f
-                    progressMessage = Str.get(R.string.restoring_ui_config)
+                    LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.restoring_ui_config), 0.6f)
 
                     val uiConfig = UIConfig.getInstance()
                     try {
@@ -350,8 +332,7 @@ fun BackupScreen() {
 
                 val prefsBackupDir = File(tempDir, "config/shared_prefs")
                 if (prefsBackupDir.exists()) {
-                    progressValue = 0.7f
-                    progressMessage = Str.get(R.string.restoring_app_settings)
+                    LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.restoring_app_settings), 0.7f)
                     val destPrefsDir = File(context.filesDir.parent, "shared_prefs")
                     destPrefsDir.mkdirs()
                     prefsBackupDir.listFiles()?.forEach { prefFile ->
@@ -363,8 +344,7 @@ fun BackupScreen() {
 
                 val workFolderBackup = File(tempDir, "config/work_folder.json")
                 if (workFolderBackup.exists()) {
-                    progressValue = 0.8f
-                    progressMessage = Str.get(R.string.restoring_work_directory_config)
+                    LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.restoring_work_directory_config), 0.8f)
                     val json = workFolderBackup.readText()
                     try {
                         val config = org.json.JSONObject(json)
@@ -374,14 +354,13 @@ fun BackupScreen() {
                             prefs.edit().putString("work_folder", workFolder).apply()
                         }
                     } catch (e: Exception) {
-                        AppLog.e("Backup", Str.get(R.string.failed_to_parse_work_directory_confi), e)
+                        AppLog.e("Backup", Str.get(R.string.failed_to_parse_work_directory_config), e)
                     }
                 }
 
                 val settingsBackup = File(tempDir, "config/settings.json")
                 if (settingsBackup.exists()) {
-                    progressValue = 0.85f
-                    progressMessage = Str.get(R.string.restoring_app_settings)
+                    LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.restoring_app_settings), 0.85f)
                     val json = settingsBackup.readText()
                     try {
                         val settings = org.json.JSONObject(json)
@@ -398,8 +377,7 @@ fun BackupScreen() {
 
                 val mirrorBackup = File(tempDir, "config/github_mirror.json")
                 if (mirrorBackup.exists()) {
-                    progressValue = 0.9f
-                    progressMessage = Str.get(R.string.restoring_mirror_config)
+                    LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.restoring_mirror_config), 0.9f)
                     val json = mirrorBackup.readText()
                     try {
                         val config = org.json.JSONObject(json)
@@ -413,29 +391,28 @@ fun BackupScreen() {
                     }
                 }
 
-                progressValue = 0.95f
-                progressMessage = Str.get(R.string.cleaning_up_temporary_files)
+                LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.cleaning_up_temporary_files), 0.95f)
                 FileUtils.deleteRecursively(tempDir)
 
-                progressMessage = Str.get(R.string.refreshing_plugin_list)
+                LongTaskRegistry.updateDetail(LONG_TASK_RESTORE, Str.get(R.string.refreshing_plugin_list))
                 pluginManager.refreshPlugins()
 
-                progressValue = 1f
-                progressMessage = Str.get(R.string.restore_complete)
+                LongTaskRegistry.update(LONG_TASK_RESTORE, Str.get(R.string.restore_complete), 1f)
+                LongTaskRegistry.finish(LONG_TASK_RESTORE)
 
                 loadBackups()
                 AppLog.success("Backup", Str.get(R.string.backup_restore_successful))
+                lastError = null
                 AppToast.success(context, Str.get(R.string.restore_successful))
 
             } catch (e: Exception) {
                 AppLog.e("Backup", Str.get(R.string.backup_restore_exception), e)
-                progressMessage = Str.get(R.string.restore_failed_e_message, e.message)
+                LongTaskRegistry.fail(LONG_TASK_RESTORE, Str.get(R.string.restore_failed_e_message, e.message))
+                lastError = Str.get(R.string.restore_failed_e_message, e.message)
                 AppToast.error(context, Str.get(R.string.restore_failed_e_message, e.message))
             } finally {
-                showProgress = false
                 isLoading = false
                 showRestoreConfirm = false
-                progressValue = 0f
             }
         }
     }
@@ -444,36 +421,40 @@ fun BackupScreen() {
         try {
             if (backup.file.delete()) {
                 loadBackups()
+                lastError = null
                 AppToast.success(context, Str.get(R.string.deleted))
                 AppLog.i("Backup", Str.get(R.string.deleting_backup_backup_name, backup.name))
             } else {
+                lastError = Str.get(R.string.delete_failed)
                 AppToast.error(context, Str.get(R.string.delete_failed))
             }
         } catch (e: Exception) {
             AppLog.e("BackupScreen", Str.get(R.string.failed_to_delete_backup), e)
+            lastError = Str.get(R.string.delete_failed_e_message, e.message)
             AppToast.error(context, Str.get(R.string.delete_failed_e_message, e.message))
         }
     }
 
     LaunchedEffect(Unit) {
-        loadBackups()
+        // G-05：目录扫描放 IO 线程
+        withContext(Dispatchers.IO) { loadBackups() }
     }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
-            scope.launch {
+            scope.launch(Dispatchers.IO) {
                 isRefreshing = true
                 loadBackups()
                 delay(400)
-                lastRefreshTime = UIComponents.currentTimeString()
+                lastRefreshTime = currentTimeString()
                 isRefreshing = false
             }
         },
         state = pullRefreshState,
         modifier = Modifier.fillMaxSize(),
         indicator = {
-            UIComponents.PullRefreshIndicator(
+            PullRefreshIndicator(
                 isRefreshing = isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)
@@ -497,7 +478,24 @@ fun BackupScreen() {
                 }
             }
             item {
-                UIComponents.LastUpdatedCaption(
+                // G-07：失败原因内联展示，直到下次成功或用户点掉
+                lastError?.let { msg ->
+                    UnifiedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                            UnifiedBodyText(text = msg, color = MaterialTheme.colorScheme.error)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            UnifiedButton(
+                                text = Str.get(R.string.got_it),
+                                onClick = { lastError = null },
+                                size = ButtonSize.Small,
+                                variant = ButtonVariant.Text
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                LastUpdatedCaption(
                     time = lastRefreshTime,
                     modifier = Modifier.padding(top = 2.dp)
                 )
@@ -561,27 +559,7 @@ fun BackupScreen() {
                 }
             }
 
-            if (showProgress) {
-                item {
-                    UnifiedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp)
-                        ) {
-                            UnifiedLinearProgressIndicator(progress = progressValue)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            UnifiedCaptionText(progressMessage)
-                        }
-                    }
-                }
-            }
-
-            if (backups.isEmpty() && !showProgress) {
+            if (backups.isEmpty() && !isLoading) {
                 item {
                     Box(
                         modifier = Modifier.fillParentMaxSize(),
@@ -596,7 +574,7 @@ fun BackupScreen() {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             UnifiedTitleText(Str.get(R.string.no_backup_files_yet))
-                            UnifiedBodyText(Str.get(R.string.tap_create_backup_to_back_up_your_pl))
+                            UnifiedBodyText(Str.get(R.string.tap_create_backup_to_back_up_your))
                         }
                     }
                 }
@@ -636,7 +614,7 @@ fun BackupScreen() {
             title = Str.get(R.string.confirm_restore),
             content = {
                 Text(
-                    text = Str.get(R.string.restoring_will_overwrite_existing_pl),
+                    text = Str.get(R.string.restoring_will_overwrite_existing),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.RepoPluginInfo
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.viewmodel.RepoViewModel
@@ -61,6 +60,7 @@ fun RepoScreen() {
     val uiState by repoViewModel.uiState.collectAsState()
     val filteredPlugins by repoViewModel.filteredPlugins.collectAsState()
     val installedIds by pluginManager.installedPluginIds.collectAsState()
+    val installedMeta by repoViewModel.installedMeta.collectAsState()
     val downloadProgress by repoViewModel.downloadProgress.collectAsState()
 
     val sources by repoViewModel.sources.collectAsState()
@@ -78,14 +78,14 @@ fun RepoScreen() {
                 isRefreshing = true
                 repoViewModel.refresh()
                 delay(400)
-                lastRefreshTime = UIComponents.currentTimeString()
+                lastRefreshTime = currentTimeString()
                 isRefreshing = false
             }
         },
         state = pullRefreshState,
         modifier = Modifier.fillMaxSize(),
         indicator = {
-            UIComponents.PullRefreshIndicator(
+            PullRefreshIndicator(
                 isRefreshing = isRefreshing,
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)
@@ -109,7 +109,7 @@ fun RepoScreen() {
             }
         }
         item {
-            UIComponents.LastUpdatedCaption(
+            LastUpdatedCaption(
                 time = lastRefreshTime,
                 modifier = Modifier.padding(top = 2.dp)
             )
@@ -231,43 +231,56 @@ fun RepoScreen() {
             }
         }
 
+        // F-14/D-31：源加载失败与安装/下载失败原先只写日志，用户看到空列表却毫无提示
+        val loadError = uiState.error
+        if (loadError != null) {
+            item(key = "load_error") {
+                // F-04：错误卡收口到 UnifiedErrorCard
+                UnifiedErrorCard(
+                    title = Str.get(R.string.failed_to_load_plugins),
+                    message = loadError,
+                    actionLabel = Str.get(R.string.retry),
+                    onAction = { repoViewModel.loadPlugins() }
+                )
+            }
+        }
+        val installError = downloadProgress.error
+        if (installError != null) {
+            item(key = "install_error") {
+                UnifiedErrorCard(
+                    title = Str.get(R.string.install_failed),
+                    message = installError,
+                    actionLabel = Str.get(R.string.got_it),
+                    onAction = { repoViewModel.clearInstallError() }
+                )
+            }
+        }
+
         when {
             uiState.isLoading && filteredPlugins.isEmpty() -> item {
-                UIComponents.PluginListSkeleton(
+                PluginListSkeleton(
                     modifier = Modifier.fillParentMaxSize()
                 )
             }
             filteredPlugins.isEmpty() -> item {
-                Box(
-                    modifier = Modifier.fillParentMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        UnifiedBodyText(
-                            if (searchText.isNotEmpty()) Str.get(R.string.no_matching_plugins) else Str.get(R.string.no_plugins_available)
-                        )
-                        UnifiedCaptionText(
-                            if (searchText.isNotEmpty()) Str.get(R.string.try_other_keywords) else Str.get(R.string.check_your_network_connection_and_re)
-                        )
-                    }
-                }
+                UnifiedEmptyState(
+                    icon = Icons.Default.Info,
+                    title = if (searchText.isNotEmpty()) Str.get(R.string.no_matching_plugins) else Str.get(R.string.no_plugins_available),
+                    subtitle = if (searchText.isNotEmpty()) Str.get(R.string.try_other_keywords) else Str.get(R.string.check_your_network_connection_and),
+                    modifier = Modifier.fillParentMaxSize()
+                )
             }
             else -> items(filteredPlugins) { plugin ->
                 RepoPluginCard(
                     plugin = plugin,
                     isInstalled = installedIds.contains(plugin.pluginId),
+                    hasUpdate = installedMeta[plugin.pluginId]?.hasUpdate == true,
                     isDownloading = downloadProgress.isDownloading && downloadProgress.pluginId == plugin.pluginId,
                     downloadProgress = downloadProgress.progress,
                     onInstall = { repoViewModel.downloadAndInstall(plugin) },
                     onOpen = { pluginManager.openPlugin(plugin.pluginId, context) },
-                    onClick = { showDetailDialog = plugin }
+                    onClick = { showDetailDialog = plugin },
+                    installEnabled = !downloadProgress.isDownloading
                 )
             }
         }
@@ -294,9 +307,9 @@ fun RepoScreen() {
                         text = buildString {
                             append("ID: ${plugin.pluginId}\n")
                             append(Str.get(R.string.version_plugin_versionname_n, plugin.versionName))
-                            if (plugin.isInstalled) {
+                            if (installedIds.contains(plugin.pluginId)) {
                                 append("\n")
-                                append(Str.get(R.string.installed_version_d, plugin.installedVersion))
+                                append(Str.get(R.string.installed_version_d, installedMeta[plugin.pluginId]?.installedVersion ?: 0))
                             }
                             append("\n")
                             append(Str.get(R.string.author_plugin_author_n, plugin.author))
@@ -317,12 +330,14 @@ fun RepoScreen() {
             confirmButton = {
                 UnifiedButton(
                     text = when {
-                        plugin.hasUpdate -> Str.get(R.string.update)
+                        installedMeta[plugin.pluginId]?.hasUpdate == true -> Str.get(R.string.update)
                         installedIds.contains(plugin.pluginId) -> Str.get(R.string.open)
                         else -> Str.get(R.string.install)
                     },
                     onClick = {
-                        if (installedIds.contains(plugin.pluginId) && !plugin.hasUpdate) {
+                        if (installedIds.contains(plugin.pluginId) &&
+                            installedMeta[plugin.pluginId]?.hasUpdate != true
+                        ) {
                             pluginManager.openPlugin(plugin.pluginId, context)
                         } else {
                             repoViewModel.downloadAndInstall(plugin)
@@ -410,11 +425,14 @@ fun CachedPluginIcon(
 fun RepoPluginCard(
     plugin: RepoPluginInfo,
     isInstalled: Boolean,
+    hasUpdate: Boolean,
     isDownloading: Boolean,
     downloadProgress: Int,
     onInstall: () -> Unit,
     onOpen: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    // F-15：任一插件安装进行中时，其它卡片的安装/更新按钮一并禁用（单飞）
+    installEnabled: Boolean = true
 ) {
     UnifiedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -441,7 +459,7 @@ fun RepoPluginCard(
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        if (plugin.hasUpdate) {
+                        if (hasUpdate) {
                             Text(
                                 Str.get(R.string.update_available),
                                 style = MaterialTheme.typography.labelSmall,
@@ -471,7 +489,7 @@ fun RepoPluginCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 UnifiedCaptionText(plugin.getFormattedSize())
-                when {
+        when {
                     isDownloading -> {
                         UnifiedButton(
                             text = "${downloadProgress}%",
@@ -480,10 +498,11 @@ fun RepoPluginCard(
                             loading = true
                         )
                     }
-                    isInstalled && plugin.hasUpdate -> {
+                    isInstalled && hasUpdate -> {
                         UnifiedButton(
                             text = Str.get(R.string.update),
                             onClick = onInstall,
+                            enabled = installEnabled,
                             modifier = Modifier.height(32.dp)
                         )
                     }
@@ -499,6 +518,7 @@ fun RepoPluginCard(
                         UnifiedButton(
                             text = Str.get(R.string.install),
                             onClick = onInstall,
+                            enabled = installEnabled,
                             modifier = Modifier.height(32.dp)
                         )
                     }

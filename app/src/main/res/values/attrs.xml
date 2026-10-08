@@ -4,10 +4,8 @@
          UIN Tool 自定义属性
          ============================================================ -->
     
-    <!-- CustomCardView 样式属性 -->
-    <declare-styleable name="CustomCardView">
-        <attr name="cardCornerRadius" format="dimension" />
-    </declare-styleable>
+    <!-- A-36：原 CustomCardView styleable 已删除——本应用没有该自定义 View，
+         自声明 cardCornerRadius 与 Material 同名属性在资源合并期冲突 -->
 
     <!-- ============================================================
          Termux 自定义属性

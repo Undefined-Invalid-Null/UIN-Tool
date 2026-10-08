@@ -7,8 +7,9 @@
     <!-- UIN Tool 主主题 -->
     <style name="Theme.UIN.Tool" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- ===== 状态栏 ===== -->
+        <!-- A-03：primary_dark 为纯黑底，必须用白色状态栏图标（浅色态原为 true，黑底+深色图标不可见） -->
         <item name="android:statusBarColor">@color/primary_dark</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
         
         <!-- ===== 导航栏 ===== -->
         <item name="android:navigationBarColor">@color/surface</item>
@@ -58,19 +59,9 @@
     <!-- ============================================================
          NoActionBar 主题
          ============================================================ -->
-    <style name="Theme.UIN.Tool.NoActionBar" parent="Theme.UIN.Tool">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-    </style>
-
     <!-- ============================================================
          Markdown 主题
          ============================================================ -->
-    <style name="Theme.UIN.Tool.Markdown" parent="Theme.UIN.Tool.NoActionBar">
-        <!-- Markdown 相关样式 -->
-        <item name="android:windowBackground">@color/background</item>
-    </style>
-
     <!-- ============================================================
          启动主题 (Splash)
          ============================================================ -->
@@ -85,22 +76,9 @@
     <!-- ============================================================
          透明主题
          ============================================================ -->
-    <style name="Theme.UIN.Tool.Translucent" parent="Theme.UIN.Tool">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@color/transparent</item>
-        <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowNoTitle">true</item>
-        <item name="android:backgroundDimEnabled">false</item>
-    </style>
-
     <!-- ============================================================
          弹窗主题
          ============================================================ -->
-    <style name="Theme.UIN.Tool.Dialog" parent="Theme.MaterialComponents.DayNight.Dialog">
-        <item name="android:windowBackground">@drawable/glass_background</item>
-        <item name="android:windowIsTranslucent">true</item>
-    </style>
-
     <!-- ============================================================
          Termux 相关主题 (适配 UIN Tool)
          ============================================================ -->

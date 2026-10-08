@@ -604,9 +604,9 @@ fun CodeEditorScreen(
             editedContent = newContent
             hasChanges = false
             isEditorReady = true
-            AppLog.d(DEBUG_TAG, Str.get(R.string.editor_updated_language_and_theme_ap))
+            AppLog.d(DEBUG_TAG, Str.get(R.string.editor_updated_language_and_theme))
         } ?: run {
-            AppLog.d(DEBUG_TAG, Str.get(R.string.editor_instance_is_null_waiting_to_b))
+            AppLog.d(DEBUG_TAG, Str.get(R.string.editor_instance_is_null_waiting_to_be))
         }
     }
 

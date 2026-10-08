@@ -4,6 +4,36 @@ plugins {
     id "org.jetbrains.kotlin.plugin.compose" version "2.1.0"
 }
 
+// ===== A-04：签名口令不再以明文写在 build.gradle 里 =====
+// 优先级：环境变量 UIN_STORE_PASSWORD / UIN_KEY_PASSWORD
+//        > 项目根 keystore.properties（已加入 .gitignore）
+//        > ~/.gradle/gradle.properties 中的 uin.storePassword / uin.keyPassword
+// 三处都取不到就直接报错并给出创建指引，而不是把明文退回源码。
+def loadSigningSecret = { String envName, String propName ->
+    def v = System.getenv(envName)
+    if (v) return v
+    def f = rootProject.file("keystore.properties")
+    if (f.exists()) {
+        def props = new Properties()
+        f.withInputStream { props.load(it) }
+        v = props.getProperty(propName)
+        if (v) return v
+    }
+    def userProps = new File(System.getProperty("user.home"), ".gradle/gradle.properties")
+    if (userProps.exists()) {
+        def props = new Properties()
+        userProps.withInputStream { props.load(it) }
+        v = props.getProperty("uin." + propName)
+        if (v) return v
+    }
+    throw new GradleException(
+        "缺少签名口令 ${propName}：请在项目根目录创建 keystore.properties，\n" +
+        "  内容示例：\n    storePassword=...\n    keyPassword=...\n" +
+        "  或设置环境变量 ${envName}，或在 ~/.gradle/gradle.properties 中写 uin.${propName}=...")
+}
+def signingStorePassword = loadSigningSecret("UIN_STORE_PASSWORD", "storePassword")
+def signingKeyPassword = loadSigningSecret("UIN_KEY_PASSWORD", "keyPassword")
+
 android {
     namespace "com.UIN.Tool"
     compileSdk 36
@@ -14,11 +44,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 24
-        versionName "6.0.0"
-
-        multiDexEnabled true
-        multiDexKeepProguard file('multidex-config.pro')
+        versionCode 25
+        versionName "6.1.0"
 
         manifestPlaceholders.UIN_PACKAGE_NAME = "com.UIN.Tool"
         manifestPlaceholders.UIN_APP_NAME = "UIN Tool"
@@ -29,18 +56,6 @@ android {
             abiFilters += ["arm64-v8a"]
         }
 
-        externalNativeBuild {
-            ndkBuild {
-                cFlags += "-std=c17"
-                cFlags += "-Wall"
-                cFlags += "-Wextra"
-                cFlags += "-Os"
-                cFlags += "-fno-stack-protector"
-                cFlags += "-Wl,--gc-sections"
-                abiFilters += ["arm64-v8a"]
-            }
-        }
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -48,8 +63,9 @@ android {
         debug {
             storeFile file('testkey_untrusted.jks')
             keyAlias 'alias'
-            storePassword 'xrj45yWGLbsO7W0v'
-            keyPassword 'xrj45yWGLbsO7W0v'
+            // A-04：口令从 keystore.properties / 环境变量读取，不再硬编码
+            storePassword signingStorePassword
+            keyPassword signingKeyPassword
         }
     }
 
@@ -57,13 +73,13 @@ android {
         release {
             minifyEnabled true
             shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro', 'multidex-config.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'app-keep.pro'
         }
         debug {
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'multidex-config.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'app-keep.pro'
         }
     }
 
@@ -89,12 +105,11 @@ android {
         buildConfig = true
     }
 
-    externalNativeBuild {
-        ndkBuild {
-            path = file("src/main/cpp/Android.mk")
-        }
-    }
-
+    // A-11：app 模块的 externalNativeBuild 已整体移除——原 path 指向的
+    // src/main/cpp/Android.mk 只有一行 LOCAL_PATH、不定义任何 module，真正的
+    // jni/Android.mk(pty) 又被下面的 jni.srcDirs 覆盖，且全仓无人
+    // System.loadLibrary("pty")；真正的原生库由 terminal-emulator(libtermux)
+    // 与 termux-shared 自行构建。jni.srcDirs 保留覆盖，避免误编 src/main/jni。
     sourceSets {
         main {
             jni.srcDirs("src/main/cpp")
@@ -117,6 +132,7 @@ android {
     }
 
     lint {
+        checkReleaseBuilds = false
         disable 'ProtectedPermissions'
     }
 
@@ -149,7 +165,6 @@ configurations.all {
     resolutionStrategy {
         force "org.commonmark:commonmark:0.22.0"
         force "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
-        force "androidx.core:core-ktx:1.13.1"
         force "com.squareup.okhttp3:okhttp:4.12.0"
     }
 }
@@ -157,19 +172,19 @@ configurations.all {
 dependencies {
     // ==================== 基础依赖 ====================
     implementation "androidx.annotation:annotation:1.9.0"
+    // E-09（方案B）：显式声明 —— 全量 Activity 迁 AppCompatActivity 走 AppCompatDelegate 夜间模式
+    implementation "androidx.appcompat:appcompat:1.7.0"
     implementation "androidx.core:core:1.13.1"
     implementation "androidx.drawerlayout:drawerlayout:1.2.0"
     implementation "androidx.preference:preference:1.2.1"
+    // G-28：小部件后台周期刷新（WorkManager ≥15min 周期任务）
+    implementation "androidx.work:work-runtime-ktx:2.9.1"
     implementation "androidx.viewpager:viewpager:1.0.0"
     implementation "com.google.android.material:material:1.12.0"
     
-    // MultiDex
-    implementation 'androidx.multidex:multidex:2.0.1'
-    
-    implementation "io.noties.markwon:core:4.6.2"
-    implementation "io.noties.markwon:ext-strikethrough:4.6.2"
-    implementation "io.noties.markwon:linkify:4.6.2"
-    implementation "io.noties.markwon:recycler:4.6.2"
+    // A-06：minSdk 23 ≥ 21 走系统原生 multidex，已删除 multiDexEnabled/
+    // multiDexKeepProguard 与 MultiDex.install()；原 multidex-config.pro 更名
+    // 为 app-keep.pro 继续作为 proguard 规则文件（其全局 keep 是否收紧见 A-05 决策）
 
     implementation project(":terminal-view")
     implementation project(":termux-shared")
@@ -185,8 +200,6 @@ dependencies {
     implementation "androidx.compose.runtime:runtime-livedata"
     implementation "androidx.compose.material:material-icons-extended"
     implementation "androidx.navigation:navigation-compose:2.7.7"
-    implementation 'org.apache.commons:commons-lang3:3.14.0'
-    implementation 'com.google.errorprone:error_prone_annotations:2.26.1'
     implementation 'io.github.sridhar-sp:neumorphic:0.0.6'
     
 
@@ -202,7 +215,7 @@ dependencies {
 
     // ==================== Shizuku / Dhizuku ====================
     // 注意：版本受限——Shizuku api 13.x 需 minSdk 24（项目为 23），故用 12.2.0（minSdk 23）；
-    // Dhizuku-API 2.6.0 需 compileSdk 37（项目为 35 / AGP 8.7.2 最高 35），故用 2.5.3（compileSdk 无限制）
+    // Dhizuku-API 2.6.0 需 compileSdk 37（项目 compileSdk 36 / AGP 8.9.1），故用 2.5.3（compileSdk 无限制）
     implementation "dev.rikka.shizuku:api:12.2.0"
     implementation "dev.rikka.shizuku:provider:12.2.0"
     implementation("io.github.iamr0s:Dhizuku-API:2.5.3") {
@@ -226,7 +239,8 @@ dependencies {
     // ==================== Sora Editor (使用 BOM) ====================
     // ✅ BOM 统一管理版本
     implementation platform("io.github.rosemoe:editor-bom:0.24.4")
-    implementation 'org.brotli:dec:0.1.2'
+    // A-09：brotli 全仓零引用已删；asm 系列全仓也零引用，但 libs/host-sdk.jar
+    // （compileOnly，编译器走反射加载）可能在运行期用到字节码 API，故暂留
     implementation 'org.ow2.asm:asm:9.6'
     implementation 'org.ow2.asm:asm-commons:9.6'
     implementation 'org.ow2.asm:asm-tree:9.6'

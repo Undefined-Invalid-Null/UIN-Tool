@@ -17,6 +17,12 @@ class FileManager(private val context: Context) {
 
     private val TAG = "FileManager"
 
+    private companion object {
+        /** G-04/D-25：解压防护上限（zip bomb）——条目数与累计解压字节数 */
+        private const val MAX_ZIP_ENTRIES = 500_000
+        private const val MAX_UNCOMPRESSED_BYTES = 4L * 1024 * 1024 * 1024
+    }
+
     fun copyUriToFile(uri: Uri, destFile: File): Boolean {
         return try {
             val resolver: ContentResolver = context.contentResolver
@@ -121,6 +127,8 @@ class FileManager(private val context: Context) {
                 zos.closeEntry()
             } catch (e: Exception) {
                 Logger.e(TAG, Str.get(R.string.failed_to_add_file_to_zip_file_absol, file.absolutePath), e)
+                // G-04/D-24：失败必须上抛——原先只记日志继续，打包静默漏文件却仍报成功
+                throw e
             }
         }
     }
@@ -129,9 +137,17 @@ class FileManager(private val context: Context) {
         return try {
             destDir.mkdirs()
             val destCanonical = destDir.canonicalPath
+            var entryCount = 0
+            var totalBytes = 0L
             ZipInputStream(FileInputStream(zipFile)).use { zis ->
                 var entry: ZipEntry? = zis.nextEntry
                 while (entry != null) {
+                    entryCount++
+                    // G-04/D-25：条目数与累计解压体积上限，防 zip bomb（原先完全无限制）
+                    if (entryCount > MAX_ZIP_ENTRIES || totalBytes > MAX_UNCOMPRESSED_BYTES) {
+                        Logger.e(TAG, "unzipFile: limit exceeded (entries=$entryCount bytes=$totalBytes): ${zipFile.absolutePath}")
+                        return false
+                    }
                     if (!isSafeZipEntry(entry.name)) {
                         Logger.e(TAG, Str.get(R.string.failed_to_unzip_zipfile_absolutepath, zipFile.absolutePath))
                         return false
@@ -146,7 +162,11 @@ class FileManager(private val context: Context) {
                     } else {
                         targetFile.parentFile?.mkdirs()
                         FileOutputStream(targetFile).use { fos ->
-                            zis.copyTo(fos)
+                            totalBytes += zis.copyTo(fos)
+                        }
+                        if (totalBytes > MAX_UNCOMPRESSED_BYTES) {
+                            Logger.e(TAG, "unzipFile: uncompressed size limit exceeded ($totalBytes): ${zipFile.absolutePath}")
+                            return false
                         }
                     }
                     entry = zis.nextEntry

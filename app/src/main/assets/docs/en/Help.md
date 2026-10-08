@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 6.0.0 |
-| Corresponding App Version | v6.0.0 (Build 24) |
-| Last Updated | September 26, 2026 |
+| Document Version | 6.1.0 |
+| Corresponding App Version | v6.1.0 (Build 25) |
+| Last Updated | October 7, 2026 |
 
 ---
 
@@ -309,6 +309,7 @@ You can create desktop icon shortcuts for individual plugins via "Manage" > "Plu
 | Network Tools | curl, wget, openssh, etc. |
 | Multi-Session | Multiple terminal sessions running simultaneously |
 | Multi-Window | Android 7.0+ multi-window support |
+| Custom Shortcuts | Configurable hardware/software keyboard shortcuts |
 
 ### 5.3 Common Commands
 
@@ -1273,9 +1274,9 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 
 | Item | Info |
 |---|---|
-| Document Version | 5.7.0 |
-| Last Updated | August 31, 2026 |
-| Corresponding App Version | v5.7.0 (Build 23) |
+| Document Version | 6.1.0 |
+| Last Updated | October 7, 2026 |
+| Corresponding App Version | v6.1.0 (Build 25) |
 
 ---
 

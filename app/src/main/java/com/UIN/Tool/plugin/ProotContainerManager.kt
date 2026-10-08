@@ -124,8 +124,12 @@ object ProotContainerManager {
                 "PYTHONUNBUFFERED" to "1"
             )
         )
-        val envExports = config.environmentVars.entries.joinToString("; ") { (k, v) -> "export $k=$v" }
-        val fullCommand = "$envExports; cd $pluginMount && exec $startCommand"
+        // C-32：值加单引号并转义单引号，含空格/特殊字符的环境变量才不会把 export 拆坏
+        val envExports = config.environmentVars.entries.joinToString("; ") { (k, v) ->
+            "export $k='" + v.replace("'", "'\\''") + "'"
+        }
+        // C-32：挂载点加引号
+        val fullCommand = "$envExports; cd \"$pluginMount\" && exec $startCommand"
         return ProotRuntime.buildCommand(context, config, fullCommand)
     }
 

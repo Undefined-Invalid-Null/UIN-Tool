@@ -2,11 +2,11 @@
 package com.UIN.Tool.ui.screen.docs
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import com.UIN.Tool.ui.theme.UINToolTheme
 
-class DocBrowserActivity : ComponentActivity() {
+class DocBrowserActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {

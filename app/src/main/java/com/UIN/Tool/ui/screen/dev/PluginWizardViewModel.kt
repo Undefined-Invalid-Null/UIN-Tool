@@ -149,6 +149,26 @@ class PluginWizardViewModel(
         }
     }
 
+    /**
+     * F-09：模板里的文案必须在**生成时**求值并转义成 Python 字符串字面量。
+     * 原先把 `print(Str.get(R.string.xxx))` 原样写进 script.py，
+     * Python 运行时根本没有 Str.get → NameError，脚本一启动就崩。
+     */
+    private fun pyStr(text: String): String = buildString {
+        append('"')
+        for (ch in text) {
+            when (ch) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> append(ch)
+            }
+        }
+        append('"')
+    }
+
     private fun generateCuiFiles() {
         try {
             val script = """
@@ -158,12 +178,12 @@ class PluginWizardViewModel(
                 import os
 
                 print("=" * 48)
-                print(Str.get(R.string.cui_plugin_terminal_started))
+                print(${pyStr(Str.get(R.string.cui_plugin_terminal_started))})
                 print("=" * 48)
-                print(Str.get(R.string.plugin_id_2) + os.environ.get("PLUGIN_ID", "?"))
-                print(Str.get(R.string.plugin_dir) + os.getcwd())
+                print(${pyStr(Str.get(R.string.plugin_id_2))} + os.environ.get("PLUGIN_ID", "?"))
+                print(${pyStr(Str.get(R.string.plugin_dir))} + os.getcwd())
                 print("-" * 48)
-                print(Str.get(R.string.type_exit_or_ctrl_d_to_end_the_sessi))
+                print(${pyStr(Str.get(R.string.type_exit_or_ctrl_d_to_end_the_session))})
 
                 import code
                 code.interact(banner="", local=locals())

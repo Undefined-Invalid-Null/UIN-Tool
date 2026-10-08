@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-6.0.0-blue)
-![Build](https://img.shields.io/badge/build-24-green)
+![Version](https://img.shields.io/badge/version-6.1.0-blue)
+![Build](https://img.shields.io/badge/build-25-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -59,13 +59,13 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 ## Version Information
 
-### Current Version: v6.0.0 (Build 24)
+### Current Version: v6.1.0 (Build 25)
 
 | Item | Info |
 |------|------|
-| Version Number | 6.0.0 |
-| Version Code | 24 |
-| Update Date | September 26, 2026 |
+| Version Number | 6.1.0 |
+| Version Code | 25 |
+| Update Date | October 7, 2026 |
 | Minimum Android Version | 6.0 (API 23) |
 | Target Android Version | 9 (API 28) |
 | Compile SDK Version | 36 (Android 16) |
@@ -75,6 +75,7 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 | Version | Build | Date | Highlights |
 |---------|-------|------|------------|
+| v6.1.0 | 25 | 2026-10-07 | Full defect-fix pass (startup/permissions/main-thread jank/dark theme/plugin host security/backup rollback/error visibility/build cleanup) |
 | v6.0.0 | 24 | 2026-09-26 | Remove Termux dependency, PRoot container system, container management UI, rootfs export compression level |
 | v5.7.0 | 23 | 2026-08-31 | Multi-source repo aggregation, plugin icon caching, incremental CI build, UI refinements |
 | v5.6.0 | 22 | 2026-08-28 | Neumorphism style, multilingual switching, translucent effect control |

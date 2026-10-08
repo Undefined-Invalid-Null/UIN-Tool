@@ -1,7 +1,7 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-6.0.0-blue)
-![Build](https://img.shields.io/badge/build-24-green)
+![Version](https://img.shields.io/badge/version-6.1.0-blue)
+![Build](https://img.shields.io/badge/build-25-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
@@ -52,13 +52,13 @@ UIN Tool 支持两种后端模式：
 
 ## 版本信息
 
-### 当前版本：v6.0.0 (Build 24)
+### 当前版本：v6.1.0 (Build 25)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 6.0.0 |
-| 版本代码 | 24 |
-| 更新日期 | 2026年9月22日 |
+| 版本号 | 6.1.0 |
+| 版本代码 | 25 |
+| 更新日期 | 2026年10月7日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 9 (API 28) |
 | 编译 SDK 版本 | 36 (Android 16) |

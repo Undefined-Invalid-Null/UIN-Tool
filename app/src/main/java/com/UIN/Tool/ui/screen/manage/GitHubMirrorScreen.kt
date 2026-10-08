@@ -20,20 +20,13 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.UIN.Tool.data.local.PreferenceManager
-import com.UIN.Tool.data.remote.MirrorManager
 import com.UIN.Tool.domain.model.MirrorItem
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.AppColors
-import com.UIN.Tool.utils.AppLog
-import com.UIN.Tool.utils.AppToast
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.UIN.Tool.ui.viewmodel.GitHubMirrorViewModel
 import com.UIN.Tool.constants.AppConstants as Constants
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
 
 private const val TAG = "GitHubMirrorScreen"
 
@@ -42,114 +35,28 @@ private const val TAG = "GitHubMirrorScreen"
 fun GitHubMirrorScreen(
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val preferenceManager = PreferenceManager(context)
-    val mirrorManager = MirrorManager(OkHttpClient())
+    // D-29：偏好/镜像管理器走容器单例
+    val preferenceManager = com.UIN.Tool.core.di.ServiceLocator.getPreferenceManager()
 
-    var mirrors by remember { mutableStateOf<List<MirrorItem>>(emptyList()) }
-    var enabledMirrors by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var useCdn by remember { mutableStateOf(true) }
-    var isLoading by remember { mutableStateOf(false) }
-    var showResetDialog by remember { mutableStateOf(false) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showTestResult by remember { mutableStateOf<String?>(null) }
-    var isRefreshing by remember { mutableStateOf(false) }
-    var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    // F-05：9 项页面状态与加载/导入/导出/测速协程全部下沉 GitHubMirrorViewModel，
+    // 委托语法不变，页内赋值点零改动；旋转/重建不再丢测试结果与刷新状态。
+    val mirrorViewModel: GitHubMirrorViewModel = viewModel()
+    var mirrors by mirrorViewModel.mirrorsState
+    var enabledMirrors by mirrorViewModel.enabledMirrorsState
+    var useCdn by mirrorViewModel.useCdnState
+    var isLoading by mirrorViewModel.isLoadingState
+    var showResetDialog by mirrorViewModel.showResetDialogState
+    var showAddDialog by mirrorViewModel.showAddDialogState
+    var showTestResult by mirrorViewModel.showTestResultState
+    var isRefreshing by mirrorViewModel.isRefreshingState
+    var lastRefreshTime by mirrorViewModel.lastRefreshTimeState
     val pullRefreshState = rememberPullToRefreshState()
-
-    fun loadMirrors() {
-        val defaultMirrors = Constants.DEFAULT_MIRRORS.map { url ->
-            MirrorItem(
-                name = url.substringAfter("//").substringBefore("."),
-                url = url,
-                isDefault = true,
-                remark = when {
-                    url.contains("fastgit") -> Str.get(R.string.fast_domestic_mirror)
-                    url.contains("ghproxy") -> Str.get(R.string.proxy_acceleration)
-                    url.contains("moeyy") -> Str.get(R.string.domestic_mirror)
-                    else -> ""
-                }
-            )
-        }
-        mirrors = defaultMirrors
-        val enabled = preferenceManager.getEnabledMirrors()
-        enabledMirrors = if (enabled.isNotEmpty()) enabled.toSet() else defaultMirrors.take(3).map { it.url }.toSet()
-        useCdn = preferenceManager.isUseCdn()
-    }
-
-    fun importMirrors(uri: Uri) {
-        scope.launch {
-            try {
-                isLoading = true
-                val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
-                if (content.isNullOrEmpty()) {
-                    showTestResult = Str.get(R.string.file_is_empty)
-                    return@launch
-                }
-                var count = 0
-                content.lines().forEach { line ->
-                    val trimmed = line.trim()
-                    if (trimmed.isNotEmpty() && !trimmed.startsWith("#")) {
-                        mirrorManager.parseMirrorFromString(trimmed)?.let {
-                            mirrors = mirrors + it
-                            count++
-                        }
-                    }
-                }
-                showTestResult = Str.get(R.string.imported_count_mirror_s, count)
-                AppLog.success(TAG, Str.get(R.string.imported_count_mirror_s_2, count))
-            } catch (e: Exception) {
-                showTestResult = Str.get(R.string.import_failed_e_message, e.message)
-                AppLog.e(TAG, Str.get(R.string.failed_to_import_mirrors), e)
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    fun exportMirrors(uri: Uri) {
-        try {
-            val content = StringBuilder()
-            content.append(Str.get(R.string.github_mirror_list_n_format_name_url))
-            mirrors.forEach {
-                content.append("${it.name}|${it.url}")
-                if (it.remark.isNotEmpty()) content.append("|${it.remark}")
-                content.append("\n")
-            }
-            context.contentResolver.openOutputStream(uri)?.write(content.toString().toByteArray())
-            showTestResult = Str.get(R.string.export_successful)
-            AppLog.success(TAG, Str.get(R.string.exported_mirror_list))
-        } catch (e: Exception) {
-            showTestResult = Str.get(R.string.export_failed_e_message, e.message)
-            AppLog.e(TAG, Str.get(R.string.failed_to_export_mirrors), e)
-        }
-    }
-
-    fun testAllMirrors() {
-        scope.launch {
-            try {
-                isLoading = true
-                showTestResult = Str.get(R.string.testing_mirrors)
-                val tested = mirrorManager.testMirrors(mirrors)
-                mirrors = tested
-                val reachableCount = tested.count { it.reachable == true }
-                showTestResult = Str.get(R.string.test_complete_reachablecount_tested_, reachableCount, tested.size)
-                AppLog.success(TAG, Str.get(R.string.test_complete))
-            } catch (e: Exception) {
-                showTestResult = Str.get(R.string.test_failed_e_message, e.message)
-                AppLog.e(TAG, Str.get(R.string.failed_to_test_mirrors), e)
-            } finally {
-                isLoading = false
-            }
-        }
-    }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            importMirrors(uri)
+            mirrorViewModel.importMirrors(uri)
         }
     }
 
@@ -157,16 +64,16 @@ fun GitHubMirrorScreen(
         ActivityResultContracts.CreateDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            exportMirrors(uri)
+            mirrorViewModel.exportMirrors(uri)
         }
     }
 
-    LaunchedEffect(Unit) { loadMirrors() }
+    LaunchedEffect(Unit) { mirrorViewModel.loadMirrors() }
 
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.github_acceleration_2),
                 onBack = onBack
             )
@@ -186,19 +93,11 @@ fun GitHubMirrorScreen(
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
-            onRefresh = {
-                scope.launch {
-                    isRefreshing = true
-                    loadMirrors()
-                    delay(400)
-                    lastRefreshTime = UIComponents.currentTimeString()
-                    isRefreshing = false
-                }
-            },
+            onRefresh = { mirrorViewModel.refresh() },
             state = pullRefreshState,
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             indicator = {
-                UIComponents.PullRefreshIndicator(
+                PullRefreshIndicator(
                     isRefreshing = isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -213,7 +112,7 @@ fun GitHubMirrorScreen(
         ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
-                UIComponents.LastUpdatedCaption(
+                LastUpdatedCaption(
                     time = lastRefreshTime,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -271,7 +170,7 @@ fun GitHubMirrorScreen(
                     UnifiedButton(
                         text = Str.get(R.string.test),
                         icon = Icons.Default.Check,
-                        onClick = { testAllMirrors() },
+                        onClick = { mirrorViewModel.testAllMirrors() },
                         modifier = Modifier.weight(1f),
                         variant = ButtonVariant.Outlined,
                         enabled = !isLoading
@@ -419,7 +318,7 @@ fun GitHubMirrorScreen(
         UnifiedConfirmDialog(
             title = Str.get(R.string.confirm_reset),
             message = Str.get(R.string.reset_to_the_default_mirror_list),
-            onConfirm = { loadMirrors(); showResetDialog = false },
+            onConfirm = { mirrorViewModel.loadMirrors(); showResetDialog = false },
             onDismiss = { showResetDialog = false }
         )
     }
@@ -429,6 +328,8 @@ fun GitHubMirrorScreen(
         var name by remember { mutableStateOf("") }
         var url by remember { mutableStateOf("") }
         var remark by remember { mutableStateOf("") }
+        // F-06：URL 格式校验，非法值不再直接落盘（落盘后走代理必然失败且无提示）
+        var urlError by remember { mutableStateOf(false) }
 
         UnifiedAlertDialog(
             onDismissRequest = { showAddDialog = false },
@@ -448,6 +349,7 @@ fun GitHubMirrorScreen(
                         onValueChange = { url = it },
                         label = "URL",
                         placeholder = "https://example.com",
+                        error = if (urlError) Str.get(R.string.invalid_url_e_message, url) else null,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -464,14 +366,17 @@ fun GitHubMirrorScreen(
                 UnifiedButton(
                     text = Str.get(R.string.add),
                     onClick = {
-                        if (name.isNotEmpty() && url.isNotEmpty()) {
+                        val normalized = if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url"
+                        if (name.isNotBlank() && url.isNotBlank() && isValidMirrorUrl(normalized)) {
                             mirrors = mirrors + MirrorItem(
                                 name = name,
-                                url = if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url",
+                                url = normalized,
                                 remark = remark,
                                 isDefault = false
                             )
                             showAddDialog = false
+                        } else {
+                            urlError = true
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -485,5 +390,16 @@ fun GitHubMirrorScreen(
                 )
             }
         )
+    }
+}
+
+// F-06：镜像地址必须是可解析的 http(s) 主机（含至少一个点、无空格）
+private fun isValidMirrorUrl(raw: String): Boolean {
+    if (raw.contains(' ')) return false
+    return try {
+        val u = java.net.URL(raw)
+        (u.protocol == "http" || u.protocol == "https") && u.host.contains('.')
+    } catch (e: Exception) {
+        false
     }
 }

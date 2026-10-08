@@ -8,6 +8,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("PORT", "8000"))
 PLUGIN_ID = os.environ.get("PLUGIN_ID", "")
+# C-33：宿主注入的停止令牌。原模板 /stop 完全无鉴权，
+# 任意本机进程乃至任意网页 fetch(..., {mode:"no-cors"}) 都能把后端关掉。
+UIN_TOKEN = os.environ.get("UIN_TOKEN", "")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -25,13 +28,21 @@ class Handler(BaseHTTPRequestHandler):
         body = self.rfile.read(length).decode("utf-8", "ignore") if length else ""
         return self._json({"path": self.path, "method": "POST", "body": body})
 
+    def _authorized(self):
+        # 宿主未注入令牌时保持兼容（老启动方式），注入了则必须匹配
+        if not UIN_TOKEN:
+            return True
+        return self.headers.get("X-UIN-Token", "") == UIN_TOKEN
+
     def _stop(self):
+        if not self._authorized():
+            return self._json({"status": "forbidden", "error": "bad_token"}, code=403)
         self._json({"status": "stopping"})
         threading.Thread(target=self.server.shutdown, daemon=True).start()
 
-    def _json(self, data):
+    def _json(self, data, code=200):
         payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        self.send_response(200)
+        self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()

@@ -9,8 +9,10 @@ cd "$(dirname "$0")"
 # ---- 依赖检测：动态查找解释器，环境无关（使用 apt） ----
 if ! command -v python3 >/dev/null 2>&1; then
     echo "[start.sh] python3 not found, installing..."
-    apt install -y python3 2>/dev/null || {
-        echo "[start.sh] failed to install python3, exit"
+    apt install -y python3 || {
+        # C-36：失败原因必须落到 stderr，宿主才能采集到「为什么没起来」，
+        # 原先既丢 apt 输出又只有 stdout 一行 → 宿主只见"后端未就绪"
+        echo "[start.sh] failed to install python3, exit" >&2
         exit 1
     }
 fi

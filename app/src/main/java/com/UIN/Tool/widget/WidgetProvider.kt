@@ -53,10 +53,20 @@ class WidgetConfig(
             
             Logger.d("WidgetConfig", Str.get(R.string.loading_config_appwidgetid_appwidget, appWidgetId, id1, id2, id3))
             
-            return if (id1.isEmpty() && id2.isEmpty() && id3.isEmpty()) {
+            if (id1.isNotEmpty() || id2.isNotEmpty() || id3.isNotEmpty()) {
+                return WidgetConfig(id1, id2, id3)
+            }
+            // G-27：本小部件没有单独配置时回退到「全局配置」。
+            // 原先配置页写的 widget_global_config 全局选择没有任何消费方 → 死开关。
+            val global = context.getSharedPreferences("widget_global_config", Context.MODE_PRIVATE)
+            val g1 = global.getString("global_plugin_1", "") ?: ""
+            val g2 = global.getString("global_plugin_2", "") ?: ""
+            val g3 = global.getString("global_plugin_3", "") ?: ""
+            return if (g1.isEmpty() && g2.isEmpty() && g3.isEmpty()) {
                 null
             } else {
-                WidgetConfig(id1, id2, id3)
+                Logger.d("WidgetConfig", "using global widget config: $g1,$g2,$g3")
+                WidgetConfig(g1, g2, g3)
             }
         }
 

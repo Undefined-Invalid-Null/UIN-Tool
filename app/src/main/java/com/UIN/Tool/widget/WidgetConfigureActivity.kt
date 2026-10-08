@@ -8,7 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.UIN.Tool.R
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.log.Logger
-import com.UIN.Tool.ui.components.UIComponents
+import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
@@ -38,7 +38,7 @@ import com.UIN.Tool.ui.theme.AppDimens
 private const val TAG = "WidgetConfigureActivity"
 
 @OptIn(ExperimentalMaterial3Api::class)
-class WidgetConfigureActivity : ComponentActivity() {
+class WidgetConfigureActivity : AppCompatActivity() {
     
     private lateinit var appWidgetManager: AppWidgetManager
     
@@ -47,8 +47,8 @@ class WidgetConfigureActivity : ComponentActivity() {
         
         Logger.i(TAG, "========================================")
         Logger.i(TAG, "onCreate called")
-        Logger.i(TAG, "Intent: $intent")
-        Logger.i(TAG, "Intent extras: ${intent?.extras}")
+        Logger.i(TAG, "Intent action: ${intent.action}")
+        Logger.i(TAG, "Intent extras: ${intent?.extras?.keySet()}")
 
         appWidgetManager = AppWidgetManager.getInstance(this)
 
@@ -70,7 +70,7 @@ class WidgetConfigureActivity : ComponentActivity() {
 
             // 尝试加载配置
             LaunchedEffect(Unit) {
-                Logger.d(TAG, Str.get(R.string.launchedeffect_loading_plugin_list_a))
+                Logger.d(TAG, Str.get(R.string.launchedeffect_loading_plugin_list_and))
                 plugins = pluginManager.plugins.value
                 Logger.d(TAG, Str.get(R.string.plugin_count_plugins_size, plugins.size))
                 
@@ -83,7 +83,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         selected3 = it.pluginId3
                     }
                 } else {
-                    Logger.d(TAG, Str.get(R.string.opened_from_manage_page_loading_defa))
+                    Logger.d(TAG, Str.get(R.string.opened_from_manage_page_loading_default))
                     val prefs = getSharedPreferences("widget_global_config", MODE_PRIVATE)
                     selected1 = prefs.getString("global_plugin_1", "") ?: ""
                     selected2 = prefs.getString("global_plugin_2", "") ?: ""
@@ -103,7 +103,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    UIComponents.TitleText(
+                    UnifiedTitleText(
                         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) 
                             Str.get(R.string.configure_widget) 
                         else 
@@ -112,9 +112,9 @@ class WidgetConfigureActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                        UIComponents.BodyText(Str.get(R.string.choose_plugins_to_show_up_to_3_shown))
+                        UnifiedBodyText(Str.get(R.string.choose_plugins_to_show_up_to_3_shown))
                     } else {
-                        UIComponents.BodyText(Str.get(R.string.choose_plugins_to_display_applied_to))
+                        UnifiedBodyText(Str.get(R.string.choose_plugins_to_display_applied_to))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -160,7 +160,7 @@ class WidgetConfigureActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    UIComponents.CaptionText(
+                    UnifiedCaptionText(
                         Str.get(R.string.unconfigured_positions_automatically),
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
@@ -226,7 +226,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                 )
                                 
                                 Text(
-                                    text = Str.get(R.string.tip_current_config_is_applied_automa),
+                                    text = Str.get(R.string.tip_current_config_is_applied),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color(0xFF666666),
                                     modifier = Modifier.padding(top = 4.dp)
@@ -272,7 +272,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        UIComponents.PrimaryButton(
+                        UnifiedButton(
                             text = Str.get(R.string.save),
                             onClick = {
                                 Logger.i(TAG, Str.get(R.string.tap_the_save_button))
@@ -309,7 +309,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                                     
                                     // ✅ 刷新所有小部件
                                     WidgetProvider.forceRefreshAllWidgets(this@WidgetConfigureActivity)
-                                    Logger.success(TAG, Str.get(R.string.global_config_saved_all_widgets_refr))
+                                    Logger.success(TAG, Str.get(R.string.global_config_saved_all_widgets))
                                     
                                     // ✅ 返回 RESULT_OK
                                     setResult(RESULT_OK)
@@ -328,7 +328,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                             },
                             modifier = Modifier.weight(1f)
                         )
-                        UIComponents.SecondaryButton(
+                        UnifiedButton(variant = ButtonVariant.Outlined, 
                             text = Str.get(R.string.cancel),
                             onClick = {
                                 Logger.i(TAG, Str.get(R.string.tap_the_cancel_button))
@@ -389,7 +389,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                     
                     Toast.makeText(
                         this,
-                        Str.get(R.string.place_the_shortcut_on_your_home_scre),
+                        Str.get(R.string.place_the_shortcut_on_your_home_screen),
                         Toast.LENGTH_LONG
                     ).show()
                     
@@ -400,7 +400,7 @@ class WidgetConfigureActivity : ComponentActivity() {
                         Str.get(R.string.your_launcher_doesn_t_support_pinnin_2),
                         Toast.LENGTH_LONG
                     ).show()
-                    Logger.w(TAG, Str.get(R.string.launcher_does_not_support_pinning_sh))
+                    Logger.w(TAG, Str.get(R.string.launcher_does_not_support_pinning))
                 }
             } else {
                 Toast.makeText(
@@ -425,13 +425,13 @@ class WidgetConfigureActivity : ComponentActivity() {
 // ==================== 1x1 小部件配置 ====================
 
 @OptIn(ExperimentalMaterial3Api::class)
-class Widget1x1ConfigureActivity : ComponentActivity() {
+class Widget1x1ConfigureActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         Logger.i(TAG, "========================================")
         Logger.i(TAG, "Widget1x1ConfigureActivity onCreate called")
-        Logger.i(TAG, "Intent: $intent")
+        Logger.i(TAG, "Intent action: ${intent.action}")
 
         val appWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -441,7 +441,7 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
         Logger.i(TAG, "1x1 appWidgetId: $appWidgetId")
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            Logger.e(TAG, Str.get(R.string.invalid_appwidgetid_finishing_activi))
+            Logger.e(TAG, Str.get(R.string.invalid_appwidgetid_finishing_activity))
             finish()
             return
         }
@@ -475,9 +475,9 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    UIComponents.TitleText(Str.get(R.string.choose_shortcut_plugin))
+                    UnifiedTitleText(Str.get(R.string.choose_shortcut_plugin))
                     Spacer(modifier = Modifier.height(8.dp))
-                    UIComponents.BodyText(Str.get(R.string.choose_a_plugin_as_a_home_screen_sho))
+                    UnifiedBodyText(Str.get(R.string.choose_a_plugin_as_a_home_screen))
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // ✅ 白色背景下拉框
@@ -498,7 +498,7 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        UIComponents.PrimaryButton(
+                        UnifiedButton(
                             text = Str.get(R.string.confirm_2),
                             onClick = {
                                 Logger.i(TAG, Str.get(R.string.tapped_1x1_confirm_button))
@@ -529,7 +529,7 @@ class Widget1x1ConfigureActivity : ComponentActivity() {
                             },
                             modifier = Modifier.weight(1f)
                         )
-                        UIComponents.SecondaryButton(
+                        UnifiedButton(variant = ButtonVariant.Outlined, 
                             text = Str.get(R.string.set_as_default),
                             onClick = {
                                 Logger.i(TAG, Str.get(R.string.tapped_1x1_set_default_button))
@@ -595,7 +595,13 @@ fun WidgetPluginSelectorWhite(
             }
         ) {
             OutlinedTextField(
-                value = if (current.isEmpty()) Str.get(R.string.none_2) else pluginNames[pluginIds.indexOf(current)],
+                value = when {
+                    current.isEmpty() -> Str.get(R.string.none_2)
+                    // G-24：pluginIds 中不存在 current 时 indexOf 返回 -1，直接下标会越界崩溃
+                    else -> pluginIds.indexOf(current)
+                        .takeIf { it in pluginNames.indices && it in pluginIds.indices }
+                        ?.let { pluginNames[it] } ?: current
+                },
                 onValueChange = {},
                 readOnly = true,
                 modifier = Modifier

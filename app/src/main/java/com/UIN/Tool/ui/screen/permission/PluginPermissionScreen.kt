@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.sp
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.domain.model.PluginInfo
 import com.UIN.Tool.plugin.PluginPermissionManager
-import com.UIN.Tool.ui.components.UIComponents
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.PermissionUtils
@@ -131,7 +130,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
             // 引导特殊权限
             if (special.isNotEmpty()) {
                 PluginPermissionManager.openAppSettings(activity)
-                AppToast.info(context, Str.get(R.string.enable_special_permissions_manually_))
+                AppToast.info(context, Str.get(R.string.enable_special_permissions_manually_in))
             }
         }
     }
@@ -202,7 +201,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
     Scaffold(
         containerColor = AppColors.pageBackground(),
         topBar = {
-            UIComponents.ManageTopAppBar(
+            ManageTopAppBar(
                 titleText = Str.get(R.string.plugin_permissions),
                 onBack = { activity?.finish() }
             )
@@ -216,7 +215,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                     refreshPermissions()
                     AppToast.info(context, Str.get(R.string.permission_status_refreshed))
                     delay(400)
-                    lastRefreshTime = UIComponents.currentTimeString()
+                    lastRefreshTime = currentTimeString()
                     isRefreshing = false
                 }
             },
@@ -225,7 +224,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                 .fillMaxSize()
                 .padding(paddingValues),
             indicator = {
-                UIComponents.PullRefreshIndicator(
+                PullRefreshIndicator(
                     isRefreshing = isRefreshing,
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -240,7 +239,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
         ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
-                UIComponents.LastUpdatedCaption(
+                LastUpdatedCaption(
                     time = lastRefreshTime,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -418,7 +417,7 @@ fun PluginPermissionScreen(initialPluginId: String? = null) {
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             UnifiedTitleText(Str.get(R.string.this_plugin_declares_no_permissions_2))
-                            UnifiedCaptionText(Str.get(R.string.plugins_declare_their_required_permi))
+                            UnifiedCaptionText(Str.get(R.string.plugins_declare_their_required))
                         }
                     }
                 }

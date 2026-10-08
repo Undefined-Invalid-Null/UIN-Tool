@@ -2,14 +2,15 @@ package com.UIN.Tool
 
 import com.UIN.Tool.utils.Str
 import android.content.Context
-import androidx.multidex.MultiDex
 import android.app.Application
+import androidx.appcompat.app.AppCompatDelegate
 import com.UIN.Tool.core.di.ServiceLocator
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.constants.AppConstants as Constants
 import com.UIN.Tool.utils.CrashLogUtils
 import com.UIN.Tool.plugin.SharedSupervisor
+import com.UIN.Tool.plugin.PluginManager
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
@@ -18,7 +19,10 @@ import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
 import org.eclipse.tm4e.core.registry.IGrammarSource
 import org.eclipse.tm4e.core.registry.IThemeSource
-import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -36,88 +40,145 @@ class UinApplication : Application() {
         @JvmStatic
         fun getAppContext(): Context = instance.applicationContext
 
-        /** 后台环境安装进行中标志，避免与 PluginHostActivity 的安装流程冲突 */
+        /** B-10：进程启动时的系统原始 locale（跟随系统时用，见 attachBaseContext） */
         @Volatile
-        private var _isEnvironmentInstalling = false
+        private var systemDefaultLocale: java.util.Locale? = null
 
-        @JvmStatic
-        fun isEnvironmentInstalling(): Boolean = _isEnvironmentInstalling
+        /**
+         * B-08：应用级协程作用域（SupervisorJob + IO + 记日志的异常处理器）。
+         * 替代原先「裸 Thread{} 里再 MainScope().launch{}」的写法——那种写法不可取消、
+         * 没有异常处理器（未捕获异常会走全局 handler 把进程杀掉）。
+         */
+        val appScope: CoroutineScope = CoroutineScope(
+            SupervisorJob() + Dispatchers.IO +
+                CoroutineExceptionHandler { _, throwable ->
+                    try {
+                        Logger.e("UinApplication", "appScope task failed", throwable)
+                    } catch (_: Exception) {
+                    }
+                }
+        )
+
+        // B-80：后台环境安装标志（_isEnvironmentInstalling）随 autoInstallEnvironment
+        // 一并下沉到 core/bootstrap/EnvironmentBootstrap，避免 Application 继续持有
+        // 环境编排状态；PluginHostActivity 改查 EnvironmentBootstrap.isEnvironmentInstalling()
     }
 
-    override fun attachBaseContext(base: Context) {
-        MultiDex.install(base)
-        super.attachBaseContext(base)
+    /**
+     * B-12：instance 提前到 attachBaseContext 注册——onCreate 之前（如 providers、
+     * ContentProvider 初始化期）访问 getInstance() 不再抛 UninitializedPropertyAccessException。
+     */
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(newBase)
+        instance = this
+        // B-10：在任何 applyLocale→Locale.setDefault 之前抓系统真实默认值 ——
+        // 否则切过 zh/en 再切「跟随系统」时 getDefault() 拿到的是被污染的值
+        systemDefaultLocale = java.util.Locale.getDefault()
     }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
 
-        installGlobalCrashHandler()
+        // B-06：启动序列改为声明式任务列表 + 统一执行器（顺序、逐段隔离与原先完全一致），
+        // 每段任务带 id 归因与耗时日志，后续增删任务只改列表。
+        runStartupTasks(mainStartupTasks())
 
-        try {
-            UIConfig.init(this)
-            com.UIN.Tool.ui.common.StyleManager.init()
-            applyLocale()
-            Logger.i(TAG, Str.get(R.string.uiconfig_initialized))
-        } catch (e: Exception) {
-            Logger.e(TAG, "UIConfig init failed", e)
-        }
-
-        try {
-            ServiceLocator.init(this)
-            Logger.i(TAG, Str.get(R.string.servicelocator_initialized))
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.servicelocator_initialization_failed), e)
-        }
-
-        try {
-            initWorkDirectory()
-            Logger.i(TAG, Str.get(R.string.work_directory_initialized))
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.work_directory_initialization_failed), e)
-        }
-
-        try {
-            com.UIN.Tool.cache.DiskCache.cleanup("icons")
-            Logger.i(TAG, "Disk cache cleanup completed")
-        } catch (e: Exception) {
-            Logger.e(TAG, "Disk cache cleanup failed", e)
-        }
-
-        try {
-            cleanupOnVersionUpgrade()
-        } catch (e: Exception) {
-            Logger.e(TAG, "cleanupOnVersionUpgrade failed", e)
-        }
-
-        try {
-            SharedSupervisor.killStaleProcesses()
-            Logger.i(TAG, "stale supervisor processes cleaned")
-        } catch (e: Exception) {
-            Logger.e(TAG, "killStaleProcesses failed", e)
-        }
-
-        try {
-            clearOldDynamicShortcuts()
-        } catch (e: Exception) {
-            Logger.e(TAG, "clearOldDynamicShortcuts failed", e)
-        }
-
-        try {
-            autoInstallEnvironment()
-        } catch (e: Exception) {
-            Logger.e(TAG, "autoInstallEnvironment failed", e)
-        }
-
-        try {
-            initTextMate()
-            Logger.i(TAG, Str.get(R.string.textmate_initialized))
-        } catch (e: Exception) {
-            Logger.e(TAG, Str.get(R.string.textmate_initialization_failed), e)
+        appScope.launch {
+            runStartupTasks(backgroundStartupTasks())
         }
 
         Logger.i(TAG, Str.get(R.string.uin_tool_app_startup_complete))
+    }
+
+    /**
+     * B-06：启动任务描述 —— id 用于日志归因；单段异常只记日志，不中断后续任务。
+     */
+    private data class StartupTask(val id: String, val run: () -> Unit)
+
+    private fun runStartupTasks(tasks: List<StartupTask>) {
+        for (task in tasks) {
+            val t0 = System.currentTimeMillis()
+            try {
+                task.run()
+                Logger.i(TAG, "startup task ${task.id} ok (${System.currentTimeMillis() - t0}ms)")
+            } catch (e: Exception) {
+                Logger.e(TAG, "startup task ${task.id} failed (${System.currentTimeMillis() - t0}ms)", e)
+            }
+        }
+    }
+
+    /** 主线程任务：崩溃兜底必须最先装，日志次之，其后才依赖 Logger 的组件初始化 */
+    private fun mainStartupTasks(): List<StartupTask> = listOf(
+        StartupTask("globalCrashHandler") { installGlobalCrashHandler() },
+        // B-07：日志初始化提前到启动最前，避免 Application 段（崩溃处理/UIConfig/ServiceLocator）
+        // 的日志因 Logger 尚未初始化而丢失。Logger.init 幂等；权限未就绪导致的失败
+        // 会留在 isInitialized=false，由后续（SplashActivity.createWorkDirectory）重试。
+        StartupTask("loggerInit") { Logger.init(Constants.LOG_DIR) },
+        StartupTask("uiConfigInit") {
+            UIConfig.init(this)
+            com.UIN.Tool.ui.common.StyleManager.init()
+            applyLocale()
+            applyNightMode()
+            Logger.i(TAG, Str.get(R.string.uiconfig_initialized))
+        },
+        StartupTask("serviceLocatorInit") {
+            ServiceLocator.init(this)
+            Logger.i(TAG, Str.get(R.string.servicelocator_initialized))
+        }
+    )
+
+    /**
+     * B-01/B-02/B-03/B-04/B-05/B-08：全是磁盘/资产遍历型初始化，原先串在主线程
+     * onCreate 里（建目录、清 .uin、扫 icons 缓存、遍历 assets/textmate 语法与主题、
+     * 清桌面快捷方式），是冷启动最贵的一段；统一挪到 appScope(IO) 后台执行，
+     * 保留原有先后顺序与逐段 try/catch 归因。
+     */
+    private fun backgroundStartupTasks(): List<StartupTask> = listOf(
+        StartupTask("initWorkDirectory") {
+            initWorkDirectory()
+            Logger.i(TAG, Str.get(R.string.work_directory_initialized))
+        },
+        StartupTask("diskCacheCleanup") {
+            com.UIN.Tool.cache.DiskCache.cleanup("icons")
+            Logger.i(TAG, "Disk cache cleanup completed")
+        },
+        StartupTask("cleanupOnVersionUpgrade") { cleanupOnVersionUpgrade() },
+        StartupTask("clearOldDynamicShortcuts") { clearOldDynamicShortcuts() },
+        // B-02：TextMate 语法/主题加载（遍历 assets，最贵的一段）改后台；
+        // 用户进终端编辑器时语法早已加载完毕
+        StartupTask("initTextMate") {
+            initTextMate()
+            Logger.i(TAG, Str.get(R.string.textmate_initialized))
+        },
+        // B-01：killStaleProcesses 含 Runtime.exec + waitFor，保持
+        // 「先清理残留进程 → 再检查安装环境」的先后顺序
+        StartupTask("killStaleProcesses") { SharedSupervisor.killStaleProcesses() },
+        // B-80：编排与 Toast 全部在 EnvironmentBootstrap，Application 只发起
+        StartupTask("environmentAutoInstall") {
+            com.UIN.Tool.bootstrap.EnvironmentBootstrap.autoInstall(appScope, this@UinApplication)
+        },
+        // G-28：小部件周期刷新调度（读 UIConfig 开关，幂等 KEEP/cancel；WorkManager 自动初始化）
+        StartupTask("widgetRefreshSchedule") {
+            com.UIN.Tool.widget.WidgetRefreshScheduler.apply(this)
+        }
+    )
+
+    /**
+     * C-12：内存吃紧时释放插件「保留会话」WebView。
+     * 这些 WebView 的宿主 Activity 均已销毁（retain 时已从视图树 remove），
+     * 可安全 destroy；否则数十 MB WebView 会常驻到进程退出。
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        try {
+            if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+                PluginManager.clearRetainedWebViews()
+                Logger.i(TAG, "onTrimMemory($level): retained plugin WebViews released")
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "onTrimMemory failed", e)
+        }
     }
 
     /**
@@ -139,9 +200,13 @@ class UinApplication : Application() {
                             ?: android.os.Process.killProcess(android.os.Process.myPid())
                     } else {
                         CrashLogUtils.logException(this, throwable, "Uncaught-${thread.name}")
-                        Logger.e(TAG, "后台线程崩溃已记录（不终止进程）: ${thread.name} - ${throwable.message}")
+                        Logger.e(TAG, "background thread crash recorded (process kept): ${thread.name} - ${throwable.message}")
                     }
                 } catch (e: Exception) {
+                    // B-09：记录环节自身失败也不能静默——先落 logcat 兜底，再交回默认处理器，
+                    // 避免「崩溃既没写进日志文件也没进 logcat」
+                    android.util.Log.e(TAG, "crash handler failed while recording", e)
+                    android.util.Log.e(TAG, "original crash on ${thread.name}", throwable)
                     previous?.uncaughtException(thread, throwable)
                 }
             }
@@ -151,19 +216,58 @@ class UinApplication : Application() {
         }
     }
 
+    /**
+     * E-09（方案B）：把主题偏好交给 AppCompat 统一执行 —— 显式深/浅覆盖系统 uiMode、
+     * 跟随系统则透传；XML 资源（values-night）与窗口配置自此与 Compose 同源，
+     * 且 setDefaultNightMode 会自动重建已启动的 Activity（改主题全局即时生效）。
+     */
+    fun applyNightMode() {
+        if (!UIConfig.isInitialized()) return
+        try {
+            val mode = when (UIConfig.getInstance().getThemeMode()) {
+                UIConfig.THEME_MODE_DARK -> AppCompatDelegate.MODE_NIGHT_YES
+                UIConfig.THEME_MODE_LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+                else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            }
+            if (AppCompatDelegate.getDefaultNightMode() != mode) {
+                AppCompatDelegate.setDefaultNightMode(mode)
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "applyNightMode failed", e)
+        }
+    }
+
     fun applyLocale() {
         if (!UIConfig.isInitialized()) return
-        val lang = UIConfig.getInstance().getLanguage()
-        val locale = when (lang) {
-            "zh" -> java.util.Locale.CHINESE
-            "en" -> java.util.Locale.ENGLISH
-            else -> java.util.Locale.getDefault()
+        try {
+            val lang = UIConfig.getInstance().getLanguage()
+            val locale = when (lang) {
+                "zh" -> java.util.Locale.CHINESE
+                "en" -> java.util.Locale.ENGLISH
+                else -> systemDefaultLocale ?: java.util.Locale.getDefault()
+            }
+            java.util.Locale.setDefault(locale)
+
+            // B-10（方案A）：三套 locale 机制收敛到本函数 ——
+            // ① AppCompat delegate：27 个 Activity 的 attachBaseContext/XML 上下文统一由它处理，
+            //    并接入系统「应用语言」设置（应用内设置为准，系统改动下次 applyLocale 覆盖回来）；
+            // ② app resources：Str.get 走 app context，保留原 updateConfiguration 通道保证文案即时切换。
+            val tag = when (lang) {
+                "zh" -> "zh"
+                "en" -> "en"
+                else -> ""
+            }
+            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                androidx.core.os.LocaleListCompat.forLanguageTags(tag)
+            )
+
+            val config = android.content.res.Configuration(resources.configuration)
+            config.setLocales(android.os.LocaleList(locale))
+            @Suppress("DEPRECATION")
+            resources.updateConfiguration(config, resources.displayMetrics)
+        } catch (e: Exception) {
+            Logger.e(TAG, "applyLocale failed", e)
         }
-        java.util.Locale.setDefault(locale)
-        val config = android.content.res.Configuration(resources.configuration)
-        config.setLocales(android.os.LocaleList(locale))
-        @Suppress("DEPRECATION")
-        resources.updateConfiguration(config, resources.displayMetrics)
     }
 
     /**
@@ -184,62 +288,6 @@ class UinApplication : Application() {
                 Logger.e(TAG, "clearOldDynamicShortcuts error: ${e.message}", e)
             }
         }
-    }
-
-    /**
-     * 后台自动安装 proot 二进制和默认 rootfs 容器。
-     * 仅在内置 proot 模式下执行；Real Termux 模式跳过。
-     * 安装前设置 [isEnvironmentInstalling] 标志，PluginHostActivity 检测到后跳过自身安装，避免冲突。
-     */
-    private fun autoInstallEnvironment() {
-        val ctx = applicationContext
-        if (!com.UIN.Tool.plugin.BackendConfig.isBuiltin(ctx)) {
-            Logger.i(TAG, "autoInstallEnvironment: 非内置模式，跳过")
-            return
-        }
-
-        Thread {
-            try {
-                _isEnvironmentInstalling = true
-                Logger.i(TAG, "autoInstallEnvironment: ═══ 开始检查 proot & rootfs ═══")
-
-                // 1. 确保 proot 二进制已安装
-                Logger.i(TAG, "autoInstallEnvironment: [1/2] 检查 proot 二进制...")
-                val prootResult = com.UIN.Tool.proot.ProotInstaller.ensureInstalled(ctx)
-                if (prootResult.isFailure) {
-                    Logger.e(TAG, "autoInstallEnvironment: proot 安装失败: ${prootResult.exceptionOrNull()?.message}")
-                    _isEnvironmentInstalling = false
-                    return@Thread
-                }
-                Logger.i(TAG, "autoInstallEnvironment: [1/2] proot 二进制就绪 ✓")
-
-                // 容器就绪即可创建终端会话，不再阻塞
-                _isEnvironmentInstalling = false
-
-                // 2. 确保默认容器已安装（异步，不阻塞终端）
-                val containerName = com.UIN.Tool.proot.RootfsManager.getDefaultContainer(ctx)
-                Logger.i(TAG, "autoInstallEnvironment: [2/2] 检查容器 '$containerName'...")
-                if (!com.UIN.Tool.proot.RootfsManager.isContainerReady(ctx, containerName)) {
-                    Logger.i(TAG, "autoInstallEnvironment: [2/2] 容器 '$containerName' 未就绪，开始后台安装")
-                    com.UIN.Tool.utils.AppToast.show(ctx, ctx.getString(R.string.container_installing_please_wait, containerName))
-                    kotlinx.coroutines.MainScope().launch {
-                        val result = com.UIN.Tool.plugin.ProotContainerManager.ensureDefaultContainer(ctx)
-                        if (result.isSuccess) {
-                            Logger.i(TAG, "autoInstallEnvironment: [2/2] 容器 '$containerName' 安装完成 ✓")
-                            com.UIN.Tool.utils.AppToast.success(ctx, ctx.getString(R.string.container_install_completed, containerName))
-                        } else {
-                            Logger.e(TAG, "autoInstallEnvironment: [2/2] 容器安装失败: ${result.exceptionOrNull()?.message}")
-                        }
-                    }
-                } else {
-                    Logger.i(TAG, "autoInstallEnvironment: [2/2] 容器 '$containerName' 已就绪 ✓")
-                }
-                Logger.i(TAG, "autoInstallEnvironment: ═══ 环境检查完成 ═══")
-            } catch (e: Exception) {
-                _isEnvironmentInstalling = false
-                Logger.e(TAG, "autoInstallEnvironment: 异常: ${e.message}", e)
-            }
-        }.start()
     }
 
     private fun initTextMate() {

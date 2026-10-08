@@ -406,6 +406,8 @@ fun UIConfigScreen(
                                     onClick = {
                                         configState = configState.copy(themeMode = mode)
                                         UIConfig.getInstance().setThemeMode(mode)
+                                        // 模式切换后按新模式归位渐变单槽位，避免陈旧浅值随后续保存写进 *_dark
+                                        configState = configState.refreshGradientForMode()
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
