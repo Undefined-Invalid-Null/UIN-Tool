@@ -12,6 +12,99 @@
 
 ---
 
+## [6.2.0] - 2026-10-16
+
+> 代码编辑器专项：把原本只在插件创建向导内可用的纯内存草稿框，重写为可独立对外调用的完整代码编辑器 —— 完整文件树 + 多标签 + 项目级打开 + 直接磁盘读写 + `ACTION_VIEW` 对外入口，外加两轮 Sora Editor 能力审计与 Unified 组件体系的界面统一，并修复了四轮「语法高亮整体消失」的深层根因。新增功能、界面美化、调用入口三项齐做。
+
+### 对外入口与文件访问
+
+- `CodeEditorActivity` 在 Manifest 正式 `exported=true` 并声明独立的 `ACTION_VIEW` filter（`text/*` 与 `application/json|xml|javascript|x-sh`），其他应用可通过「打开方式」直接调起编辑器（已知代价：系统选择器会出现两个 UIN Tool 图标）
+- 文件访问改为**默认申请权限 + 直接文件访问**：进入编辑器发起存储权限申请，获批后直接用 `java.io.File` 读写；`content://` 保留 `ContentResolver` 作为解析不出真实路径时的兜底，不再是并列主路径
+- Android 11+ 走 `MANAGE_EXTERNAL_STORAGE`（判定 + 跳系统设置页），Android 10 及以下走 `READ/WRITE_EXTERNAL_STORAGE`
+- 新增 `ACTION_OPEN_DOCUMENT_TREE`，可手动指定项目根目录；打开新文件夹时同步建立文件树
+- 插件向导改为先落盘草稿到 `cacheDir/editor_draft/<ts>/`、Intent 只传 `project_dir` 字符串，彻底规避 `TransactionTooLargeException`、废弃的 `getSerializableExtra` 与进程重建丢稿
+
+### 架构重写
+
+- 新增 `EditorModels` / `EditorViewModel` / `FileAccess` / `EditorSettingsStore` 四层；`CodeEditorActivity` 43 → 289 行，`CodeEditorScreen` 1118 → 2000+ 行
+- 多标签：`EditorTab` 以 `savedContent` / `content` 对比得出 `isModified`，取代旧版「`hasChanges` 只在 `SET_NEW_TEXT` 时置 true」的失效逻辑（打字不触发、未保存标记恒不显示）
+- 文件树：递归收集全部文本文件；支持新建文件 / 新建文件夹（支持 `a/b` 嵌套路径）、重命名、删除；目录可展开折叠
+- 桥接层 `EditorController` 改用 `subscribeEvent(ContentChangeEvent / SelectionChangeEvent)` 驱动，取代旧版 40×50ms 轮询 hack
+- 设置应用做「已应用设置三元组去重」，避免每次按键触发的重组都重设编辑器属性引发 relayout
+
+### 编辑功能
+
+- 查找 / 替换：默认只显示搜索框，展开箭头才出替换框；结果计数改订阅 `PublishSearchResultEvent`（原实现在异步 `search()` 返回后立刻读数，恒显示 0 / 旧值），正则模式补 `RegexBackrefGrammar.DEFAULT` 让 `$1` 反向引用真正生效
+- 保存语义：保存 / 另存为 / 未保存退出确认，退出前提示未保存改动（原版无 `BackHandler`，返回即静默丢稿）
+- 状态栏实时显示「行:列 / 字符数」
+- 硬件键盘快捷键：Ctrl+S 保存、Ctrl+F 搜索、Ctrl+G 跳转行、Ctrl+Shift+Z 重做（内建 Ctrl+Z 分支不看 Shift，原本会把 redo 变回 undo）；其余按键一律放行不抢
+- ⋮ 菜单补全：撤销 / 重做（按 `canUndo()` / `canRedo()` 置灰）、缩进 / 反缩进、剪切整行、选中整行、跳转行、跳到文首 / 文末、格式化、全选
+- 符号输入栏 `SymbolInputView`，插入改走 `commitText()` 正门（`(` 才会自动补 `)`、才会走自动缩进与引号处理）
+- 设置面板 20 余项并持久化：字号、字体、tab 宽度、自动换行、行号、非打印字符、括号匹配、缩进参考线、行列面板停靠位置、连字、光标闪烁、选中弹出窗、放大镜、双指缩放、行距倍数、字宽、新行换行符（LF / CRLF / CR）、高亮代码块、函数占位字符等
+- 编辑器主题独立于应用主题（默认 dracula，9 种 Sora 主题可选），不再跟随系统（系统未定义编辑器主题）
+- 代码格式化：新增 `CodeFormatters`，**JSON（json / json5 / jsonc）逐 token 保值重排**（只重算缩进与冒号后空格，数值、字符串字面量、转义写法、键顺序、JSON5 单引号与尾逗号全部原样搬运，同时做结构校验、不合法一律返回 null 不动原文档），**YAML 保守整理**（块标量内逐字节保留、行首 tab 展开为空格、去行尾空白、折叠连续空行，不重排缩进层级）；后台线程计算后经 `onFormatSucceed()` 应用（自带批编辑 = 整份替换合成一步撤销），切标签与期间打字都会丢弃过期结果；不支持的扩展名菜单直接置灰
+- 点击代码中的 `#RRGGBB` 色值即可复制到剪贴板并选中该区间
+
+### 语法高亮根因修复
+
+- **扩展名 → scope 映射**：7 个映射与语法文件实际声明不符（`m/mm`、`c` 被误归 `source.cpp` 等），未注册 scope 改为回退 `text.plain` 而非沿用上一个文件的语言；`.tsx` / `.jsx` 高亮失效一并修复
+- **每目录只注册第一个语法**：`GrammarDefinition.getName()` 返回目录名，`GrammarRegistry` 用它做去重键 → 同目录下只有第一个语法能注册。改为用语法文件完整路径作全局唯一名称
+- **共享 raw 规则表被写死**：`Grammar` 构造时 `ObjectCloner.deepClone` 末分支从不真正克隆普通对象，同一 scope 的 raw 被 registry 与所有 `include` 它的语法共享；先编译者把 rule id 写死在共享对象上，后编译实例 `getRule(id)` 抛异常杀死分析线程。改为切换语言时反射重新解析出全新对象图并逐出缓存；同时移除会在后台线程并发编译同一实例的 `testTokenization`
+- **语法资产 captures 结构损坏**：XML / YAML 4 个语法资产中 `captures` 键下混入裸字符串，tm4e 编译期抛 `ClassCastException`，`registerRule` 在写入映射表之前就异常 → 该 id 永久留在共享 raw 却查不到 → 分析线程死亡、完全无高亮。修复 4 个资产，并在 `loadGrammars()` 加入**加载期校验器**，以后同类损坏一启动就能在日志里看到文件名与具体路径
+- **上游下划线 token 崩溃**：sora 0.24.4 的 `TextMateAnalyzer` 对所有 token 都取 `obtainNoExt` span，随后又调 `setUnderlineColor` → 遇到带下划线的 token（HTML 会产出）`NoExtSpanImpl` 直接抛 `UnsupportedOperationException`，整条 `AsyncAnalysis` 线程死亡、该文件高亮全灭。上游 0.24.5 修复，本版随 sora 升到 0.24.6 一并解决
+- TextMate 主题色修正：sora 用 `>=255` 自定义色号，普通 `EditorColorScheme.getColor` 查不到返回 0 → 透明；`TEXT_SELECTED` / `TEXT_ACTION_WINDOW_*` 同理，逐一补色，修掉「页面空白、全选才看见字」「全选改字色」「浮层图标透明」
+- 语法加载改读语法文件**自身声明**的 `scopeName`，跳过 injection 与损坏资产；清理两个内容为字面 `404: Not Found` 的 14 字节残壳语法文件
+
+### 界面美化
+
+- 全量改用 Unified 组件体系（`UnifiedDialog` / `UnifiedTextField` / `UnifiedEmptyState` / `UnifiedCard` 等），新增 `AppColors` / `AppDimens`
+- 侧栏改 `ModalNavigationDrawer`：左上角换抽屉开关（原为 ArrowBack 退出箭头），退出交给返回键；左缘锚定，最左侧滑动打开、主体区缩放不触发，打开后拖抽屉关闭
+- 目录树文件名 `bodyMedium`、行高 34 → 40dp；⋮ 菜单由近似全屏 Dialog 改为锚定按钮旁的 170dp 弹层
+- 编辑器 chrome（标签栏 / 状态栏 / 符号栏 / 搜索面板）统一用 `pageBackground()`，渐变与玻璃模式下透出、与应用整体一致；模态浮层（弹窗 / 底部弹层 / 抽屉）保持不透明，修复编辑器内弹窗透到下层的问题
+- 修复 UI 面板与按钮过透明（`translucentAlpha` 默认值与下限、`glassBorder` 恒透明）
+- 无障碍：`AndroidView` 补 `contentDescription`，TalkBack 能读出当前编辑的文件名
+
+### 性能与资源
+
+- 十六进制颜色扫描移出主线程：原在 ContentChange 后于主线程跑完整段正则（大文件表现为「打完一行字就顿一下」），改后台线程扫描 + 防重入 + 过期结果丢弃后重排
+- `isModified` 由每键 O(n) 全文比较改为 O(1) 布尔标记
+- `EditorController.detach()` 现在调用 `CodeEditor.release()`（此前只置空字段）—— 修复每次 AndroidView 重建都泄漏一个 `TextMateLanguage` 后台分析线程与 `Formatter`
+- 读文件改为 `ReadResult` 三态（成功 / 过大 / 不可读）并新增 **8MB 硬上限**，补 `catch(OutOfMemoryError)`（`catch(Exception)` 拦不住 Error、会直接崩进程），超限与失败给出不同文案
+
+### 日志体系
+
+- 新增 `LogcatRecorder`：应用启动时后台守护线程持续把 logcat 落盘到应用同名目录，轮转与保留策略完全对齐 `Logger`，因此「清空日志」对它同样生效；`READ_LOGS` 是 signature 级普通安装拿不到，但 Android 允许进程读自己 UID 的日志行，未授权时记录器照样有效
+- 日志页 logcat 模式改为优先读落盘文件，**导出按当前来源导出对应文件**（修掉「切到 logcat 后导出的仍是空的 AppLog 文件」），导出文件名也带上来源避免互相覆盖
+- 开发工具页移除内嵌的旧日志查看器拷贝，日志能力统一收敛到 `LogViewerScreen`
+
+### 补全
+
+- 关键字补全表新增 XML（75）/ HTML（49）/ CSS / Gradle（48）/ 配置类（42，json / yaml / toml / ini / properties 共用）—— 此前这几类扩展名全部返回空数组，**本 App 最常编辑的配置文件补全一直是死的**
+- 刻意只列标签名与属性名、不列 `android:layout_width` 这类带冒号的属性：sora 的前缀回扫遇到 `:` 即断开，词条写全名会补成 `android:android:layout_width`
+- 未注册 scope 回退 `text.plain`，不再沿用上一个文件的语言
+
+### 依赖与构建
+
+- sora-editor BOM **0.24.4 → 0.24.6**（随上游修复下划线 token 崩溃；逐项比对两个 tag 的公开 API，确认零删除项被本工程引用）
+- Kotlin **2.1.0 → 2.3.10**（0.24.6 的 AAR 用 Kotlin 2.3.x 编译，2.1.0 编译器读不了 metadata 2.3.0，35 条 `e:` 全是这个；版本刻意与 sora 编译器对齐），`kotlin.plugin.compose` 与 `kotlin-stdlib` 同步上调
+- 删除零引用死依赖 `language-java`（Java 高亮走的是 `assets/textmate/java` 下的 TextMate 语法文件，与该 AAR 无关）
+- 删除死代码类 `EditorUiFlags`（4 个字段全仓零引用）
+- 删除零消费者死开关 `autoSave`
+
+### 有意不做（已逐条回源码查证）
+
+- **XML 格式化**：平台 `javax.xml` Transformer 是 pretty-printer 而非保值重排（会统一属性引号、剥掉标签间空白文本节点、可能丢掉 DOCTYPE 内部子集，还带 XXE 加固的坑），与「只动空白、绝不动值」直接冲突；XML 在本项目主要是 AndroidManifest / layout，Android Studio 本来就管格式
+- **`QuickQuoteHandler`**：只能由 `Language.getQuickQuoteHandler()` 提供，装了就会关掉内建的选区自动包裹；而 `DefaultSymbolPairs` 本来就带 `"` 与 `'` 的自动闭合与选区包裹，做了等于负收益
+- **诊断标记 / inlay hints / 大纲**：Sora 有 API 但 TextMate 分析器不产数据源，加了是死 UI
+- **snippet 片段补全**：缺片段库这层产品输入
+- **多标签独立撤销历史**：`Content` 天然持有 `UndoManager`，每个标签已隔离，切回来历史清空；要保留就得缓存 `Content` 对象，与 `isModified` 的读取点冲突
+- **`ContentIO` 流式读写**：已有 2MB 只读 + 8MB 硬上限 + OOM 兜底，收益被高估
+- **`disallowSuggestions`**：为真会强制重启输入连接、拒绝组字中的 composing text，会打断中文 / 日文输入
+
+### 国际化
+
+- 中英文字符串键从 1867 增至 **1910**，占位符差异 0
+
 ## [6.1.0] - 2026-10-07
 
 > 维护版本：针对 6.0.0 代码库的一轮全面缺陷修复（清单 233 项全部关闭），覆盖启动与权限、主线程/ANR、深色主题、插件宿主正确性与安全、备份恢复数据安全、错误可见性、构建卫生，以及后续的死代码与资源清理、架构收口、国际化、可访问性与 CI 收紧。无新功能。
@@ -1099,9 +1192,9 @@ v4.0.0 是一次重大重构，升级前请注意：
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 6.1.0 |
-| 最后更新 | 2026年10月7日 |
-| 对应应用版本 | v6.1.0 (Build 25) |
+| 文档版本 | 6.2.0 |
+| 最后更新 | 2026年10月16日 |
+| 对应应用版本 | v6.2.0 (Build 26) |
 
 ---
 

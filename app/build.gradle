@@ -1,7 +1,8 @@
 plugins {
     id "com.android.application"
     id "org.jetbrains.kotlin.android"
-    id "org.jetbrains.kotlin.plugin.compose" version "2.1.0"
+    // Compose 编译器插件版本必须与 Kotlin 完全一致（见根 build.gradle 的升级说明）
+    id "org.jetbrains.kotlin.plugin.compose" version "2.3.10"
 }
 
 // ===== A-04：签名口令不再以明文写在 build.gradle 里 =====
@@ -44,8 +45,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 25
-        versionName "6.1.0"
+        versionCode 26
+        versionName "6.2.0"
 
         manifestPlaceholders.UIN_PACKAGE_NAME = "com.UIN.Tool"
         manifestPlaceholders.UIN_APP_NAME = "UIN Tool"
@@ -164,7 +165,9 @@ configurations.all {
     
     resolutionStrategy {
         force "org.commonmark:commonmark:0.22.0"
-        force "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
+        // 随 Kotlin 升级同步上调，避免 stdlib 版本被钉在旧版导致
+        // 「编译器 2.3.10 + stdlib 2.1.0」这种混搭。
+        force "org.jetbrains.kotlin:kotlin-stdlib:2.3.10"
         force "com.squareup.okhttp3:okhttp:4.12.0"
     }
 }
@@ -238,7 +241,15 @@ dependencies {
 
     // ==================== Sora Editor (使用 BOM) ====================
     // ✅ BOM 统一管理版本
-    implementation platform("io.github.rosemoe:editor-bom:0.24.4")
+    // 6.2.0 批次40：0.24.4 → 0.24.6。
+    // 修的是上游 bug（b39ad1bc）：TextMateAnalyzer 对**带下划线**的 token 总是取
+    // NoExtSpanImpl，随后又调 setUnderlineColor —— 而 NoExtSpanImpl 该方法直接 throw
+    // UnsupportedOperationException，整条 AsyncAnalyzer 线程当场死掉，表现就是
+    // 「打开某些 html 文件后语法高亮全没了」（logcat 里 AsyncAnalysis: Thread failed）。
+    // 0.24.5 起改为「需要下划线才取扩展 span」。
+    // 升级前逐个比对过 0.24.4→0.24.6 的 public API：仅删了 EditorSearcher.replaceThis
+    // 与 DirectAccessProps.stickyScrollIterationLimit，本工程均零引用。
+    implementation platform("io.github.rosemoe:editor-bom:0.24.6")
     // A-09：brotli 全仓零引用已删；asm 系列全仓也零引用，但 libs/host-sdk.jar
     // （compileOnly，编译器走反射加载）可能在运行期用到字节码 API，故暂留
     implementation 'org.ow2.asm:asm:9.6'
@@ -252,9 +263,6 @@ dependencies {
     // TextMate 语言支持（语法高亮）
     implementation "io.github.rosemoe:language-textmate"
     
-    // Java 语言支持（可选，如果不需要可以移除）
-    implementation "io.github.rosemoe:language-java"
-
     // 编译器
     compileOnly files("libs/host-sdk.jar")
 

@@ -12,6 +12,99 @@ This document records all important version updates and feature changes of UIN T
 
 ---
 
+## [6.2.0] - 2026-10-16
+
+> Code editor specialization: the pure in-memory draft surface that was previously only reachable from the plugin-creation wizard has been rewritten into a standalone, externally invocable code editor — full file tree + multi-tab + project-level opening + direct disk I/O + an `ACTION_VIEW` entry point, plus two rounds of Sora Editor capability audits, Unified-component UI polish, and four rounds of root-cause fixes for "syntax highlighting disappears entirely".
+
+### External Entry & File Access
+
+- `CodeEditorActivity` is now `exported=true` in the manifest with its own `ACTION_VIEW` filter (`text/*` plus `application/json|xml|javascript|x-sh`), so other apps can open files in the editor via "Open with" (known cost: the system chooser shows two UIN Tool icons)
+- File access is now **request-permission-by-default + direct file I/O**: the editor requests storage permission on entry and reads/writes with `java.io.File` once granted; `content://` remains a `ContentResolver` fallback used only when no real path can be resolved
+- Android 11+ uses `MANAGE_EXTERNAL_STORAGE` (with a jump to the system settings page), Android 10 and below use `READ/WRITE_EXTERNAL_STORAGE`
+- New `ACTION_OPEN_DOCUMENT_TREE` to pick a project root manually; opening a new folder also builds the file tree
+- The plugin wizard now writes its draft to `cacheDir/editor_draft/<ts>/` and passes only a `project_dir` string via the Intent, eliminating `TransactionTooLargeException`, the deprecated `getSerializableExtra`, and draft loss on process recreation
+
+### Architecture Rewrite
+
+- New `EditorModels` / `EditorViewModel` / `FileAccess` / `EditorSettingsStore` layers; `CodeEditorActivity` grew 43 → 289 lines, `CodeEditorScreen` 1118 → 2000+ lines
+- Multi-tab: `EditorTab` derives `isModified` from a `savedContent` / `content` comparison, replacing the old broken `hasChanges` flag that only ever set on `SET_NEW_TEXT` (typing never triggered it, so the unsaved marker was permanently hidden)
+- File tree: recursively collects all text files; supports new file / new folder (with nested `a/b` paths), rename and delete; directories expand and collapse
+- The `EditorController` bridge now drives off `subscribeEvent(ContentChangeEvent / SelectionChangeEvent)` instead of the old 40×50ms polling hack
+- Runtime settings application dedupes on an "already-applied settings" triple so that every keystroke-triggered recomposition no longer re-sets editor properties and forces a relayout
+
+### Editing Features
+
+- Find / replace: only the search field shows by default, the replace field appears via the expand arrow; match counting now subscribes to `PublishSearchResultEvent` (the old code read the count immediately after the async `search()` returned, so it always showed 0 / a stale value), and regex mode passes `RegexBackrefGrammar.DEFAULT` so `$1` backreferences actually work
+- Save semantics: save / save as / unsaved-changes confirmation on exit (the old version had no `BackHandler`, so back silently discarded the draft)
+- Status bar shows live "line:column / character count"
+- Hardware keyboard shortcuts: Ctrl+S save, Ctrl+F find, Ctrl+G go to line, Ctrl+Shift+Z redo (the built-in Ctrl+Z branch ignores Shift and would turn redo back into undo); every other key is passed through
+- Overflow menu completed: undo / redo (greyed per `canUndo()` / `canRedo()`), indent / outdent, cut line, select line, go to line, go to document start / end, format, select all
+- `SymbolInputView` symbol bar; insertion now goes through the proper `commitText()` entry so `(` auto-closes with `)` and flows through auto-indent and quote handling
+- Settings panel with 20+ persisted options: font size, font family, tab width, word wrap, line numbers, non-printable characters, bracket matching, indent guides, line-panel dock position, ligatures, cursor blink, selection popup, magnifier, pinch zoom, line-height multiplier, character width, new-line separator (LF / CRLF / CR), highlighted code blocks, function placeholder character, and more
+- Editor theme is now independent of the app theme (dracula by default, 9 Sora themes selectable) and no longer follows the system, which defines no editor theme
+- Code formatting: new `CodeFormatters` performs **token-preserving re-indentation for JSON (json / json5 / jsonc)** (only rewrites indentation and post-colon spacing; numbers, string literals, escape spelling, key order, JSON5 single quotes and trailing commas are carried over verbatim, with structural validation so an invalid document is never touched) and **conservative YAML tidy-up** (block scalars preserved byte-for-byte, leading tabs expanded to spaces, trailing whitespace stripped, blank runs collapsed, indentation levels never reordered); computed on a background thread and applied via `onFormatSucceed()` (batch edit = one undo step for the whole replacement), with stale results discarded on tab switch or concurrent typing; unsupported extensions grey out the menu item
+- Tapping a `#RRGGBB` color literal in the code copies it to the clipboard and selects the range
+
+### Syntax Highlighting Root Causes
+
+- **Extension → scope mapping**: 7 mappings did not match what the grammar files actually declare (`m/mm` and `c` were wrongly mapped to `source.cpp`, etc.); an unregistered scope now falls back to `text.plain` instead of inheriting the previous file's language; `.tsx` / `.jsx` highlighting is fixed too
+- **Only the first grammar per directory registered**: `GrammarDefinition.getName()` returned the directory name and `GrammarRegistry` used it as the dedupe key, so only one grammar per directory could ever register. The grammar file's full path is now used as a globally unique name
+- **Shared raw rule table permanently poisoned**: `Grammar` construction calls `ObjectCloner.deepClone`, whose last branch never actually clones plain objects, so the same scope's raw object is shared by the registry and every grammar that `include`s it; whoever compiles first stamps rule ids into the shared object, and later instances throw from `getRule(id)` and kill the analysis thread. Switching language now re-parses a fresh object graph via reflection and evicts the cache; the `testTokenization` probe that concurrently compiled the same instance on a background thread was removed
+- **Malformed `captures` in grammar assets**: 4 XML / YAML grammar assets had bare strings nested under `captures`, making tm4e throw `ClassCastException` at compile time; `registerRule` failed before writing the id into the lookup map, so the id stayed in the shared raw forever but was never found → the analysis thread died and the language had no highlighting at all. The 4 assets are fixed and `loadGrammars()` gained a **load-time validator**, so the same class of damage now shows its file name and exact path in the log at startup
+- **Upstream underline-token crash**: sora 0.24.4's `TextMateAnalyzer` obtains an `obtainNoExt` span for every token and then calls `setUnderlineColor` on it, so any underlined token (HTML produces them) makes `NoExtSpanImpl` throw `UnsupportedOperationException`, killing the whole `AsyncAnalysis` thread and the file's highlighting. Fixed upstream in 0.24.5 and picked up here with the move to sora 0.24.6
+- TextMate theme color fixes: sora uses `>=255` custom color ids that plain `EditorColorScheme.getColor` cannot resolve and returns 0 for (transparent); `TEXT_SELECTED` and `TEXT_ACTION_WINDOW_*` had the same problem and were colored explicitly, fixing "page blank until select-all", "select-all recolors text" and "transparent floating icons"
+- Grammar loading now reads the `scopeName` declared by the grammar file itself, skipping injections and damaged assets; two 14-byte stub grammar files whose contents were the literal `404: Not Found` were deleted
+
+### UI Polish
+
+- Full adoption of the Unified component system (`UnifiedDialog` / `UnifiedTextField` / `UnifiedEmptyState` / `UnifiedCard` etc.), plus new `AppColors` / `AppDimens`
+- The sidebar became a `ModalNavigationDrawer`: the top-left icon is now the drawer toggle (it used to be an ArrowBack exit arrow) and exit is handled by the back gesture; the drawer is anchored to the left edge so the leftmost swipe opens it without triggering pinch zoom on the content, and dragging the drawer closes it
+- File tree filenames moved to `bodyMedium` with row height 34 → 40dp; the overflow menu became a 170dp anchored dropdown instead of a near-full-screen dialog
+- Editor chrome (tab bar / status bar / symbol bar / search panel) uniformly uses `pageBackground()` so gradients and glass modes show through and match the rest of the app; modal overlays (dialogs / bottom sheets / drawers) stay opaque, fixing editor dialogs that showed the layer underneath
+- Fixed overly translucent UI panels and buttons (`translucentAlpha` default and floor, permanently transparent `glassBorder`)
+- Accessibility: `AndroidView` now has a `contentDescription` so TalkBack can read out the file being edited
+
+### Performance & Resources
+
+- Hex-color scanning moved off the main thread: it previously ran a full-file regex on the main thread 150ms after each content change (large files felt like "a hiccup after typing a line"); it now scans on a background thread with re-entrancy protection and discards stale results before reordering
+- `isModified` changed from an O(n) full-text comparison on every keystroke to an O(1) boolean flag
+- `EditorController.detach()` now calls `CodeEditor.release()` (it previously only nulled the field) — this fixes a leaked `TextMateLanguage` background analyzer thread and `Formatter` on every AndroidView recreation
+- File reading now returns a three-state `ReadResult` (success / too large / unreadable) with a new **8MB hard cap**, plus a `catch(OutOfMemoryError)` (`catch(Exception)` cannot stop a `Error` and the process would crash); oversized and unreadable files get distinct messages
+
+### Logging
+
+- New `LogcatRecorder`: a background daemon thread started at app launch continuously writes logcat to disk alongside the existing app logs, with rotation and retention policies matched to `Logger` so "clear logs" applies to it too; `READ_LOGS` is signature-level and unavailable to a normal install, but Android lets a process read its own UID's log lines, so the recorder works without the permission
+- The log page's logcat mode now reads the on-disk file first, and **export follows the current source** (fixing "switch to logcat and export still writes the empty AppLog file"); export file names also carry the source so the two never overwrite each other
+- The developer-tools page no longer embeds its own stale copy of the log viewer; logging is consolidated in `LogViewerScreen`
+
+### Completion
+
+- New keyword tables for XML (75) / HTML (49) / CSS / Gradle (48) / config formats (42, shared by json / yaml / toml / ini / properties) — these extensions all returned empty arrays before, so **completion was dead for the config files this app edits most**
+- Deliberately lists only tag and property names, never colon-prefixed names like `android:layout_width`: sora's backward prefix scan stops at `:`, so a full name would complete to `android:android:layout_width`
+- An unregistered scope falls back to `text.plain` instead of inheriting the previous file's language
+
+### Dependencies & Build
+
+- sora-editor BOM **0.24.4 → 0.24.6** (picks up the upstream underline-token crash fix; both tags' public APIs were compared item by item and no removed member is referenced by this project)
+- Kotlin **2.1.0 → 2.3.10** (0.24.6's AARs are built with Kotlin 2.3.x and a 2.1.0 compiler cannot read metadata 2.3.0 — all 35 `e:` errors were this; the version deliberately matches sora's own compiler), with `kotlin.plugin.compose` and `kotlin-stdlib` bumped in lockstep
+- Removed the zero-reference dead dependency `language-java` (Java highlighting comes from the TextMate grammar under `assets/textmate/java`, not from that AAR)
+- Removed the dead-code class `EditorUiFlags` (all 4 fields unreferenced project-wide)
+- Removed the zero-consumer dead `autoSave` switch
+
+### Deliberately Not Done (each verified against the source)
+
+- **XML formatting**: the platform `javax.xml` Transformer is a pretty-printer, not a value-preserving re-indenter (it normalizes attribute quotes, strips whitespace-only text nodes, may drop a DOCTYPE internal subset, and carries XXE-hardening pitfalls), which directly conflicts with "touch whitespace, never touch values"; XML here is mostly AndroidManifest / layout files, which Android Studio already formats
+- **`QuickQuoteHandler`**: it can only come from `Language.getQuickQuoteHandler()`, and installing one disables the built-in selection auto-surround; `DefaultSymbolPairs` already auto-closes and auto-surrounds `"` and `'`, so adding it would be a net negative
+- **Diagnostics / inlay hints / outline**: Sora has the APIs but the TextMate analyzer produces no data source, so the UI would be dead
+- **Snippet completion**: needs a snippet library, i.e. a product decision that has not been made
+- **Per-tab undo history**: `Content` already owns its `UndoManager` so tabs are isolated and history is simply cleared on switch; keeping it would require caching `Content` objects, which collides with the `isModified` read points
+- **`ContentIO` streaming I/O**: already covered by the 2MB read limit, the new 8MB hard cap and the OOM fallback; the benefit was overestimated
+- **`disallowSuggestions`**: when true it force-restarts the input connection and rejects composing text, which would break Chinese / Japanese input
+
+### Internationalization
+
+- Chinese and English string keys grew from 1867 to **1910**, with 0 placeholder differences
+
 ## [6.1.0] - 2026-10-07
 
 > Maintenance release: a full defect-fix pass over the 6.0.0 codebase (all 233 checklist items closed) covering startup & permissions, main-thread/ANR risks, dark theme, plugin host correctness and security, backup/restore data safety, error visibility, and build hygiene — followed by dead-code & resource cleanup, architecture consolidation, i18n, accessibility and CI hardening. No new features.
@@ -1097,9 +1190,9 @@ v4.0.0 is a major refactoring, please note before upgrading:
 
 | Item | Info |
 |------|------|
-| Document Version | 6.1.0 |
-| Last Updated | October 7, 2026 |
-| Corresponding App Version | v6.1.0 (Build 25) |
+| Document Version | 6.2.0 |
+| Last Updated | October 16, 2026 |
+| Corresponding App Version | v6.2.0 (Build 26) |
 
 ---
 

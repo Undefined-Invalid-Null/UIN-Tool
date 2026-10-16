@@ -11,8 +11,15 @@ buildscript {
         // 任意一侧改版本都要重新下发行版/依赖、有把可用构建改坏的风险，故保持现状，
         // 待用户拍板：要么 wrapper 回退 8.11.1，要么 AGP 升到支持 Gradle 9 的版本。
         classpath "com.android.tools.build:gradle:8.9.1"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.0"
+        // 6.2.0 批次40：Kotlin 2.1.0 → 2.3.10。
+        // 原因：sora-editor 0.24.5/0.24.6 的 AAR 是用 Kotlin 2.3.x 编译的（metadata 2.3.0），
+        // 而 2.1.0 的编译器只能读到 metadata 2.2.0，于是 0.24.6 一升上来就报
+        // 「Module was compiled with an incompatible version of Kotlin」，35 条 e: 全是这个。
+        // 0.24.5 也是 Kotlin 2.3.10 编的，所以退回 0.24.5 没用 —— 只能升 Kotlin。
+        // 版本刻意与 sora 0.24.6 的编译器（2.3.10）对齐，metadata 版本完全一致，不留向前兼容余量。
+        // 约束核对过：KGP 2.3.x 要求 Gradle 7.6.3+ / AGP 7.1+，本项目是 Gradle 9.0.0 / AGP 8.9.1。
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.10"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.3.10"
     }
 }
 

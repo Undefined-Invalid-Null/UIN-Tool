@@ -1,44 +1,290 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorActivity.kt
 package com.UIN.Tool.ui.screen.dev
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.UIN.Tool.R
+import com.UIN.Tool.ui.screen.dev.editor.EditorViewModel
+import com.UIN.Tool.ui.screen.dev.editor.FileAccess
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.utils.AppLog
+import com.UIN.Tool.utils.AppToast
+import com.UIN.Tool.utils.Str
+import java.io.File
 
+private const val TAG = "CodeEditorActivity"
+
+/**
+ * 6.2.0 代码编辑器入口。
+ *
+ * 支持两种进入方式：
+ *  1) 插件向导：`project_dir` + ui_type/main_class/plugin_name/plugin_id（不再传 Serializable HashMap）
+ *  2) 外部应用 `ACTION_VIEW`：携带 content:// 或 file:// URI，供其他 App「用 UIN Tool 打开」
+ *
+ * D2（用户拍板）：默认申请文件访问权限，获批后直接用 java.io.File 读写。
+ */
 class CodeEditorActivity : AppCompatActivity() {
+
+    private val viewModel: EditorViewModel by viewModels()
+
+    private var pendingUri: Uri? = null
+    private var projectDirPath: String? = null
+    /** 6.2.0 批次22：ACTION_VIEW 打开时置位，跳过「进入即申请存储权限」的打扰
+     *  —— content:// 已由分享方临时授权，无需存储权限即可读写。 */
+    private var openedViaActionView = false
+
+    private val manageStorageLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        onStoragePermissionResult()
+    }
+
+    private val legacyPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        onStoragePermissionResult()
+    }
+
+    private val openFolderLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val path = FileAccess.resolveRealPath(this, uri)
+        val dir = path?.let(::File) ?: return@registerForActivityResult
+        if (!FileAccess.hasStorageAccess(this)) {
+            viewModel.emit(Str.get(R.string.editor_permission_denied_readonly))
+        }
+        viewModel.openProject(dir)
+    }
+
+    // 6.2.0 批次21：另存为目录选择器 —— 保存失败（无存储权限）时弹出，
+    // 选完把内容写进该 SAF 目录（无需存储权限）。
+    private val saveAsLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri == null) {
+            viewModel.clearSaveAsRequest()
+        } else {
+            viewModel.completeSaveAs(uri)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val fileList = intent.getStringArrayListExtra("file_list") ?: emptyList()
-        val fileContents = (intent.getSerializableExtra("file_contents") as? HashMap<String, String>) ?: hashMapOf()
-        val uiType = intent.getStringExtra("ui_type") ?: "native"
-        val mainClass = intent.getStringExtra("main_class") ?: ""
-        val pluginName = intent.getStringExtra("plugin_name") ?: ""
-        val pluginId = intent.getStringExtra("plugin_id") ?: ""
+        FileAccess.initPackageName(this)
+
+        viewModel.onMemoryDocumentsCommitted = { docs ->
+            val data = Intent().apply {
+                putStringArrayListExtra("file_list", ArrayList(docs.map { it.first }))
+                putStringArrayListExtra("file_contents_list", ArrayList(docs.map { it.second }))
+            }
+            setResult(Activity.RESULT_OK, data)
+        }
+
+        handleIntent(intent, fromRestore = savedInstanceState != null)
+
+        // 权限被授予后，把先前挂起的 URI 补开
+        if (pendingUri != null && FileAccess.hasStorageAccess(this)) {
+            pendingUri?.let(viewModel::openUri)
+            pendingUri = null
+        }
 
         setContent {
             UINToolTheme {
-                CodeEditorScreen(
-                    fileList = fileList,
-                    fileContents = fileContents,
-                    uiType = uiType,
-                    mainClass = mainClass,
-                    pluginName = pluginName,
-                    pluginId = pluginId,
-                    onSave = { updatedFiles, updatedContents ->
-                        val result = android.os.Bundle().apply {
-                            putStringArrayList("file_list", ArrayList(updatedFiles))
-                            putSerializable("file_contents", HashMap(updatedContents))
+                EditorRoot(
+                    viewModel = viewModel,
+                    onRequestPermission = { requestStorageAccess() },
+                    onOpenFolder = {
+                        try {
+                            openFolderLauncher.launch(null)
+                        } catch (e: Exception) {
+                            AppLog.e(TAG, "launch OpenDocumentTree failed", e)
+                            AppToast.error(this, Str.get(R.string.editor_open_folder_failed))
                         }
-                        setResult(RESULT_OK, intent.apply { putExtras(result) })
-                        finish()
                     },
-                    onCancel = {
-                        setResult(RESULT_CANCELED)
-                        finish()
-                    }
+                    onExit = { attemptExit() }
                 )
+            }
+
+            // 用户说「默认都获取权限」——进入即发起授权，不等手动点。
+            // 注意：LaunchedEffect 是 @Composable，必须位于 setContent 的组合上下文内。
+            // 6.2.0 批次22：ACTION_VIEW 打开时跳过 —— content:// 已临时授权，够用；
+            // 强行跳设置页只会把刚打开的编辑器盖住、让人误以为「没打开」。
+            LaunchedEffect(Unit) {
+                if (!openedViaActionView && !FileAccess.hasStorageAccess(this@CodeEditorActivity)) {
+                    requestStorageAccess()
+                }
+            }
+
+            // 6.2.0 批次21：观察「另存为」请求（保存因无写入权限失败时置位），
+            // 弹出 SAF 目录选择器让用户另存到有权限的目录。
+            val saveAsTab by viewModel.saveAsRequest.collectAsState()
+            LaunchedEffect(saveAsTab) {
+                if (saveAsTab != null) {
+                    try {
+                        saveAsLauncher.launch(null)
+                    } catch (e: Exception) {
+                        AppLog.e(TAG, "launch save-as picker failed", e)
+                        viewModel.clearSaveAsRequest()
+                    }
+                }
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent, fromRestore = false)
+    }
+
+    private fun handleIntent(intent: Intent?, fromRestore: Boolean) {
+        if (intent == null) return
+        AppLog.d(TAG, "handleIntent action=${intent.action} data=${intent.data}")
+
+        // 外部应用「用 UIN Tool 打开」
+        if (intent.action == Intent.ACTION_VIEW && intent.data != null) {
+            val uri = intent.data!!
+            // 6.2.0 批次25：记录 flags/type，便于排查 android/data/ 打不开（是否带授权 flag）。
+            AppLog.d(
+                TAG,
+                "ACTION_VIEW uri=$uri scheme=${uri.scheme} type=${intent.type} " +
+                    "flags=0x${Integer.toHexString(intent.flags)} " +
+                    "grantedRead=${intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0}"
+            )
+            // 6.2.0 批次22：直接 openUri，不要因「暂无存储权限」挂起 pendingUri 等授权。
+            openedViaActionView = true
+            viewModel.openUri(uri)
+            return
+        }
+
+        // 插件向导模式（内容已落盘到 project_dir）
+        val dirPath = intent.getStringExtra("project_dir")
+        if (!dirPath.isNullOrBlank() && !fromRestore) {
+            projectDirPath = dirPath
+            val dir = File(dirPath)
+            viewModel.openProject(dir)
+            // 6.2.0 修复：草稿是 src/com/foo/Main.java 这类**嵌套**结构，
+            // 只 listFiles() 顶层会拿到全是目录 → 一个文件都开不出来（表现为「未打开文件」）。
+            // 此处递归收集全部文本文件，再按相对路径排序打开。
+            val files = mutableListOf<File>()
+            collectTextFiles(dir, files, 0)
+            files.sortedBy { it.relativeTo(dir).path.lowercase() }
+                .forEach { viewModel.openFile(it) }
+        }
+    }
+
+    /** 递归收集目录下的文本文件；depth 上限防止异常嵌套目录把主线程拖死。 */
+    private fun collectTextFiles(current: File, out: MutableList<File>, depth: Int) {
+        if (depth > 12 || out.size > EditorViewModel.MAX_DIR_ENTRIES * 20) return
+        val children = current.listFiles() ?: return
+        for (child in children) {
+            if (child.isDirectory) {
+                collectTextFiles(child, out, depth + 1)
+            } else if (FileAccess.isTextFile(child.name)) {
+                out += child
+            }
+        }
+    }
+
+    // ==================== 权限 ====================
+
+    private fun requestStorageAccess() {
+        if (FileAccess.hasStorageAccess(this)) {
+            onStoragePermissionResult()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val intent = FileAccess.manageAllFilesIntent()
+            if (intent != null) {
+                try {
+                    manageStorageLauncher.launch(intent)
+                } catch (e: Exception) {
+                    AppLog.e(TAG, "launch MANAGE_APP_ALL_FILES_ACCESS failed", e)
+                    AppToast.error(this, Str.get(R.string.editor_permission_launch_failed))
+                }
+            }
+        } else {
+            legacyPermissionLauncher.launch(
+                arrayOf(
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                )
+            )
+        }
+    }
+
+    private fun onStoragePermissionResult() {
+        val granted = FileAccess.hasStorageAccess(this)
+        AppLog.d(TAG, "storage permission granted=$granted")
+        if (granted) {
+            // 6.2.0 批次40：权限到手即把目录树根设为外部存储根 —— 用户打开应用后
+            // 直接就能在树里挑文件，不必先「打开一个文件夹」。
+            viewModel.ensureDefaultRoot()
+            pendingUri?.let(viewModel::openUri)
+            pendingUri = null
+        } else {
+            viewModel.emit(Str.get(R.string.editor_permission_denied_readonly))
+        }
+    }
+
+    // ==================== 退出 ====================
+
+    private fun attemptExit() {
+        if (projectDirPath != null) {
+            // 向导模式：编辑器已直接写盘，回传目录让向导读回
+            val data = Intent().apply {
+                putExtra("project_dir", projectDirPath)
+            }
+            setResult(Activity.RESULT_OK, data)
+            finish()
+            return
+        }
+        setResult(Activity.RESULT_CANCELED)
+        finish()
+    }
+
+}
+
+// ============================================================
+// 入口 UI：无标签页时的空态 + 权限引导；有内容时交给 CodeEditorScreen
+// ============================================================
+@Composable
+private fun EditorRoot(
+    viewModel: EditorViewModel,
+    onRequestPermission: () -> Unit,
+    onOpenFolder: () -> Unit,
+    onExit: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { msg ->
+            if (msg.isNotEmpty()) AppToast.info(context, msg)
+        }
+    }
+
+    // 返回拦截：有未保存改动时先确认
+    BackHandler { onExit() }
+
+    // 6.2.0 批次24：不再单独渲染「授予权限 / 未打开文件」引导页 —— 统一交给 CodeEditorScreen。
+    // 它内部按「没打开文件 → 打开文件夹引导；打开了文件 → 直接显示内容」处理；
+    // 从外部（content://）打开的文件本就无需存储权限，无权限时也不再弹权限页、不显示目录树。
+    CodeEditorScreen(
+        viewModel = viewModel,
+        onExit = onExit,
+        onRequestPermission = onRequestPermission,
+        onOpenFolder = onOpenFolder
+    )
 }

@@ -114,19 +114,28 @@ fun BasePluginWizardScreen(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val data = result.data
-            val updatedFiles = data?.getStringArrayListExtra("file_list") ?: emptyList()
-            val updatedContents = data?.getSerializableExtra("file_contents") as? HashMap<String, String> ?: emptyMap()
-            viewModel.updateFiles(updatedFiles, updatedContents)
-            AppToast.info(context, Str.get(R.string.code_updated_updatedfiles_size_file_, updatedFiles.size))
+            // 6.2.0：编辑器直接写盘，向导按目录读回（不再走 Serializable HashMap）
+            val dirPath = result.data?.getStringExtra("project_dir")
+            if (dirPath != null) {
+                viewModel.readDraft(java.io.File(dirPath))
+            }
+            AppToast.info(context, Str.get(R.string.code_updated_updatedfiles_size_file_, viewModel.fileList.value.size))
         }
     }
 
     fun openCodeEditor() {
         viewModel.initDefaultFiles()
+        // 6.2.0：草稿先落盘，Intent 只传路径，规避 TransactionTooLarge
+        val draftDir = java.io.File(
+            context.cacheDir,
+            "editor_draft/" + System.currentTimeMillis()
+        )
+        if (!viewModel.writeDraft(draftDir)) {
+            AppToast.error(context, Str.get(R.string.write_draft_failed_error_2))
+            return
+        }
         val intent = android.content.Intent(context, CodeEditorActivity::class.java)
-        intent.putExtra("file_list", ArrayList(viewModel.fileList.value))
-        intent.putExtra("file_contents", HashMap(viewModel.fileContents.value))
+        intent.putExtra("project_dir", draftDir.absolutePath)
         intent.putExtra("ui_type", uiType)
         intent.putExtra("main_class", viewModel.mainClass.value)
         intent.putExtra("plugin_name", viewModel.pluginName.value)

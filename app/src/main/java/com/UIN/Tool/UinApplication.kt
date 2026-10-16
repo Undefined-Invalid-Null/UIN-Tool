@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.io.ByteArrayInputStream
 import java.io.File
 
 class UinApplication : Application() {
@@ -39,6 +40,17 @@ class UinApplication : Application() {
 
         @JvmStatic
         fun getAppContext(): Context = instance.applicationContext
+
+        /**
+         * 6.2.0 批次33：scopeName → 该语法在 assets 里的路径。
+         *
+         * 用于编辑器「设语言」时按需重新解析语法文件，重建一份**干净的 Grammar 实例**
+         * （见 CodeEditorScreen.refreshGrammar）——tm4e 的 `ObjectCloner.deepClone` 不真正
+         * 克隆普通对象，多语法共享同一份 raw，规则 id 会被别的实例占掉导致
+         * `No rule with index 1` 完全无高亮。启动时 `loadGrammars()` 填充。
+         */
+        val grammarAssetPaths: MutableMap<String, String> =
+            java.util.concurrent.ConcurrentHashMap()
 
         /** B-10：进程启动时的系统原始 locale（跟随系统时用，见 attachBaseContext） */
         @Volatile
@@ -115,6 +127,9 @@ class UinApplication : Application() {
         // 的日志因 Logger 尚未初始化而丢失。Logger.init 幂等；权限未就绪导致的失败
         // 会留在 isInitialized=false，由后续（SplashActivity.createWorkDirectory）重试。
         StartupTask("loggerInit") { Logger.init(Constants.LOG_DIR) },
+        // 批次37：把 logcat 默认落盘到同一日志目录（后台守护线程，不阻塞启动），
+        // 让库直接写 logcat 的异常（如 sora 的 AsyncAnalysis）也能进文件、可导出。
+        StartupTask("logcatRecorderInit") { com.UIN.Tool.log.LogcatRecorder.start() },
         StartupTask("uiConfigInit") {
             UIConfig.init(this)
             com.UIN.Tool.ui.common.StyleManager.init()
@@ -296,11 +311,16 @@ class UinApplication : Application() {
             AssetsFileResolver(assets)
         )
 
-        // 2. 动态加载语法
-        loadGrammars()
-
-        // 3. 加载主题
-        loadThemes()
+        // 2~3. 加载语法 + 主题；finally 里无条件置位就绪标志，保证「挂起等就绪再打开」
+        // 的 ACTION_VIEW 不会因某个加载抛异常而永久卡在「正在打开…」。
+        try {
+            loadGrammars()
+            loadThemes()
+        } finally {
+            // 6.2.0 批次28：语法与主题全部就绪（或失败）后才置位，让启动瞬间打开的文件
+            // 在两者齐备时一次性带高亮打开（避免先 EmptyLanguage 再补设的空窗）。
+            com.UIN.Tool.ui.screen.dev.editor.TextMateInitState.grammarsReady.value = true
+        }
     }
 
     /**
@@ -311,80 +331,216 @@ class UinApplication : Application() {
         try {
             val grammarRegistry = GrammarRegistry.getInstance()
             val basePath = "textmate"
-            
+
             // 获取 assets/textmate 下的所有子目录
             val languageDirs = assets.list(basePath) ?: run {
                 Logger.w(TAG, Str.get(R.string.assets_textmate_directory_not_found))
                 return
             }
-            
+
             var loadedCount = 0
             var failedCount = 0
-            
+
             Logger.d(TAG, Str.get(R.string.found_languagedirs_size_language_dir, languageDirs.size))
-            
+
             for (langDir in languageDirs) {
                 // 跳过 themes 目录
                 if (langDir == "themes") continue
-                
+                // 6.2.0 批次33：assets.list() 只返回名字，分不出文件与目录，于是 textmate 根
+                // 目录里的散落文件（languages.json、各种 *.json）会被当成语法目录去列
+                // syntaxes/，每启动打一条「⚠️ 目录 X/syntaxes 为空」。语法目录名一律不含点，
+                // 故「含点」即判定为文件直接跳过。实测该规则不影响任何真实语法目录。
+                if (langDir.contains('.')) continue
+
                 val syntaxesPath = "$basePath/$langDir/syntaxes"
                 val files = assets.list(syntaxesPath)
                 if (files == null || files.isEmpty()) {
                     Logger.w(TAG, Str.get(R.string.directory_langdir_syntaxes_is_empty, langDir))
                     continue
                 }
-                
-                // 查找语法文件
-                var grammarFile: String? = null
+
+                // 该语言目录若带 language-configuration.json（括号对/自动缩进/换行规则），
+                // 统一挂到目录下每个语法上；不存在时返回 null，库侧会自行跳过。
+                val langConfigPath = "$basePath/$langDir/language-configuration.json".takeIf {
+                    assets.list("$basePath/$langDir")?.contains("language-configuration.json") == true
+                }
+
+                // 6.2.0 批次9：遍历目录下**全部**语法文件。
+                // 旧版只取 assets.list 返回的第一个文件，导致 typescript-basics 目录里的
+                // TypeScriptReact.tmLanguage.json（声明 source.tsx）从未被注册，
+                // .tsx 文件因此拿不到语法高亮并静默沿用上一个文件的语言。
                 for (fileName in files) {
-                    if (isValidGrammarFile(fileName)) {
-                        grammarFile = fileName
-                        break
+                    if (!isValidGrammarFile(fileName)) continue
+                    // 注入语法不能作为独立语言注册
+                    if (fileName.contains("injection", ignoreCase = true)) continue
+
+                    val fullPath = "$syntaxesPath/$fileName"
+                    val bytes = try {
+                        assets.open(fullPath).use { it.readBytes() }
+                    } catch (e: Exception) {
+                        Logger.e(TAG, Str.get(R.string.failed_to_load_grammar_langdir, fullPath), e)
+                        failedCount++
+                        continue
                     }
-                }
-                
-                if (grammarFile == null) {
-                    Logger.w(TAG, Str.get(R.string.no_grammar_file_found_langdir, langDir))
-                    failedCount++
-                    continue
-                }
-                
-                val fullPath = "$syntaxesPath/$grammarFile"
-                val scopeName = getScopeNameFromFile(langDir, grammarFile)
-                if (scopeName == null) {
-                    Logger.w(TAG, Str.get(R.string.could_not_infer_scope_langdir_gramma, langDir, grammarFile))
-                    failedCount++
-                    continue
-                }
-                
-                try {
-                    val inputStream = assets.open(fullPath)
-                    
-                    // 创建 GrammarDefinition
-                    val grammarDef = object : GrammarDefinition {
-                        override fun getName(): String = langDir
-                        
-                        override fun getLanguageConfiguration(): String? = null
-                        
-                        override fun getScopeName(): String = scopeName
-                        
-                        override fun getGrammar(): IGrammarSource {
-                            return IGrammarSource.fromInputStream(inputStream, fullPath, null)
+                    if (bytes.isEmpty()) {
+                        failedCount++
+                        continue
+                    }
+
+                    // 资产损坏检测：历史上有语法文件内容是 "404: Not Found"（LFS 拉取失败留下的占位）
+                    val head = bytes.decodeToString(0, minOf(bytes.size, 64))
+                    if (head.contains("404: Not Found")) {
+                        Logger.w(TAG, Str.get(R.string.skip_broken_grammar_asset, fullPath))
+                        failedCount++
+                        continue
+                    }
+
+                    // 优先使用语法文件自身声明的 scopeName（权威来源），推断仅作兜底
+                    val scopeName = readScopeName(bytes) ?: getScopeNameFromFile(langDir, fileName)
+                    if (scopeName == null) {
+                        Logger.w(TAG, Str.get(R.string.could_not_infer_scope_langdir_gramma, langDir, fileName))
+                        failedCount++
+                        continue
+                    }
+                    if (scopeName.contains(".injection.")) continue
+
+                    warnMalformedCaptures(scopeName, fileName, bytes)
+
+                    try {
+                        // 6.2.0 批次12 修复「代码高亮一直不生效」的真正根因：
+                        //
+                        // GrammarRegistry.loadGrammar() 用 GrammarDefinition.getName()
+                        // 作为**去重键**（见其 grammarFileName2ScopeName map）：
+                        //   if (grammarFileName2ScopeName.containsKey(languageName) && ...) return 已有;
+                        // 旧代码让同目录下的所有语法文件都返回目录名（如 "typescript-basics"），
+                        // 于是同一目录里**只有第一个文件能注册成功**，其余全部被静默跳过 ——
+                        // source.tsx、source.js.jsx、source.python 等因此从来没能注册上，
+                        // TextMateLanguage.create(scope) 找不到语法 → 回退 text.plain → 完全没有高亮。
+                        //
+                        // 现改为用**语法文件的完整路径**做 name（全局唯一），并把同目录的
+                        // language-configuration.json（如有的话）接上，顺带获得括号匹配/自动缩进。
+                        val grammarDef = object : GrammarDefinition {
+                            override fun getName(): String = fullPath
+
+                            override fun getLanguageConfiguration(): String? = langConfigPath
+
+                            override fun getScopeName(): String = scopeName
+
+                            override fun getGrammar(): IGrammarSource {
+                                return IGrammarSource.fromInputStream(
+                                    bytes.inputStream(), fullPath, null
+                                )
+                            }
                         }
+
+                        val grammar = grammarRegistry.loadGrammar(grammarDef)
+                        if (grammar == null) {
+                            Logger.w(TAG, Str.get(R.string.failed_to_load_grammar_langdir, fullPath))
+                            failedCount++
+                            continue
+                        }
+                        loadedCount++
+                        // 6.2.0 批次33：记下 scope → 资产路径，供编辑器按需重建干净 Grammar 实例。
+                        grammarAssetPaths[scopeName] = fullPath
+                        Logger.d(TAG, Str.get(R.string.loaded_grammar_langdir_scopename_gra, langDir, scopeName, fileName))
+                    } catch (e: Exception) {
+                        Logger.e(TAG, Str.get(R.string.failed_to_load_grammar_langdir, fullPath), e)
+                        failedCount++
                     }
-                    
-                    grammarRegistry.loadGrammar(grammarDef)
-                    loadedCount++
-                    Logger.d(TAG, Str.get(R.string.loaded_grammar_langdir_scopename_gra, langDir, scopeName, grammarFile))
-                } catch (e: Exception) {
-                    Logger.e(TAG, Str.get(R.string.failed_to_load_grammar_langdir, langDir), e)
-                    failedCount++
                 }
             }
-            
+
             Logger.i(TAG, Str.get(R.string.grammar_load_complete_success_loaded, loadedCount, failedCount))
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.grammar_load_failed), e)
+        }
+    }
+
+    /**
+     * 从语法文件内容中读取其**自身声明**的 scopeName。
+     * 支持 JSON 语法（VS Code 常见）与 plist XML 语法（.tmLanguage）。
+     * 读不出来返回 null，由调用方回退到按文件名/目录名推断。
+     */
+    /**
+     * 6.2.0 批次38：语法资产自检 —— `captures` 里出现**裸字符串**条目时提前点名。
+     *
+     * 危害链条（实测于 xml.tmLanguage.json）：
+     * `RawCaptures extends HashMap<IRawRule>`，`get(captureId)` 隐式强转 → 值是 String
+     * 就抛 `ClassCastException`；该异常发生在 `RuleFactory.getCompiledRuleId` 的 lambda
+     * 内部，而 `Grammar.registerRule` 是「先 `++_lastRuleId` → `setId()` 盖章 → 构造 →
+     * `put`」，构造抛异常时 **put 被跳过**，于是 `_ruleId2desc` 里留下 id 洞、
+     * `_lastRuleId` 却已自增。下次 tokenize 重试时 `desc.getId()` 已非空，直接返回这个
+     * 从未注册过的 id → `getRule()` 抛 `IndexOutOfBoundsException` → 该语言**完全无高亮**。
+     *
+     * 这类畸形在编辑器里只会表现为「这个语言没高亮」，没有任何报错弹窗，故在加载期扫一遍
+     * 并写进启动日志。仅检查 JSON 语法（plist 走另一条解析路径）。
+     */
+    private fun warnMalformedCaptures(scopeName: String, fileName: String, bytes: ByteArray) {
+        if (!fileName.endsWith(".json", ignoreCase = true)) return
+        val json = try {
+            org.json.JSONObject(bytes.decodeToString())
+        } catch (e: Exception) {
+            return // 非法 JSON 由后续 loadGrammar 自行报错，这里不重复
+        }
+        val hits = ArrayList<String>()
+        fun walk(node: Any?, path: String) {
+            when (node) {
+                is org.json.JSONObject -> {
+                    val names = node.names() ?: return
+                    for (i in 0 until names.length()) {
+                        val key = names.getString(i)
+                        val child = node.get(key)
+                        if (key in CAPTURE_KEYS && child is org.json.JSONObject) {
+                            val capNames = child.names() ?: continue
+                            for (j in 0 until capNames.length()) {
+                                val capId = capNames.getString(j)
+                                if (child.get(capId) !is org.json.JSONObject) {
+                                    hits.add("$path/$key.$capId")
+                                }
+                            }
+                        } else {
+                            walk(child, "$path/$key")
+                        }
+                    }
+                }
+                is org.json.JSONArray -> {
+                    for (i in 0 until node.length()) {
+                        walk(node.get(i), "$path[$i]")
+                    }
+                }
+            }
+        }
+        walk(json, "")
+        if (hits.isNotEmpty()) {
+            Logger.w(
+                TAG,
+                "语法资产 $scopeName ($fileName) 的 captures 含裸字符串条目，tm4e 编译时会抛 ClassCastException 并使该语言完全无高亮，请修正: ${hits.take(5)}"
+            )
+        }
+    }
+
+    private val CAPTURE_KEYS = setOf("captures", "beginCaptures", "endCaptures", "whileCaptures")
+
+    private fun readScopeName(bytes: ByteArray): String? {
+        val text = try {
+            bytes.decodeToString()
+        } catch (e: Exception) {
+            return null
+        }
+        return when {
+            text.trimStart().startsWith("{") -> try {
+                org.json.JSONObject(text).optString("scopeName").takeIf { it.isNotEmpty() }
+            } catch (e: Exception) {
+                null
+            }
+            text.contains("<plist") || text.contains("<?xml") -> {
+                Regex("""<key>\s*scopeName\s*</key>\s*<string>\s*([^<]+?)\s*</string>""")
+                    .find(text)
+                    ?.groupValues?.get(1)
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+            }
+            else -> null
         }
     }
 
@@ -393,8 +549,11 @@ class UinApplication : Application() {
      */
     private fun isValidGrammarFile(fileName: String): Boolean {
         val lowerName = fileName.lowercase()
+        // 注意：lowerName 已转小写，后缀字面量必须也用小写比对。
+        // 旧代码比对混合大小写 ".tmLanguage"，导致所有 plist 语法（如 Kotlin.tmLanguage）
+        // 被误判为非法而跳过 —— kotlin 因此从未注册、.kt 没有高亮。
         return lowerName.endsWith(".json") ||
-                lowerName.endsWith(".tmLanguage") ||
+                lowerName.endsWith(".tmlanguage") ||
                 lowerName.endsWith(".plist")
     }
 
@@ -428,7 +587,6 @@ class UinApplication : Application() {
             "cpp" to "source.cpp",
             "cuda-cpp" to "source.cuda-cpp",
             "dart" to "source.dart",
-            "docker" to "source.dockerfile",
             "dotenv" to "source.dotenv",
             "go" to "source.go",
             "groovy" to "source.groovy",
@@ -466,7 +624,6 @@ class UinApplication : Application() {
             "css" to "source.css",
             "dart" to "source.dart",
             "diff" to "source.diff",
-            "docker" to "source.dockerfile",
             "dockerfile" to "source.dockerfile",
             "dotenv" to "source.dotenv",
             "elixir" to "source.elixir",
@@ -491,14 +648,12 @@ class UinApplication : Application() {
             "make" to "source.makefile",
             "makefile" to "source.makefile",
             "markdown" to "text.html.markdown",
-            "markdown-basics" to "text.html.markdown",
             "markdown-math" to "text.html.markdown.math",
             "objective-c" to "source.objc",
             "perl" to "source.perl",
             "php" to "source.php",
             "powershell" to "source.powershell",
             "prompt-basics" to "source.prompt",
-            "properties" to "source.properties",
             "pug" to "source.pug",
             "python" to "source.python",
             "r" to "source.r",
@@ -515,8 +670,7 @@ class UinApplication : Application() {
             "sql" to "source.sql",
             "swift" to "source.swift",
             "toml" to "source.toml",
-            "typescript" to "source.ts",
-            "typescript-basics" to "source.ts",
+            "typescript-basics" to "source.tsx",
             "vb" to "source.vb",
             "xml" to "text.xml",
             "yaml" to "source.yaml"
@@ -542,8 +696,13 @@ class UinApplication : Application() {
                 try {
                     val themeName = fileName.removeSuffix(".json")
                     val fullPath = "$themesPath/$fileName"
-                    val inputStream = assets.open(fullPath)
-                    
+                    // 6.2.0 批次26：VSCode 主题多为 JSONC（// 注释 + 尾逗号），严格 Gson 会抛
+                    // MalformedJsonException（9 个主题因此加载失败、每次启动刷 117 条告警）。
+                    // 这里先把注释与尾逗号清掉转成严格 JSON 再交给 sora 解析。
+                    val raw = assets.open(fullPath).use { it.readBytes().toString(Charsets.UTF_8) }
+                    val cleaned = sanitizeJsonc(raw)
+                    val inputStream = ByteArrayInputStream(cleaned.toByteArray(Charsets.UTF_8))
+
                     val themeSource = IThemeSource.fromInputStream(
                         inputStream,
                         fullPath,
@@ -571,6 +730,44 @@ class UinApplication : Application() {
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.theme_load_failed), e)
         }
+    }
+
+    /**
+     * 6.2.0 批次26：把 JSONC（允许行注释、块注释、尾逗号）清洗成严格 JSON，供 Gson 解析。
+     * 注释剥离用逐字符扫描以避开字符串字面量里的斜杠斜杠（如 https 里的双斜杠）；
+     * 尾逗号用正则移除（主题文件里不会出现形如「逗号+空格+右花括号」的字符串内容，风险可忽略）。
+     */
+    private fun sanitizeJsonc(raw: String): String {
+        val noComments = StringBuilder(raw.length)
+        var i = 0
+        var inString = false
+        var escape = false
+        while (i < raw.length) {
+            val c = raw[i]
+            if (inString) {
+                noComments.append(c)
+                when {
+                    escape -> escape = false
+                    c == '\\' -> escape = true
+                    c == '"' -> inString = false
+                }
+                i++
+                continue
+            }
+            when {
+                c == '"' -> { inString = true; noComments.append(c); i++ }
+                c == '/' && i + 1 < raw.length && raw[i + 1] == '/' -> {
+                    while (i < raw.length && raw[i] != '\n') i++
+                }
+                c == '/' && i + 1 < raw.length && raw[i + 1] == '*' -> {
+                    i += 2
+                    while (i + 1 < raw.length && !(raw[i] == '*' && raw[i + 1] == '/')) i++
+                    i = (i + 2).coerceAtMost(raw.length)
+                }
+                else -> { noComments.append(c); i++ }
+            }
+        }
+        return Regex(",\\s*([}\\]])").replace(noComments.toString(), "$1")
     }
 
     private fun isDarkTheme(themeName: String): Boolean {

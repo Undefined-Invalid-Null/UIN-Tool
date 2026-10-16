@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -87,15 +88,22 @@ fun UnifiedDialog(
     modifier: Modifier = Modifier,
     showScrim: Boolean = true
 ) {
-    // 使用 Popup 替代 Dialog，完全控制动画
-    Popup(
+    // 6.2.0 批次18：由 focusable Popup 改为真正的 [Dialog] 窗口。
+    // Popup 里的输入框获焦时，软键盘光标手柄会被渲染到弹窗左上角而非输入框内
+    // （Popup 与 IME 的窗口定位冲突）；Dialog 窗口能正确处理软键盘与光标定位。
+    // 遮罩仍自绘 0.5 黑，并把 Dialog 自带的窗口变暗关掉（setDimAmount(0)）避免叠加变黑。
+    Dialog(
         onDismissRequest = onDismissRequest,
-        properties = PopupProperties(
-            focusable = true,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
         )
     ) {
+        val dialogView = LocalView.current
+        SideEffect {
+            // 关闭 Dialog 默认的背景变暗，遮罩由下面自绘的 0.5 黑负责（保持与旧版观感一致）
+            (dialogView.context as? android.app.Dialog)?.window?.setDimAmount(0f)
+        }
         // 背景遮罩 - 纯淡入淡出
         AnimatedVisibility(
             visible = true,

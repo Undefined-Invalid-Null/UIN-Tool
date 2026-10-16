@@ -1,11 +1,11 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-6.1.0-blue)
-![Build](https://img.shields.io/badge/build-25-green)
+![Version](https://img.shields.io/badge/version-6.2.0-blue)
+![Build](https://img.shields.io/badge/build-26-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.09.00-blue)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-purple)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.08.00-blue)
 
 ## App Introduction
 
@@ -59,13 +59,13 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 ## Version Information
 
-### Current Version: v6.1.0 (Build 25)
+### Current Version: v6.2.0 (Build 26)
 
 | Item | Info |
 |------|------|
-| Version Number | 6.1.0 |
-| Version Code | 25 |
-| Update Date | October 7, 2026 |
+| Version Number | 6.2.0 |
+| Version Code | 26 |
+| Update Date | October 16, 2026 |
 | Minimum Android Version | 6.0 (API 23) |
 | Target Android Version | 9 (API 28) |
 | Compile SDK Version | 36 (Android 16) |
@@ -75,6 +75,7 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 | Version | Build | Date | Highlights |
 |---------|-------|------|------------|
+| v6.2.0 | 26 | 2026-10-16 | Code editor specialization (file tree / multi-tab / direct disk I/O / ACTION_VIEW entry, Unified UI polish, four rounds of syntax-highlight root-cause fixes, sora 0.24.6 + Kotlin 2.3.10) |
 | v6.1.0 | 25 | 2026-10-07 | Full defect-fix pass (startup/permissions/main-thread jank/dark theme/plugin host security/backup rollback/error visibility/build cleanup) |
 | v6.0.0 | 24 | 2026-09-26 | Remove Termux dependency, PRoot container system, container management UI, rootfs export compression level |
 | v5.7.0 | 23 | 2026-08-31 | Multi-source repo aggregation, plugin icon caching, incremental CI build, UI refinements |

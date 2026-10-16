@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 6.1.0 |
-| Corresponding App Version | v6.1.0 (Build 25) |
-| Last Updated | October 7, 2026 |
+| Document Version | 6.2.0 |
+| Corresponding App Version | v6.2.0 (Build 26) |
+| Last Updated | October 16, 2026 |
 
 ---
 
@@ -2452,9 +2452,9 @@ Document Information
 
 | Item | Info |
 |------|------|
-| Document Version | 6.1.0 |
-| Corresponding App Version | v6.1.0 (Build 25) |
-| Last Updated | October 7, 2026 |
+| Document Version | 6.2.0 |
+| Corresponding App Version | v6.2.0 (Build 26) |
+| Last Updated | October 16, 2026 |
 
 ---
 

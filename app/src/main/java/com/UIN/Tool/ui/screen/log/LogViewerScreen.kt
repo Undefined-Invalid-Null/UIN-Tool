@@ -21,11 +21,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.UIN.Tool.log.Logger
+import com.UIN.Tool.log.LogcatRecorder
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.unified.UnifiedBodyText
 import com.UIN.Tool.ui.components.unified.UnifiedCaptionText
@@ -57,12 +60,40 @@ fun LogViewerScreen(
     var showClearAllConfirm by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
     var lastRefreshTime by remember { mutableStateOf<String?>(null) }
+    // 6.2.0 批次36：应用日志 / logcat 双来源开关。
+    // READ_LOGS 是 signature|privileged|development 级，普通安装拿不到、也无法弹窗申请，
+    // 故按 checkSelfPermission 结果降级展示提示（未授权时仍能读本 UID 自己的日志行）。
+    var logcatMode by remember { mutableStateOf(false) }
+    var logcatDenied by remember { mutableStateOf(false) }
+    val grantCommand = remember(context) {
+        "adb shell pm grant ${context.packageName} android.permission.READ_LOGS"
+    }
+    val clipboard = LocalClipboardManager.current
     val pullRefreshState = rememberPullToRefreshState()
 
     var showCrashMessage by remember { mutableStateOf(CrashLogUtils.shouldNavigateToLogs(context)) }
 
     fun loadLogs() {
         isLoading = true
+        // 6.2.0 批次36/37：logcat 来源。AppLog/Logger 的文件日志**不含**库直接写到
+        // logcat 的异常（如 sora 的 AsyncAnalysis），排查编辑器高亮不显示时这正是盲区。
+        // 批次37 起 LogcatRecorder 默认把 logcat 落盘到同一目录，故优先读文件（可导出、
+        // 跨进程重启留档）；文件尚未产生内容时回退到实时 `logcat -d` 读取。
+        if (logcatMode) {
+            val logcatFile = File(Constants.LOG_DIR, LogcatRecorder.fileForToday())
+            val fileLines = readTailLines(logcatFile, maxLines = TAIL_LINES).asReversed()
+            if (fileLines.isNotEmpty()) {
+                logcatDenied = false
+                logLines = fileLines
+            } else {
+                val res = readLogcat(TAIL_LINES, context)
+                logcatDenied = res.denied
+                logLines = res.lines
+            }
+            isLoading = false
+            return
+        }
+        logcatDenied = false
         try {
             val logFile = File(
                 Constants.LOG_DIR,
@@ -93,9 +124,19 @@ fun LogViewerScreen(
     }
 
     fun exportLogs(uri: Uri) {
+        // 6.2.0 批次37：按当前来源导出对应文件 —— 应用日志导出 AppLog 的当日文件，
+        // logcat 导出 LogcatRecorder 的当日落盘文件（此前固定只导应用日志，logcat
+        // 来源下导出的是空的 AppLog 文件，等于"导不出 logcat"）。
         try {
-            val logFile = File(Constants.LOG_DIR, "uin_tool_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log")
-            if (!logFile.exists()) {
+            val logFile = if (logcatMode) {
+                File(Constants.LOG_DIR, LogcatRecorder.fileForToday())
+            } else {
+                File(
+                    Constants.LOG_DIR,
+                    "uin_tool_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log"
+                )
+            }
+            if (!logFile.exists() || logFile.length() == 0L) {
                 AppToast.warning(context, Str.get(R.string.no_logs_to_export))
                 return
             }
@@ -130,6 +171,21 @@ fun LogViewerScreen(
                 titleText = Str.get(R.string.runtime_logs),
                 onBack = onBack,
                 actions = {
+                    // 6.2.0 批次36：应用日志 ↔ logcat 来源切换
+                    UnifiedIconButton(
+                        icon = Icons.Default.Terminal,
+                        onClick = {
+                            logcatMode = !logcatMode
+                            loadLogs()
+                            AppToast.info(
+                                context,
+                                if (logcatMode) Str.get(R.string.logcat_source)
+                                else Str.get(R.string.runtime_logs)
+                            )
+                        },
+                        contentDescription = if (logcatMode) Str.get(R.string.runtime_logs)
+                        else Str.get(R.string.logcat_source)
+                    )
                     UnifiedIconButton(
                         icon = Icons.Default.DeleteSweep,
                         onClick = { showClearAllConfirm = true }
@@ -138,7 +194,9 @@ fun LogViewerScreen(
                         icon = Icons.Default.FileDownload,
                         onClick = {
                             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                            exportLauncher.launch("UIN_Tool_Log_$timestamp.txt")
+                            // 导出文件名带上来源，避免两份日志导出后同名互相覆盖
+                            val prefix = if (logcatMode) "UIN_Tool_Logcat" else "UIN_Tool_Log"
+                            exportLauncher.launch("${prefix}_$timestamp.txt")
                         }
                     )
                 }
@@ -239,6 +297,30 @@ fun LogViewerScreen(
                 }
             }
 
+            // 6.2.0 批次36：READ_LOGS 未授权时的降级说明 + 一键复制 adb 授权命令。
+            if (logcatMode && logcatDenied) {
+                item {
+                    UnifiedCard(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp)
+                        ) {
+                            UnifiedBodyText(Str.get(R.string.logcat_denied_hint, grantCommand))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            UnifiedButton(
+                                text = Str.get(R.string.copy_grant_command),
+                                size = ButtonSize.Small,
+                                onClick = {
+                                    clipboard.setText(AnnotatedString(grantCommand))
+                                    AppToast.success(context, Str.get(R.string.copied_to_clipboard))
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
             when {
                 isLoading -> item {
                     Box(
@@ -333,5 +415,50 @@ private fun readTailLines(file: File, maxLines: Int = TAIL_LINES, maxBytes: Long
     } catch (e: Exception) {
         AppLog.e("LogViewer", "readTailLines failed", e)
         emptyList()
+    }
+}
+
+// ==================== 6.2.0 批次36：logcat 来源 ====================
+
+/** [readLogcat] 的结果：行按「最新在前」排列；[denied] 表示系统未授予 READ_LOGS。 */
+private data class LogcatResult(val lines: List<String>, val denied: Boolean)
+
+/**
+ * 读取 logcat（`logcat -d -v threadtime -t N`，随后按本进程 pid 过滤）。
+ *
+ * 权限说明：
+ * - `READ_LOGS` 是 **signature|privileged|development** 级，普通安装拿不到，也不是
+ *   运行时权限、无法弹窗申请；有 adb 时可用 `pm grant` 授予（页面会给出命令）。
+ * - **未授权时 Android 仍允许进程读自己 UID 的日志行**，所以本应用与内嵌库
+ *   （sora 的 `AsyncAnalysis`、ART/Compose 的报错）打到 logcat 的内容依旧可读 ——
+ *   而 `AppLog`/`Logger` 的文件日志并不收这些，正是此前排查高亮不显示的盲区。
+ * - 有授权时 logcat 会返回**全量**，故按 pid 过滤，否则整机日志会把屏刷满；
+ *   过滤后若一行不剩（格式差异等）则回退到原始输出，宁可噪也不给空白页。
+ *
+ * 用 ProcessBuilder + `redirectErrorStream(true)`：把 stderr 并进 stdout，
+ * 避免「先读 stdout 时进程因 stderr 缓冲区写满而阻塞」的经典死锁。
+ */
+private fun readLogcat(maxLines: Int, context: android.content.Context): LogcatResult {
+    val denied = context.checkSelfPermission(android.Manifest.permission.READ_LOGS) !=
+        android.content.pm.PackageManager.PERMISSION_GRANTED
+    return try {
+        val process = ProcessBuilder(
+            "logcat", "-d", "-v", "threadtime", "-t", maxLines.toString()
+        )
+            .redirectErrorStream(true)
+            .start()
+        val raw = process.inputStream.bufferedReader().use { it.readLines() }
+        process.waitFor()
+
+        // threadtime 行格式：`10-15 22:39:46.733 <PID> <TID> D Tag: msg` → 第 3 段是 pid。
+        val pid = android.os.Process.myPid().toString()
+        val mine = raw.filter { line ->
+            val parts = line.split(' ')
+            parts.size >= 3 && parts[2] == pid
+        }
+        LogcatResult((mine.ifEmpty { raw }).asReversed(), denied)
+    } catch (e: Exception) {
+        AppLog.e("LogViewer", "readLogcat failed", e)
+        LogcatResult(listOf("read logcat failed: ${e.message}"), true)
     }
 }

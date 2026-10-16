@@ -257,6 +257,45 @@ class PluginWizardViewModel(
         fileContents.value = contents
     }
 
+    /**
+     * 6.2.0：把内存草稿落盘，供代码编辑器直接读写。
+     * 取代旧的「HashMap + Serializable 传 Intent」方案（有 TransactionTooLarge 风险）。
+     */
+    fun writeDraft(dir: File): Boolean {
+        return try {
+            dir.mkdirs()
+            fileContents.value.forEach { (path, content) ->
+                val target = File(dir, path)
+                target.parentFile?.mkdirs()
+                target.writeText(content)
+            }
+            true
+        } catch (e: Exception) {
+            AppLog.e(TAG, "writeDraft failed: ${dir.absolutePath}", e)
+            false
+        }
+    }
+
+    /** 6.2.0：编辑器关闭后把草稿目录内容读回向导。 */
+    fun readDraft(dir: File) {
+        if (!dir.isDirectory) return
+        val names = mutableListOf<String>()
+        val contents = mutableMapOf<String, String>()
+        fun walk(current: File, prefix: String) {
+            current.listFiles()?.forEach { child ->
+                val rel = if (prefix.isEmpty()) child.name else "$prefix/${child.name}"
+                if (child.isDirectory) {
+                    walk(child, rel)
+                } else {
+                    names.add(rel)
+                    contents[rel] = child.readText()
+                }
+            }
+        }
+        walk(dir, "")
+        if (names.isNotEmpty()) updateFiles(names, contents)
+    }
+
     /** 更新主类名并重新生成原生入口文件，避免代码编辑器始终停留在默认的 MainPlugin.java。 */
     fun setMainClass(value: String) {
         mainClass.value = value

@@ -257,7 +257,12 @@ fun UnifiedCard(
             } else {
                 Modifier.clip(shape)
                     .then(
-                        if (!glass) Modifier.background(containerColor ?: MaterialTheme.colorScheme.surface, shape) else Modifier
+                        // glass 模式默认不画背景（透出页面玻璃底）。但弹窗是独立窗口，
+                        // 背后没有页面玻璃底、只有半透明遮罩 → 卡片会直接透到下层内容。
+                        // 因此：glass 下若显式给了 containerColor（弹窗传不透明底），仍画出来。
+                        if (!glass || containerColor != null) Modifier.background(
+                            containerColor ?: MaterialTheme.colorScheme.surface, shape
+                        ) else Modifier
                     )
             }
         )

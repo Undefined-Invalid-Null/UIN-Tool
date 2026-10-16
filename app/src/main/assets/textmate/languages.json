@@ -41,11 +41,6 @@
       "scopeName": "source.diff"
     },
     {
-      "grammar": "textmate/docker/syntaxes/docker.tmLanguage.json",
-      "name": "docker",
-      "scopeName": "source.dockerfile"
-    },
-    {
       "grammar": "textmate/dockerfile/syntaxes/dockerfile.tmLanguage.json",
       "name": "dockerfile",
       "scopeName": "source.dockerfile"
@@ -141,11 +136,6 @@
       "scopeName": "text.html.markdown"
     },
     {
-      "grammar": "textmate/markdown-basics/syntaxes/markdown.tmLanguage.json",
-      "name": "markdown-basics",
-      "scopeName": "text.html.markdown"
-    },
-    {
       "grammar": "textmate/objective-c/syntaxes/objective-c.tmLanguage.json",
       "name": "objective-c",
       "scopeName": "source.objc"
@@ -169,11 +159,6 @@
       "grammar": "textmate/prompt-basics/syntaxes/prompt.tmLanguage.json",
       "name": "prompt-basics",
       "scopeName": "source.prompt"
-    },
-    {
-      "grammar": "textmate/properties/syntaxes/properties.tmLanguage.json",
-      "name": "properties",
-      "scopeName": "source.properties"
     },
     {
       "grammar": "textmate/pug/syntaxes/pug.tmLanguage.json",
@@ -239,11 +224,6 @@
       "grammar": "textmate/swift/syntaxes/swift.tmLanguage.json",
       "name": "swift",
       "scopeName": "source.swift"
-    },
-    {
-      "grammar": "textmate/typescript/syntaxes/TypeScript.tmLanguage.json",
-      "name": "typescript",
-      "scopeName": "source.ts"
     },
     {
       "grammar": "textmate/typescript-basics/syntaxes/TypeScript.tmLanguage.json",

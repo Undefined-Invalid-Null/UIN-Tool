@@ -1,11 +1,11 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-6.1.0-blue)
-![Build](https://img.shields.io/badge/build-25-green)
+![Version](https://img.shields.io/badge/version-6.2.0-blue)
+![Build](https://img.shields.io/badge/build-26-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.09.00-blue)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-purple)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.08.00-blue)
 
 ## 应用简介
 
@@ -59,13 +59,13 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 
 ## 版本信息
 
-### 当前版本：v6.1.0 (Build 25)
+### 当前版本：v6.2.0 (Build 26)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 6.1.0 |
-| 版本代码 | 25 |
-| 更新日期 | 2026年10月7日 |
+| 版本号 | 6.2.0 |
+| 版本代码 | 26 |
+| 更新日期 | 2026年10月16日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 9 (API 28) |
 | 编译 SDK 版本 | 36 (Android 16) |
@@ -75,6 +75,7 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 
 | 版本 | 构建号 | 日期 | 亮点 |
 |------|--------|------|------|
+| v6.2.0 | 26 | 2026-10-16 | 代码编辑器专项（文件树/多标签/直接磁盘读写/ACTION_VIEW 对外入口、Unified 界面统一、四轮语法高亮根因修复、sora 0.24.6 + Kotlin 2.3.10） |
 | v6.1.0 | 25 | 2026-10-07 | 全量缺陷修复（启动/权限/主线程卡顿/深色主题/插件宿主安全/备份回滚/错误可见性/构建去重） |
 | v6.0.0 | 24 | 2026-09-26 | 去除 Termux 依赖、PRoot 容器系统、容器管理 UI、rootfs 导出压缩级别 |
 | v5.7.0 | 23 | 2026-08-31 | 多源仓库聚合、插件图标缓存、增量 CI 构建、UI 优化 |
