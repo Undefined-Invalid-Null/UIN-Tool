@@ -117,11 +117,24 @@
 - [17.7 Icon Tint Toggle](#177-icon-tint-toggle)
 - [17.8 Configuration Operations](#178-configuration-operations)
 
-### XVIII. FAQ
-- [18.1 FAQ (Q1-Q35)](#181-faqq1-q35)
+### XVIII. Code Editor
+- [18.1 How to Open](#181-how-to-open)
+- [18.2 Layout](#182-layout)
+- [18.3 File Tree & Tabs](#183-file-tree--tabs)
+- [18.4 Saving & File Access](#184-saving--file-access)
+- [18.5 Find & Replace](#185-find--replace)
+- [18.6 More Actions Menu](#186-more-actions-menu)
+- [18.7 Hardware Keyboard Shortcuts](#187-hardware-keyboard-shortcuts)
+- [18.8 Editor Settings](#188-editor-settings)
+- [18.9 Syntax Highlighting](#189-syntax-highlighting)
+- [18.10 Code Formatting](#1810-code-formatting)
+- [18.11 Known Limitations](#1811-known-limitations)
 
-### XIX. Contact Support
-- [19.1 Contact Information](#191-contact-information)
+### XIX. FAQ
+- [19.1 FAQ (Q1-Q35)](#191-faqq1-q35)
+
+### XX. Contact Support
+- [20.1 Contact Information](#201-contact-information)
 
 ---
 
@@ -1119,9 +1132,205 @@ Click any color configuration item to open the color picker:
 
 ---
 
-## XVIII. FAQ
+## XVIII. Code Editor
 
-### 18.1 FAQ (Q1-Q35)
+Since 6.2.0 the code editor is no longer just a draft surface inside the plugin wizard — it is a full standalone editor with a file tree, multiple tabs, direct disk read/write, find & replace, syntax highlighting and code formatting, and other apps can hand files to it through "Open with".
+
+### 18.1 How to Open
+
+| Entry | Description |
+|---|---|
+| Plugin development wizard | Tap "Open code editor" in the wizard; it edits the wizard's draft and writes back on save |
+| "Open with" from other apps | File managers, browsers etc. open a file "with UIN Tool" and go straight to the editor |
+
+Supported types: `text/*` (txt, csv, markdown, logs, ...) plus `application/json`, `application/xml`, `application/javascript`, `application/x-sh`, `application/x-yaml`. Both `file://` and `content://` sources are supported.
+
+> **Note**: the system "Open with" chooser shows **two** UIN Tool icons. This is an intentional trade-off — the editor and the plugin dispatch page each declare their own `ACTION_VIEW`; both work, and picking the editor entry opens the editor.
+
+Storage permission is requested on entry:
+
+| Android version | How |
+|---|---|
+| Android 11 and above | "All files access" — jumps to the system settings page to enable it |
+| Android 10 and below | Requests read / write external storage |
+
+You can browse and view without granting (`content://` files never need storage permission), but you cannot write back — the status bar then shows "Read-only". Once granted, the file tree defaults to the external storage root so you can pick files immediately.
+
+### 18.2 Layout
+
+| Area | Contents |
+|---|---|
+| Top bar | ☰ file tree on the left; the action cluster reads, left to right: **undo / redo**, save, find, syntax selector (palette icon), ⋮ more-actions — six icons in a tight **40dp** layout (reduced spacing). **No title and no file name** (since batch 45; the title used to get squeezed into an ellipsis by the icons, and the file name lives in the tab strip anyway) |
+| Tab bar | Multiple tabs; unsaved tabs carry a dot marker; tap × to close; **long-press a tab to open its full properties** |
+| Information bar | Directly below the tab strip: `n/N lines`, `n bytes`, `n chars`, `n selected` — refreshed live with the cursor and edits |
+| Search panel | Opened by ⋮ → Find or `Ctrl+F` |
+| Editor area | Main region; a 28dp edge strip along the far-left screen edge — swipe right on it to pull out the file tree |
+| Symbol bar | Quick-symbol strip at the bottom; enable it in the editor settings (off by default); it sits directly above the status bar |
+| Status bar | **Bottom-left: page switcher `n/N`** (shown only for multi-page documents; tapping it opens a dropdown where you can type a page number); **right side: read-only badge, encoding button (encoding type shown in full, never truncated), ⚙ settings (pinned rightmost)**. **No file name here**; Ln/Col and the selection count moved to the information bar, the match count now lives in the search panel's status line, and the word-wrap toggle now lives in the editor settings. The right group never compresses, so ⚙ is never pushed off screen on narrow displays |
+| File tree drawer | Slides in from the left; the ☰ icon at the top-left opens / closes it |
+
+### 18.3 File Tree & Tabs
+
+| Action | How |
+|---|---|
+| Open folder | FolderOpen icon at the top of the drawer → system folder picker; the chosen directory becomes the tree root. If the result cannot be turned into a readable directory the app now **reports the failure explicitly**, instead of silently doing nothing as in 6.1 |
+| New file / folder | Created inside the selected directory; the name may contain `a/b` to create nested folders automatically |
+| Rename / delete / properties | Tap the row's ⋮: rename, delete, or view **Properties** (name, path, type, size, lines, bytes, characters, modified time). **Tap any row** in the dialog to copy its value. Delete removes everything underneath and is **irreversible** |
+| Long-press / long names | **Long-press** any file or folder row = tapping its trailing ⋮, opening the same menu (rename / delete / properties), anchored at the ⋮. An over-long file name is **clipped to one line** with an ellipsis by default so the ⋮ always stays visible; turn on **File tree multi-line names** (see 18.8) in the editor settings to wrap the name across lines with an adaptive row height |
+| Long-press a tab | **Long-press** a file tab in the top tab strip to open that file's **full properties** dialog directly (same dialog as ⋮ → Properties); line/character counts are tallied on a background stream, and only byte size is reported for very large files |
+| Switch files | Tapping a file opens it in a new tab; switching back and forth loses nothing |
+| Close tab | Tabs with unsaved changes prompt before closing |
+
+When no file is open, the editor shows a "No file open" empty state whose button expands the file tree directly.
+
+### 18.4 Saving & File Access
+
+| Action | Description |
+|---|---|
+| Save | Save icon in the top bar (or `Ctrl+S`), writes back to the original file **using the encoding detected when it was opened** — a GBK file is never silently re-saved as UTF-8 |
+| Save as | **Long-press** the Save icon → the system "Save as" dialog, where you can pick both the **file name and the location**; the current tab switches to the new file |
+| Exit confirmation | Pressing back with unsaved changes asks to Save / Discard / Cancel |
+| Back-button layering | While the settings page, find panel, encoding picker or file-tree drawer is open, the system back button **closes them one layer at a time** (innermost first); only once all are closed does it reach "unsaved changes → exit" (in 6.1, backing out of settings exited the editor outright) |
+| Encoding | The encoding button in the status bar → choose **Auto-detect** or a manual encoding. From 6.2.0 the picker lists the **device-supported** common set: UTF-8 / GB18030 / GBK / Big5 / UTF-16(LE/BE) / UTF-32(LE/BE) / Shift_JIS / EUC-JP / EUC-KR / ISO-8859-x / windows-125x / KOI8-R / TIS-620, etc. (encodings the device cannot decode are filtered out, so you can never pick one that silently falls back). **Picking a manual encoding immediately re-reads the document with it** and the status bar shows the chosen value |
+
+**Auto-detect**: when a file is opened its bytes are inspected — BOM first, then a strict UTF-8 validation, then a GBK/GB18030 heuristic (legacy Chinese files), with ISO-8859-1 as the last resort. Through 6.1 every file was decoded as UTF-8, so GBK files came out as `锟斤拷`-style mojibake; 6.2.0 both detects them correctly and gives you a manual override.
+
+**Size limit**: files over 16 MB now always open in **windowed mode** automatically (real pagination, 2000 lines per page — see 18.12); any other file that fits in the available memory can be opened, and a **memory pre-check runs before reading** (3.25× the file size plus a force-collected heap **whose concurrent sweep is allowed to finish before measuring** — ART returns from `System.gc()` early, and measuring mid-collection used to misjudge files that actually fit; the slack prevents passing the check and then dying halfway through the read, while the GC stops a document that was closed a moment ago from being mistaken for "file too large"). An oversized file reports "file too large, out of memory" right away instead of freezing the UI for ten-plus seconds (repeated GC triggered by an OOM) and only then failing. Re-opening the same file through "open with" **no longer re-reads it either** — the editor reuses the same instance and just switches back to the already-open tab, so a second attempt can never be judged "file too large". Keep **Large-file mode** on (see 18.8) when opening very large files so highlighting and sticky scroll do not slow down scrolling.
+
+**Session restore**: if the system kills the process, coming back through the recents screen re-opens the last document instead of dropping you on the "No file open" empty state; plugin-wizard mode restores its whole draft set. If restoring fails (file deleted, out of memory, the sender's grant already revoked), the empty state **shows the actual failure reason** instead of a generic "No file open".
+
+### 18.5 Find & Replace
+
+⋮ → Find, or press `Ctrl+F`:
+
+| Control | Effect |
+|---|---|
+| `Aa` | Match case |
+| `.*` | Regular expression |
+| `abc` | Whole word |
+| `Prev` / `Next` | Jump between matches across the whole file |
+| Status line | Above the list: progress / `N matches in whole file` / `No matches in whole file`; "All results" opens the full list when there are matches |
+| Expand arrow | Reveals the Replace field and the "Replace all (whole file)" button |
+
+In regex mode the replacement text supports `$1`, `$2` backreferences.
+
+Searching and replacing always operate on the **whole file for every document** (paged huge files are scanned page by page with a streaming pass, everything else in a single in-memory pass; progress is visible and cancellable), no toggle needed: results are listed as `absolute line:column`, and tapping one selects and **highlights the match**. Replace has a single entry — "Replace all (whole file)": paged files are rewritten page by page into the on-disk write-back spool and only land on disk on save; fully-loaded files are rewritten in one in-memory pass (undo history resets; reaches disk when you save). Both ask for confirmation first (details in 18.12). The full-results list's scrollbar is now **tappable and draggable** for proportional jumping (20 dp hit area, thumb follows the finger while dragging); the "All results" dialog caps its list height relative to the screen (55%, still at most 480 dp in portrait) so it no longer overflows in landscape or on short screens.
+
+### 18.6 More Actions Menu
+
+| Group | Items |
+|---|---|
+| Edit | Undo, Redo (greyed out when no history), Cut, Copy, Paste, Select all |
+| Line | Duplicate line, Cut line, Select line, Indent, Outdent |
+| Navigate | Go to line (1-based), Go to document start, Go to document end |
+| Other | Format code (see 18.10) |
+
+### 18.7 Hardware Keyboard Shortcuts
+
+Available with a hardware keyboard or the system split keyboard:
+
+| Key | Action |
+|---|---|
+| `Ctrl+S` | Save |
+| `Ctrl+F` | Open find |
+| `Ctrl+G` | Go to line |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Shift+Z` | Redo |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` / `Ctrl+A` | Copy / Cut / Paste / Select all (system default; the editor does not intercept them) |
+
+### 18.8 Editor Settings
+
+Open the settings panel from ⚙ at the bottom-right of the status bar. All 28 items are described below.
+
+**Appearance & Typography**
+
+| Setting | Control | Default | Meaning |
+|---|---|---|---|
+| Theme | Button | dracula | The editor's color scheme. **Independent of the app's dark / light mode** — there is no such thing as a system "code editor theme". Several dark and light themes are bundled (dracula, one-dark-pro, github-light, ...) |
+| Font size | Slider 10–24 | 14 | Body font size in sp; follows the system font scaling |
+| Line spacing | Slider 0.8–2.0 | 1.0 | Vertical spacing **multiplier** between lines. Below 1 is tighter, above 1 is airier |
+| Text width | Slider 0.8–1.3 | 1.0 | Horizontal stretch of characters, **without changing the font size**; raise it on wide screens to reduce horizontal scrolling |
+| Ligatures | Switch | On | Renders `->`, `=>`, `!=` as single ligatures in monospace fonts that support them (e.g. Fira Code). **No visible change with the default font** — that is expected |
+
+**Display & Assistance**
+
+| Setting | Control | Default | Meaning |
+|---|---|---|---|
+| Line numbers | Switch | On | The line-number gutter on the left |
+| Gutter divider | Switch | On | The vertical line between the line-number gutter and the text; when off the numbers sit flush against the code |
+| Word wrap | Switch | Off | Wraps lines that exceed the screen width instead of scrolling horizontally |
+| Highlight current line | Switch | On | Lays a background band across the line containing the caret |
+| Highlight block | Switch | On | Shades the innermost code block (inside braces) containing the caret, making nesting easier to see |
+| Block guide | Switch | On | Draws vertical indent guides; useful when aligning deeply nested code |
+| Show whitespace | Switch | Off | Draws spaces, tabs and line-ending characters — handy for "why is this misaligned?" |
+| Show placeholders | Switch | On | Renders `void`, `null` etc. in a more conspicuous style |
+| Bracket matching | Switch | On | Highlights the matching bracket when you type or delete one. The pair is drawn with a thin **~1.5dp stroke** (sora's default is 1dp); the earlier 6.2.0 build zeroed the stroke colour, which left only an 11%-alpha background that was effectively invisible — it is visible again now, just thinner |
+| Large-file mode | Switch | On | When the content exceeds roughly **2M characters**, automatically turns off syntax highlighting, sticky scroll and the block guide, and limits hex-color hints to the first 10,000 lines so scrolling stays smooth; **manually picking a syntax still keeps highlighting** (that is an explicit request). Turn it off and **every one of those measures is lifted immediately** (full syntax and hints return) — and the hint scan itself is now optimized: lines without `#` are skipped at **zero cost**, the scan **aborts the moment the editor closes**, and each file produces at most **50,000 highlights**, so full-scan mode no longer tanks performance. From 6.2.0 there is **no more "read-only over 32MB"** — any file that fits in memory is editable, and the read-only flag no longer sticks to files opened afterwards |
+| File tree multi-line names | Switch | Off | How the file tree shows a name too long for the row: **Off** (default) clips it to a single line with an ellipsis so the trailing ⋮ button always stays visible; **On** wraps the name across lines with an adaptive row height. In both modes **long-pressing a row** equals tapping ⋮ (see 18.3) |
+
+**Scrolling & Positioning**
+
+| Setting | Control | Default | Meaning |
+|---|---|---|---|
+| Sticky scroll | Switch | On | Pins the declaration of the enclosing block (function / class header) to the top so you always know which function you are in while scrolling |
+| Pinch to zoom | Switch | On | Two-finger pinch adjusts the font size. When off, pinching no longer changes the size; the file-tree drawer gesture is unaffected |
+| Magnifier | Switch | On | Shows a magnifier above your finger while dragging a selection |
+| Line:column panel | Switch | On | Shows a floating "Ln X, Col Y" bubble **while you drag the right-hand vertical scrollbar**. Note: the bubble only exists during that drag (sora's built-in behaviour) — it is **not** a caret-following status readout |
+| Panel position | Segmented left/top/right/bottom/center | Center | The **corner where that bubble docks**; each option pins it to the corresponding screen position (top-left / top / right / bottom / center) and it stays put while you drag. 6.2.0 fix: anything other than left/right used to be forced back into FOLLOW mode, which always hugs the right edge — it looked like "nothing happened" when you picked an option |
+
+**Input & Editing**
+
+| Setting | Control | Default | Meaning |
+|---|---|---|---|
+| Auto completion | Switch | On | Pops up keyword suggestions while typing. Built-in word lists cover XML, HTML, CSS, Gradle, JSON, YAML and other config formats |
+| Cursor blink | Switch | On | Whether the caret blinks |
+| Selection popup | Switch | On | Shows a Cut / Copy / Paste popup after selecting text |
+| Symbol bar | Switch | Off | Shows a horizontally scrollable strip of symbols (`{}()[];:,=+-*/<>&\|!?'"._@#$%`) at the bottom. Tapping one inserts it through exactly the same path as the soft keyboard, so tapping `(` auto-completes `)` and tapping `"` pairs quotes |
+| Tab width | Segmented 2/4/8 | 4 | How many spaces a Tab key press or auto-indent occupies; the block guides follow it |
+| Line separator | Segmented LF/CRLF/CR | LF | Which line ending **newly inserted lines** use from now on. It **does not rewrite line endings already in the document**. LF is for Unix/Linux, CRLF for Windows, CR for classic macOS |
+
+### 18.9 Syntax Highlighting
+
+- Tap the palette icon in the top bar to open the language list (50+ languages plus `Auto` and `Plain Text`)
+- By default the language is inferred from the **file extension** and shown as `Auto (by extension)`
+- Picking a language manually makes the current tab remember it and override the extension guess; switching back to `Auto` restores the guess
+- Grammars still load in the background for the first few seconds after a cold start, so a file opened during that window may briefly have no highlighting; it appears automatically once loading finishes
+
+### 18.10 Code Formatting
+
+| Aspect | Description |
+|---|---|
+| Supported types | `json`, `json5`, `jsonc`, `yaml`, `yml`; **other types grey the menu item out** so there is no "tapped and nothing happened" |
+| How JSON is handled | Token-preserving re-indentation — only indentation and post-colon spacing are recomputed; numbers, strings, escape spelling, key order, JSON5 single quotes and trailing commas are carried over verbatim |
+| How YAML is handled | Only three provably safe things: block scalars (`\|` / `>`) preserved byte-for-byte, leading tabs expanded to spaces, trailing whitespace and blank runs cleaned. **Indentation levels are never reordered** |
+| Validation | Invalid content (unbalanced braces, unterminated strings, ...) shows "Cannot format" and **leaves the document completely untouched** |
+| Undo | One formatting run is a **single undo step**; one `Ctrl+Z` reverts everything |
+| Why not XML | The platform XML serializer is a pretty-printer, not a value-preserving re-indenter: it normalizes attribute quotes, strips whitespace-only text nodes and may drop a DOCTYPE internal subset. That conflicts with "touch whitespace, never touch values". The XML this app deals with is mainly AndroidManifest and layout files, which Android Studio already formats |
+
+### 18.11 Known Limitations
+
+- **Git integration** is not provided yet
+
+
+### 18.12 Windowed Mode (Very Large Files)
+
+Files over 16 MB (as well as files rejected by the memory pre-check because the whole file does not fit in the heap) are no longer rejected with "File too large". Instead they are opened in **windowed mode** automatically — an Android-scaled take on EmEditor's "spill to disk + section window" architecture:
+
+- **The whole file never enters memory**: opening streams one scan to build a tiny index of "byte offset of each page start + total line count" (only tens of KB even for 10 GB files); the editor only loads the **current page** (2000 lines) at a time;
+- The info bar labels the character count with **"this page"** (that figure is the current page's characters, not the whole file); line numbers there are **absolute** (page × 2000 + in-page line). The editor's own gutter numbers are **page-relative** (each page restarts at 1);
+- **The pager really switches pages**: edits on the current page go into a spool first, then the new page is read from disk. "Go to line" takes an **absolute line number** and jumps to the target page automatically;
+- **Undo/redo and formatting apply to the current page only** (the undo stack resets on page switch). Find/replace **always operates on the whole file** regardless of paging: pages are scanned one by one with visible, cancellable progress, results are listed as `absolute line:column` and tapping one jumps to that page with the match highlighted. "Replace all (whole file)" rewrites page by page into an **on-disk spool** (memory stays at one page) that is streamed into the file on save; matches spanning the 2000-line page boundary are detected, **skipped and reported**, never half-replaced across the seam;
+- **Switching tabs does not cancel a running replace**: it keeps going in the background — while it runs, the replaced tab is read-only and saving/page-switching/starting another replace are blocked (other tabs are unaffected); once it finishes, returning to the original tab shows the "replace finished" result banner. Only closing the replaced tab aborts the replace (the original file was never touched by it, so it stays intact);
+- **Saving = original file + edited pages**, streamed together: unmodified pages are **byte-copied verbatim** (no decode round-trip), edited pages are re-encoded with the file's charset; the result is written to a temp file and atomically swapped in, then the page index is rebuilt. Saving runs on a background thread and survives leaving the editor ("save and exit" loses nothing);
+- Changing the charset **rebuilds the index** with the new encoding and returns to page 1 (same semantics as a full reload, edits are overwritten);
+- **Save As is not supported** in this mode (the whole document is not in memory — it could only write out the current page) — save to the original file instead. If index rebuilding fails after a save, the tab is locked read-only with a hint to reopen the file.
+
+
+---
+
+## XIX. FAQ
+
+### 19.1 FAQ (Q1-Q35)
 
 Q1: How to get more plugins?
 A: Install official plugins from the "Repository" page, or develop your own plugins.
@@ -1230,9 +1439,9 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 
 ---
 
-## XIX. Contact Support
+## XX. Contact Support
 
-### 19.1 Contact Information
+### 20.1 Contact Information
 
 | Channel | Contact Info |
 |---|---|
@@ -1240,35 +1449,6 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 | GitHub | https://github.com/Undefined-Invalid-Null/UIN-Tool |
 | Plugin Repository | https://github.com/UIN-Tool-Plugins |
 | QQ Group | 511875883 |
-
----
-
-## Version History
-
-| Version | Update Summary |
-|---|---|
-| v5.6.0 | Neumorphism style: soft concave-convex light-shadow effects for cards, buttons, and other components, mutually exclusive with glass effect; multilingual switching: switch Chinese/English language directly in the app without changing system language; translucent effect transparency control: glass effect/neumorphism supports alpha adjustment |
-| v5.5.0 | Compatibility fixes (native plugin AbstractMethodError, CUI proot path, MarkdownRenderer crash, DocViewerScreen crash); clipboard pseudo-permissions (READ_CLIPBOARD/WRITE_CLIPBOARD); development wizard completion (backend timeout/health check/openWith/all permissions multi-select, streamlined fields); permission prompt dialog before opening plugin (unified style); keep session single window enabled by default; real Termux shared Supervisor (cold startup saves ~5s); startup environment auto-installation (bootstrap + Alpine background pre-install); 4 static desktop shortcuts |
-| v5.4.0 | Plugin receives external content (openWith relay, new in v5.4.0): system "Share/Open with other apps" → relay page selects plugin, supports text/links/files (including multi-select), files copied into plugin `.incoming/` directory, Web plugins read via `window.getOpenData()` / `UINPlugin.getOpenData()`, native plugins receive via `onHostEvent("host.open")`, auto-opens when only 1 match, relay page supports search; Plugin multi-instance (new in v5.4.0): Web/CUI plugins support multi-instance by default, native plugins single instance, can enable "Native Plugin Multi-Instance (Experimental)" in development tools, each instance independent `instanceId`, backend supports shared port / independent port two modes; plugin management page launch button changed to "Add Desktop Shortcut" |
-| v5.3.0 | Comprehensive refinement: unified UI component system (`Unified*` sole implementation source + glass effect, all screens migrated); global gradient background (adjustable direction: start/end direction 6 options, default light blue bottom-right→top-left) + glass transparency increased + top title bar follows gradient; plugin management page card style unified (checkboxes only in selection mode) + batch delete fix (delete all selected at once) + floating bottom navigation (completely follows card style, covers content, no card clipping, press-to-scale + selected icon enlarge, no ripple) + button outline improved + dialog background follows main background (transparency 0.95 ensures readability); UI personalization page optimization (tab bar follows background color and no bottom border, gradient mode and direction changed to dropdowns, gradient config merged into single card) + **feature verification fixes** (ripple toggle actually works, status bar/navigation bar color keys work, `primary_dark` integrated into theme); code editor file list follows main background; development wizard bottom "Next" action bar changed to floating **pure transparent** (no card background color or shadow, tight to buttons); color picker upgraded to visual color picker (hue bar + saturation/brightness panel) with hex input and dark mode support; plugin categories support individual/batch changing and custom new categories; plugin details popup adds "Change Category" and "Uninstall" buttons (accessible from tools page long press); adds Shizuku/Dhizuku permission support (using official APIs, real-time refresh); code structure refinement (mirror constants/file utilities/size formatting consolidated, Repository naming unified) |
-| v5.2.0 | Packaging recursively includes entire project directory (no longer only web/); silent update check + unified update dialog UI (ReleaseChangelog Markdown); built-in Termux Alpine installation speedup; development wizard completion (packaging no longer auto-exits, config fields completed + permission multi-select, JSON syntax highlighting); code editor file tree long-press properties/rename; plugin details dialog (plugin.json fields + file structure + size) |
-| v5.1.0 | Backend runtime architecture refactoring (built-in Termux / real Termux global switch, startup command unified, idle auto-reclamation); CUI terminal foreground direct start + pure fade transition; runtime logs and developer options merged into "Development Tools" page |
-| v5.0.0 | Full internationalization (i18n); dynamic JSON theme engine (`--uin-*` CSS variables); bottom navigation self-drawn refactoring; pull-to-refresh unified; skeleton screen/animations/glass effects and other comprehensive UI optimizations |
-| v4.5.0 | Proot container runtime (shared Alpine isolated environment); custom backend (other) mode; CUI terminal plugin; template export refactoring (7 built-in packaged templates + README.txt) |
-| v4.4.4 | Plugin dialog system unification (built-in Compose dialogs); dialog queuing; fix plugin interaction and screenshot issues |
-| v4.4.0 | Plugin data persistent storage (data/ directory); permission system completion (state persistence); 140+ Web API extensions |
-| v4.2.0 | Termux backend integration (Python/Node.js/PHP/binary); plugin notice feature; creation wizard optimization |
-| v4.1.0 | Sora Editor integration; 30+ language syntax highlighting; 28+ editor themes |
-| v4.0.0 | Kotlin + Compose comprehensive refactoring; terminal features (based on Termux); Material 3 UI; complete color picker; plugin permission system |
-| v3.10.0 | GitHub acceleration feature; force update mechanism; mirror site management |
-| v3.5.0 | Fix development page button display issue |
-| v3.4.0 | App shortcuts; auto update; UI personalization comprehensive upgrade |
-| v3.0.0 | SplashActivity; onboarding; documentation center; permission description |
-| v2.8.0 | In-app update check, download, install |
-| v2.6.0 | Web plugin network request, file system, sensor API |
-| v2.0.0 | Plugin repository, GitHub integration, mirror acceleration |
-| v1.1.0 | Category management, long-press menu, 1x1 widget |
-| v1.0.0 | Initial version |
 
 ---
 

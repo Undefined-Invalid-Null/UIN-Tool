@@ -385,6 +385,29 @@ val assets = pctx.assets                // 含插件目录 + 插件 res/
 
 > ⚠️ `PluginContext` 覆写了 `getDataDir()`/`getCacheDir()`（废弃别名返回插件 data/ 与 cache/），也覆写了 `getAssets()`/`getResources()`（重定向到插件目录）。它**没有**覆写 `getFilesDir()`——返回的是宿主 App 内部 files 目录，**不是**插件目录，请勿用它定位插件文件。
 
+**调用宿主代码编辑器（v6.2.0 批次53 新增）**
+
+原生插件可直接拉起宿主内置代码编辑器（`PluginEditorApi`，静态方法，任何 Context 均可，含 `PluginContext`）：
+
+```kotlin
+import com.UIN.Tool.plugin.PluginEditorApi
+
+// 打开单个文件（未知后缀/无后缀一律按纯文本打开）
+PluginEditorApi.openEditor(context, "/storage/emulated/0/notes/a.txt")
+
+// 打开目录（浏览模式：项目树 + 自动打开首个文本文件）
+PluginEditorApi.openEditor(context, "/storage/emulated/0/myproject")
+
+// 打开文件并同时挂上项目树（左侧可切换同项目其他文件）
+PluginEditorApi.openFile(context, "/sdcard/myproject/a.md", "/sdcard/myproject")
+
+// 仅以项目浏览方式打开目录（等价 openEditor(dir)）
+PluginEditorApi.openProject(context, "/sdcard/myproject")
+```
+
+返回 `Boolean`（false = 参数为空或启动失败）。Web 插件走同一能力：`UINPlugin.callHost('openEditor', JSON.stringify({path: "…", project_dir: "…"}))`（`path` 指向目录时为浏览模式，`project_dir` 可选、给文件时挂项目树）。
+> ⚠️ `writeFile`/`readFile` 的沙箱根是插件**数据目录**（插件目录下 `data/`），不是 `getPluginDir()` 顶层 —— 打开「自己写过的文件」请用 `UINPlugin.getPluginDataDir()`（Web）或 `pctx.getPluginDataDir()`（原生）拼出真实落盘路径，否则宿主按顶层路径找不到文件（编辑器显示「未打开文件」空态）。
+
 ### 3.5 插件数据存储 API
 
 `onCreateView` 收到的 `context` 已经是 `PluginContext`，无需自行构造；以下 API 均基于该实例：
@@ -1471,6 +1494,7 @@ UINPlugin.callHost('setFullscreen', 'true');     // 全屏（字符串 true/fals
 UINPlugin.callHost('setKeepScreenOn', 'true');   // 屏幕常亮（字符串 true/false）
 UINPlugin.callHost('sendNotification', '标题,消息'); // 发送通知
 UINPlugin.callHost('takeScreenshot', '');        // 截图（需存储权限，存到下载目录 screenshots/）
+UINPlugin.callHost('openEditor', JSON.stringify({path: '/sdcard/a.txt'})); // 打开代码编辑器（v6.2.0 批次53：文件直接打开、目录为浏览模式；未知后缀按 txt 打开；可带 project_dir 挂项目树）
 ```
 
 **对话框 / 加载（v4.4.4 起弹窗统一走宿主 Compose 队列）**
@@ -1771,6 +1795,7 @@ UINPlugin.setFullscreen(true);
 UINPlugin.setKeepScreenOn(true);
 UINPlugin.takeScreenshot();         // 需存储权限，保存到下载目录 screenshots/
 UINPlugin.getPluginDir();           // 插件根目录绝对路径
+UINPlugin.getPluginDataDir();       // 插件数据目录绝对路径（writeFile/readFile 沙箱根 = 插件目录下 data/；把写过的文件交给宿主时用它拼真实落盘路径）
 UINPlugin.getBackendStatus();       // "running:{port}" / "starting" / "unknown"
 ```
 

@@ -65,7 +65,7 @@ import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.UpdateDialog
 import com.UIN.Tool.ui.components.unified.UnifiedAlertDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
-import com.UIN.Tool.ui.screen.dev.DevToolsActivity
+import com.UIN.Tool.ui.screen.log.LogViewerActivity
 import com.UIN.Tool.ui.screen.dev.DevScreen
 import com.UIN.Tool.ui.screen.manage.ManageScreen
 import com.UIN.Tool.ui.screen.repo.RepoScreen
@@ -123,17 +123,22 @@ class MainActivity : AppCompatActivity() {
 
         val hasCrashed = CrashLogUtils.shouldNavigateToLogs(this)
         if (hasCrashed) {
-            CrashLogUtils.clearNavigateFlag(this)
+            // 6.2.0 批次42：闪退后原本跳「开发工具」——那页内嵌的运行日志区块早在批次37
+            // 就已移除，崩溃内容其实在日志页面（LogViewerScreen）。改跳 LogViewerActivity。
+            // 标记不在跳转前提前清除：留给日志页读出后显示「发生异常」提示条再自行清除
+            // （LogViewerScreen 的 LaunchedEffect 会清）；跳转失败时在 catch 里兜底清，
+            // 避免标记残留导致每次启动都往日志页跳。
             // B-15：原 Handler.postDelayed 未在 onDestroy 移除，Activity 已销毁仍会 startActivity；
             // 改 lifecycleScope（随销毁自动取消）并补 isDestroyed/isFinishing 双保险
             lifecycleScope.launch {
                 delay(500)
                 if (isDestroyed || isFinishing) return@launch
                 try {
-                    startActivity(Intent(this@MainActivity, DevToolsActivity::class.java).apply {
+                    startActivity(Intent(this@MainActivity, LogViewerActivity::class.java).apply {
                         putExtra("auto_open", true)
                     })
                 } catch (e: Exception) {
+                    CrashLogUtils.clearNavigateFlag(this@MainActivity)
                     AppLog.e(TAG, Str.get(R.string.failed_to_open_log_page), e)
                 }
             }

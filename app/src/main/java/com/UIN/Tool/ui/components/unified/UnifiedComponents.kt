@@ -14,6 +14,7 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -44,6 +45,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.isBoldEnabled
@@ -373,7 +376,10 @@ fun UnifiedTextField(
     enabled: Boolean = true,
     singleLine: Boolean = true,
     onTrailingIconClick: (() -> Unit)? = null,
-    containerColor: Color? = null
+    containerColor: Color? = null,
+    // 批次45：透传键盘行为（数字键盘/回车跳页等）—— 缺省与原先完全一致。
+    keyboardOptions: KeyboardOptions? = null,
+    keyboardActions: KeyboardActions? = null
 ) {
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
@@ -407,6 +413,8 @@ fun UnifiedTextField(
                     singleLine = singleLine,
                     maxLines = if (singleLine) 1 else Int.MAX_VALUE,
                     enabled = enabled,
+                    keyboardOptions = keyboardOptions ?: KeyboardOptions.Default,
+                    keyboardActions = keyboardActions ?: KeyboardActions.Default,
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
                     decorationBox = { innerTextField ->
@@ -487,6 +495,8 @@ fun UnifiedTextField(
             supportingText = error?.let { { Text(it) } } ?: supportingText?.let { { Text(it) } },
             enabled = enabled,
             singleLine = singleLine,
+            keyboardOptions = keyboardOptions ?: KeyboardOptions.Default,
+            keyboardActions = keyboardActions ?: KeyboardActions.Default,
             shape = RoundedCornerShape(AppDimens.inputCornerRadius),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -890,10 +900,30 @@ fun UnifiedIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tint: Color? = null,
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    onLongClick: (() -> Unit)? = null
 ) {
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
+    val interactionSource = remember { MutableInteractionSource() }
+    // 未提供 onLongClick 时沿用原 clickable（绝大多数调用点观感完全不变）；
+    // 提供时换成 combinedClickable（如保存按钮长按=另存为）。
+    val pressMod: Modifier = if (onLongClick != null) {
+        Modifier.combinedClickable(
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
+            role = Role.Button,
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+    } else {
+        Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
+            role = Role.Button,
+            onClick = onClick
+        )
+    }
 
     if (neu) {
         val glass = AppColors.glassEnabled()
@@ -903,16 +933,28 @@ fun UnifiedIconButton(
                 .neuRaised(CircleShape, isDark, NeuDefaults.Intensity.LIGHT, cornerRadius = 20.dp, backgroundColor = Color.Transparent)
                 .clip(CircleShape)
                 .background(surfaceColor, CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = LocalIndication.current,
-                    role = Role.Button,
-                    onClick = onClick
-                )
+                .then(pressMod)
                 .padding(8.dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription, modifier = Modifier.size(24.dp), tint = tint ?: LocalContentColor.current)
+        }
+    } else if (onLongClick != null) {
+        // material3.IconButton 不支持长按；仅在需要长按时换成 Box + combinedClickable，
+        // 用 defaultMinSize 保住 IconButton 的 48dp 最小触控区，视觉（圆形涟漪）一致。
+        Box(
+            modifier = modifier
+                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                .clip(CircleShape)
+                .then(pressMod),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = tint ?: LocalContentColor.current,
+                modifier = Modifier.size(24.dp)
+            )
         }
     } else {
         androidx.compose.material3.IconButton(

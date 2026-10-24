@@ -136,6 +136,9 @@ fun BasePluginWizardScreen(
         }
         val intent = android.content.Intent(context, CodeEditorActivity::class.java)
         intent.putExtra("project_dir", draftDir.absolutePath)
+        // 批次57②（用户指定）：插件草稿模式 —— 编辑器只显示向导文件（用户没关的设备
+        // 文件签隐藏而非关闭），且草稿签不进会话缓存（插件代码不落编辑器缓存）。
+        intent.putExtra("wizard_draft", true)
         intent.putExtra("ui_type", uiType)
         intent.putExtra("main_class", viewModel.mainClass.value)
         intent.putExtra("plugin_name", viewModel.pluginName.value)

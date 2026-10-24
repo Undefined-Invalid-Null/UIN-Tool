@@ -105,6 +105,9 @@
     <string name="editor_duplicate_line">复制当前行</string>
     <string name="editor_empty_hint">从左侧的目录树中打开一个文件。</string>
     <string name="editor_open_from_tree">从目录树中打开文件</string>
+    <string name="editor_encoding">编码</string>
+    <string name="editor_encoding_auto">自动检测</string>
+    <string name="editor_encoding_hint">当前按 %1$s 解码。自动检测会检查文件字节（UTF-8 / GBK 等）；选手动编码会立即按该编码重新读取本文档。</string>
     <string name="editor_empty_title">未打开文件</string>
     <string name="editor_file_name_hint">文件名</string>
     <string name="editor_file_tree">文件</string>
@@ -118,24 +121,38 @@
     <string name="editor_goto_doc_end">跳到文末</string>
     <string name="editor_highlight_block">高亮代码块</string>
     <string name="editor_indent">增加缩进</string>
+    <string name="editor_large_file_mode">大文件省耗</string>
+    <string name="editor_tree_multi_line">文件树多行显示</string>
+    <string name="editor_info_line_total">%1$d/%2$d行</string>
+    <string name="editor_info_bytes">%1$d字节</string>
+    <string name="editor_info_chars">%1$d字符</string>
+    <string name="editor_info_chars_page">%1$d字符（本页）</string>
+    <string name="editor_info_selected">选中%1$d个</string>
+    <string name="editor_page_input_hint">跳转到页（1-%1$d）</string>
+    <string name="editor_page_input_error">页码须在 1-%1$d 之内</string>
+    <string name="editor_page_item">第 %1$d 页</string>
+    <string name="editor_prop_lines">行数</string>
+    <string name="editor_prop_bytes">字节</string>
+    <string name="editor_prop_chars">字符数</string>
     <string name="editor_ligature">连字</string>
     <string name="editor_line_col">第 %1$d 行，第 %2$d 列</string>
+    <string name="editor_line_divider">行号分隔线</string>
     <string name="editor_line_number">显示行号</string>
     <string name="editor_line_separator">换行符</string>
     <string name="editor_line_spacing">行距</string>
     <string name="editor_ln_panel">行列位置面板</string>
-    <string name="editor_ln_panel_pos">行号面板位置</string>
+    <string name="editor_ln_panel_pos">面板位置</string>
+    <string name="editor_ln_panel_pos_hint">「行:列」气泡的停靠位置。该气泡仅在拖动右侧竖向滚动条时出现，平时不显示。</string>
     <string name="editor_ln_pos_bottom">下</string>
     <string name="editor_ln_pos_center">中</string>
     <string name="editor_ln_pos_left">左</string>
     <string name="editor_ln_pos_right">右</string>
     <string name="editor_ln_pos_top">上</string>
     <string name="editor_match_case">区分</string>
-    <string name="editor_matches">%1$d/%2$d</string>
+    <string name="editor_modified_time">修改时间</string>
     <string name="editor_more">更多操作</string>
     <string name="editor_name_hint">名称（可用 a/b 创建多级文件夹）</string>
     <string name="editor_new_folder">新建文件夹</string>
-    <string name="editor_no_matches">无匹配</string>
     <string name="editor_no_project">未打开文件夹</string>
     <string name="editor_no_project_hint">使用「打开文件夹」浏览项目目录。</string>
     <string name="editor_non_printable">显示空白字符</string>
@@ -149,22 +166,45 @@
     <string name="editor_permission_launch_failed">无法打开系统权限页面</string>
     <string name="editor_permission_title">需要文件访问权限</string>
     <string name="editor_pinch_zoom">双指缩放</string>
+    <string name="editor_properties">属性</string>
     <string name="editor_readonly_badge">只读</string>
     <string name="editor_redo">重做</string>
     <string name="editor_regex">.*</string>
     <string name="editor_render_fn_chars">显示占位字符</string>
     <string name="editor_replace">替换</string>
-    <string name="editor_replace_all">全部替换</string>
+    <string name="editor_replace_all_whole">全部替换（全文）</string>
+    <string name="editor_replace_all_whole_confirm">将改写整份文件的全部匹配，保存后才真正落盘；大文件可能耗时较长。继续？</string>
+    <string name="editor_replace_all_whole_confirm_mem">将一次性重写整个文件的全部匹配（撤销历史会重置），保存后才写入磁盘；文件越大越慢、也越占内存。继续？</string>
+    <string name="editor_replace_all_whole_confirm_title">全文替换？</string>
+    <string name="editor_replace_whole_boundary">（含 %1$d 处跨页匹配）</string>
+    <string name="editor_replace_whole_done">全文替换完成：改写 %1$d 处、涉及 %2$d 页</string>
+    <string name="editor_replace_whole_done_mem">全文替换完成：改写 %1$d 处</string>
+    <string name="editor_replace_whole_running">全文替换中… %1$d%%</string>
     <string name="editor_save">保存</string>
+    <string name="editor_all">全部</string>
+    <string name="editor_save_all">保存全部文件</string>
+    <string name="editor_close_all">关闭全部文件</string>
+    <string name="editor_close_all_confirm">关闭全部文件？未保存的修改将丢失。</string>
     <string name="editor_search_invalid">搜索表达式无效</string>
     <string name="editor_search_next">下个</string>
     <string name="editor_search_prev">上个</string>
+    <string name="editor_search_whole_done">全文匹配 %1$d 处</string>
+    <string name="editor_search_whole_none">全文无匹配</string>
+    <string name="editor_search_whole_running">全文搜索中… %1$d%%</string>
+    <string name="editor_search_full_title">全部搜索结果</string>
+    <string name="editor_search_full_btn">全部结果</string>
+    <string name="editor_search_full_loaded">已载入 %1$d / %2$d 条</string>
+    <string name="editor_search_whole_refresh">重新搜索</string>
+    <string name="editor_search_whole_stale">内容已修改，结果可能过期</string>
+    <string name="editor_window_scanning">扫描中… %1$d%%</string>
+    <string name="editor_window_saving">保存中… %1$d%%</string>
     <string name="editor_select_all">全选</string>
     <string name="editor_select_line">选中整行</string>
     <string name="editor_selection_len">选中 %1$d</string>
     <string name="editor_selection_popup">选中弹窗</string>
     <string name="editor_settings">编辑器设置</string>
     <string name="editor_sticky_scroll">粘性滚动</string>
+    <string name="editor_symbol_bar">符号栏</string>
     <string name="editor_syntax">语法</string>
     <string name="editor_syntax_auto">自动（按后缀名）</string>
     <string name="editor_tab_width">Tab 宽度</string>
@@ -258,7 +298,6 @@
     <string name="batch_import_failed_e_message">批量导入失败: %1$s</string>
     <string name="batch_storage_failed">批量存储失败</string>
     <string name="binary_backend_instructions">选择编译好的二进制可执行文件作为后端
-
 • 该文件将作为插件后端启动
 • 必须监听 127.0.0.1:8000 端口
 • 必须提供 /health 健康检查端点
@@ -525,7 +564,6 @@
     <string name="export_failed_e_message">导出失败: %1$s</string>
     <string name="export_result_count_fail">成功导出 %1$s 个插件到:
 %2$s
-
 失败 %3$s 个：
 %4$s</string>
     <string name="export_selectedpluginids_size">导出 (%1$s)</string>
@@ -687,6 +725,7 @@
     <string name="first_import_recording_signature_fil">首次导入，记录签名: %1$s</string>
     <string name="first_install_data_version_info_vers">首次安装，数据版本: %1$s</string>
     <string name="flashlight">闪光灯</string>
+    <string name="folder">文件夹</string>
     <string name="follow_system">跟随系统</string>
     <string name="for_checking_network_status">用于检查网络状态</string>
     <string name="for_managing_all_files_in_the_plugin">用于管理插件目录的所有文件</string>
@@ -982,7 +1021,6 @@
     <string name="old_data_migration_failed">迁移旧数据失败</string>
     <string name="on_color_text">反色文本</string>
     <string name="onboarding_version_updated">UIN Tool 已更新到 v%1$s
-
 新功能、优化和修复已就绪！</string>
     <string name="one_tap_import_export_plugins_n_supp">• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理</string>
     <string name="one_tap_import_export_plugins_n_supp_2">• 一键导入/导出插件\n• 支持 TPK 和 ZIP 格式\n• 插件分类管理\n• 备份恢复所有数据</string>
@@ -1844,7 +1882,6 @@
     <string name="reset_default_settings">恢复默认设置</string>
     <string name="menu">菜单</string>
     <string name="ui_personalization">UI 个性化</string>
-
     <string name="container_current_default">当前默认容器</string>
     <string name="container_default_label">默认</string>
     <string name="container_default_switched">已切换至 %1$s</string>
@@ -1915,7 +1952,6 @@
     <string name="trust_community">社区</string>
     <string name="trust_official">官方</string>
     <string name="trust_verified">已验证</string>
-
     <string name="terminal_sessions">会话</string>
     <string name="terminal_new_session">新建</string>
     <string name="container_busy">该容器正在执行其他操作，请稍候</string>
@@ -1925,9 +1961,7 @@
     <string name="bind_shared_storage_desc">把 /storage/emulated/0 挂进容器；关闭后容器只能看到自己的 rootfs</string>
     <string name="distro_bundled_hint">内置资源，无需下载</string>
     <string name="distro_not_bundled">未内置，暂无法离线安装</string>
-
     <string name="app_icon_desc">应用图标</string>
-
     <string name="connection_failed">连接失败</string>
     <string name="plugin_install_success">插件安装成功</string>
     <string name="widget_auto_refresh">自动刷新</string>

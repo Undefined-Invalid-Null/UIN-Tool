@@ -275,16 +275,19 @@ class PluginManager private constructor(
     // ==================== 插件安装 ====================
 
     /**
-     * 只读读取 tpk 内的 plugin.json，返回 pluginId，用于签名校验（按 pluginId 存哈希）。
+     * 只读读取 tpk 内的 plugin.json，返回 pluginId + version，用于签名校验
+     * （按 pluginId 记「版本:哈希」—— 同版本钉哈希、跨版本放行更新，见 SecurityUtils）。
      */
-    private fun readPluginIdFromTpk(file: File): String? {
+    private fun readPluginMetaFromTpk(file: File): Pair<String, Int>? {
         return try {
             java.util.zip.ZipFile(file).use { zf ->
                 val entry = zf.getEntry(Constants.PLUGIN_CONFIG_FILE) ?: return null
                 val jsonContent = zf.getInputStream(entry).bufferedReader().use { it.readText() }
-                val info = PluginInfo.fromJson(jsonContent)
-                val pluginId = info?.pluginId ?: ""
-                if (pluginId.isEmpty() || !pluginId.isValidPluginId()) null else pluginId
+                // 编译修（26 复查）：fromJson 可空 —— 先早退收窄，后面 info.version 才有非空智能转换。
+                val info = PluginInfo.fromJson(jsonContent) ?: return null
+                val pluginId = info.pluginId ?: ""
+                if (pluginId.isEmpty() || !pluginId.isValidPluginId()) null
+                else pluginId to info.version
             }
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.invalid_plugin_json), e)
@@ -367,7 +370,7 @@ class PluginManager private constructor(
 
             migratePluginDataVersion(info)
 
-            SecurityUtils.savePluginSignature(info.pluginId, file, preferenceManager)
+            SecurityUtils.savePluginSignature(info.pluginId, info.version, file, preferenceManager)
 
             Logger.success(TAG, Str.get(R.string.installed_info_name_info_pluginid, info.name, info.pluginId))
             info
@@ -408,15 +411,16 @@ class PluginManager private constructor(
 
         var inFlightId: String? = null
         return try {
-            val pluginId = readPluginIdFromTpk(file)
-            if (pluginId == null) {
+            val meta = readPluginMetaFromTpk(file)
+            if (meta == null) {
                 Logger.e(TAG, Str.get(R.string.invalid_plugin_json))
                 _error.value = Str.get(R.string.invalid_plugin_json)
                 return null
             }
+            val (pluginId, tpkVersion) = meta
 
             if (!preferenceManager.isDevIgnoreSignatureEnabled() &&
-                !SecurityUtils.verifyFileSignature(pluginId, file, preferenceManager)) {
+                !SecurityUtils.verifyFileSignature(pluginId, tpkVersion, file, preferenceManager)) {
                 Logger.e(TAG, Str.get(R.string.plugin_signature_verification_failed))
                 _error.value = Str.get(R.string.plugin_signature_verification_failed_2)
                 return null

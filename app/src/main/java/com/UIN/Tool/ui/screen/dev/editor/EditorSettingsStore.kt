@@ -41,6 +41,8 @@ object EditorSettingsStore {
     private const val K_HIGHLIGHT_BLOCK = "highlight_block"
     private const val K_RENDER_FN_CHARS = "render_function_characters"
     private const val K_SHOW_MAGNIFIER = "show_magnifier"
+    private const val K_LARGE_FILE_MODE = "large_file_mode"
+    private const val K_FILE_TREE_MULTI_LINE = "file_tree_multi_line"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -74,7 +76,9 @@ object EditorSettingsStore {
             lineSeparator = p.getInt(K_LINE_SEPARATOR, defaults.lineSeparator),
             highlightBlock = p.getBoolean(K_HIGHLIGHT_BLOCK, defaults.highlightBlock),
             renderFunctionChars = p.getBoolean(K_RENDER_FN_CHARS, defaults.renderFunctionChars),
-            showMagnifier = p.getBoolean(K_SHOW_MAGNIFIER, defaults.showMagnifier)
+            showMagnifier = p.getBoolean(K_SHOW_MAGNIFIER, defaults.showMagnifier),
+            largeFileMode = p.getBoolean(K_LARGE_FILE_MODE, defaults.largeFileMode),
+            fileTreeMultiLine = p.getBoolean(K_FILE_TREE_MULTI_LINE, defaults.fileTreeMultiLine)
         )
     }
 
@@ -106,6 +110,32 @@ object EditorSettingsStore {
             .putBoolean(K_HIGHLIGHT_BLOCK, s.highlightBlock)
             .putBoolean(K_RENDER_FN_CHARS, s.renderFunctionChars)
             .putBoolean(K_SHOW_MAGNIFIER, s.showMagnifier)
+            .putBoolean(K_LARGE_FILE_MODE, s.largeFileMode)
+            .putBoolean(K_FILE_TREE_MULTI_LINE, s.fileTreeMultiLine)
             .apply()
+    }
+
+    // ==================== 6.2.0：上次打开的文档（会话恢复） ====================
+
+    private const val K_LAST_FILE = "last_open_file"
+    private const val K_LAST_URI = "last_open_uri"
+
+    /**
+     * 记住最后一次打开的后端：[file] 为真实路径，[uri] 为 content:// 二选一（传 null 表示清掉另一个）。
+     *
+     * 用途：进程被系统回收后从**多任务窗口**回来，Activity 是全新的、Intent 里没有文件，
+     * 原先会直接落进「未打开文件」空态，看着像内容全没了。这里记下路径供重建时恢复。
+     */
+    fun rememberLastOpened(context: Context, file: String?, uri: String?) {
+        prefs(context).edit()
+            .putString(K_LAST_FILE, file)
+            .putString(K_LAST_URI, uri)
+            .apply()
+    }
+
+    /** @return Pair(上次文件路径, 上次 content:// URI)，两者都可能为 null。 */
+    fun lastOpened(context: Context): Pair<String?, String?> {
+        val p = prefs(context)
+        return p.getString(K_LAST_FILE, null) to p.getString(K_LAST_URI, null)
     }
 }

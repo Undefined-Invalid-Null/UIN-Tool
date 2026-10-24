@@ -385,6 +385,29 @@ val assets = pctx.assets                // Contains plugin directory + plugin re
 
 > ⚠️ `PluginContext` overrides `getDataDir()`/`getCacheDir()` (deprecated aliases returning plugin data/ and cache/), and also overrides `getAssets()`/`getResources()` (redirected to plugin directory). It does **not** override `getFilesDir()` — returns the host app's internal files directory, **not** the plugin directory. Do not use it to locate plugin files.
 
+**Launch the host code editor (new in v6.2.0 batch 53)**
+
+Native plugins can open the host's built-in code editor directly (`PluginEditorApi` — static methods, usable from any Context, including `PluginContext`):
+
+```kotlin
+import com.UIN.Tool.plugin.PluginEditorApi
+
+// Open a single file (unknown/missing extensions are opened as plain text)
+PluginEditorApi.openEditor(context, "/storage/emulated/0/notes/a.txt")
+
+// Open a directory (browse mode: project tree + first text file opened automatically)
+PluginEditorApi.openEditor(context, "/storage/emulated/0/myproject")
+
+// Open a file together with its project tree (switch files from the left side)
+PluginEditorApi.openFile(context, "/sdcard/myproject/a.md", "/sdcard/myproject")
+
+// Browse a project directory only (same as openEditor(dir))
+PluginEditorApi.openProject(context, "/sdcard/myproject")
+```
+
+Returns `Boolean` (false = empty argument or launch failure). Web plugins use the same capability: `UINPlugin.callHost('openEditor', JSON.stringify({path: "…", project_dir: "…"}))` (`path` pointing to a directory opens browse mode; `project_dir` is optional and attaches a project tree when `path` is a file).
+> ⚠️ The sandbox root of `writeFile`/`readFile` is the plugin **data directory** (`data/` under the plugin dir), NOT the top of `getPluginDir()` — to open a file you wrote yourself, build the real on-disk path with `UINPlugin.getPluginDataDir()` (Web) or `pctx.getPluginDataDir()` (native); otherwise the host looks at the plugin root and cannot find the file (editor shows the "no file open" empty state).
+
 ### 3.5 Plugin Data Storage API
 
 The `context` received in `onCreateView` is already `PluginContext`, no need to construct it yourself; the following APIs are all based on this instance:
@@ -1473,6 +1496,7 @@ UINPlugin.callHost('setFullscreen', 'true');            // Fullscreen (string tr
 UINPlugin.callHost('setKeepScreenOn', 'true');          // Keep screen on (string true/false)
 UINPlugin.callHost('sendNotification', 'Title,Message'); // Send notification
 UINPlugin.callHost('takeScreenshot', '');               // Screenshot (requires storage permission, saves to downloads/screenshots/)
+UINPlugin.callHost('openEditor', JSON.stringify({path: '/sdcard/a.txt'})); // Open the code editor (v6.2.0 batch 53: file opens directly, directory opens browse mode; unknown extensions open as txt; optional project_dir attaches a project tree)
 ```
 
 **Dialogs / Loading (Since v4.4.4, popups unified through host Compose queue)**
@@ -1773,6 +1797,7 @@ UINPlugin.setFullscreen(true);
 UINPlugin.setKeepScreenOn(true);
 UINPlugin.takeScreenshot();         // Requires storage permission, saves to downloads/screenshots/
 UINPlugin.getPluginDir();           // Plugin root directory absolute path
+UINPlugin.getPluginDataDir();       // Plugin data directory absolute path (sandbox root of writeFile/readFile = data/ under the plugin dir; use it to build the real on-disk path when handing a written file to the host, e.g. openEditor)
 UINPlugin.getBackendStatus();       // "running:{port}" / "starting" / "unknown"
 ```
 

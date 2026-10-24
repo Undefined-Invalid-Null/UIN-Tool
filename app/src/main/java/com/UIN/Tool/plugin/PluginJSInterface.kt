@@ -33,7 +33,6 @@ import android.telephony.TelephonyManager
 import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.UIN.Tool.domain.model.PluginInfo
@@ -255,7 +254,44 @@ class PluginJSInterface(
             "setKeepScreenOn" -> setKeepScreenOn(params.toBoolean())
             "sendNotification" -> sendNotification(params, "")    
                     "takeScreenshot" -> takeScreenshot()
+            // 6.2.0 批次53：打开宿主代码编辑器（与原生 PluginEditorApi 同源实现）。
+            // data = JSON：{"path": 绝对路径(必填, 文件或目录), "project_dir": 目录(可选, 一并挂目录树)}
+            "openEditor" -> openEditor(params)
             else -> Logger.w(TAG, Str.get(R.string.unknown_call_action, action))
+        }
+    }
+
+    /**
+     * 6.2.0 批次53：插件调起宿主代码编辑器。
+     * path 为文件 → 按 txt 打开（未知后缀同样放行，见 FileAccess.isTextFile）；
+     * path 为目录 → 浏览模式（目录树 + 首个文本文件）；带 project_dir 时文件与目录树同开。
+     */
+    private fun openEditor(params: String) {
+        try {
+            val o = JSONObject(params)
+            val path = o.optString("path", "").trim()
+            if (path.isEmpty()) {
+                Logger.w(TAG, "openEditor: missing 'path'")
+                return
+            }
+            val host = hostActivity()
+            if (host == null) {
+                Logger.w(TAG, "openEditor: host activity unavailable")
+                return
+            }
+            val projectDir = o.optString("project_dir", "").trim()
+            val ok = if (projectDir.isEmpty()) {
+                PluginEditorApi.openEditor(host, path)
+            } else {
+                PluginEditorApi.openFile(host, path, projectDir)
+            }
+            if (ok) {
+                Logger.i(TAG, "openEditor: $path (projectDir=${projectDir.ifEmpty { "-" }})")
+            } else {
+                Logger.w(TAG, "openEditor failed: $path")
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "openEditor failed", e)
         }
     }
 
@@ -2198,12 +2234,9 @@ class PluginJSInterface(
     @JavascriptInterface
     fun showLoading(message: String) {
         val text = message.ifEmpty { Str.get(R.string.loading) }
-        val act = getActivity()
-        if (act != null) {
-            act.runOnUiThread { Toast.makeText(context, text, Toast.LENGTH_SHORT).show() }
-        } else {
-            com.UIN.Tool.utils.AppToast.show(context, text)
-        }
+        // 批次45（审计 F1）：原先 Activity 在时走裸 Toast —— 系统 Toast 会**排队**，
+        // 插件连点/循环调用就堆积延迟。统一走 AppToast（先撤当前、最新一条立即顶上）。
+        com.UIN.Tool.utils.AppToast.show(context, text)
     }
 
     @JavascriptInterface
@@ -2321,23 +2354,13 @@ class PluginJSInterface(
     // ==================== 22. Toast ====================
 
     private fun showToast(message: String) {
-        val act = getActivity()
-        if (act != null) {
-            act.runOnUiThread { Toast.makeText(context, message, Toast.LENGTH_SHORT).show() }
-        } else {
-            // B-31：JS 线程直接 Toast 在 Android 11+ 会抛异常，AppToast 内部切主线程
-            com.UIN.Tool.utils.AppToast.show(context, message)
-        }
+        // 批次45（审计 F1）：同 showLoading —— 裸 Toast 改 AppToast，避免连发排队。
+        com.UIN.Tool.utils.AppToast.show(context, message)
     }
 
     @JavascriptInterface
     fun showToastLong(message: String) {
-        val act = getActivity()
-        if (act != null) {
-            act.runOnUiThread { Toast.makeText(context, message, Toast.LENGTH_LONG).show() }
-        } else {
-            com.UIN.Tool.utils.AppToast.showLong(context, message)
-        }
+        com.UIN.Tool.utils.AppToast.showLong(context, message)
     }
 
     // ==================== 23. 振动 ====================
@@ -2394,7 +2417,9 @@ class PluginJSInterface(
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .build()
-            notificationManager?.notify(System.currentTimeMillis().toInt(), notification)
+            // 批次45（审计 F3）：通知 ID 原为 currentTimeMillis —— 每次调用发**新**通知，
+            // 插件连发就状态栏堆积。改为按插件固定 ID，重复发送原位替换。
+            notificationManager?.notify(("uinn-notify-$pluginId").hashCode(), notification)
             Logger.i(TAG, Str.get(R.string.sending_notification_title, title))
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.failed_to_send_notification), e)
@@ -2585,6 +2610,20 @@ class PluginJSInterface(
         val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
         if (!pluginDir.exists()) pluginDir.mkdirs()
         return pluginDir.absolutePath
+    }
+
+    /**
+     * 6.2.0 批次53：插件**数据目录**的绝对路径 —— writeFile/readFile/deleteFile 的沙箱根
+     * 是插件目录下的 data/ 子目录，不是 [getPluginDir] 的顶层。要把「写过的文件」交给宿主
+     * （如 callHost("openEditor")）时，用本方法拼出**真实落盘路径**，否则宿主会按顶层路径
+     * 找不到文件（表现为编辑器「未打开文件」空态）。
+     */
+    @JavascriptInterface
+    fun getPluginDataDir(): String {
+        ensureMigration()
+        val dir = getPluginContext()?.getPluginDataDir()
+            ?: File(File(Constants.PLUGIN_DIR, pluginId), "data")
+        return dir.absolutePath
     }
 
     @JavascriptInterface

@@ -59,6 +59,11 @@ object AppToast {
                 if (duration == Toast.LENGTH_LONG) SnackbarDuration.Long else SnackbarDuration.Short
             scope.launch {
                 try {
+                    // 批次44 修「连点属性后 toast 隔很久才逐条冒出来」：
+                    // SnackbarHostState.showSnackbar 是**串行队列** —— 连点 N 次会挂起排队，
+                    // 前一条播完才放后一条，间隔被越拖越长。先把正在显示的撤掉，
+                    // 让**最新一条**立刻顶上（点多少次都以最后一条为准，几乎零延迟）。
+                    host.currentSnackbarData?.dismiss()
                     host.showSnackbar(message = message, duration = snackbarDuration)
                 } catch (e: Exception) {
                     Logger.e(TAG, Str.get(R.string.toast_failed_to_show), e)
