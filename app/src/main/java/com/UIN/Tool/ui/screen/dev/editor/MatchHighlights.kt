@@ -60,6 +60,38 @@ class MatchHighlights(editor: CodeEditor) {
         owned = emptyList()
     }
 
+    /**
+     * 批次57②复查（用户反馈「命中前打的空格也被高亮」）：sora 的 `updateOnInsertion` 对
+     * 起点用**严格小于**才平移 —— 插入点恰等于条目起点时终点平移、起点不动，条目向左扩
+     * 一格，把刚敲进去的字符吃进高亮。删除侧语义正确（整段覆盖摘条目、部分覆盖夹位、
+     * 撞尾平移），无需逐条跟进。
+     *
+     * `ContentChangeEvent` 在容器平移**之后**派发（sora `CodeEditor.afterInsert` 顺序：
+     * `updateOnInsertion` → `dispatchEvent`），事件带的就是同一次插入的 (start,end) ——
+     * 这里把起点撞在插入点上的条目**起点**补到插入终点（终点已被 sora 平移正确），整体
+     * 重写一次（hex 存量按颜色类型带载回来）。条目集合**以容器为准**：选中整段命中后
+     * 直接打字是「删 + 插」两连事件，前一删已把该条摘出容器，这里不得用 owned 存量把它
+     * 带回来（否则会在已被删掉的位置画出幽灵高亮）。没撞上就不重写：普通敲字只付一次
+     * 读取 + 扫描。
+     */
+    fun onInserted(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) {
+        if (owned.isEmpty()) return
+        if (startLine == endLine && startColumn == endColumn) return
+        val e = editorRef.get() ?: return
+        if (e.isReleased) return
+        val live = e.highlightTexts?.asList()?.filter { it.color is EditorColor } ?: return
+        var hit = false
+        for (item in live) {
+            if (item.startLine == startLine && item.startColumn == startColumn) {
+                item.startLine = endLine
+                item.startColumn = endColumn
+                hit = true
+            }
+        }
+        owned = live
+        if (hit) write(owned)
+    }
+
     /** 主线程：新容器 = hex 存量（ConstColor）+ 本类条目（EditorColor），归并后一次写回。 */
     private fun write(items: List<HighlightTextContainer.HighlightText>) {
         val e = editorRef.get() ?: return

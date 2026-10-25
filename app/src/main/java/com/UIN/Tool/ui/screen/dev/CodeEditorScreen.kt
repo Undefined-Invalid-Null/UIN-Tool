@@ -1398,6 +1398,14 @@ class EditorController {
         editor = view
         contentListener = view.subscribeEvent(ContentChangeEvent::class.java) { event, _ ->
             if (event.action == ContentChangeEvent.ACTION_SET_NEW_TEXT) return@subscribeEvent
+            // 批次57②复查：插入点撞命中起点时 sora 只平移终点（起点比较是严格 <），
+            // 条目左扩会把刚敲的字符吃进高亮 —— 事件在容器平移之后派发，就地补平移
+            //（详见 MatchHighlights.onInserted）。删除侧 sora 语义正确，不接。
+            if (event.action == ContentChangeEvent.ACTION_INSERT) {
+                val start = event.changeStart
+                val end = event.changeEnd
+                matchHighlights?.onInserted(start.line, start.column, end.line, end.column)
+            }
             // 批次54 修 2026-10-21 22:26 OOM：每个按键都把整档 toString 全文（30MB 档
             // ≈ 57MB 字符数组/键），堆 531/537MB 顶穿。大文档只回传 null = 脏信号；
             // 最新文本由保存/搜索/替换/切走前的 contentRefresher 统一回灌。

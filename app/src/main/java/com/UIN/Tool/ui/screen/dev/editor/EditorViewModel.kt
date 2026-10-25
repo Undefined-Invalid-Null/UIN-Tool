@@ -832,10 +832,16 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 打开本地真实文件（D2 主路径：直接 IO）。 */
     fun openFile(file: File, asNew: Boolean = false) {
         val path = file.absolutePath
+        // 批次57③：内部打开路径（目录树点开设备文件等，不经 Intent）非插件文件 →
+        // 先退出草稿模式（隐藏的用户签恢复、插件草稿签落盘摘除），再走正常打开。
+        maybeExitWizardFor(path)
         // 6.2.0：每个新文档都从「可编辑」开始，杜绝上一个文档的只读标记粘住本次打开。
         _readOnly.value = false
         _tabs.value.firstOrNull { it.file?.absolutePath == path }?.let {
             activateTab(it.id) // 批次55：统一走切活入口（切走前回灌脏大文档）
+            // 批次57③尾修二（用户：「打开设备文件，目录树显示未打开文件夹」）：重复
+            // 打开走此早退分支 —— 若退出向导时根刚被清掉，这里不补建树根就永远空态。
+            ensureTreeRootForFile(it.file)
             return
         }
         if (!file.exists()) {
@@ -898,7 +904,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 6.2.0：记下最后打开的文件，供进程被回收后从多任务回来时恢复（见 CodeEditorActivity）。
         // 批次57②（用户指定）：插件向导草稿**不记「上次打开」** —— 否则向导结束后进程被
         // 系统回收、从多任务回来，会把插件草稿当成上次文档复活进编辑器（插件代码不落缓存）。
-        if (_wizardDraftPrefix.value?.let { path.startsWith(it) } != true) {
+        // 批次57③补：editor_draft 根前缀双保险（模式标志丢失也不记）。
+        val draftRoot = File(getApplication<Application>().cacheDir, "editor_draft")
+            .absolutePath + File.separator
+        if (!path.startsWith(draftRoot) &&
+            _wizardDraftPrefix.value?.let { path.startsWith(it) } != true
+        ) {
             EditorSettingsStore.rememberLastOpened(getApplication(), path, null)
         }
     }
@@ -924,7 +935,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             AppLog.d(TAG, "windowed open start: $path")
             // 批次50（用户反馈）：大文件**本来**就以分页窗口模式打开，不再说「内存不足，改用…」。
-            emit("大文件分页打开：${file.name}（先显示首页，索引后台建立中）…")
+            // 批次57②：向导草稿模式下这条是**设备文件**在后台静默恢复 —— 插件创建时不该
+            // 冒出与插件无关的加载提示，抑制之（恢复照常进行，出错类提示不在此列）。
+            if (_wizardDraftPrefix.value == null) {
+                emit("大文件分页打开：${file.name}（先显示首页，索引后台建立中）…")
+            }
             val head = FileAccess.readHeadPage(file)
             if (head == null) {
                 withContext(Dispatchers.Main) {
@@ -1020,11 +1035,17 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 applyWindowedRestore(tabId, p)
                 // 复查二修：索引慢于 restoreSession 的收尾校正时，条目自身的 active
                 // 在此兑付（恢复期 openFile 未返回拿不到 tid 的场景就靠这里补）。
-                if (p.entry.active) activateTab(tabId)
+                // 批次57②：向导草稿模式下 entry.active 只可能是被隐藏的用户签 —— 这是
+                // 晚于收尾校正的**异步**兑付，抢了焦点会把编辑器顶进「未打开文件」空态，
+                // 向导期间一律不兑付（下次正常打开会话时再兑付）。
+                if (p.entry.active && _wizardDraftPrefix.value == null) activateTab(tabId)
             }
         }
         AppLog.d(TAG, "windowed open ok: ${file.absolutePath} pages=${doc.totalPages}")
-        emit("${file.name}：分页就绪，共 ${doc.totalPages} 页")
+        // 批次57②：向导模式下同上 —— 设备文件索引就绪提示静默（见 openFile 抑制点）。
+        if (_wizardDraftPrefix.value == null) {
+            emit("${file.name}：分页就绪，共 ${doc.totalPages} 页")
+        }
     }
 
     /**
@@ -1036,6 +1057,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * 用 java.io.File 读必然失败。file:// 或能直读的真实路径才走 java.io.File。
      */
     fun openUri(uri: Uri) {
+        // 批次57③：URI 打开必为外部内容（插件草稿一律走真实路径）→ 退出草稿模式；
+        // 会话恢复中的 content:// 条目由 sessionPersistReady 抑制，不影响静默恢复。
+        maybeExitWizardFor(null)
         // 6.2.0：与 openFile 一致，新文档从「可编辑」开始（file:// 分支最终也走 openFile）。
         _readOnly.value = false
         // 6.2.0 批次25：先尝试固化 URI 读写授权（分享方若带了 PERSISTABLE flag 才会成功，
@@ -1063,6 +1087,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val identity = uri.toString()
         _tabs.value.firstOrNull { it.uri == identity }?.let {
             activateTab(it.id) // 批次55：统一走切活入口（切走前回灌脏大文档）
+            // 批次57③尾修二：同 openFile 的重复打开早退 —— 补建树根，防清根后空态。
+            ensureTreeRootForFile(it.file)
             return
         }
         // 批次54：content:// 也必须过 openFile 的 16MB 分页门槛 —— 否则文件管理器「打开
@@ -1313,6 +1339,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private val _wizardDraftPrefix = MutableStateFlow<String?>(null)
     val wizardDraftPrefix: StateFlow<String?> = _wizardDraftPrefix.asStateFlow()
 
+    /** 进入草稿模式前的目录树根（退出时回位；首轮进入时记一次）。 */
+    private var preWizardRoot: File? = null
+
     /**
      * 进入新一轮向导草稿模式。上一轮向导自己的遗留草稿签直接撤掉（向导已读走结果，
      * 可静默丢弃）；用户标签只隐藏不关。
@@ -1320,6 +1349,16 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     fun enterWizardMode(draftDir: File) {
         val prefix = draftDir.absolutePath + File.separator
         val prev = _wizardDraftPrefix.value
+        // 首轮进入时记下当时的目录树根（多轮同会话保留第一轮记下的原根），退出时回位。
+        // 批次57③尾修：草稿目录本身**不暂存**（异常路径下根可能已是草稿根）—— 宁可退出
+        // 时清空、由设备文件的建树逻辑重建，也不能把向导根当「原根」还回去（树永远停在
+        // 向导目录）。
+        if (prev == null) {
+            val r = _projectRoot.value
+            val draftRoot = File(getApplication<Application>().cacheDir, "editor_draft")
+                .absolutePath + File.separator
+            if (r != null && !r.absolutePath.startsWith(draftRoot)) preWizardRoot = r
+        }
         _wizardDraftPrefix.value = prefix
         if (prev == null || prev == prefix) return
         var searchOwnerDropped = false
@@ -1342,11 +1381,83 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * 批次57③（用户反馈「打开设备文件时，创建插件的文件不要显示」）：收到**非向导**的
+     * 打开意图（设备文件 ACTION_VIEW / 浏览模式 / 普通打开）时退出草稿模式 ——
+     *  - 隐藏的用户标签恢复显示（`wizardDraftPrefix` 置空，Screen 过滤随之放行）；
+     *  - 插件草稿签**先落盘再摘除**：向导退出时按 editor_draft 目录读回，编辑中的改动
+     *    不能丢；存不上的保留签 —— 宁可多显示一枚，也不静默丢数据；
+     *  - 目录树根回位到进向导前的根（记不住就清空，随后打开的文件会按批次23 逻辑重建）。
+     */
+    fun exitWizardMode() {
+        val prefix = _wizardDraftPrefix.value ?: return
+        _wizardDraftPrefix.value = null
+        var searchOwnerDropped = false
+        var activeDropped = false
+        val drafts = _tabs.value.filter { it.file?.absolutePath?.startsWith(prefix) == true }
+        // 只存脏的（干净草稿零开销、零 toast）；存失败的不摘。
+        val failed = drafts.filter { it.isModified && !saveTab(it) }
+        val dropIds = drafts.map { it.id }.toSet() - failed.map { it.id }.toSet()
+        if (dropIds.isNotEmpty()) {
+            _tabs.update { list -> list.filterNot { it.id in dropIds } }
+            for (t in drafts) {
+                if (t.id !in dropIds) continue
+                if (t.id == wholeSearchTabId) searchOwnerDropped = true
+                if (t.id == _activeTabId.value) activeDropped = true
+            }
+        }
+        if (searchOwnerDropped) cancelWholeSearch()
+        if (activeDropped) {
+            _tabs.value.firstOrNull()?.let { activateTab(it.id) }
+                ?: run { _activeTabId.value = null }
+        }
+        val root = _projectRoot.value
+        // 批次57③尾修（用户指定「打开设备文件，目录树也要改成设备的」）：prefix 带尾分隔符，
+        // 而 openProject(草稿目录) 存的根恰好是不带斜杠的草稿目录 —— 原 startsWith(prefix)
+        // 恒假、回位**从未执行**，树根锁死在向导目录。改为「在草稿目录下或就是草稿目录」。
+        if (root != null &&
+            (root.absolutePath.startsWith(prefix) ||
+                prefix.startsWith(root.absolutePath + File.separator))
+        ) {
+            val back = preWizardRoot
+            if (back != null && back.isDirectory && back.canRead()) {
+                AppLog.d(TAG, "exitWizard: tree root back to $back")
+                openProject(back)
+            } else {
+                AppLog.d(TAG, "exitWizard: tree root cleared (was=$root, stash=$back)")
+                clearProject()
+            }
+        } else {
+            AppLog.d(TAG, "exitWizard: tree root untouched (root=$root)")
+        }
+        preWizardRoot = null
+    }
+
+    /**
+     * 批次57③（用户再反馈「打开设备文件，为什么会显示向导代码文件」）：**内部**打开
+     * 入口（目录树点开设备文件、文件夹选择器、SAF content:// 等不经 Intent 的路径）
+     * 同样要退出草稿模式 —— 上一版的退出挂钩只在 handleIntent（Intent 路径）上，编辑器
+     * 自己开的设备文件仍被草稿前缀藏住、插件文件霸屏。
+     *
+     * 抑制条件 = 会话恢复进行中（[sessionPersistReady] 为 false）：向导期间设备文件按
+     * 批次57② 设计在后台**静默**恢复（隐藏），不能把模式冲掉。草稿目录自身或其下
+     *（[path] 是前缀的祖先，如 openProject(草稿目录)）不触发退出。
+     */
+    private fun maybeExitWizardFor(path: String?) {
+        if (!sessionPersistReady) return
+        val prefix = _wizardDraftPrefix.value ?: return
+        val under = path != null &&
+            (path.startsWith(prefix) || prefix.startsWith("$path/"))
+        if (!under) exitWizardMode()
+    }
+
     fun openProject(dir: File) {
         if (!dir.isDirectory || !dir.canRead()) {
             emit("无法读取目录: ${dir.name}")
             return
         }
+        // 批次57③：选中了非插件目录（文件夹选择器 / 插件浏览模式）→ 退出草稿模式。
+        maybeExitWizardFor(dir.absolutePath)
         _projectRoot.value = dir
         _expandedDirs.value = setOf(dir.absolutePath)
         _selectedDir.value = dir
@@ -1391,14 +1502,23 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         AppLog.d(TAG, "restoreLastOpened: file=$file uri=$uri")
         try {
             if (file != null) {
-                val f = File(file)
-                if (f.isFile && f.canRead() && FileAccess.isTextFile(f.name)) {
-                    openFile(f)
-                    val outcome = if (_tabs.value.isNotEmpty()) "restored" else "open failed"
-                    AppLog.d(TAG, "restoreLastOpened: file $outcome: $file")
-                    return
+                // 批次57③：存量「上次打开」可能是写侧过滤**之前**记下的插件草稿 —— 不
+                // 复活；顺手清掉存值（只跳过不清，草稿路径每次冷启动都会复活一次）。
+                val draftRoot = File(getApplication<Application>().cacheDir, "editor_draft")
+                    .absolutePath + File.separator
+                if (file.startsWith(draftRoot)) {
+                    EditorSettingsStore.rememberLastOpened(getApplication(), null, null)
+                    AppLog.d(TAG, "restoreLastOpened: skip legacy wizard draft: $file")
+                } else {
+                    val f = File(file)
+                    if (f.isFile && f.canRead() && FileAccess.isTextFile(f.name)) {
+                        openFile(f)
+                        val outcome = if (_tabs.value.isNotEmpty()) "restored" else "open failed"
+                        AppLog.d(TAG, "restoreLastOpened: file $outcome: $file")
+                        return
+                    }
+                    AppLog.w(TAG, "restoreLastOpened: skip missing/unreadable: $file")
                 }
-                AppLog.w(TAG, "restoreLastOpened: skip missing/unreadable: $file")
             }
             if (uri != null) {
                 openUri(Uri.parse(uri))
@@ -1451,17 +1571,31 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * 直接显示文件本身，也不再弹「授予权限」页。
      */
     private fun ensureTreeRootForFile(file: File?) {
-        if (file == null) return                       // content:// 无法定位 → 不建树
-        if (!FileAccess.hasStorageAccess(getApplication())) return  // 无权限 → 不建树
-        val storageRoot = Environment.getExternalStorageDirectory()
-        if (!storageRoot.isDirectory || !storageRoot.canRead()) return
-        if (_projectRoot.value == null) {
-            _projectRoot.value = storageRoot
-            _expandedDirs.value = setOf(storageRoot.absolutePath)
-            _selectedDir.value = storageRoot
+        // 批次57③尾修二（用户：「打开设备文件，目录树显示未打开文件夹，你要自动定位到
+        // 设备文件」）：旧实现两处过早放弃 —— content:// 的 file==null 一律早退；未授
+        // 「所有文件访问」一律早退（判据 isExternalStorageManager 过严：Android 11 有
+        // READ 时 listFiles 其实已可用）。改为：根缺失、或非向导态下根还停在向导草稿
+        // 目录时，**实测能否列出外部存储**，能挂就挂设备根；挂上后有真实路径就展开定位。
+        val root0 = _projectRoot.value
+        val staleDraft = root0 != null && _wizardDraftPrefix.value == null &&
+            root0.absolutePath.startsWith(
+                File(getApplication<Application>().cacheDir, "editor_draft")
+                    .absolutePath + File.separator
+            )
+        if (root0 == null || staleDraft) {
+            val storageRoot = Environment.getExternalStorageDirectory()
+            // 实测判据：根目录必须真能列出非空子项（无任何权限时 listFiles 为 null/空）。
+            if (storageRoot.isDirectory && storageRoot.listFiles()?.isNotEmpty() == true) {
+                _projectRoot.value = storageRoot
+                _expandedDirs.value = setOf(storageRoot.absolutePath)
+                _selectedDir.value = storageRoot
+                AppLog.d(TAG, "ensureTreeRoot: root -> $storageRoot staleDraft=$staleDraft")
+            } else if (root0 == null) {
+                AppLog.d(TAG, "ensureTreeRoot: cannot list external storage, root stays null")
+            }
         }
         val root = _projectRoot.value ?: return
-        if (file.absolutePath.startsWith(root.absolutePath)) {
+        if (file != null && file.absolutePath.startsWith(root.absolutePath)) {
             expandAncestors(file)
             _selectedDir.value = file.parentFile ?: root
         }
@@ -1727,12 +1861,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     .onFailure { AppLog.e(TAG, "session restore load failed", it) }
                     .getOrDefault(emptyList())
             }
-            if (loaded.isEmpty()) {
+            // 批次57③（用户再反馈「打开设备文件却显示向导代码」）：**读侧**也按
+            // editor_draft 根剔除 —— 写侧过滤上线**之前**的存量会话里躺着插件草稿，
+            // 恢复出来就直接显示；剔除后本次收尾快照顺手把存量（含孤儿 draft 文件）洗掉。
+            val draftRoot = File(getApplication<Application>().cacheDir, "editor_draft")
+                .absolutePath + File.separator
+            val kept = loaded.filterNot { it.entry.file?.startsWith(draftRoot) == true }
+            if (kept.size != loaded.size) {
+                AppLog.w(
+                    TAG,
+                    "session restore: dropped ${loaded.size - kept.size} legacy wizard draft entries"
+                )
+            }
+            if (kept.isEmpty()) {
                 sessionPersistReady = true
+                // 全是被剔除的存量草稿也要洗盘 —— 否则垃圾条目一直躺在 session.json 里。
+                if (loaded.isNotEmpty()) scheduleSessionSnapshot()
                 return@launch
             }
             var activeId: String? = null
-            loaded.forEach { l ->
+            kept.forEach { l ->
                 val e = l.entry
                 if (e.windowed) {
                     val f = e.file?.let { File(it) } ?: return@forEach
@@ -1822,7 +1970,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             val wiz = _wizardDraftPrefix.value
             val target = activeId?.takeIf { id ->
                 wiz == null || _tabs.value.firstOrNull { it.id == id }
-                    ?.file?.absolutePath?.startsWith(wiz) != true
+                    ?.file?.absolutePath?.startsWith(wiz) == true
             } ?: _tabs.value.firstOrNull {
                 wiz == null || it.file?.absolutePath?.startsWith(wiz) == true
             }?.id
@@ -1830,7 +1978,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             sessionPersistReady = true
             // 复查二修：防抖可能已在 pendingRestores 非空期间烧完 —— 收尾主动补拍。
             scheduleSessionSnapshot()
-            if (_tabs.value.isNotEmpty()) emit("已恢复上次打开的标签与未保存修改")
+            // 批次57②：向导模式下用户标签是**隐藏**的，这句「已恢复…」会与所见（只有
+            // 插件文件）自相矛盾 —— 静默；下次正常打开时恢复完成照常提示。
+            if (_tabs.value.isNotEmpty() && _wizardDraftPrefix.value == null) {
+                emit("已恢复上次打开的标签与未保存修改")
+            }
         }
     }
 
@@ -1982,8 +2134,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // —— 在建快照的唯一串行点剔除，防抖/退出兜底/指纹三条路径同时生效；隐藏中的
         // 用户标签照常持久化（向导期间它们没被动过，照旧保存不丢）。
         val wizPrefix = _wizardDraftPrefix.value
-        val tabs = _tabs.value.filterNot {
-            wizPrefix != null && it.file?.absolutePath?.startsWith(wizPrefix) == true
+        // 双保险（批次57③）：editor_draft 根下的标签**永不**入缓存 —— 即便模式标志因
+        // 异常路径丢失，插件代码也不落编辑器缓存。
+        val draftRoot = File(getApplication<Application>().cacheDir, "editor_draft")
+            .absolutePath + File.separator
+        val tabs = _tabs.value.filterNot { t ->
+            val p = t.file?.absolutePath
+            p != null && (p.startsWith(draftRoot) ||
+                (wizPrefix != null && p.startsWith(wizPrefix)))
         }
         val entries = ArrayList<EditorSessionStore.Entry>(tabs.size)
         val drafts = HashMap<String, String>()

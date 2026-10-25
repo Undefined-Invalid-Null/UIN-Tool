@@ -189,6 +189,10 @@ class CodeEditorActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent?, fromRestore: Boolean) {
         if (intent == null) return
+        // 批次57③（用户反馈）：**非向导**的打开意图（设备文件 ACTION_VIEW / 浏览模式 /
+        // 普通打开）= 退出插件草稿模式 —— 隐藏的用户标签恢复显示，插件草稿签落盘后摘除
+        //（创建插件的文件不再显示）。向导自己的意图带 wizard_draft，走 enterWizardMode。
+        if (!intent.getBooleanExtra("wizard_draft", false)) viewModel.exitWizardMode()
         val projectDir = intent.getStringExtra("project_dir")
         AppLog.d(
             TAG,
