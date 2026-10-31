@@ -92,11 +92,17 @@
     <uses-permission android:name="moe.shizuku.privileged.api.permission.API_V23" />
     <uses-permission android:name="com.rosan.dhizuku.permission.API" />
 
-    <!-- A-46：targetSdk=28 下 <queries> 尚不生效，为将来升级 targetSdk>=30 预留 -->
+    <!-- A-46：targetSdk=28 下 <queries> 尚不生效，为将来升级 targetSdk>=30 预留。
+         批次63：补 PROCESS_TEXT —— 编辑器选中菜单「翻译 → 系统翻译」用它枚举可处理
+         文本的应用（谷歌翻译等），升级 targetSdk 后没有这条会查询为空。 -->
     <queries>
         <package android:name="moe.shizuku.privileged.api" />
         <package android:name="com.rosan.dhizuku" />
         <package android:name="com.termux" />
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
     </queries>
 
     <application

@@ -87,6 +87,21 @@
     <string name="backend_runtime_settings_desc">选择内置或实体 Termux 运行环境、容器与空闲回收时长</string>
     <string name="builtin_termux">内置 Termux</string>
     <string name="editor_a11y_description">代码编辑器：%1$s</string>
+    <string name="editor_assets_builtin">内置</string>
+    <string name="editor_assets_delete_msg">删除「%1$s」？重启应用后生效</string>
+    <string name="editor_assets_delete_title">删除文件</string>
+    <string name="editor_assets_deleted">已删除「%1$s」</string>
+    <string name="editor_assets_grammar">语法</string>
+    <string name="editor_assets_hint">内置文件随应用打包、只读；导入的文件存放在应用私有目录，可随时删除</string>
+    <string name="editor_assets_import">导入文件</string>
+    <string name="editor_assets_import_done">已导入 %1$d 个，%2$d 个重启后生效</string>
+    <string name="editor_assets_import_result">导入结果</string>
+    <string name="editor_assets_reason_invalid">不是合法主题 JSON，或语法缺少 scopeName</string>
+    <string name="editor_assets_reason_read">文件读写失败</string>
+    <string name="editor_assets_reason_scope_dup">scopeName 与现有语法重复</string>
+    <string name="editor_assets_reason_theme_dup">主题名与现有主题重复</string>
+    <string name="editor_assets_reason_unsupported">不支持的文件类型</string>
+    <string name="editor_assets_title">语法 / 主题文件</string>
     <string name="editor_auto_complete">自动补全</string>
     <string name="editor_show_magnifier">放大镜</string>
     <string name="editor_block_line">块缩进线</string>
@@ -123,6 +138,7 @@
     <string name="editor_indent">增加缩进</string>
     <string name="editor_large_file_mode">大文件省耗</string>
     <string name="editor_tree_multi_line">文件树多行显示</string>
+    <string name="editor_restore_last_opened">恢复上次打开的文件</string>
     <string name="editor_info_line_total">%1$d/%2$d行</string>
     <string name="editor_info_bytes">%1$d字节</string>
     <string name="editor_info_chars">%1$d字符</string>
@@ -160,6 +176,8 @@
     <string name="editor_open_folder">打开文件夹</string>
     <string name="editor_open_folder_failed">无法打开文件夹选择器</string>
     <string name="editor_open_folder_hint">打开文件夹后即可使用文件树。</string>
+    <!-- 批次63：选中菜单增强（打开链接 / 翻译） -->
+    <string name="editor_open_link">打开链接</string>
     <string name="editor_paste">粘贴</string>
     <string name="editor_permission_button">授予文件访问权限</string>
     <string name="editor_permission_denied_readonly">未授予权限，当前仅可浏览</string>
@@ -198,6 +216,8 @@
     <string name="editor_search_whole_stale">内容已修改，结果可能过期</string>
     <string name="editor_window_scanning">扫描中… %1$d%%</string>
     <string name="editor_window_saving">保存中… %1$d%%</string>
+    <string name="editor_select_action_no_link">未识别到可打开的链接</string>
+    <string name="editor_select_action_no_selection">请先选中文本</string>
     <string name="editor_select_all">全选</string>
     <string name="editor_select_line">选中整行</string>
     <string name="editor_selection_len">选中 %1$d</string>
@@ -207,10 +227,49 @@
     <string name="editor_symbol_bar">符号栏</string>
     <string name="editor_syntax">语法</string>
     <string name="editor_syntax_auto">自动（按后缀名）</string>
+    <string name="editor_syntax_search_hint">搜索语法</string>
     <string name="editor_tab_width">Tab 宽度</string>
     <string name="editor_text_scale_x">字宽</string>
     <string name="editor_theme">主题</string>
     <string name="editor_theme_follow_system">跟随系统</string>
+    <string name="editor_theme_search_hint">搜索主题</string>
+    <!-- 批次63/66：翻译（必应 bing-translate-api 移植 + 系统翻译应用；
+         批次66 追加 Google gtx / MyMemory 免费匿名通道，批次66追加自定义接口与翻译接口管理） -->
+    <string name="editor_translate">翻译</string>
+    <string name="editor_translate_all_off">在线接口已全部关闭，可在「编辑器设置 → 翻译接口管理」中开启</string>
+    <string name="editor_translate_api_add">添加接口</string>
+    <string name="editor_translate_api_add_hint">按 LibreTranslate 协议请求 /translate；能否连通取决于你填的地址</string>
+    <string name="editor_translate_api_added">已添加接口</string>
+    <string name="editor_translate_api_builtin">内置接口</string>
+    <string name="editor_translate_api_custom">自定义接口</string>
+    <string name="editor_translate_api_custom_empty">暂无自定义接口。可添加任意 LibreTranslate 兼容服务（自建或自己能访问的实例）</string>
+    <string name="editor_translate_api_delete_msg">删除「%1$s」？</string>
+    <string name="editor_translate_api_invalid_url">地址需以 http:// 或 https:// 开头</string>
+    <string name="editor_translate_api_key">API 密钥（可选）</string>
+    <string name="editor_translate_api_manage">翻译接口管理</string>
+    <string name="editor_translate_api_name_required">请填写名称和地址</string>
+    <string name="editor_translate_api_switch_hint">关闭的接口不会出现在翻译方式列表中</string>
+    <string name="editor_translate_api_test_fail">测试失败：%1$s</string>
+    <string name="editor_translate_api_test_ok">连通正常，译文：%1$s</string>
+    <string name="editor_translate_api_url">接口地址</string>
+    <string name="editor_translate_bing">必应翻译</string>
+    <string name="editor_translate_bing_hint">在线接口（bing-translate-api 移植）</string>
+    <string name="editor_translate_failed">翻译失败：%1$s</string>
+    <string name="editor_translate_google">Google 翻译</string>
+    <string name="editor_translate_google_hint">免费匿名接口（gtx 通道）</string>
+    <string name="editor_translate_limited">翻译服务暂时不可用（限流或需要验证码），请稍后再试</string>
+    <string name="editor_translate_mymemory">MyMemory 翻译</string>
+    <string name="editor_translate_mymemory_hint">免费匿名，每日 5000 字符（翻译记忆库）</string>
+    <string name="editor_translate_no_match">该接口未返回译文（回显了原文），请换其它翻译方式</string>
+    <string name="editor_translate_no_system">没有可用的系统翻译应用</string>
+    <string name="editor_translate_pick_title">选择翻译方式</string>
+    <string name="editor_translate_quota">该接口今日配额已用完，请稍后再试</string>
+    <string name="editor_translate_rate_limited">翻译服务限流，请稍后再试</string>
+    <string name="editor_translate_running">翻译中…</string>
+    <string name="editor_translate_source">原文</string>
+    <string name="editor_translate_system">系统翻译</string>
+    <string name="editor_translate_to">翻译到</string>
+    <string name="editor_translate_too_long">文本过长（最多 %1$d 个字符）</string>
     <string name="editor_undo">撤销</string>
     <string name="editor_unindent">减少缩进</string>
     <string name="editor_unsaved_message">是否保存对「%1$s」的修改？</string>
@@ -683,6 +742,7 @@
     <string name="failed_to_start_terminal_e_message">启动终端失败: %1$s</string>
     <string name="failed_to_test_mirrors">测试镜像失败</string>
     <string name="user_data_preserved_during_update">更新时已保留用户数据</string>
+    <string name="user_grammar_loaded_name_scope">已导入语法：%1$s（%2$s）</string>
     <string name="failed_to_preserve_user_data_e_me">保留用户数据失败：%1$s</string>
     <string name="failed_to_unzip_zipfile_absolutepath">解压失败: %1$s</string>
     <string name="failed_to_update_boolean">更新布尔值失败</string>
@@ -880,7 +940,9 @@
     <string name="launchedeffect_loading_plugin_list_a_2">LaunchedEffect: 加载插件列表和1x1配置</string>
     <string name="launcher_does_not_support_pinning">启动器不支持固定快捷方式</string>
     <string name="launching_plugin_wizard_uitype_uityp">启动插件向导: uiType=%1$s, backend=%2$s</string>
-    <string name="light">光线</string>
+        <string name="lang_manifest_load_failed">语言清单加载失败：%1$s</string>
+    <string name="lang_manifest_loaded_entries_rules">已加载清单：语言 %1$d 条、后缀规则 %2$d 条</string>
+<string name="light">光线</string>
     <string name="light_mode">浅色</string>
     <string name="light_palette">浅色配色</string>
     <string name="light_primary">浅色主题色</string>
@@ -1297,6 +1359,7 @@
     <string name="screenshot_saved_file_absolutepath">截图已保存: %1$s</string>
     <string name="screenshot_saved_successfully_file_a">截图保存成功: %1$s</string>
     <string name="search">搜索</string>
+    <string name="search_no_results">没有匹配的结果</string>
     <string name="search_plugins">搜索插件...</string>
     <string name="secondary_text_color">副文本色</string>
     <string name="section_title_size">章节标题大小</string>
@@ -1352,8 +1415,8 @@
     <string name="shortcut_open_terminal_long">打开终端会话</string>
     <string name="shortcut_open_backend_settings">后端</string>
     <string name="shortcut_open_backend_settings_long">打开后端设置</string>
-    <string name="shortcut_open_ui_config">主题</string>
-    <string name="shortcut_open_ui_config_long">打开UI个性化</string>
+    <string name="shortcut_open_editor">代码编辑器</string>
+    <string name="shortcut_open_editor_long">打开代码编辑器</string>
     <string name="show">显示</string>
     <string name="show_password">显示密码</string>
     <string name="showing_next_plugin_dialog_plugindia">🖼 显示下一个插件弹窗: %1$s</string>

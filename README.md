@@ -1,11 +1,11 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-6.1.0-blue)
-![Build](https://img.shields.io/badge/build-25-green)
+![Version](https://img.shields.io/badge/version-6.2.0-blue)
+![Build](https://img.shields.io/badge/build-26-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-purple)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.09.00-blue)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-purple)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.08.00-blue)
 
 ## 应用简介
 
@@ -52,13 +52,13 @@ UIN Tool 支持两种后端模式：
 
 ## 版本信息
 
-### 当前版本：v6.1.0 (Build 25)
+### 当前版本：v6.2.0 (Build 26)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 6.1.0 |
-| 版本代码 | 25 |
-| 更新日期 | 2026年10月7日 |
+| 版本号 | 6.2.0 |
+| 版本代码 | 26 |
+| 更新日期 | 2026年10月31日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 9 (API 28) |
 | 编译 SDK 版本 | 36 (Android 16) |
@@ -93,7 +93,7 @@ UIN Tool 支持两种后端模式：
 
 1. 点击底部「开发」标签
 2. 点击「打开终端」启动终端
-3. 首次启动自动安装 Linux 环境
+3. 首次启动离线解压内置 rootfs 就绪（随应用内置，无需联网）
 
 ### 安装插件
 
@@ -131,7 +131,7 @@ Q: 如何开发自己的插件？
 A: 点击底部「开发」→「创建插件」，选择类型后按照向导操作即可。
 
 Q: 终端功能如何使用？
-A: 点击底部「开发」→「打开终端」，首次使用会自动安装 Linux 环境。
+A: 点击底部「开发」→「打开终端」。rootfs 随应用内置、首次使用离线解压就绪，无需联网下载。
 
 Q: 插件数据存储在哪里？
 A: 每个插件的数据存储在 /storage/emulated/0/UIN_Tool/plugins/{pluginId}/data/ 目录下。

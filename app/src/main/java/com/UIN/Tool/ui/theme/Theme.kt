@@ -158,9 +158,14 @@ private fun uiColor(uiConfig: UIConfig, key: String, fallback: Color, dark: Bool
 /**
  * 读取当前激活配色区（浅色/深色）中指定键的颜色，
  * 供组件（如 AppColors 语义色）在主题切换后自动刷新。
+ *
+ * 注意：success/warning/nav_selected 等键不在 buildDynamicColorScheme 的输入快照里，
+ * 改它们不会换 ColorScheme 实例，调用方也就不会被 colorScheme 连带重组 —— 这里必须
+ * 显式订阅 configVersion，否则保存后这些颜色要等下次无关重组（如切 tab）才生效。
  */
 @Composable
 fun dynamicColor(key: String, fallback: Color): Color {
+    UIConfig.configVersion.collectAsState().value
     if (!UIConfig.isInitialized()) return fallback
     val dark = UIConfig.shouldUseDarkTheme(isSystemInDarkTheme())
     return parseColor(UIConfig.getColorStringForMode(key, dark), fallback)
@@ -214,7 +219,8 @@ fun gradientBackgroundBrush(widthPx: Float, heightPx: Float): Brush? {
     } else when (UIConfig.getInstance().getGradientMode()) {
         UIConfig.GRADIENT_MODE_SINGLE -> {
             val stored = UIConfig.getInstance().getGradientColorString()
-            val c = parseColor(stored, Color(0xFFC4D6DF))
+            // 批次58：浅色单色缺省兜底同步 #FFC4D6DF → #FFF9F9F9。
+            val c = parseColor(stored, Color(0xFFF9F9F9))
             listOf(c, background)
         }
         else -> {
@@ -413,6 +419,11 @@ fun UINToolTheme(
             }
         }
     }
+
+    // 驱动 AppDimens 的尺寸读取：把配置版本号写入快照，各 AppDimens 动态 getter 读到它
+    // 即把调用方的组合作用域登记为依赖 —— 圆角/字号/间距等保存后立即生效（AppDimens KDoc 承诺）。
+    // 值相等时 mutableStateOf 不会触发失效，故每次组合写入均安全。
+    SideEffect { AppDimens.configTick.value = configVersion }
 
     val rippleEnabled = if (UIConfig.isInitialized()) UIConfig.isRippleEnabled() else true
     val rippleConfig: RippleConfiguration? = if (rippleEnabled) RippleConfiguration() else null

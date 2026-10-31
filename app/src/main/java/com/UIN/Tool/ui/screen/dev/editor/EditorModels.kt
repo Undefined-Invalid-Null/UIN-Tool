@@ -124,9 +124,11 @@ sealed class FileNode {
 
 /** 编辑器外观与行为设置。 */
 data class EditorSettings(
-    /** 6.2.0 批次54（用户指定）：默认主题 github-dark-dimmed（原 dracula）。
-     *  仍可在主题选择器里随时切换；已存过主题的老配置不受影响（只改默认值与空串兜底）。 */
-    val theme: String = "github-dark-dimmed",
+    /** 6.2.0 批次54 定默认 github-dark-dimmed（原 dracula）；批次58（用户）改为
+     *  **空串 = 未选择**，由 UI 层按软件深浅解析默认（浅色 light-plus / 深色
+     *  github-dark-dimmed）。用户在主题选择器里选过的仍存值、以其为准；
+     *  EditorSettingsStore.load 对「仍是旧默认值」的存量做一次性归位迁移。 */
+    val theme: String = "",
     val fontSize: Float = 14f,
     val tabWidth: Int = 4,
     val fontFamily: String = "",
@@ -173,5 +175,13 @@ data class EditorSettings(
     val largeFileMode: Boolean = true,
     /** 6.2.0 批次42：文件树名称多行显示 —— 关（默认）单行裁切出省略号、行尾 ⋮ 恒可见；
      *  开则名称换多行显示、行高自适应。 */
-    val fileTreeMultiLine: Boolean = false
+    val fileTreeMultiLine: Boolean = false,
+    /** 6.2.0 批次62（用户「新增『恢复上次打开的文件』选项，默认开启」）：启动时是否
+     *  自动恢复上次打开的文件 —— 会话缓存（标签 / 未保存修改 / 页码）与「上次打开」
+     *  （进程重建后重开最后文档）两个入口同受此门控，默认开启。
+     *  关闭后（**既不记录，也不恢复**）：冷启动与多任务回来都不再自动重开文件（直接
+     *  落「未打开文件」空态）；已存的 session.json 与 last_open_* 在关闭瞬间被清空，
+     *  关闭期间会话快照与「上次打开」的所有写入路径一并停摆 —— 重新打开开关后从空
+     *  开始记录，绝不会把关闭之前的老文件复活。 */
+    val restoreLastOpened: Boolean = true
 )

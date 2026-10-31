@@ -19,6 +19,9 @@ import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
 import org.eclipse.tm4e.core.registry.IGrammarSource
 import org.eclipse.tm4e.core.registry.IThemeSource
+import org.json.JSONObject
+import android.content.res.AssetManager
+import com.UIN.Tool.ui.screen.dev.editor.TextMateThemes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +55,71 @@ class UinApplication : Application() {
         val grammarAssetPaths: MutableMap<String, String> =
             java.util.concurrent.ConcurrentHashMap()
 
+        /**
+         * 6.2.0 批次66（用户：「txtmate 里的文件没全用上，别硬编码，必要时单独建一个 json
+         * 记录」）—— `assets/textmate/languages.json` 清单解析结果。
+         *
+         * 清单登记每个语法文件的 grammar 路径 / name / scopeName；带 `extensions` 的条目再产出
+         * 「后缀 → scopeName」兜底表，供 `CodeEditorScreen.getLanguageScopeName()` 的 else 分支
+         * 查询 —— 以后加语法只需补一条清单记录，不用再改 when 白名单（既有 when 分支优先，
+         * 老后缀的行为完全不变）。启动时 `loadLanguageManifest()` 填充。
+         */
+        @Volatile
+        var manifestScopeByExt: Map<String, String> = emptyMap()
+            private set
+
+        /** 清单里可作为手动语法项的 (显示名, scopeName)，按 scope 去重、已滤掉注入型语法。 */
+        @Volatile
+        private var manifestExtras: List<Pair<String, String>> = emptyList()
+
+        /**
+         * 语法选择器的动态附加项：清单登记、但不在 CodeEditorScreen 精选列表里的语言。
+         * 清单还没读到（或读失败）时现场兜底解析一次，保证选择器总能列全。
+         */
+        fun extraLanguages(assets: AssetManager): List<Pair<String, String>> {
+            val base = manifestExtras.takeIf { it.isNotEmpty() }
+                ?: runCatching { parseLanguageManifest(assets).second }
+                    .getOrElse {
+                        Logger.w(TAG, "extraLanguages fallback failed: ${it.message}")
+                        emptyList()
+                    }
+            // 批次66追加：用户「语法/主题文件管理」导入的私有语法也进选择器（按 scope 去重）
+            val users = userGrammarList.map { it.name to it.scope }
+            return (base + users).distinctBy { it.second }
+        }
+
+        /**
+         * 解析 `textmate/languages.json` → (后缀表, 手动语法项)。
+         * 纯读文件不抛异常；`extensions` 缺省表示该语法只做手动选择、不参与后缀推断。
+         */
+        private fun parseLanguageManifest(
+            assets: AssetManager
+        ): Pair<Map<String, String>, List<Pair<String, String>>> {
+            val raw = assets.open("textmate/languages.json")
+                .use { it.readBytes().toString(Charsets.UTF_8) }
+            val arr = JSONObject(raw).getJSONArray("languages")
+            val extMap = HashMap<String, String>()
+            val extras = LinkedHashMap<String, String>() // scope → name，天然按 scope 去重
+            for (i in 0 until arr.length()) {
+                val entry = arr.optJSONObject(i) ?: continue
+                val scope = entry.optString("scopeName")
+                val name = entry.optString("name")
+                if (scope.isEmpty()) continue
+                val exts = entry.optJSONArray("extensions")
+                if (exts != null) {
+                    for (j in 0 until exts.length()) {
+                        val ext = exts.optString(j).lowercase().removePrefix(".")
+                        if (ext.isNotEmpty() && !extMap.containsKey(ext)) extMap[ext] = scope
+                    }
+                }
+                // 注入型语法（markdown 数学块等）只嵌进宿主语言，不作为独立手动选项
+                if (name.isNotEmpty() && !scope.contains(".math") && !extras.containsKey(scope)) {
+                    extras[scope] = name
+                }
+            }
+            return extMap to extras.map { (scope, name) -> name to scope }
+        }
+
         /** B-10：进程启动时的系统原始 locale（跟随系统时用，见 attachBaseContext） */
         @Volatile
         private var systemDefaultLocale: java.util.Locale? = null
@@ -74,6 +142,51 @@ class UinApplication : Application() {
         // B-80：后台环境安装标志（_isEnvironmentInstalling）随 autoInstallEnvironment
         // 一并下沉到 core/bootstrap/EnvironmentBootstrap，避免 Application 继续持有
         // 环境编排状态；PluginHostActivity 改查 EnvironmentBootstrap.isEnvironmentInstalling()
+
+        // ==================== 批次66追加：用户导入的语法 / 主题 ====================
+
+        /** 一条用户导入的语法：显示名、scopeName、文件绝对路径。 */
+        data class UserGrammar(val name: String, val scope: String, val path: String)
+
+        /** 用户导入的语法登记（选择器附加项与查重；删除时移除，注册表里的实例等重启失效）。 */
+        private val userGrammarList =
+            java.util.concurrent.CopyOnWriteArrayList<UserGrammar>()
+
+        /**
+         * 已注册主题的两个查重键：文件名 stem（= ThemeModel 的 name）与主题 JSON 的 `name`
+         * 字段（= sora `loadTheme` 的实际去重键）。导入前用它判断是否会与现有主题撞名 ——
+         * 撞 JSON name 时 sora 会走「已存在 → setTheme(旧主题)」分支，既加不进来还会把
+         * 当前主题切走，所以必须在导入侧拦掉。
+         */
+        private val loadedThemeStems: MutableSet<String> =
+            java.util.concurrent.ConcurrentHashMap.newKeySet()
+        private val loadedThemeRawNames: MutableSet<String> =
+            java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+        fun userGrammars(): List<UserGrammar> = userGrammarList.toList()
+
+        fun themeStems(): Set<String> = loadedThemeStems.toSet()
+
+        fun themeRawNames(): Set<String> = loadedThemeRawNames.toSet()
+
+        /** 记录一个已注册主题（内置与用户导入共用），供导入查重。 */
+        fun trackLoadedTheme(stem: String, cleanedJson: String) {
+            loadedThemeStems.add(stem)
+            val raw = runCatching { org.json.JSONObject(cleanedJson).optString("name") }
+                .getOrDefault("")
+            if (raw.isNotEmpty()) loadedThemeRawNames.add(raw)
+        }
+
+        /** 删除用户语法后摘掉登记（注册表中的 Grammar 实例仍存活到下次启动）。 */
+        fun forgetUserGrammar(scope: String) {
+            userGrammarList.removeAll { it.scope == scope }
+            grammarAssetPaths.remove(scope)
+        }
+
+        private fun addOrReplaceUserGrammar(g: UserGrammar) {
+            userGrammarList.removeAll { it.scope == g.scope }
+            userGrammarList.add(g)
+        }
     }
 
     /**
@@ -313,6 +426,9 @@ class UinApplication : Application() {
 
         // 2~3. 加载语法 + 主题；finally 里无条件置位就绪标志，保证「挂起等就绪再打开」
         // 的 ACTION_VIEW 不会因某个加载抛异常而永久卡在「正在打开…」。
+        // 6.2.0 批次66：先读 languages.json 清单（后缀→scope 兜底表 + 选择器附加项），
+        // 与语法/主题同一批就绪，内部自捕异常不会影响后续加载。
+        loadLanguageManifest()
         try {
             loadGrammars()
             loadThemes()
@@ -449,6 +565,9 @@ class UinApplication : Application() {
                     }
                 }
             }
+
+            // 批次66追加：用户导入的私有语法（filesDir/textmate/<dir>/syntaxes）与内置同批就绪
+            loadedCount += loadUserGrammars()
 
             Logger.i(TAG, Str.get(R.string.grammar_load_complete_success_loaded, loadedCount, failedCount))
         } catch (e: Exception) {
@@ -700,7 +819,7 @@ class UinApplication : Application() {
                     // MalformedJsonException（9 个主题因此加载失败、每次启动刷 117 条告警）。
                     // 这里先把注释与尾逗号清掉转成严格 JSON 再交给 sora 解析。
                     val raw = assets.open(fullPath).use { it.readBytes().toString(Charsets.UTF_8) }
-                    val cleaned = sanitizeJsonc(raw)
+                    val cleaned = TextMateThemes.sanitizeJsonc(raw)
                     val inputStream = ByteArrayInputStream(cleaned.toByteArray(Charsets.UTF_8))
 
                     val themeSource = IThemeSource.fromInputStream(
@@ -709,9 +828,13 @@ class UinApplication : Application() {
                         null
                     )
                     val themeModel = ThemeModel(themeSource, themeName)
-                    themeModel.isDark = isDarkTheme(themeName)
-                    
+                    // 6.2.0 批次66：深浅色改为动态检测（读主题自身的 type / 背景亮度），
+                    // 不再查代码里硬编码的深色名单 —— 漏登记的主题（如 nord）也能判对。
+                    themeModel.isDark = TextMateThemes.detect(cleaned, themeName)
+
                     themeRegistry.loadTheme(themeModel, false)
+                    // 批次66追加：登记 stem 与 JSON name，供「语法/主题文件管理」导入查重
+                    trackLoadedTheme(themeName, cleaned)
                     loadedCount++
                     Logger.d(TAG, Str.get(R.string.theme_loaded_themename, themeName))
                 } catch (e: Exception) {
@@ -719,6 +842,10 @@ class UinApplication : Application() {
                 }
             }
             
+            // 批次66追加：用户导入的私有主题 —— 在内置之后加载，全部就绪再定默认主题。
+            // （导入侧已按 stem / JSON name 查重，这里不会再撞 sora 的去重分支）
+            loadedCount += loadUserThemes()
+
             // 设置默认主题
             if (themeRegistry.setTheme("one-dark-pro")) {
                 Logger.i(TAG, Str.get(R.string.default_theme_one_dark_pro))
@@ -733,59 +860,137 @@ class UinApplication : Application() {
     }
 
     /**
-     * 6.2.0 批次26：把 JSONC（允许行注释、块注释、尾逗号）清洗成严格 JSON，供 Gson 解析。
-     * 注释剥离用逐字符扫描以避开字符串字面量里的斜杠斜杠（如 https 里的双斜杠）；
-     * 尾逗号用正则移除（主题文件里不会出现形如「逗号+空格+右花括号」的字符串内容，风险可忽略）。
+     * 6.2.0 批次66：读取 `assets/textmate/languages.json` 清单，产出「后缀 → scopeName」
+     * 兜底表与选择器附加项（见 companion 的 parseLanguageManifest）。自捕异常：清单只是
+     * 兜底增强，读失败不应影响语法/主题加载。
      */
-    private fun sanitizeJsonc(raw: String): String {
-        val noComments = StringBuilder(raw.length)
-        var i = 0
-        var inString = false
-        var escape = false
-        while (i < raw.length) {
-            val c = raw[i]
-            if (inString) {
-                noComments.append(c)
-                when {
-                    escape -> escape = false
-                    c == '\\' -> escape = true
-                    c == '"' -> inString = false
-                }
-                i++
-                continue
-            }
-            when {
-                c == '"' -> { inString = true; noComments.append(c); i++ }
-                c == '/' && i + 1 < raw.length && raw[i + 1] == '/' -> {
-                    while (i < raw.length && raw[i] != '\n') i++
-                }
-                c == '/' && i + 1 < raw.length && raw[i + 1] == '*' -> {
-                    i += 2
-                    while (i + 1 < raw.length && !(raw[i] == '*' && raw[i + 1] == '/')) i++
-                    i = (i + 2).coerceAtMost(raw.length)
-                }
-                else -> { noComments.append(c); i++ }
-            }
+    private fun loadLanguageManifest() {
+        runCatching {
+            val (extMap, extras) = parseLanguageManifest(assets)
+            manifestScopeByExt = extMap
+            manifestExtras = extras
+            Logger.d(
+                TAG,
+                Str.get(R.string.lang_manifest_loaded_entries_rules, extras.size, extMap.size)
+            )
+        }.onFailure {
+            Logger.w(TAG, Str.get(R.string.lang_manifest_load_failed, it.message))
         }
-        return Regex(",\\s*([}\\]])").replace(noComments.toString(), "$1")
     }
 
-    private fun isDarkTheme(themeName: String): Boolean {
-        val darkThemes = setOf(
-            "dark-plus", "dracula", "dracula-soft",
-            "github-dark", "github-dark-dimmed",
-            "material-theme", "material-theme-darker",
-            "material-theme-ocean", "material-theme-palenight",
-            "min-dark", "monokai", "nord",
-            "one-dark-pro", "poimandres",
-            "rose-pine", "rose-pine-moon",
-            "slack-dark", "slack-ochin",
-            "solarized-dark",
-            "vitesse-black", "vitesse-dark",
-            "abyss-color-theme", "dimmed-monokai-color-theme",
-            "dark_modern", "dark_plus", "dark_vs", "hc_black"
-        )
-        return darkThemes.contains(themeName)
+    // ==================== 批次66追加：私有目录里的语法 / 主题 ====================
+
+    /**
+     * 把一个**用户导入的私有主题**注册进 ThemeRegistry（启动加载与运行时导入共用）。
+     *
+     * 与内置主题的区别：文件在 `filesDir/textmate/themes`，可被用户删除；
+     * 查重键同 sora（stem 与 JSON `name`），任一撞名即拒绝，避免 sora 的
+     * 「已存在 → setTheme(旧主题)」副作用把当前主题切走。
+     *
+     * @return 是否成功注册（文件已存在但本次未注册 = 此前已注册过，改动要重启才生效）
+     */
+    fun registerUserTheme(name: String, file: File): Boolean {
+        if (!file.isFile) return false
+        if (name in loadedThemeStems) return false
+        return try {
+            val raw = file.readText(Charsets.UTF_8)
+            val cleaned = TextMateThemes.sanitizeJsonc(raw)
+            val jsonName = runCatching { org.json.JSONObject(cleaned).optString("name") }
+                .getOrDefault("")
+            if (jsonName.isNotEmpty() && jsonName in loadedThemeRawNames) return false
+            val input = ByteArrayInputStream(cleaned.toByteArray(Charsets.UTF_8))
+            val themeSource = IThemeSource.fromInputStream(input, file.absolutePath, null)
+            val model = ThemeModel(themeSource, name)
+            model.isDark = TextMateThemes.detect(cleaned, name)
+            ThemeRegistry.getInstance().loadTheme(model, false)
+            trackLoadedTheme(name, cleaned)
+            Logger.i(TAG, Str.get(R.string.theme_loaded_themename, name))
+            true
+        } catch (e: Exception) {
+            Logger.w(
+                TAG,
+                Str.get(R.string.theme_load_failed_filename_e_message, file.name, e.message)
+            )
+            false
+        }
+    }
+
+    /**
+     * 把一个**用户导入的私有语法**注册进 GrammarRegistry（启动加载与运行时导入共用）。
+     *
+     * 与内置语法的差异：name 用绝对文件路径（全局唯一，sora 按 name 去重）、
+     * 不挂 language-configuration（它由 FileProvider 按 assets 路径解析，私有路径不可用）、
+     * scope 必须由文件自身声明（导入时已校验）。
+     *
+     * @return 注册成功的 scopeName；失败返回 null
+     */
+    fun registerUserGrammar(file: File): String? {
+        return try {
+            if (!file.isFile) return null
+            val bytes = file.readBytes()
+            if (bytes.isEmpty()) return null
+            // 资产损坏检测：历史上有语法文件内容是 "404: Not Found"（LFS 占位）
+            if (bytes.decodeToString(0, minOf(bytes.size, 64)).contains("404: Not Found")) return null
+            val scopeName = readScopeName(bytes) ?: return null
+            if (scopeName.contains(".injection.")) return null
+            val path = file.absolutePath
+            // 同一路径已注册（重复导入/重启加载已建过）→ 保留现有实例，登记照旧
+            if (grammarAssetPaths[scopeName] == path &&
+                GrammarRegistry.getInstance().findGrammar(scopeName) != null
+            ) {
+                addOrReplaceUserGrammar(UserGrammar(file.nameWithoutExtension, scopeName, path))
+                return scopeName
+            }
+            val grammarDef = object : GrammarDefinition {
+                override fun getName(): String = path
+                override fun getLanguageConfiguration(): String? = null
+                override fun getScopeName(): String = scopeName
+                override fun getGrammar(): IGrammarSource =
+                    IGrammarSource.fromInputStream(bytes.inputStream(), path, null)
+            }
+            GrammarRegistry.getInstance().loadGrammar(grammarDef) ?: return null
+            grammarAssetPaths[scopeName] = path
+            addOrReplaceUserGrammar(UserGrammar(file.nameWithoutExtension, scopeName, path))
+            Logger.i(
+                TAG,
+                Str.get(R.string.user_grammar_loaded_name_scope, file.nameWithoutExtension, scopeName)
+            )
+            scopeName
+        } catch (e: Exception) {
+            Logger.e(
+                TAG,
+                Str.get(R.string.failed_to_load_grammar_langdir, file.absolutePath),
+                e
+            )
+            null
+        }
+    }
+
+    /** 批次66追加：启动时加载 `filesDir/textmate/` 下用户导入的全部语法。 */
+    private fun loadUserGrammars(): Int {
+        val root = File(filesDir, "textmate")
+        val dirs = root.listFiles { f -> f.isDirectory && f.name != "themes" } ?: return 0
+        var count = 0
+        for (dir in dirs) {
+            val files = File(dir, "syntaxes").listFiles { f -> f.isFile } ?: continue
+            for (f in files) {
+                if (!isValidGrammarFile(f.name)) continue
+                if (f.name.contains("injection", ignoreCase = true)) continue
+                if (registerUserGrammar(f) != null) count++
+            }
+        }
+        return count
+    }
+
+    /** 批次66追加：启动时加载 `filesDir/textmate/themes/` 下用户导入的全部主题。 */
+    private fun loadUserThemes(): Int {
+        val dir = File(filesDir, "textmate/themes")
+        val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") } ?: return 0
+        var count = 0
+        for (f in files.sortedBy { it.name }) {
+            if (registerUserTheme(f.name.removeSuffix(".json"), f)) count++
+        }
+        return count
     }
 
     private fun cleanupOnVersionUpgrade() {

@@ -215,7 +215,7 @@ fun ToolsScreen() {
                         ) {
                             Column {
                                 Text(
-                                    "分类",
+                                    Str.get(R.string.category),
                                     color = textPrimary,
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold

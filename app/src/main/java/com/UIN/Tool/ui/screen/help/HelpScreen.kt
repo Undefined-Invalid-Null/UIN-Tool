@@ -72,6 +72,11 @@ fun HelpScreen() {
                             loadDataWithBaseURL("file:///android_asset/", html, "text/html", "UTF-8", null)
                         }
                     },
+                    // 退出页面时释放 WebView，避免实例泄漏（与 ReleaseChangelog 一致）
+                    onRelease = { webView ->
+                        webView.stopLoading()
+                        webView.destroy()
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }

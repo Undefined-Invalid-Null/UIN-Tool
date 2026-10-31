@@ -65,7 +65,7 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 |------|------|
 | Version Number | 6.2.0 |
 | Version Code | 26 |
-| Update Date | October 16, 2026 |
+| Update Date | October 31, 2026 |
 | Minimum Android Version | 6.0 (API 23) |
 | Target Android Version | 9 (API 28) |
 | Compile SDK Version | 36 (Android 16) |
@@ -75,7 +75,7 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 | Version | Build | Date | Highlights |
 |---------|-------|------|------------|
-| v6.2.0 | 26 | 2026-10-16 | Code editor specialization (file tree / multi-tab / direct disk I/O / ACTION_VIEW entry, Unified UI polish, four rounds of syntax-highlight root-cause fixes, sora 0.24.6 + Kotlin 2.3.10) |
+| v6.2.0 | 26 | 2026-10-31 | Code editor specialization (file tree / multi-tab / direct disk I/O / ACTION_VIEW entry, Unified UI polish, four rounds of syntax-highlight root-cause fixes, sora 0.24.6 + Kotlin 2.3.10) |
 | v6.1.0 | 25 | 2026-10-07 | Full defect-fix pass (startup/permissions/main-thread jank/dark theme/plugin host security/backup rollback/error visibility/build cleanup) |
 | v6.0.0 | 24 | 2026-09-26 | Remove Termux dependency, PRoot container system, container management UI, rootfs export compression level |
 | v5.7.0 | 23 | 2026-08-31 | Multi-source repo aggregation, plugin icon caching, incremental CI build, UI refinements |
@@ -110,7 +110,7 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 | App Update | Version Ignore | Implemented | Can ignore versions |
 | App Update | In-App Download | Implemented | Shows download progress |
 | GitHub Acceleration | Mirror Site Management | Implemented | Standalone management page |
-| GitHub Acceleration | Built-in Mirror Sites | Implemented | 13+ default mirrors |
+| GitHub Acceleration | Built-in Mirror Sites | Implemented | 4 default mirrors |
 | GitHub Acceleration | Custom Mirrors | Implemented | Manual mirror addition |
 | GitHub Acceleration | Import/Export | Implemented | TXT format |
 | GitHub Acceleration | CDN Acceleration | Implemented | Toggleable |
@@ -129,7 +129,7 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 | Plugin Engine | Resource Isolation | Implemented | Independent Context |
 | Plugin Engine | Lifecycle Management | Implemented | Complete lifecycle |
 | Plugin Engine | WebView Support | Implemented | HTML/CSS/JS |
-| Plugin Engine | JS Bridge API | Implemented | 140+ APIs |
+| Plugin Engine | JS Bridge API | Implemented | 170+ APIs |
 | Plugin Engine | Network Request API | Implemented | HTTP GET/POST/PUT/DELETE |
 | Plugin Engine | File System API | Implemented | Read/write/delete/copy/move |
 | Plugin Engine | Storage API | Implemented | KV + JSON + batch operations |
@@ -172,8 +172,8 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 | Technology | Version | Purpose |
 |-----------|---------|---------|
-| Kotlin | 2.1.0 | Primary development language |
-| Jetpack Compose | 2024.09.00 | Declarative UI framework |
+| Kotlin | 2.3.10 | Primary development language |
+| Jetpack Compose | 2025.08.00 | Declarative UI framework (BOM) |
 | Compose Material 3 | 1.3.0 | Material 3 components |
 | Compose Navigation | 2.7.7 | Page navigation |
 | Android SDK | API 35 | Android framework |
@@ -182,9 +182,9 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 | Retrofit | 2.11.0 | REST API |
 | Gson | 2.11.0 | JSON parsing |
 | CommonMark | 0.22.0 | Markdown rendering |
-| Sora Editor | 0.24.4 | Code editor |
-| Sora Editor TextMate | 0.24.4 | Syntax highlighting |
-| MultiDex | 2.0.1 | Multi-DEX support |
+| Sora Editor | 0.24.6 | Code editor |
+| Sora Editor TextMate | 0.24.6 | Syntax highlighting |
+| MultiDex | Native platform | minSdk 23+ ships Multi-DEX natively; the standalone dependency was removed |
 | NDK | 29.0.14033849 | C/C++ native support |
 
 ---
@@ -208,22 +208,22 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 1. Click the "Dev" tab at the bottom
 2. Click "Open Terminal" to launch terminal
-3. Linux environment auto-installs on first launch (about 30-60 seconds)
+3. The bundled rootfs is unpacked offline on first launch (no network involved)
 
 Common terminal commands:
 
 ```bash
-# Update package sources
-pkg update
+# Update package sources (Debian repository)
+apt update
 
 # Install Python
-pkg install python
+apt install python3
 
 # Install git
-pkg install git
+apt install git
 
 # Install Node.js
-pkg install nodejs
+apt install nodejs
 ```
 
 ### Install Plugins
@@ -320,7 +320,7 @@ Q: Will permission status be persisted?
 A: Yes. After authorization, permission status is permanently saved; no duplicate popups on next opening.
 
 Q: What APIs do Web plugins support?
-A: Supports 140+ APIs, covering device info, sensors, location, network, file system, storage, permissions, UI, clipboard, vibration, notifications, system operations, etc.
+A: Supports 170+ APIs, covering device info, sensors, location, network, file system, storage, permissions, UI, clipboard, vibration, notifications, events, system operations, etc.
 
 Q: What languages does the code editor support?
 A: Supports 30+ programming languages including Java, Kotlin, Python, JavaScript, TypeScript, HTML, CSS, JSON, XML, Markdown, Shell, SQL, Go, Rust, PHP, Ruby, Swift, Dart, Lua, Scala, Perl, Haskell, Elixir, Erlang, Clojure, Groovy, Dockerfile, Makefile, INI, Properties, TOML, YAML, etc.
@@ -329,7 +329,7 @@ Q: How to export plugin data?
 A: Web plugins can use UINPlugin.exportData() to export all data as JSON format.
 
 Q: How to use the terminal feature?
-A: Click "Dev" > "Open Terminal" at the bottom; the Linux environment auto-installs on first use.
+A: Click "Dev" > "Open Terminal" at the bottom. The rootfs ships inside the app and is unpacked offline on first use — no download required.
 
 ---
 

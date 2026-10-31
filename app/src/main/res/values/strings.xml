@@ -87,6 +87,21 @@
     <string name="backend_runtime_settings_desc">Choose Built-in or Real Termux runtime, container and idle recycle timeout</string>
     <string name="builtin_termux">Built-in Termux</string>
     <string name="editor_a11y_description">Code editor: %1$s</string>
+    <string name="editor_assets_builtin">Built-in</string>
+    <string name="editor_assets_delete_msg">Delete \"%1$s\"? Takes effect after the app restart.</string>
+    <string name="editor_assets_delete_title">Delete file</string>
+    <string name="editor_assets_deleted">Deleted \"%1$s\"</string>
+    <string name="editor_assets_grammar">Syntax grammars</string>
+    <string name="editor_assets_hint">Built-in files are read-only; imported files are stored privately and can be deleted anytime.</string>
+    <string name="editor_assets_import">Import files</string>
+    <string name="editor_assets_import_done">Imported %1$d file(s), %2$d pending restart</string>
+    <string name="editor_assets_import_result">Import results</string>
+    <string name="editor_assets_reason_invalid">Not a valid theme JSON, or grammar lacks scopeName</string>
+    <string name="editor_assets_reason_read">Failed to read or write the file</string>
+    <string name="editor_assets_reason_scope_dup">scopeName conflicts with an existing grammar</string>
+    <string name="editor_assets_reason_theme_dup">Theme name conflicts with an existing theme</string>
+    <string name="editor_assets_reason_unsupported">Unsupported file type</string>
+    <string name="editor_assets_title">Syntax and theme files</string>
     <string name="editor_auto_complete">Auto completion</string>
     <string name="editor_show_magnifier">Magnifier</string>
     <string name="editor_block_line">Block guide</string>
@@ -123,6 +138,7 @@
     <string name="editor_indent">Indent</string>
     <string name="editor_large_file_mode">Large-file mode</string>
     <string name="editor_tree_multi_line">File tree multi-line names</string>
+    <string name="editor_restore_last_opened">Restore last opened files</string>
     <string name="editor_info_line_total">Ln %1$d/%2$d</string>
     <string name="editor_info_bytes">%1$d bytes</string>
     <string name="editor_info_chars">%1$d chars</string>
@@ -160,6 +176,8 @@
     <string name="editor_open_folder">Open folder</string>
     <string name="editor_open_folder_failed">Could not open the folder picker</string>
     <string name="editor_open_folder_hint">Open a folder to enable the file tree.</string>
+    <!-- 批次63：选中菜单增强（打开链接 / 翻译） -->
+    <string name="editor_open_link">Open link</string>
     <string name="editor_paste">Paste</string>
     <string name="editor_permission_button">Grant file access</string>
     <string name="editor_permission_denied_readonly">Permission not granted — browsing read-only</string>
@@ -198,6 +216,8 @@
     <string name="editor_search_whole_stale">Content changed — results may be outdated</string>
     <string name="editor_window_scanning">Scanning… %1$d%%</string>
     <string name="editor_window_saving">Saving… %1$d%%</string>
+    <string name="editor_select_action_no_link">No openable link found in the selection</string>
+    <string name="editor_select_action_no_selection">Select some text first</string>
     <string name="editor_select_all">Select all</string>
     <string name="editor_select_line">Select line</string>
     <string name="editor_selection_len">Sel %1$d</string>
@@ -207,10 +227,49 @@
     <string name="editor_symbol_bar">Symbol bar</string>
     <string name="editor_syntax">Syntax</string>
     <string name="editor_syntax_auto">Auto (by extension)</string>
+    <string name="editor_syntax_search_hint">Search syntax</string>
     <string name="editor_tab_width">Tab width</string>
     <string name="editor_text_scale_x">Text width</string>
     <string name="editor_theme">Theme</string>
     <string name="editor_theme_follow_system">Follow system</string>
+    <string name="editor_theme_search_hint">Search themes</string>
+    <!-- 批次63/66：翻译（必应 bing-translate-api 移植 + 系统翻译应用；
+         批次66 追加 Google gtx / MyMemory 免费匿名通道，批次66追加自定义接口与翻译接口管理） -->
+    <string name="editor_translate">Translate</string>
+    <string name="editor_translate_all_off">All online APIs are disabled. Enable them in Editor settings - Translation APIs.</string>
+    <string name="editor_translate_api_add">Add API</string>
+    <string name="editor_translate_api_add_hint">Uses the LibreTranslate protocol (POST /translate). Reachability depends on the URL you enter.</string>
+    <string name="editor_translate_api_added">API added</string>
+    <string name="editor_translate_api_builtin">Built-in APIs</string>
+    <string name="editor_translate_api_custom">Custom APIs</string>
+    <string name="editor_translate_api_custom_empty">No custom APIs yet. Add any LibreTranslate-compatible endpoint (self-hosted or a reachable instance).</string>
+    <string name="editor_translate_api_delete_msg">Delete \"%1$s\"?</string>
+    <string name="editor_translate_api_invalid_url">URL must start with http:// or https://</string>
+    <string name="editor_translate_api_key">API key (optional)</string>
+    <string name="editor_translate_api_manage">Translation APIs</string>
+    <string name="editor_translate_api_name_required">Enter a name and a URL</string>
+    <string name="editor_translate_api_switch_hint">Disabled APIs are hidden from the translation method list.</string>
+    <string name="editor_translate_api_test_fail">Test failed: %1$s</string>
+    <string name="editor_translate_api_test_ok">Connected. Translation: %1$s</string>
+    <string name="editor_translate_api_url">Endpoint URL</string>
+    <string name="editor_translate_bing">Bing Translator</string>
+    <string name="editor_translate_bing_hint">Online API (ported from bing-translate-api)</string>
+    <string name="editor_translate_failed">Translation failed: %1$s</string>
+    <string name="editor_translate_google">Google Translate</string>
+    <string name="editor_translate_google_hint">Free anonymous API (gtx endpoint)</string>
+    <string name="editor_translate_limited">Translation service temporarily unavailable (rate-limited or captcha required), please try again later</string>
+    <string name="editor_translate_mymemory">MyMemory Translate</string>
+    <string name="editor_translate_mymemory_hint">Free anonymous, 5000 chars per day (translation memory)</string>
+    <string name="editor_translate_no_match">This API returned no translation (it echoed the source text); try another method</string>
+    <string name="editor_translate_no_system">No system translation app available</string>
+    <string name="editor_translate_pick_title">Choose a translation method</string>
+    <string name="editor_translate_quota">Daily quota exhausted for this API, please try later</string>
+    <string name="editor_translate_rate_limited">Rate-limited by the translation service, please try again later</string>
+    <string name="editor_translate_running">Translating…</string>
+    <string name="editor_translate_source">Original</string>
+    <string name="editor_translate_system">System translation</string>
+    <string name="editor_translate_to">Translate to</string>
+    <string name="editor_translate_too_long">Text too long (max %1$d characters)</string>
     <string name="editor_undo">Undo</string>
     <string name="editor_unindent">Unindent</string>
     <string name="editor_unsaved_message">Save changes to \"%1$s\"?</string>
@@ -685,6 +744,7 @@ Plugin data will be cleared and cannot be recovered.</string>
     <string name="failed_to_start_terminal_e_message">Failed to start terminal: %1$s</string>
     <string name="failed_to_test_mirrors">Failed to test mirrors</string>
     <string name="user_data_preserved_during_update">User data preserved during update</string>
+    <string name="user_grammar_loaded_name_scope">Imported grammar: %1$s (%2$s)</string>
     <string name="failed_to_preserve_user_data_e_me">Failed to preserve user data: %1$s</string>
     <string name="failed_to_unzip_zipfile_absolutepath">Failed to unzip: %1$s</string>
     <string name="failed_to_update_boolean">Failed to update boolean</string>
@@ -882,7 +942,9 @@ Plugin data will be cleared and cannot be recovered.</string>
     <string name="launchedeffect_loading_plugin_list_a_2">LaunchedEffect: loading plugin list and 1x1 config</string>
     <string name="launcher_does_not_support_pinning">Launcher does not support pinning shortcuts</string>
     <string name="launching_plugin_wizard_uitype_uityp">Launching plugin wizard: uiType=%1$s, backend=%2$s</string>
-    <string name="light">Light</string>
+        <string name="lang_manifest_load_failed">Language manifest load failed: %1$s</string>
+    <string name="lang_manifest_loaded_entries_rules">Loaded %1$d languages, %2$d extension rules from manifest</string>
+<string name="light">Light</string>
     <string name="light_mode">Light</string>
     <string name="light_palette">Light Colors</string>
     <string name="light_primary">Light Primary</string>
@@ -1303,6 +1365,7 @@ Continue?</string>
     <string name="screenshot_saved_file_absolutepath">Screenshot saved: %1$s</string>
     <string name="screenshot_saved_successfully_file_a">Screenshot saved successfully: %1$s</string>
     <string name="search">Search</string>
+    <string name="search_no_results">No matches found</string>
     <string name="search_plugins">Search plugins...</string>
     <string name="secondary_text_color">Secondary Text Color</string>
     <string name="section_title_size">Section Title Size</string>
@@ -1358,8 +1421,8 @@ Continue?</string>
     <string name="shortcut_open_terminal_long">Open terminal session</string>
     <string name="shortcut_open_backend_settings">Backend</string>
     <string name="shortcut_open_backend_settings_long">Open backend settings</string>
-    <string name="shortcut_open_ui_config">UI Theme</string>
-    <string name="shortcut_open_ui_config_long">Open UI personalization</string>
+    <string name="shortcut_open_editor">Code Editor</string>
+    <string name="shortcut_open_editor_long">Open code editor</string>
     <string name="show">Show</string>
     <string name="show_password">Show password</string>
     <string name="showing_next_plugin_dialog_plugindia">🖼 Showing next plugin dialog: %1$s</string>

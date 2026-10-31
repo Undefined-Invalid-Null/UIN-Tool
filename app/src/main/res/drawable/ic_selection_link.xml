@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 批次63：代码编辑器选中菜单「打开链接」按钮（Material "link" 图标）。
+     颜色不在此写死 —— sora 的 EditorTextActionWindow.applyColorScheme() 会对每枚
+     按钮叠加 TEXT_ACTION_WINDOW_ICON_COLOR 滤镜，跟随编辑器配色方案。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M17,7h-4v2h4c1.65,0 3,1.35 3,3s-1.35,3 -3,3h-4v2h4c2.76,0 5,-2.24 5,-5S19.76,7 17,7zM11,7H7c-2.76,0 -5,2.24 -5,5s2.24,5 5,5h4v-2H7c-1.65,0 -3,-1.35 -3,-3s1.35,-3 3,-3h4V7zM8,11h8v2H8V11z" />
+</vector>

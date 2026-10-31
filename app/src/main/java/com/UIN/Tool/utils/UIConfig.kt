@@ -154,6 +154,14 @@ object UIConfig {
                 gradient.put("color_dark", "#FF4C4F51")
                 config.put("gradient", gradient)
             }
+            // 6.2.0 批次58（用户）：浅色单色渐变默认改为 #FFF9F9F9（默认与新拟态两风格
+            // 浅色底统一）—— 旧默认 #FFC4D6DF 视为「未自定义」一并升级；上面旧多色迁移
+            // 刚归位成的 #FFC4D6DF 也在同一次初始化里接着升级。改过其他色的保持不动。
+            // 必须排在 color_dark 修正之后：旧配置浅=深=#FFC4D6DF 时先拆开深槽再升级浅槽。
+            if (gradient.optString("color", "") == "#FFC4D6DF") {
+                gradient.put("color", "#FFF9F9F9")
+                config.put("gradient", gradient)
+            }
         } catch (e: Exception) {
             Logger.w(TAG, "migrateLegacyGradientDefault failed: ${e.message}")
         }
@@ -291,7 +299,8 @@ object UIConfig {
                     put("enabled", true)
                     put("mode", GRADIENT_MODE_SINGLE)
                     put("mode_dark", GRADIENT_MODE_SINGLE)
-                    put("color", "#FFC4D6DF")
+                    // 批次58（用户）：默认/新拟态两风格浅色渐变底色统一为 #FFF9F9F9。
+                    put("color", "#FFF9F9F9")
                     put("color_dark", "#FF4C4F51")
                     put("from", GRADIENT_DIR_BOTTOM_RIGHT)
                     put("from_dark", GRADIENT_DIR_BOTTOM_RIGHT)
@@ -649,7 +658,9 @@ object UIConfig {
     }
 
     fun getGradientColorString(): String {
-        return config.optJSONObject("gradient")?.optString("color", "#FFC4D6DF") ?: "#FFC4D6DF"
+        // 批次58：浅色单色默认 #FFC4D6DF → #FFF9F9F9（仅缺省兜底；旧默认存量由
+        // migrateLegacyGradientDefault 升级，用户自定义色不动）。
+        return config.optJSONObject("gradient")?.optString("color", "#FFF9F9F9") ?: "#FFF9F9F9"
     }
 
     fun getGradientColorStringDark(): String {

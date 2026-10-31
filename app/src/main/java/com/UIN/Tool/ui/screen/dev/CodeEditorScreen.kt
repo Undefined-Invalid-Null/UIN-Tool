@@ -49,7 +49,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -100,12 +99,12 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -121,6 +120,7 @@ import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.components.unified.UnifiedEmptyState
 import com.UIN.Tool.ui.components.unified.UnifiedIconButton
 import com.UIN.Tool.ui.components.unified.UnifiedTextField
+import com.UIN.Tool.ui.components.unified.UnifiedSlider
 import com.UIN.Tool.ui.components.unified.ButtonSize
 import com.UIN.Tool.ui.components.unified.ButtonVariant
 import com.UIN.Tool.ui.screen.dev.editor.CodeFormatters
@@ -132,14 +132,21 @@ import com.UIN.Tool.ui.screen.dev.editor.FileNode
 import com.UIN.Tool.ui.screen.dev.editor.HexColorHints
 import com.UIN.Tool.ui.screen.dev.editor.MatchHighlights
 import com.UIN.Tool.ui.screen.dev.editor.TextMateInitState
+import com.UIN.Tool.ui.screen.dev.editor.TextMateThemes
 import com.UIN.Tool.ui.screen.dev.editor.WholeSearch
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
+import com.UIN.Tool.ui.theme.isAppDarkTheme
+import com.UIN.Tool.ui.theme.gradientBackgroundBrush
 import com.UIN.Tool.ui.theme.pageGradientBrush
+import com.UIN.Tool.ui.components.unified.neuChrome
+import com.UIN.Tool.ui.components.unified.NeuDefaults
+import com.UIN.Tool.ui.components.unified.neuRaised
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Str
+import com.UIN.Tool.utils.UIConfig
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.EditorKeyEvent
 import io.github.rosemoe.sora.event.KeyBindingEvent
@@ -185,37 +192,10 @@ private const val PAGE_LINES = FileAccess.WINDOW_PAGE_LINES
 // 200 万字符 ≈ 4MB UTF-16 —— 小文件逐键同步保证 tab.content/搜索快照/保存内容实时。
 private const val LARGE_EDIT_TEXT_CHARS = 2_000_000
 
-// ==================== 主题列表 ====================
-private val THEMES = listOf(
-    "dark-plus", "dracula", "dracula-soft",
-    "github-dark", "github-dark-dimmed", "github-light",
-    "light-plus", "material-theme", "material-theme-darker",
-    "material-theme-lighter", "material-theme-ocean", "material-theme-palenight",
-    "min-dark", "min-light", "monokai", "nord",
-    "one-dark-pro", "poimandres",
-    "rose-pine", "rose-pine-dawn", "rose-pine-moon",
-    "slack-dark", "slack-ochin",
-    "solarized-dark", "solarized-light",
-    "vitesse-black", "vitesse-dark", "vitesse-light"
-)
-
-private val DARK_THEMES = setOf(
-    "dark-plus", "dracula", "dracula-soft",
-    "github-dark", "github-dark-dimmed",
-    "material-theme", "material-theme-darker",
-    "material-theme-ocean", "material-theme-palenight",
-    "min-dark", "monokai", "nord",
-    "one-dark-pro", "poimandres",
-    "rose-pine", "rose-pine-moon",
-    "slack-dark", "slack-ochin",
-    "solarized-dark",
-    "vitesse-black", "vitesse-dark"
-)
-
-private val LIGHT_THEMES = setOf(
-    "github-light", "light-plus", "material-theme-lighter",
-    "min-light", "rose-pine-dawn", "solarized-light", "vitesse-light"
-)
+// ==================== 主题列表（6.2.0 批次66：改为动态检测）====================
+// 原先这里硬编码了 THEMES / DARK_THEMES / LIGHT_THEMES 三份名单（UinApplication 里还有一份），
+// assets/textmate/themes 里漏登记的主题（如 nord.json）在选择器里根本列不出来。
+// 现在名单与深浅色都从 assets 现读，见 TextMateThemes —— 新增主题文件无需再改代码。
 
 // ==================== 语法高亮列表（6.2.0 批次16）====================
 // 用户可在右上角手动为当前文件挑选高亮语法，不再只依赖后缀名推断。
@@ -375,7 +355,9 @@ private fun getLanguageScopeName(fileName: String): String {
         // 因此一直落到 text.plain（有语法却没高亮）。
         "coffee", "coffeescript" -> "source.coffee"
         "hbs", "handlebars" -> "text.html.handlebars"
-        else -> "text.plain"
+        // 6.2.0 批次66：when 白名单之外的后缀，统一查 languages.json 清单登记的
+        // 「后缀 → scopeName」兜底表（新语法只补清单记录即可生效，无需再改本函数）。
+        else -> UinApplication.manifestScopeByExt[extension] ?: "text.plain"
     }
 }
 
@@ -665,7 +647,12 @@ private fun getDarkColorScheme(): EditorColorScheme = createFallbackScheme(true)
 private fun refreshGrammar(context: Context, scopeName: String): Boolean {
     val path = UinApplication.grammarAssetPaths[scopeName] ?: return false
     return try {
-        val bytes = context.assets.open(path).use { it.readBytes() }
+        // 批次66追加：用户导入的语法存放在 filesDir（绝对路径），按路径类型分流读取
+        val bytes = if (path.startsWith("/")) {
+            java.io.File(path).readBytes()
+        } else {
+            context.assets.open(path).use { it.readBytes() }
+        }
         val freshRaw = RawGrammarReader.readGrammar(
             IGrammarSource.fromInputStream(bytes.inputStream(), path, null)
         )
@@ -830,7 +817,9 @@ private fun runFormat(
  */
 private fun applyTheme(editor: CodeEditor?, themeName: String) {
     if (editor == null) return
-    val fallbackName = if (DARK_THEMES.contains(themeName)) DARK_DEFAULT else LIGHT_DEFAULT
+    // 6.2.0 批次66：深浅色按主题文件自身的 type/背景亮度动态判定（原为硬编码名单）
+    val fallbackName =
+        if (TextMateThemes.isDark(editor.context, themeName)) DARK_DEFAULT else LIGHT_DEFAULT
 
     // 依次尝试：用户所选主题 → 内置兜底主题
     val names = if (themeName == fallbackName) listOf(themeName) else listOf(themeName, fallbackName)
@@ -843,7 +832,8 @@ private fun applyTheme(editor: CodeEditor?, themeName: String) {
     }
     AppLog.w(TAG, "all themes failed, using plain fallback palette: $themeName")
     editor.colorScheme =
-        if (DARK_THEMES.contains(themeName)) getDarkColorScheme() else getLightColorScheme()
+        if (TextMateThemes.isDark(editor.context, themeName)) getDarkColorScheme()
+        else getLightColorScheme()
     applyColorSchemeTweaks(editor)
     editor.invalidate()
 }
@@ -943,7 +933,8 @@ private fun tryApplyTheme(editor: CodeEditor, themeName: String): Boolean {
             val inputStream = editor.context.assets.open(path)
             val themeSource = IThemeSource.fromInputStream(inputStream, path, null)
             val themeModel = ThemeModel(themeSource, themeName)
-            themeModel.isDark = DARK_THEMES.contains(themeName)
+            // 6.2.0 批次66：动态判定深浅色（读主题文件 type/背景亮度），不再查硬编码名单
+            themeModel.isDark = TextMateThemes.isDark(editor.context, themeName)
             themeRegistry.loadTheme(themeModel, true)
         }
         editor.colorScheme = TextMateColorScheme.create(themeRegistry)
@@ -1348,6 +1339,22 @@ class EditorController {
     /** 6.2.0 批次57（用户）：搜索结果编辑器内高亮。与 hex 共用 setHighlightTexts 通道，成对补写。 */
     var matchHighlights: MatchHighlights? = null
     /**
+     * 6.2.0 批次63（用户「选中菜单增强」）：待弹的「打开链接」候选。
+     * 非空 = 选区里识别到 ≥2 个链接，界面层据此弹选择框；1 个链接直接开浏览器、
+     * 0 个提示，都由 SelectionActionWindow 当场处理，不经过这里。
+     */
+    var pendingLinks: List<String>? by mutableStateOf(null)
+    /** 6.2.0 批次63：待弹「翻译」流程框的选中文本（非空 = 弹翻译弹窗）。 */
+    var pendingTranslateText: String? by mutableStateOf(null)
+    /**
+     * 6.2.0 批次65（用户「悬浮菜单会浮在所有界面上」）：当前生效的选中弹窗实例。
+     * 由 EditorCanvas 工厂在 `replaceComponent` 后回填；界面层在设置页 / 抽屉等**同窗口
+     * 覆盖层**打开时通过它收起弹窗并拉黑（PopupWindow 挂在编辑器窗口上，会盖住同
+     * 窗口内的一切覆盖层，包括设置页 —— 只在编辑器内部拦不住）。做成 Compose 状态：
+     * 工厂创建实例后要能触发外层重建效果，把「覆盖层开着」这个当下状态补写进去。
+     */
+    var actionWindow: SelectionActionWindow? by mutableStateOf(null)
+    /**
      * 6.2.0 大文件省耗：最近一次应用给 [hexHints] 的扫描行数上限。
      * 省耗开 = [HexColorHints.MAX_LINES]（1 万行），省耗关 = [Int.MAX_VALUE]（全量扫描）。
      * 变化时要 refresh，否则旧的空容器不会重建、色块不会回来。
@@ -1494,12 +1501,53 @@ class EditorController {
 // ============================================================
 // 主题选择对话框
 // ============================================================
+
+/** 批次58：编辑器默认主题 id —— 软件深色模式时生效（原批次54 固定默认）。 */
+private const val DARK_DEFAULT_THEME = "github-dark-dimmed"
+/** 批次58：编辑器默认主题 id —— 软件浅色模式时生效（主题资产 light-plus.json）。 */
+private const val LIGHT_PLUS_THEME = "light-plus"
+
+/**
+ * 6.2.0 批次58（用户）：编辑器主题解析 —— 设置里没选过（空串）时按软件深浅给默认：
+ * 浅色 [LIGHT_PLUS_THEME]、深色 [DARK_DEFAULT_THEME]；用户在选择器里选过的以所选为准。
+ * 批次54 曾把 github-dark-dimmed 定为固定默认，批次58 改为随软件深浅（存量旧默认值
+ * 由 EditorSettingsStore.load 的一次性迁移归位为未选择）。
+ */
+@Composable
+private fun resolvedEditorTheme(settings: EditorSettings): String =
+    settings.theme.ifEmpty { if (isAppDarkTheme()) DARK_DEFAULT_THEME else LIGHT_PLUS_THEME }
+
+/**
+ * 批次59：列表类选择弹窗的**总高封顶** —— 主题(520)/编码(460)/语法(520) 三个选择器
+ * 原是固定高，横屏与小屏（屏高 400dp 上下）会整体超出屏幕，标题栏与列表底部被裁出
+ * 可视区（Dialog 窗口是 WRAP_CONTENT，不会自己夹到屏内）。按屏高 75% 收顶，与搜索
+ * 「全部结果」弹窗同一口径；竖屏大屏封顶值高于原固定高，观感与旧版一致。
+ */
+@Composable
+private fun dialogHeightCap(cap: Dp): Dp =
+    minOf(cap, (LocalConfiguration.current.screenHeightDp * 0.75f).dp)
+
 @Composable
 fun ThemeSelectionDialog(
     currentTheme: String,
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    // 6.2.0 批次66：主题名单动态枚举 assets/textmate/themes（含此前漏登记的 nord 等），
+    // 深浅色圆点也按主题文件自身的 type/背景亮度判定 —— 不再依赖代码里的硬编码名单。
+    // 批次66追加：名单同时合并用户「语法/主题文件管理」里导入的私有主题。
+    // 批次66追加（用户「按字母 abc 顺序 + 新增搜索框」）：先按字母排序（忽略大小写），
+    // 再按输入关键字实时过滤。
+    val themes = remember(context) {
+        TextMateThemes.names(context)
+            .sortedWith(Comparator<String> { a, b -> a.compareTo(b, ignoreCase = true) })
+    }
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(themes, query) {
+        val q = query.trim()
+        if (q.isEmpty()) themes else themes.filter { it.contains(q, ignoreCase = true) }
+    }
     Dialog(onDismissRequest = onDismiss) {
         // 6.2.0 批次17：与新建/重命名/删除弹窗统一 —— 改用与主应用同款渐变背景
         // （dialogBackgroundOf），原先 UnifiedCard(solid) 是纯色、风格割裂。
@@ -1507,7 +1555,7 @@ fun ThemeSelectionDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 480.dp)
-                .height(520.dp)
+                .height(dialogHeightCap(520.dp))
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
             shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
             color = Color.Transparent,
@@ -1533,17 +1581,47 @@ fun ThemeSelectionDialog(
                     )
                 }
                 HorizontalDivider()
+                // 批次66追加：搜索框 —— 主题 51 个、语法 100+，靠肉眼翻太慢。
+                UnifiedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = AppDimens.spacingLarge,
+                            vertical = AppDimens.spacingSmall
+                        ),
+                    placeholder = Str.get(R.string.editor_theme_search_hint),
+                    showClearButton = true,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                )
+                HorizontalDivider()
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(AppDimens.spacingSmall)
                 ) {
-                    // 6.2.0：移除「跟随系统」项 —— 系统并未定义代码编辑器主题，
-                    // 该选项只会按深浅色在两个主题间切换，语义含糊。默认固定 github-dark-dimmed。
-                    items(THEMES) { theme ->
+                    // 6.2.0：移除「跟随系统」项 —— 系统并未定义代码编辑器主题。
+                    // 批次58（用户）：默认改为随软件深浅（浅 light-plus / 深
+                    // github-dark-dimmed），空串（未选择）由外层 resolvedEditorTheme 解析。
+                    if (filtered.isEmpty()) {
+                        item {
+                            Text(
+                                text = Str.get(R.string.search_no_results),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppColors.textSecondary(),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(AppDimens.spacingLarge)
+                            )
+                        }
+                    }
+                    items(filtered) { theme ->
                         ThemeRow(
                             name = theme,
                             selected = theme == currentTheme,
-                            isDark = theme in DARK_THEMES
+                            isDark = TextMateThemes.isDark(context, theme)
                         ) { onSelect(theme) }
                     }
                 }
@@ -1613,7 +1691,7 @@ fun EncodingSelectionDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 480.dp)
-                .height(460.dp)
+                .height(dialogHeightCap(460.dp))
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
             shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
             color = Color.Transparent,
@@ -1677,13 +1755,37 @@ fun SyntaxSelectionDialog(
     onSelect: (String?) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    // 6.2.0 批次66：精选列表之外，补上 languages.json 清单里其余**已内置**的语法
+    // （按 scope 去重、注入型数学语法除外）—— 保证 assets 里每个语法文件都能被手动选到。
+    // 批次66追加（用户「按字母 abc 顺序 + 新增搜索框」）：合并后整份名单按显示名排序
+    // （忽略大小写，否则 dotenv 这类小写名会整体掉到最末）；「自动」条目按本地化文案参与。
+    val autoLabel = Str.get(R.string.editor_syntax_auto)
+    val entries = remember(context) {
+        val baseScopes = LANGUAGES.mapNotNull { it.second }.toSet()
+        (LANGUAGES + UinApplication.extraLanguages(context.assets)
+            .filter { (_, scope) -> scope !in baseScopes && !scope.contains(".math") }
+            .distinctBy { it.second })
+            .sortedWith(Comparator<Pair<String, String?>> { a, b ->
+                (if (a.second == null) autoLabel else a.first)
+                    .compareTo(if (b.second == null) autoLabel else b.first, ignoreCase = true)
+            })
+    }
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(entries, query) {
+        val q = query.trim()
+        if (q.isEmpty()) entries
+        else entries.filter { (label, scope) ->
+            (if (scope == null) autoLabel else label).contains(q, ignoreCase = true)
+        }
+    }
     Dialog(onDismissRequest = onDismiss) {
         // 6.2.0 批次17：与主题选择器/新建/重命名等弹窗统一 —— 同款渐变背景。
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 480.dp)
-                .height(520.dp)
+                .height(dialogHeightCap(520.dp))
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
             shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
             color = Color.Transparent,
@@ -1709,14 +1811,43 @@ fun SyntaxSelectionDialog(
                     )
                 }
                 HorizontalDivider()
+                // 批次66追加：搜索框 —— 语法 100+，按名字先过滤再点。
+                UnifiedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = AppDimens.spacingLarge,
+                            vertical = AppDimens.spacingSmall
+                        ),
+                    placeholder = Str.get(R.string.editor_syntax_search_hint),
+                    showClearButton = true,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                )
+                HorizontalDivider()
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(AppDimens.spacingSmall)
                 ) {
-                    items(LANGUAGES) { (label, scope) ->
+                    if (filtered.isEmpty()) {
+                        item {
+                            Text(
+                                text = Str.get(R.string.search_no_results),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = AppColors.textSecondary(),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(AppDimens.spacingLarge)
+                            )
+                        }
+                    }
+                    items(filtered) { (label, scope) ->
                         SyntaxRow(
                             // scope == null 表示「自动（按后缀名）」，用本地化文案
-                            label = if (scope == null) Str.get(R.string.editor_syntax_auto) else label,
+                            label = if (scope == null) autoLabel else label,
                             selected = scope == currentScope
                         ) { onSelect(scope) }
                     }
@@ -1788,7 +1919,8 @@ fun FileTreePanel(
     var showNewFileDialog by remember { mutableStateOf(false) }
     var newFileName by remember { mutableStateOf("") }
 
-    Column(modifier = modifier) {
+    // 批次58（用户）：新拟态下树面板升为凸起卡片，浮在抽屉渐变底之上（透明底渐变透出）。
+    Column(modifier = modifier.neuChrome(RoundedCornerShape(AppDimens.cardCornerRadius), AppDimens.cardCornerRadius)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2117,10 +2249,15 @@ private fun countLinesAndChars(file: java.io.File): Pair<String, String> = try {
             if (n < 0) {
                 "1" to "0"
             } else {
-                val charset = FileAccess.detectCharsetFromHead(
-                    if (n == head.size) head else head.copyOf(n)
-                )
-                InputStreamReader(fis, charset).use { r ->
+                val sample = if (n == head.size) head else head.copyOf(n)
+                val charset = FileAccess.detectCharsetFromHead(sample)
+                // 批次59 修统计恒为「1 行 0 字」：探测用的 head 已把 n 字节从流里读走，
+                // 直接包 InputStreamReader 会把这段**跳过** —— 小于 64KB 的文件整份被跳过
+                // （一个字符都读不到），更大的文件则少算开头 64KB、行数跟着少算。
+                // 用 PushbackInputStream unread 回去从头解码；跨边界的多字节字符也不会被切断。
+                val pushback = java.io.PushbackInputStream(fis, n)
+                pushback.unread(sample)
+                InputStreamReader(pushback, charset).use { r ->
                     var chars = 0L
                     var lines = 0L
                     val buf = CharArray(8192)
@@ -2159,10 +2296,22 @@ private fun FileNodeRow(
         isSelectedDir -> MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
         else -> Color.Transparent
     }
+    // 批次61 二轮反馈（用户「目录树没有同款凸起」）：与侧栏 TreeGroup 选中项同款 ——
+    // 当前打开/选中的行在新拟态风格下抬起成 8dp 圆角药丸（非新拟态或普通行原样）。
+    val neuRow = UIConfig.isNeumorphismEnabled() && (isActive || isSelectedDir)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(rowBg)
+            .then(
+                if (neuRow) Modifier.neuRaised(
+                    RoundedCornerShape(8.dp),
+                    UIConfig.shouldUseDarkTheme(),
+                    NeuDefaults.Intensity.LIGHT,
+                    cornerRadius = 8.dp,
+                    backgroundColor = Color.Transparent
+                ).background(rowBg, RoundedCornerShape(8.dp))
+                else Modifier.background(rowBg)
+            )
             // 6.2.0 批次42：长按行 = 点行尾 ⋮，弹出同一菜单（锚定仍在 ⋮ 按钮处）。
             .combinedClickable(onClick = onToggle, onLongClick = { menuOpen = true })
             .padding(start = (8 + depth * 14).dp, end = AppDimens.spacingSmall)
@@ -2213,7 +2362,8 @@ private fun FileNodeRow(
         Box {
             Icon(
                 imageVector = Icons.Default.MoreVert,
-                contentDescription = null,
+                // 批次59：行尾 ⋮ 是可点图标，null 会让 TalkBack 只念「按钮」——补上标签。
+                contentDescription = Str.get(R.string.editor_more),
                 modifier = Modifier
                     .size(AppDimens.iconSmall)
                     .clickable { menuOpen = true },
@@ -2339,7 +2489,12 @@ private fun EditorTabRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // 批次59 修：新拟态阴影必须画在 horizontalScroll **外层**。放在内层时阴影落在
+            // 滚动内容的边界上 —— 滚动容器把它裁掉、紧随其后的 pageBackground 又把留在
+            // 内部的部分盖住，整条「凸起」实际画不出来（标签栏/符号栏两处同因）。
+            .neuChrome()
             .horizontalScroll(scroll)
+            // 批次58（用户）：新拟态下标签栏整条凸起（透明底，下面的渐变/玻璃照常透出）。
             // 6.2.0 批次14：chrome 由 cardBackground(不透明 surface) 改为 pageBackground ——
             // 渐变开启时透出全局渐变、玻璃开启时用玻璃底，与 TopAppBar/应用整体统一。
             .background(AppColors.pageBackground())
@@ -2498,6 +2653,8 @@ private fun EditorStatusBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // 批次58（用户）：新拟态下分页/编码/设置底栏整条凸起（透明底，渐变透出）。
+            .neuChrome()
             // 6.2.0 批次14：与整体统一，渐变/玻璃时透出，不再用不透明 surface
             .background(AppColors.pageBackground())
             .padding(horizontal = AppDimens.spacingMedium, vertical = AppDimens.spacingXSmall),
@@ -2796,10 +2953,22 @@ private fun SearchPanel(
     // ---- 上一个/下一个：批次53 起在**整档结果**间移动（sora 页内翻页随双轨一并移除）----
     // 首次点「下一个」跳第一条、点「上一个」跳最后一条；到边界停住（不回卷 —— 回卷在
     // 整档语义下容易让人以为结果变少了）。
+    //
+    // 批次64（用户反馈）：修「从**全部结果**定位到某条后，点上一个/下一个跳的不是它
+    // 的上一条/下一条，而是另一套基准」—— 此前有两处各跳各的：
+    //  ① 基准列表错位：箭头只在面板的 `whole.matches`（**预览上限前 500 条**）里走，
+    //     而定位入口在全量对话框（`full.matches`，全量无上限），定位到第 837 条时箭头
+    //     根本不在同一张表上；
+    //  ② 游标不回写：对话框点行只调 onJumpMatch 定位编辑器，`matchIdx` 还停在 -1
+    //     （新搜索时归的位）或上次箭头的旧值 —— 于是「下一个」按「第一条」那套标准跳
+    //     （matchIdx=-1 → from=-1 → 第 1 条），与刚定位的那条毫无关系。
+    // 现在：基准统一取全量 `full`（与对话框同源同序，点行即写回游标，见下），
+    // full 尚未产出时退回面板列表；游标越界（结果换代）视作未定位，仍按首/末条起算。
     fun jumpMatch(step: Int) {
-        val ms = whole?.matches ?: return
+        val ms = full?.matches?.takeIf { it.isNotEmpty() } ?: whole?.matches ?: return
         if (ms.isEmpty()) return
-        val from = if (matchIdx < 0) (if (step > 0) -1 else ms.size) else matchIdx
+        val base = if (matchIdx in 0 until ms.size) matchIdx else -1
+        val from = if (base < 0) (if (step > 0) -1 else ms.size) else base
         val idx = (from + step).coerceIn(0, ms.size - 1)
         matchIdx = idx
         onJumpMatch(ms[idx])
@@ -2808,6 +2977,8 @@ private fun SearchPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            // 批次58（用户）：新拟态下搜索面板升为凸起卡片（圆角同卡片，透明底渐变透出）。
+            .neuChrome(RoundedCornerShape(AppDimens.cardCornerRadius), AppDimens.cardCornerRadius)
             // 6.2.0 批次14：与整体统一，渐变/玻璃时透出
             .background(AppColors.pageBackground())
             .padding(AppDimens.spacingSmall)
@@ -2848,6 +3019,12 @@ private fun SearchPanel(
             UnifiedIconButton(
                 icon = Icons.Default.Close,
                 onClick = {
+                    // 批次65（用户指定）：× = **彻底清空** —— 查询/替换文本连同结果与
+                    // 高亮一起清，下次点搜索图标打开是干净的空面板（不会带着旧词自动重搜）；
+                    // 顶栏搜索图标与返回键只收起、内容原样保留（见本文件外层接线）。
+                    query = ""
+                    replacement = ""
+                    state.lastSignature = ""
                     onCancelWhole()
                     onClose()
                 },
@@ -3043,6 +3220,10 @@ private fun SearchPanel(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
+                                    // 批次64：定位即回写游标 —— 点行定位这条后，面板的
+                                    // 上一个/下一个要以**这条**为基准移动（此前不回写，
+                                    // 箭头还按旧基准跳，跳的根本不是它的上/下一条）。
+                                    matchIdx = i
                                     onJumpMatch(m)
                                     showFull = false
                                 }
@@ -3235,7 +3416,9 @@ private fun EditorActionMenu(
     editor: CodeEditor?,
     fileName: String,
     onGoto: () -> Unit,
-    onFormat: () -> Unit
+    onFormat: () -> Unit,
+    onPickLink: (List<String>) -> Unit,
+    onTranslate: (String) -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -3262,6 +3445,37 @@ private fun EditorActionMenu(
         item(Icons.Default.ContentCopy, Str.get(R.string.editor_copy)) { e?.copyText() }
         item(Icons.Default.ContentPaste, Str.get(R.string.editor_paste)) { e?.pasteText() }
         item(Icons.Default.SelectAll, Str.get(R.string.editor_select_all)) { e?.selectAll() }
+        // 6.2.0 批次63：选中菜单增强 —— 顶栏也给「打开链接 / 翻译」入口（「选中弹窗」
+        // 开关关掉时仍够得着）。用裸 DropdownMenuItem 而非 item()，绕开后者的 readOnly
+        // 限制（两项都不改内容，只读也能用）；选区没识别到链接就连入口都不显示，翻译没选区才置灰。
+        val context = LocalContext.current
+        val selText = e?.let { ed ->
+            val c = ed.cursor
+            if (c != null && c.isSelected) ed.text.subSequence(c.left, c.right).toString() else null
+        }
+        // 批次63 追加要求：选区里没识别到链接就**不显示**这一项（与选中弹窗按钮同一口径，
+        // 免得出现点了只会 toast「没识别到」的死入口）；翻译只要有选区就留着。
+        if (!selText.isNullOrBlank() && findLinks(selText).isNotEmpty()) {
+            DropdownMenuItem(
+                text = { Text(Str.get(R.string.editor_open_link)) },
+                leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                onClick = {
+                    val t = selText
+                    onDismiss()
+                    if (t != null) dispatchOpenLink(context, t, onPickLink)
+                }
+            )
+        }
+        DropdownMenuItem(
+            text = { Text(Str.get(R.string.editor_translate)) },
+            leadingIcon = { Icon(Icons.Default.Translate, contentDescription = null) },
+            enabled = !selText.isNullOrBlank(),
+            onClick = {
+                val t = selText
+                onDismiss()
+                if (t != null) onTranslate(t)
+            }
+        )
         HorizontalDivider()
         // 6.2.0 批次39（SE 审计 T2-13）：整行类操作补齐 —— 此前只有「重复行」，
         // 剪切整行 / 选中当前行都没有入口（软键盘长按只能选词）。
@@ -3366,6 +3580,9 @@ private fun SettingsSheet(
     settings: EditorSettings,
     onChange: (EditorSettings) -> Unit,
     onOpenThemePicker: () -> Unit,
+    // 批次66追加：两个管理入口（对话框叠在设置页**之上**，不关闭设置页 —— 管理页可能要来回看）
+    onOpenAssetsManage: () -> Unit,
+    onOpenTranslateManage: () -> Unit,
     onDismiss: () -> Unit
 ) {
     // 6.2.0：设置由「底部 ModalBottomSheet」改为**全屏设置页**。
@@ -3418,11 +3635,17 @@ private fun SettingsSheet(
                     .padding(bottom = AppDimens.spacingXLarge)
             ) {
 
-            // 6.2.0 批次54（用户指定）：默认主题 github-dark-dimmed（原 dracula）；
-            // 主题选择器保留，用户随时可切换。老配置残留空串时兜底同默认。
+            // ============ 批次66追加：按类别分组（用户「按照类别用横线划分」） ============
+            // 组顺序与 Help 18.8 的表格分组一一对应：外观与排版 / 显示与辅助 / 滚动与定位 /
+            // 输入与编辑 / 启动与恢复 / 管理入口，组间用 [SettingsGroupDivider] 切开。
+
+            // ---------- 外观与排版 ----------
+            // 6.2.0 批次54 定默认 github-dark-dimmed；批次58（用户）改为随软件深浅
+            // 默认（浅 light-plus / 深 github-dark-dimmed）——按钮显示当前生效主题，
+            // 用户没选过时跟随软件深浅变化，选过的以所选为准。
             SettingRow(Str.get(R.string.editor_theme)) {
                 TextButton(onClick = onOpenThemePicker) {
-                    Text(text = settings.theme.ifEmpty { "github-dark-dimmed" })
+                    Text(text = resolvedEditorTheme(settings))
                 }
             }
             SliderRow(
@@ -3431,69 +3654,6 @@ private fun SettingsSheet(
                 range = 10f..24f,
                 valueLabel = settings.fontSize.toInt().toString()
             ) { onChange(settings.copy(fontSize = it)) }
-            SegmentedRow(
-                label = Str.get(R.string.editor_tab_width),
-                options = listOf("2" to 2, "4" to 4, "8" to 8),
-                selected = settings.tabWidth
-            ) { onChange(settings.copy(tabWidth = it)) }
-            SwitchRow(Str.get(R.string.editor_wordwrap), settings.wordWrap) {
-                onChange(settings.copy(wordWrap = it))
-            }
-            SwitchRow(Str.get(R.string.editor_line_number), settings.showLineNumbers) {
-                onChange(settings.copy(showLineNumbers = it))
-            }
-            SwitchRow(Str.get(R.string.editor_current_line), settings.currentLine) {
-                onChange(settings.copy(currentLine = it))
-            }
-            SwitchRow(Str.get(R.string.editor_bracket_match), settings.bracketMatching) {
-                onChange(settings.copy(bracketMatching = it))
-            }
-            SwitchRow(Str.get(R.string.editor_non_printable), settings.showNonPrintable) {
-                onChange(settings.copy(showNonPrintable = it))
-            }
-            // 6.2.0：行号分隔线 —— 字段与 applyRuntimeSettings 里的应用逻辑
-            // （editor.setDividerWidth）早就在，但一直没配 UI 开关，属于「有实现无入口」。
-            // 现在补上；关闭时宽度置 0，行号列与正文之间那条竖线消失。
-            SwitchRow(Str.get(R.string.editor_line_divider), settings.lineDivider) {
-                onChange(settings.copy(lineDivider = it))
-            }
-            SwitchRow(Str.get(R.string.editor_sticky_scroll), settings.stickyScroll) {
-                onChange(settings.copy(stickyScroll = it))
-            }
-            SwitchRow(Str.get(R.string.editor_pinch_zoom), settings.pinchScalable) {
-                onChange(settings.copy(pinchScalable = it))
-            }
-            SwitchRow(Str.get(R.string.editor_auto_complete), settings.autoComplete) {
-                onChange(settings.copy(autoComplete = it))
-            }
-            // 6.2.0 批次39（SE 审计 T1-9）：删掉「自动保存」开关 —— 它从 6.0 起就只有 UI，
-            // 全工程零消费者，是个骗人的假开关。
-            // 6.2.0 批次39（SE 审计 T2-16）：换成真正生效的「放大镜」开关。
-            SwitchRow(Str.get(R.string.editor_show_magnifier), settings.showMagnifier) {
-                onChange(settings.copy(showMagnifier = it))
-            }
-            // 6.2.0 批次32：新增的编辑器能力开关（撤销/跳转/格式化等在顶栏 ⋮ 菜单里）。
-            SwitchRow(Str.get(R.string.editor_block_line), settings.blockLine) {
-                onChange(settings.copy(blockLine = it))
-            }
-            SwitchRow(Str.get(R.string.editor_ln_panel), settings.lnPanel) {
-                onChange(settings.copy(lnPanel = it))
-            }
-            SwitchRow(Str.get(R.string.editor_ligature), settings.ligature) {
-                onChange(settings.copy(ligature = it))
-            }
-            SwitchRow(Str.get(R.string.editor_cursor_blink), settings.cursorBlink) {
-                onChange(settings.copy(cursorBlink = it))
-            }
-            SwitchRow(Str.get(R.string.editor_selection_popup), settings.textActionPopup) {
-                onChange(settings.copy(textActionPopup = it))
-            }
-            // 6.2.0：符号栏 —— 底部快捷符号条（( ) { } [ ] ; " ' = 等）。
-            // 渲染分支（settings.symbolBar）早已存在，但默认 false 且没有开关，
-            // 功能等于不可达；这里补上开关，默认仍保持关闭，不改变既有用户的观感。
-            SwitchRow(Str.get(R.string.editor_symbol_bar), settings.symbolBar) {
-                onChange(settings.copy(symbolBar = it))
-            }
             // ---- 6.2.0 批次34：第二轮功能审计新增 ----
             SliderRow(
                 label = Str.get(R.string.editor_line_spacing),
@@ -3508,6 +3668,71 @@ private fun SettingsSheet(
                 range = 0.8f..1.3f,
                 valueLabel = settings.textScaleX.toString()
             ) { onChange(settings.copy(textScaleX = (Math.round(it * 100f) / 100f))) }
+            SwitchRow(Str.get(R.string.editor_ligature), settings.ligature) {
+                onChange(settings.copy(ligature = it))
+            }
+            SettingsGroupDivider()
+
+            // ---------- 显示与辅助 ----------
+            SwitchRow(Str.get(R.string.editor_line_number), settings.showLineNumbers) {
+                onChange(settings.copy(showLineNumbers = it))
+            }
+            // 6.2.0：行号分隔线 —— 字段与 applyRuntimeSettings 里的应用逻辑
+            // （editor.setDividerWidth）早就在，但一直没配 UI 开关，属于「有实现无入口」。
+            // 现在补上；关闭时宽度置 0，行号列与正文之间那条竖线消失。
+            SwitchRow(Str.get(R.string.editor_line_divider), settings.lineDivider) {
+                onChange(settings.copy(lineDivider = it))
+            }
+            SwitchRow(Str.get(R.string.editor_wordwrap), settings.wordWrap) {
+                onChange(settings.copy(wordWrap = it))
+            }
+            SwitchRow(Str.get(R.string.editor_current_line), settings.currentLine) {
+                onChange(settings.copy(currentLine = it))
+            }
+            SwitchRow(Str.get(R.string.editor_highlight_block), settings.highlightBlock) {
+                onChange(settings.copy(highlightBlock = it))
+            }
+            // 6.2.0 批次32：新增的编辑器能力开关（撤销/跳转/格式化等在顶栏 ⋮ 菜单里）。
+            SwitchRow(Str.get(R.string.editor_block_line), settings.blockLine) {
+                onChange(settings.copy(blockLine = it))
+            }
+            SwitchRow(Str.get(R.string.editor_non_printable), settings.showNonPrintable) {
+                onChange(settings.copy(showNonPrintable = it))
+            }
+            SwitchRow(Str.get(R.string.editor_render_fn_chars), settings.renderFunctionChars) {
+                onChange(settings.copy(renderFunctionChars = it))
+            }
+            SwitchRow(Str.get(R.string.editor_bracket_match), settings.bracketMatching) {
+                onChange(settings.copy(bracketMatching = it))
+            }
+            // ---- 6.2.0：大文件省耗 —— 内容超阈值时关掉语法解析/粘性滚动/缩进线 ----
+            // 用户手动选了语法仍会保留高亮（那等于「我明确要它」），故逃生门始终有效。
+            SwitchRow(Str.get(R.string.editor_large_file_mode), settings.largeFileMode) {
+                onChange(settings.copy(largeFileMode = it))
+            }
+            // 6.2.0 批次42：文件树名称多行显示 —— 关（默认）单行裁切，保证长文件名不把
+            // 行尾 ⋮ 挤出屏幕；开则名称换多行、行高自适应。
+            SwitchRow(Str.get(R.string.editor_tree_multi_line), settings.fileTreeMultiLine) {
+                onChange(settings.copy(fileTreeMultiLine = it))
+            }
+            SettingsGroupDivider()
+
+            // ---------- 滚动与定位 ----------
+            SwitchRow(Str.get(R.string.editor_sticky_scroll), settings.stickyScroll) {
+                onChange(settings.copy(stickyScroll = it))
+            }
+            SwitchRow(Str.get(R.string.editor_pinch_zoom), settings.pinchScalable) {
+                onChange(settings.copy(pinchScalable = it))
+            }
+            // 6.2.0 批次39（SE 审计 T1-9）：删掉「自动保存」开关 —— 它从 6.0 起就只有 UI，
+            // 全工程零消费者，是个骗人的假开关。
+            // 6.2.0 批次39（SE 审计 T2-16）：换成真正生效的「放大镜」开关。
+            SwitchRow(Str.get(R.string.editor_show_magnifier), settings.showMagnifier) {
+                onChange(settings.copy(showMagnifier = it))
+            }
+            SwitchRow(Str.get(R.string.editor_ln_panel), settings.lnPanel) {
+                onChange(settings.copy(lnPanel = it))
+            }
             SegmentedRow(
                 label = Str.get(R.string.editor_ln_panel_pos),
                 options = listOf(
@@ -3520,27 +3745,58 @@ private fun SettingsSheet(
                 selected = settings.lnPanelPosition,
                 description = Str.get(R.string.editor_ln_panel_pos_hint)
             ) { onChange(settings.copy(lnPanelPosition = it)) }
+            SettingsGroupDivider()
+
+            // ---------- 输入与编辑 ----------
+            SwitchRow(Str.get(R.string.editor_auto_complete), settings.autoComplete) {
+                onChange(settings.copy(autoComplete = it))
+            }
+            SwitchRow(Str.get(R.string.editor_cursor_blink), settings.cursorBlink) {
+                onChange(settings.copy(cursorBlink = it))
+            }
+            SwitchRow(Str.get(R.string.editor_selection_popup), settings.textActionPopup) {
+                onChange(settings.copy(textActionPopup = it))
+            }
+            // 6.2.0：符号栏 —— 底部快捷符号条（( ) { } [ ] ; " ' = 等）。
+            // 渲染分支（settings.symbolBar）早已存在，但默认 false 且没有开关，
+            // 功能等于不可达；这里补上开关，默认仍保持关闭，不改变既有用户的观感。
+            SwitchRow(Str.get(R.string.editor_symbol_bar), settings.symbolBar) {
+                onChange(settings.copy(symbolBar = it))
+            }
+            SegmentedRow(
+                label = Str.get(R.string.editor_tab_width),
+                options = listOf("2" to 2, "4" to 4, "8" to 8),
+                selected = settings.tabWidth
+            ) { onChange(settings.copy(tabWidth = it)) }
             SegmentedRow(
                 label = Str.get(R.string.editor_line_separator),
                 // 换行符是技术缩写（LF / CRLF / CR），中英文都保持原样，不进字符串表。
                 options = listOf("LF" to 0, "CRLF" to 1, "CR" to 2),
                 selected = settings.lineSeparator
             ) { onChange(settings.copy(lineSeparator = it)) }
-            SwitchRow(Str.get(R.string.editor_highlight_block), settings.highlightBlock) {
-                onChange(settings.copy(highlightBlock = it))
+            SettingsGroupDivider()
+
+            // ---------- 启动与恢复 ----------
+            // 批次62（用户「新增『恢复上次打开的文件』选项，默认开启」）：启动恢复门控
+            // —— 关掉后冷启动 / 多任务回来不再自动重开文件（EditorViewModel 的
+            // restoreSession 与 restoreLastOpenedIfAny 同受此门控）。
+            SwitchRow(Str.get(R.string.editor_restore_last_opened), settings.restoreLastOpened) {
+                onChange(settings.copy(restoreLastOpened = it))
             }
-            SwitchRow(Str.get(R.string.editor_render_fn_chars), settings.renderFunctionChars) {
-                onChange(settings.copy(renderFunctionChars = it))
+            // ---------- 管理入口（批次66追加） ----------
+            // 整行可点（onClick 铺满水波纹），行内「管理」按钮是同一动作的快捷入口。
+            SettingsGroupDivider()
+            // 语法 / 主题文件管理：SAF 批量导入 + 删除用户文件（内置只读）
+            SettingRow(Str.get(R.string.editor_assets_title), onClick = onOpenAssetsManage) {
+                TextButton(onClick = onOpenAssetsManage) {
+                    Text(Str.get(R.string.manage))
+                }
             }
-            // ---- 6.2.0：大文件省耗 —— 内容超阈值时关掉语法解析/粘性滚动/缩进线 ----
-            // 用户手动选了语法仍会保留高亮（那等于「我明确要它」），故逃生门始终有效。
-            SwitchRow(Str.get(R.string.editor_large_file_mode), settings.largeFileMode) {
-                onChange(settings.copy(largeFileMode = it))
-            }
-            // 6.2.0 批次42：文件树名称多行显示 —— 关（默认）单行裁切，保证长文件名不把
-            // 行尾 ⋮ 挤出屏幕；开则名称换多行、行高自适应。
-            SwitchRow(Str.get(R.string.editor_tree_multi_line), settings.fileTreeMultiLine) {
-                onChange(settings.copy(fileTreeMultiLine = it))
+            // 翻译接口管理：启停内置通道 + 自定义 LibreTranslate 兼容接口
+            SettingRow(Str.get(R.string.editor_translate_api_manage), onClick = onOpenTranslateManage) {
+                TextButton(onClick = onOpenTranslateManage) {
+                    Text(Str.get(R.string.manage))
+                }
             }
             Spacer(modifier = Modifier.height(AppDimens.spacingLarge))
             }
@@ -3548,11 +3804,18 @@ private fun SettingsSheet(
     }
 }
 
+/**
+ * 设置页的一行：左边标签、右边控件。
+ *
+ * 批次66追加（用户「整行都可以点进去」）：[onClick] 非空时整行可点 —— 水波纹铺满整行，
+ * 行内控件（如「管理」按钮）优先消费点击，两者是同一个动作，不会重复触发。
+ */
 @Composable
-private fun SettingRow(label: String, content: @Composable () -> Unit) {
+private fun SettingRow(label: String, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = AppDimens.spacingSmall),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -3560,6 +3823,17 @@ private fun SettingRow(label: String, content: @Composable () -> Unit) {
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
         content()
     }
+}
+
+/**
+ * 批次66追加（用户「按照类别用横线划分」）：设置页的组间横线 —— 与
+ * 「语法 / 主题文件管理」入口上方那条完全同款（上留白 + 一条 [HorizontalDivider]，
+ * 下方由行自身的上下内边距补出对称留白）。
+ */
+@Composable
+private fun SettingsGroupDivider() {
+    Spacer(modifier = Modifier.height(AppDimens.spacingSmall))
+    HorizontalDivider()
 }
 
 @Composable
@@ -3582,7 +3856,10 @@ private fun SliderRow(
                 color = AppColors.textSecondary()
             )
         }
-        androidx.compose.material3.Slider(
+        // 批次63（用户「代码编辑器设置滑块，风格模仿 ui 个性化页面的」）：
+        // 裸 material3 Slider 换成 UI 个性化页在用的 [UnifiedSlider] —— 24dp 圆点、
+        // 8dp 圆角轨道，开新拟态时轨道还带内凹投影，三处设置滑块（字号/行距/字宽）统一。
+        UnifiedSlider(
             value = value,
             onValueChange = onChange,
             valueRange = range
@@ -3713,6 +3990,9 @@ fun CodeEditorScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSyntaxDialog by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    // 批次66追加：两个管理对话框（渲染在设置页之上）
+    var showAssetsManage by remember { mutableStateOf(false) }
+    var showTranslateManage by remember { mutableStateOf(false) }
     // 批次56（用户指定）：设置页滑入/滑出动画 —— mount 标志与可见性分离；
     // tick 每次「打开」+1，保证「关到一半立刻再开」也能重放入场动画。
     var settingsVisible by remember { mutableStateOf(false) }
@@ -3742,6 +4022,19 @@ fun CodeEditorScreen(
      */
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
+    // 批次65（用户「悬浮菜单会浮在所有界面上，甚至打开代码编辑器设置页也会显示」）：
+    // 选中弹窗是挂在编辑器窗口上的 PopupWindow，**盖得住同窗口内的一切覆盖层**（设置页、
+    // 侧滑抽屉都在这一层里）。因此覆盖层一开就收起并拉黑（弹窗自身的 displayWindow 同步
+    // 拒绝后续弹出），关闭只解锁、不主动弹回 —— 关设置页时菜单突然冒出同样突兀。
+    // actionWindow 是 Compose 状态：编辑器重建换了新实例也会重跑本效果，把当下状态补写进去。
+    val actionWindow = controller.actionWindow
+    LaunchedEffect(showSettings, drawerState.isOpen, actionWindow) {
+        val blocked = showSettings || drawerState.isOpen
+        actionWindow?.let {
+            it.overlayBlocked = blocked
+            if (blocked) it.dismiss()
+        }
+    }
     var showExitConfirm by remember { mutableStateOf(false) }
     var pendingClose by remember { mutableStateOf<String?>(null) }
 
@@ -3757,9 +4050,10 @@ fun CodeEditorScreen(
     // 批次55：重建互斥只针对活动标签（与 replacingActive 同款收窄）。
     val rebuildingActive = activeTab?.let { it.id in rebuildingSet } == true
     val readOnlyEff = readOnly || scanningActive || replacingActive || rebuildingActive
-    // 6.2.0 批次54（用户指定）：默认主题 github-dark-dimmed，不再跟随系统深浅色
-    // （系统未定义编辑器主题）。兜底只为兼容老配置里可能残留的空串。
-    val effectiveTheme = settings.theme.ifEmpty { "github-dark-dimmed" }
+    // 6.2.0 批次54 定默认 github-dark-dimmed；批次58（用户）改为随软件深浅：
+    // 未选过主题（空串）时浅色 light-plus、深色 github-dark-dimmed，
+    // 用户在选择器里选过的仍以其所选为准。
+    val effectiveTheme = resolvedEditorTheme(settings)
 
     // 6.2.0 批次43：分页导航状态 —— 当前页由光标行推导（每页 [PAGE_LINES] 行，1 起）。
     // 批次46：窗口模式以**磁盘索引**为准 —— 光标行在窗口里是页内相对行号，推不出真实页码。
@@ -3861,21 +4155,37 @@ fun CodeEditorScreen(
         gesturesEnabled = drawerState.isOpen && projectRoot != null,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier.width(280.dp),
-                // 6.2.0 批次16：抽屉容器透明，改由下方 Box 铺同款渐变背景（drawer 的 shape 会裁剪内容）。
-                drawerContainerColor = Color.Transparent
+                modifier = Modifier
+                    .width(280.dp)
+                    .then(
+                        // 批次61（用户指定「目录树抽屉也需要新拟态」）：与 UI 个性化页抽屉
+                        // （UIConfigSidebar）同款凸起 —— 影在抽屉外圈，内部由下方渐变 Box
+                        // 盖住底板，透出渐变不发灰；非新拟态风格原样。
+                        if (UIConfig.isNeumorphismEnabled()) Modifier.neuRaised(
+                            RoundedCornerShape(topEnd = 16.dp),
+                            UIConfig.shouldUseDarkTheme(),
+                            NeuDefaults.Intensity.LIGHT,
+                            cornerRadius = 16.dp,
+                            backgroundColor = Color.Transparent
+                        ) else Modifier
+                    ),
+                // 批次61 二轮反馈（用户「目录树没有同款凸起」）：容器底色改为与 UIConfigSidebar
+                // 抽屉完全一致（玻璃/纯色不透明面板）。此前的透明底让抽屉没有自己的"面"，
+                // 全靠后铺的渐变撑底 —— 凸起感读不出来。
+                drawerContainerColor = if (AppColors.glassEnabled()) AppColors.glassBackground()
+                else MaterialTheme.colorScheme.background
             ) {
-                // 与主页面同款渐变铺底；渐变关闭时回落纯色卡片底，观感与旧版一致。
-                val brush = pageGradientBrush()
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(280.dp)
-                        .then(
-                            if (brush != null) Modifier.background(brush)
-                            else Modifier.background(AppColors.cardBackground())
-                        )
-                ) {
+                // 批次61 二轮反馈：与 UIConfigSidebar 抽屉逐项对齐 —— 渐变按**抽屉自身尺寸**
+                // （280×600）取样。旧实现用整屏取样的 pageGradientBrush 铺进 280 宽的抽屉，
+                // 画出来与身后页面同色同向，抽屉像"贴"在页面上，凸起看不出来；渐变关闭时
+                // 露容器底色（与侧栏一致），凸起由外圈柔影 + 不透明面板承担。
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val widthPx = with(LocalDensity.current) { 280.dp.toPx() }
+                    val heightPx = with(LocalDensity.current) { 600.dp.toPx() }
+                    val brush = gradientBackgroundBrush(widthPx, heightPx)
+                    if (brush != null) {
+                        Box(modifier = Modifier.fillMaxSize().background(brush))
+                    }
                     FileTreePanel(
                         viewModel = viewModel,
                         activePath = activeTab?.file?.absolutePath,
@@ -3893,6 +4203,8 @@ fun CodeEditorScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
+                    // 批次58（用户）：新拟态下顶栏整条凸起（透明底，渐变/玻璃透出）。
+                    modifier = Modifier.neuChrome(),
                     title = {
                         // 批次45：标题整个移除 —— 右侧动作图标一多，标题槽被挤到零宽，
                         // 「代码编辑器」省略成纯文本的「…」（用户反馈的“最左边三个横点、
@@ -4019,7 +4331,10 @@ fun CodeEditorScreen(
                                     runFormat(controller, activeTab?.name ?: "") { msg ->
                                         viewModel.emit(msg)
                                     }
-                                }
+                                },
+                                // 6.2.0 批次63：选中菜单增强的顶栏入口，回填与选中窗相同的请求状态。
+                                onPickLink = { links -> controller.pendingLinks = links },
+                                onTranslate = { t -> controller.pendingTranslateText = t }
                             )
                         }
                         // 6.2.0 批次17：移除右上角「打开文件夹」图标 —— 有文件时才用得上、
@@ -4325,13 +4640,24 @@ fun CodeEditorScreen(
 
     if (showThemeDialog) {
         ThemeSelectionDialog(
-            currentTheme = settings.theme,
+            // 批次58：未选择时把解析后的生效主题（随软件深浅）传入，选择器高亮当前实际主题。
+            currentTheme = resolvedEditorTheme(settings),
             onSelect = { theme ->
                 viewModel.updateSettings { it.copy(theme = theme) }
                 showThemeDialog = false
             },
             onDismiss = { showThemeDialog = false }
         )
+    }
+
+    // 批次66追加：语法 / 主题文件管理（导入即热生效；删除对已加载项等重启）
+    if (showAssetsManage) {
+        AssetsManageDialog(onDismiss = { showAssetsManage = false })
+    }
+
+    // 批次66追加：翻译接口管理（启停内置 + 自定义接口）
+    if (showTranslateManage) {
+        TranslateApiManageDialog(onDismiss = { showTranslateManage = false })
     }
 
     // 6.2.0 批次16：右上角语法选择器 —— 手动为当前文件挑选高亮语法，覆盖后缀名推断。
@@ -4396,6 +4722,14 @@ fun CodeEditorScreen(
         )
     }
 
+    // 6.2.0 批次63（选中菜单增强）：选中窗/顶栏菜单回填的两个请求状态 → 弹对应弹窗。
+    controller.pendingLinks?.let { links ->
+        SelectionLinkDialog(links = links, onDismiss = { controller.pendingLinks = null })
+    }
+    controller.pendingTranslateText?.let { selected ->
+        TranslateActionDialog(text = selected, onDismiss = { controller.pendingTranslateText = null })
+    }
+
     if (showSettings) {
         // 批次56（用户指定）：设置页**滑入/滑出**动画 —— 进出都走水平滑动 + 淡入淡出；
         // 滑出动画放完才卸载（否则一闪即逝）。点「返回」与系统返回键走同一收尾。
@@ -4424,6 +4758,9 @@ fun CodeEditorScreen(
                     showSettings = false
                     showThemeDialog = true
                 },
+                // 批次66追加：管理对话框叠在设置页之上，设置页保持打开
+                onOpenAssetsManage = { showAssetsManage = true },
+                onOpenTranslateManage = { showTranslateManage = true },
                 onDismiss = dismissSettings
             )
         }
@@ -4533,6 +4870,20 @@ private fun EditorCanvas(
                     false
                 }
                 controller.attach(this)
+                // 6.2.0 批次63：选中菜单增强 —— 给 sora 选中窗追加「打开链接 / 翻译」两枚
+                // 按钮。按钮只回填请求状态，弹窗（多链接选择 / 翻译流程）由界面层统一渲染。
+                // 必须放在 applyRuntimeSettings 之前，好让「选中弹窗」开关作用到替换后的实例。
+                replaceComponent(
+                    EditorTextActionWindow::class.java,
+                    SelectionActionWindow(
+                        this,
+                        onPickLink = { links -> controller.pendingLinks = links },
+                        onTranslate = { t -> controller.pendingTranslateText = t }
+                    ).also {
+                        // 批次65：把实例交给界面层 —— 设置页/抽屉等覆盖层开合时收起并拉黑。
+                        controller.actionWindow = it
+                    }
+                )
                 applyRuntimeSettings(this, settings, largeActive)
                 // sora 官方示例明确要求：**先**应用 TextMateColorScheme，**再**设置语言
                 // （见 demo MainActivity：「Before using Textmate Language, TextmateColorScheme should be applied」）。
@@ -4684,7 +5035,10 @@ private fun SymbolBar(onInsert: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // 批次59 修：同标签栏 —— 阴影要画在 horizontalScroll 外层才不被裁掉（见 EditorTabRow）。
+            .neuChrome()
             .horizontalScroll(scroll)
+            // 批次58（用户）：新拟态下符号栏整条凸起（透明底，渐变透出）。
             // 6.2.0 批次14：与整体统一，渐变/玻璃时透出
             .background(AppColors.pageBackground())
             .padding(vertical = AppDimens.spacingXSmall),

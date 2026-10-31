@@ -42,17 +42,20 @@
             android:targetClass="com.UIN.Tool.ui.screen.manage.BackendSettingsActivity" />
     </shortcut>
 
-    <!-- 打开UI个性化页面 -->
+    <!-- 打开代码编辑器（批次61：替换原「打开UI个性化」快捷方式。
+         不带任何 extras/data —— 与正常冷启动同款恢复会话缓存（未保存改动、上次
+         开着的标签；没有文件则落「未打开文件」空态），只额外保证目录树挂设备
+         存储根，由 CodeEditorActivity 按该 action 调 ensureDefaultRoot。） -->
     <shortcut
-        android:shortcutId="open_ui_config"
+        android:shortcutId="open_code_editor"
         android:enabled="true"
-        android:icon="@drawable/ic_palette"
-        android:shortcutShortLabel="@string/shortcut_open_ui_config"
-        android:shortcutLongLabel="@string/shortcut_open_ui_config_long">
+        android:icon="@drawable/ic_code"
+        android:shortcutShortLabel="@string/shortcut_open_editor"
+        android:shortcutLongLabel="@string/shortcut_open_editor_long">
         <intent
-            android:action="android.intent.action.VIEW"
+            android:action="com.UIN.Tool.action.OPEN_CODE_EDITOR"
             android:targetPackage="com.UIN.Tool"
-            android:targetClass="com.UIN.Tool.ui.screen.manage.UIConfigActivity" />
+            android:targetClass="com.UIN.Tool.ui.screen.dev.CodeEditorActivity" />
     </shortcut>
 
 </shortcuts>

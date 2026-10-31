@@ -177,7 +177,7 @@ object StylePresets {
         enableNeumorphismGlow = true,
         animationSpeed = "medium",
         gradientMode = "single",
-        gradientColor = "#FFC4D6DF",
+        gradientColor = "#FFF9F9F9",
         gradientFrom = "bottom_right",
         gradientTo = "top_left",
         gradientColors = listOf("#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA")
@@ -265,7 +265,7 @@ object StylePresets {
         enableNeumorphismGlow = true,
         animationSpeed = "medium",
         gradientMode = "single",
-        gradientColor = "#FFC4D6DF",
+        gradientColor = "#FFF9F9F9",
         gradientFrom = "bottom_right",
         gradientTo = "top_left",
         gradientColors = listOf("#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA")

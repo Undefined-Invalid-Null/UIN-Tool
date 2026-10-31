@@ -96,6 +96,15 @@ class EditorSessionStore(private val dir: File) {
         return if (out.isEmpty()) null else out
     }
 
+    /**
+     * 批次62：清空整份会话（设置「恢复上次打开的文件」关闭时调用 —— **既不记录也
+     * 不恢复**）。等价于写入空清单：session.json 置空、所有 draft_ / ov_ 孤儿一并删。
+     */
+    @Synchronized
+    fun clear() {
+        save(emptyList(), emptyMap(), emptyMap())
+    }
+
     /** 写会话（正文/改动页先落，json 最后原子替换 —— 中断时最坏回到上一份完整快照）。 */
     @Synchronized
     fun save(

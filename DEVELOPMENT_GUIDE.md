@@ -351,21 +351,27 @@ Closes #123
 
 5.2 版本号与 versionCode 对应
 
-versionName versionCode 说明
-1.0.0 10000 正式版，主版本 1，次版本 0，修订 0
-1.2.0 10200 新增功能
-1.2.1 10201 Bug 修复
-2.0.0 20000 重大更新
+`versionCode` 是**单调递增的整数**（每次发布 +1，不按版本号换算），Android 要求升级安装时新版 `versionCode` 必须更大：
 
-versionCode 计算公式：主版本 * 10000 + 次版本 * 100 + 修订
+versionName versionCode 说明
+1.0.0 1 正式版，主版本 1，次版本 0，修订 0
+6.1.0 25 全量缺陷修复
+6.2.0 26 代码编辑器专项（当前版本）
 
 5.3 发布 Tag
 
+发布 Tag 决定客户端的更新检测与是否强更，格式为三段（`UpdateChecker` 按 `-` 最多切 3 段解析）：
+
 ```
-v1.2.0
-v1.2.1
-v2.0.0-beta.1  # 测试版
+{versionCode}-{versionName}-{强制标志}
+
+26-6.2.0-0   # 普通更新
+26-6.2.0-1   # 强制更新（用户无法跳过）
 ```
+
+- 第 1 段：`versionCode`（对应 `app/build.gradle`）
+- 第 2 段：`versionName`
+- 第 3 段：强制标志，`1` = 强更，其余 = 普通更新
 
 ---
 

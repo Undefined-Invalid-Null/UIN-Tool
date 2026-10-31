@@ -190,8 +190,10 @@ fun RepoScreen() {
                 value = searchText,
                 onValueChange = { text ->
                     searchText = text
+                    // 只在组合作用域内开协程：离开本页随 rememberCoroutineScope 一并取消，
+                    // 原先 new 的 CoroutineScope 没有生命周期归属，防抖任务会带着旧页残留执行
                     searchJob?.cancel()
-                    searchJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    searchJob = scope.launch {
                         delay(300)
                         repoViewModel.searchPlugins(text)
                     }

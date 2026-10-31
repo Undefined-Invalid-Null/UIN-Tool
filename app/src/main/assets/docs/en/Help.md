@@ -6,7 +6,7 @@
 |------|------|
 | Document Version | 6.2.0 |
 | Corresponding App Version | v6.2.0 (Build 26) |
-| Last Updated | October 16, 2026 |
+| Last Updated | October 31, 2026 |
 
 ---
 
@@ -96,7 +96,7 @@
 - [14.2 Restore Backup](#142-restore-backup)
 - [14.3 Manage Backup Files](#143-manage-backup-files)
 
-### XV. Development Tools (Runtime Logs + Developer Options)
+### XV. Runtime Logs & Development Tools
 - [15.1 Entry Point](#151-entry-point)
 - [15.2 Log Content](#152-log-content)
 - [15.3 Log Location](#153-log-location)
@@ -129,6 +129,8 @@
 - [18.9 Syntax Highlighting](#189-syntax-highlighting)
 - [18.10 Code Formatting](#1810-code-formatting)
 - [18.11 Known Limitations](#1811-known-limitations)
+- [18.12 Windowed Mode (Very Large Files)](#1812-windowed-mode-very-large-files)
+- [18.13 Selection Menu: Open Link & Translate](#1813-selection-menu-open-link--translate)
 
 ### XIX. FAQ
 - [19.1 FAQ (Q1-Q35)](#191-faqq1-q35)
@@ -151,7 +153,10 @@ UIN Tool is a lightweight plugin framework that lets you dynamically load and ru
 | Terminal | Built-in Linux terminal powered by PRoot |
 | Backend Integration | Unified startup command mode, built-in Debian container/real Termux globally selectable |
 | Container Runtime | Proot shared Debian container, backend and host isolated |
+| Container Management | PRoot container install / import / export / rename / reset, default container switch, shared storage binding (entry inside "Backend Runtime Settings") |
 | Plugin Repository | Browse, search, install from GitHub sources |
+| Source Management | Add / remove third-party plugin sources; repository data is pulled and aggregated from each source's `source.json` index |
+| Runtime Logs | View, export and clear logs from two sources (app log / logcat), including crash logs |
 | Development Tools | Creation wizard, code editor (Sora Editor), template export |
 | Permission Management | App + plugin permissions, state persistence |
 | Backup & Restore | Backup/restore plugins and configurations |
@@ -232,7 +237,7 @@ The bottom navigation has a **floating style**: style completely follows the car
 | Function | Description |
 |----------|-------------|
 | Open Terminal | Launch terminal environment |
-| Terminal Settings | Configure terminal font, color scheme, keyboard, etc. |
+| Terminal Settings | Opens the "Backend Runtime Settings" page (backend environment, idle timeout, container management entry) |
 | Create Plugin | Unified entry, select frontend type and fill in backend startup command |
 | Export Template | Export built-in packaged plugin templates (with README.txt description) |
 
@@ -263,11 +268,13 @@ The bottom navigation has a **floating style**: style completely follows the car
 | Function | Description |
 |----------|-------------|
 | Plugin Management | Import, export, uninstall plugins |
+| Source Management | Add / remove third-party plugin sources (GitHub user / repo / branch) |
 | Permission Management | Manage app permissions and plugin permissions |
 | Documentation Center | User guide, development docs, etc. |
 | GitHub Acceleration | Configure mirror sites and CDN acceleration |
-| Development Tools | Runtime log viewing (export/clear) + developer options (signature verification toggle, etc.) |
-| Backend Runtime Settings | Globally switch built-in Debian container / real Termux, idle timeout, etc. |
+| Runtime Logs | View, export and clear runtime logs (app log / logcat sources; auto-jumped to here after a crash) |
+| Development Tools | Developer option toggles: native plugin multi-instance, keep session on close, ignore signature verification |
+| Backend Runtime Settings | Globally switch built-in Debian container / real Termux, idle timeout, plus the **container management** entry |
 | Backup & Restore | Backup/restore plugins and configurations |
 | UI Personalization | Customize theme colors and corner radius |
 | Widget Configuration | Widget configuration and usage guide |
@@ -286,7 +293,7 @@ Long-pressing the app icon brings up a shortcut menu (Android 7.1+) for quick ac
 | Docs | Open documentation browser (DocBrowserActivity) |
 | Terminal | Open built-in terminal |
 | Backend Settings | Open backend runtime settings page (BackendSettingsActivity) |
-| UI Personalization | Open UI personalization settings page (UIConfigActivity) |
+| Code Editor | Open the code editor (CodeEditorActivity), restoring the same session cache as a normal cold start (unsaved edits and last tabs; shows the "no file open" empty state when there is none); can be turned off via "Restore last opened files" in the editor settings (see 18.8) |
 
 ### 4.2 Usage
 
@@ -308,7 +315,7 @@ You can create desktop icon shortcuts for individual plugins via "Manage" > "Plu
 
 1. Click the "Dev" tab at the bottom
 2. Click the "Open Terminal" button
-3. The Linux environment is automatically installed on first use
+3. The bundled rootfs is unpacked and ready on first use (shipped inside the app, completed offline — no download required)
 
 ### 5.2 Terminal Features
 
@@ -322,7 +329,6 @@ You can create desktop icon shortcuts for individual plugins via "Manage" > "Plu
 | Network Tools | curl, wget, openssh, etc. |
 | Multi-Session | Multiple terminal sessions running simultaneously |
 | Multi-Window | Android 7.0+ multi-window support |
-| Custom Shortcuts | Configurable hardware/software keyboard shortcuts |
 
 ### 5.3 Common Commands
 
@@ -345,12 +351,13 @@ ssh user@hostname
 
 ### 5.4 Terminal Settings
 
-1. Click the "Terminal Settings" button
-2. Configurable items:
-   · Terminal font size and style
-   · Color scheme
-   · Keyboard shortcuts
-   · Extra function keys
+The "Terminal Settings" button actually opens the **"Backend Runtime Settings" page** (the same page as "Manage" > "Backend Runtime Settings"), where you can configure:
+
+   · Global backend runtime selection (built-in Debian container / real Termux)
+   · Backend policies such as idle reclamation timeout
+   · **Container management**: PRoot container install / import / export / rename / reset, default container switch, shared storage binding
+
+> The terminal itself has no separate font / color scheme / shortcut settings page; the in-terminal toolbar provides a fixed row of function keys (Ctrl, Tab, arrows, ...).
 
 ---
 
@@ -379,7 +386,7 @@ Force update characteristics:
 
 | Option | Description |
 |---|---|
-| Auto Download | Download APK within the app, install directly when complete |
+| Auto Download | Download the APK in-app **via a foreground service** (persistent notification shows progress, survives backgrounding), install directly when complete |
 | Manual Download | Open browser to GitHub Releases page |
 | Skip Update | Close dialog (available for normal updates) |
 | Ignore This Version | Record the ignored version, no longer prompt next time |
@@ -469,6 +476,8 @@ After configuration is complete, click the "Save Settings" button to save all co
    · Version number
    · File size
    · Update date
+
+> Third-party plugin sources are added under "Manage" > "Source Management" (GitHub user / repo / branch, etc.); the repository page pulls each source's `source.json` index and aggregates the results (about a 5-minute cache), with official / community trust-level badges on each entry.
 
 ### 9.2 Search Plugins
 
@@ -828,8 +837,8 @@ The same plugin can run **multiple independent instances** simultaneously:
 
 - **Web / CUI plugins**: Each opening is a new instance; page state, JS interface, and backend do not interfere between instances
 - **Native plugins**: Single instance by default (reuses the same instance when opened repeatedly); after enabling "Native Plugin Multi-Instance (Experimental)" in "Manage" > "Development Tools", each opening creates a new independent instance
-- Backend multi-instance ("Per-Instance Independent Backend Port" toggle in "Development Tools"): When **off**, multiple instances share the same backend process (shared port); when **on**, each instance has its own backend process and port, independent of each other
-- **Keep Session Single Window (v5.5.0)**: "Keep Session on Close" toggle is **enabled by default** (default single-window deduplication: shared port mode + Web plugins keep only one background window for the same plugin, repeated openings bring it to the foreground, no more multi-instance); users can explicitly disable it in "Development Tools", after which Web / CUI plugins create independent instances each time (supporting multi-instance)
+- **Per-instance backend isolation**: every plugin instance uses `pluginId:instanceId` as its backend key and owns an **independent backend process and port** (the app has **no** "per-instance independent backend port" toggle and no shared/independent switch at all); plugin-level stop / status queries group all instance keys of that plugin by prefix. Whether a session survives closing a plugin is controlled by "Keep Session on Close" in "Development Tools" (see next bullet)
+- **Keep Session Single Window (v5.5.0)**: "Keep Session on Close" toggle is **enabled by default** (default single-window deduplication: for Web plugins with session retention on, only one background window is kept for the same plugin, repeated openings bring it to the foreground, no more multi-instance); users can explicitly disable it in "Development Tools", after which Web / CUI plugins create independent instances each time (supporting multi-instance)
 
 ---
 
@@ -944,39 +953,49 @@ Backup contents:
 
 ---
 
-## XV. Development Tools (Runtime Logs + Developer Options)
+## XV. Runtime Logs & Development Tools
 
 ### 15.1 Entry Point
 
-Click "Manage" > "Development Tools" at the bottom to enter the standalone development tools page. This page merges the original "Runtime Logs" and "Developer Options" entries, centrally managing runtime log viewing and advanced development settings.
+"Runtime Logs" and "Development Tools" are **two separate cards** on the bottom "Manage" page:
+
+· **Runtime Logs** → the log viewer: view / export / clear runtime logs; after a crash the app jumps here automatically on next launch
+· **Development Tools** → developer option toggles (see 15.5)
+
+> Since 6.2.0 the old embedded log viewer inside the development tools page has been removed; all log capabilities live in the "Runtime Logs" page (`LogViewerScreen`).
 
 ### 15.2 Log Content
 
-Log files contain:
+The log page has **two sources**, switchable via a top-bar button:
 
-· App startup information
-· Plugin loading records
-· Error and warning messages
-· Crash reports (with stack trace information)
-· Backend output logs
+| Source | Contents |
+|---|---|
+| App log (default) | App startup information, plugin loading records, errors and warnings, crash reports (with stack traces), backend output |
+| logcat | The system logcat stream, **including exceptions libraries write straight to logcat** (e.g. errors from the editor's highlight analysis thread — these never reach the app log and have always been a blind spot when debugging) |
+
+In logcat mode the page **prefers the on-disk file** (`LogcatRecorder` keeps writing logcat to disk from startup, with rotation and "clear logs" semantics identical to the app log) and falls back to a live `logcat -d` read when the file has no content yet.
 
 ### 15.3 Log Location
 
 ```
 /storage/emulated/0/UIN_Tool/logs/uin_tool_date.log
 /storage/emulated/0/UIN_Tool/logs/crash_date.log
+/storage/emulated/0/UIN_Tool/logs/uin_tool_logcat_date.log   ← logcat on-disk file
 ```
 
 ### 15.4 Log Operations
 
 | Operation | Description |
 |---|---|
+| Source switch | The top-bar button toggles between "App log / logcat"; **export follows the current source** and exports the matching file |
 | Pull to Refresh | Reload latest logs |
-| Clear | Delete current log file |
+| Clear | Delete current log file ("clear logs" applies to the logcat file too) |
 | Clear All | Delete all historical logs |
-| Export | Export logs as text file |
+| Export | Export logs as text file (the filename prefix distinguishes the source: `UIN_Tool_Log` / `UIN_Tool_Logcat`, so the two exports never overwrite each other) |
 
 > After the app crashes, the next time you open it, it will automatically jump to this page to display the crash log.
+
+> In logcat mode, if the system has not granted `READ_LOGS` you can only read your own app's lines — the page shows a hint and provides a copyable `pm grant` command.
 
 ### 15.5 Developer Options
 
@@ -984,7 +1003,7 @@ Log files contain:
 |---|---|
 | Ignore Signature Verification (for development) | Ignore plugin signature verification, allow unsigned/abnormal signature plugins to run (for debugging only, disabled by default) |
 | Native Plugin Multi-Instance (Experimental) | Allow the same native plugin to open multiple independent instances; when disabled, native plugins are single-instance (disabled by default) |
-| Per-Instance Independent Backend Port | Each plugin instance runs its own independent backend process/port; when disabled, instances share one backend (disabled by default) |
+| Keep Session on Close | Keep the WebView / backend session after closing a plugin and reuse it on reopen (shared-port mode, **enabled** by default) |
 
 > Click "Save" after modifying developer options for changes to take effect.
 
@@ -1025,6 +1044,16 @@ How to add:
 ---
 
 ## XVII. UI Personalization
+
+The left side is a **navigation drawer** (open it via the top-bar menu button or by swiping from the screen edge), grouping every configuration area by attribute:
+
+| Group | Sub-items |
+|---|---|
+| Style | Default, Neumorphism (each style keeps its own config and cache, switching never overwrites the other) |
+| Appearance | Colors; Shapes (corner radius / width-height / border thickness); Material (shadow / translucency); Background (gradient / solid / image) |
+| Content | Text (size / font / weight / language), image |
+| Interaction | Click effect, animation speed |
+| Layout | Outer margin, layout position |
 
 ### 17.1 Color Configuration (38+ Color Items)
 
@@ -1101,11 +1130,11 @@ Click any color configuration item to open the color picker:
   - **Single-select (single-color gradient)**: Gradient from selected color to background color
   - **Multi-select (multi-color gradient)**: Gradient composed of 2-6 colors, can **add colors**, **edit** each color (click edit icon to open color picker), or **delete** (keep at least 1 color)
 - **Gradient Direction**: Can set "**Start Direction**" and "**End Direction**" separately (up/down/top-left/bottom-left/top-right/bottom-right, 6 directions), selected via **dropdown**, colors arranged along start → end direction
-- **Default single-color gradient (theme-adaptive)**: Light `#FFC4D6DF` / Dark `#FF4C4F51` (direction **bottom-right → top-left**), ready to use out of the box; old "multi-color three-color default" auto-migrates to new default, user custom configurations unaffected
+- **Default single-color gradient (theme-adaptive)**: Light `#FFF9F9F9` / Dark `#FF4C4F51` (direction **bottom-right → top-left**), ready to use out of the box; old defaults (the multi-color three-color default, later `#FFC4D6DF`) auto-upgrade to the new default on next initialization, user custom colors untouched
 - Gradient background covers **all pages** (main interface four tabs + various management/tools/help/documentation sub-pages), auto-adapts with light/dark theme
 - Gradient configuration participates in **save/reset/export/import**
 - All gradient configuration (toggle/mode/direction/colors) **merged into a single card**, more centralized configuration
-- The "Colors / Shape / Size / Font / Effects" **tab bar at the top of this page follows the background color** (transparent when gradient is enabled), and **has no bottom border line**
+- Section navigation now lives in the **left drawer** (see the navigation table at the start of this chapter); the top bar only keeps the menu button and title, which also follow the background color (transparent when the gradient is on, no bottom border)
 - Main interface **bottom navigation** is floating style: style completely follows card (opaque card background, rounded corners and shadow); navigation **covers content**, scrolling cards show from surrounding transparent whitespace without clipping; clicking has press-to-scale feedback, selected icon enlarges, no ripple
 - Development wizard bottom "Next" action bar is **floating pure transparent**: covers content without clipping cards, **background completely transparent, no card background color or shadow**, only the "Previous / Next" buttons provide height, tight to buttons, no extra white background
 - Code editor **file list background follows main background** (transparent when gradient is enabled, showing global gradient)
@@ -1140,10 +1169,10 @@ Since 6.2.0 the code editor is no longer just a draft surface inside the plugin 
 
 | Entry | Description |
 |---|---|
-| Plugin development wizard | Tap "Open code editor" in the wizard; it edits the wizard's draft and writes back on save |
+| Plugin development wizard | Tap "Open code editor" in the wizard; it edits the wizard's draft and writes back on save. In **draft mode** the editor shows only the wizard files (your device-file tabs are hidden, not closed, and come back with the session afterwards), and plugin drafts never enter the session cache or "last opened"; opening a device file during the wizard exits draft mode automatically and re-roots the tree |
 | "Open with" from other apps | File managers, browsers etc. open a file "with UIN Tool" and go straight to the editor |
 
-Supported types: `text/*` (txt, csv, markdown, logs, ...) plus `application/json`, `application/xml`, `application/javascript`, `application/x-sh`, `application/x-yaml`. Both `file://` and `content://` sources are supported.
+Supported types: **any type** — the editor declares two complementary `ACTION_VIEW` filters (one with `*/*` MIME, one without MIME that only matches `type == null` callers) plus `content://` and `file://` schemes, so "Open with" launched from file managers / browsers always lists the editor (txt, csv, markdown, json, source files, ... all open directly).
 
 > **Note**: the system "Open with" chooser shows **two** UIN Tool icons. This is an intentional trade-off — the editor and the plugin dispatch page each declare their own `ACTION_VIEW`; both work, and picking the editor entry opens the editor.
 
@@ -1160,11 +1189,11 @@ You can browse and view without granting (`content://` files never need storage 
 
 | Area | Contents |
 |---|---|
-| Top bar | ☰ file tree on the left; the action cluster reads, left to right: **undo / redo**, save, find, syntax selector (palette icon), ⋮ more-actions — six icons in a tight **40dp** layout (reduced spacing). **No title and no file name** (since batch 45; the title used to get squeezed into an ellipsis by the icons, and the file name lives in the tab strip anyway) |
+| Top bar | ☰ file tree on the left; the action cluster reads, left to right: **undo / redo**, save, find, syntax selector (palette icon), ⋮ more-actions — six icons in a tight **40dp** layout (reduced spacing). **No title and no file name** (the title used to get squeezed into an ellipsis by the icons, and the file name lives in the tab strip anyway) |
 | Tab bar | Multiple tabs; unsaved tabs carry a dot marker; tap × to close; **long-press a tab to open its full properties** |
 | Information bar | Directly below the tab strip: `n/N lines`, `n bytes`, `n chars`, `n selected` — refreshed live with the cursor and edits |
 | Search panel | Opened by ⋮ → Find or `Ctrl+F` |
-| Editor area | Main region; a 28dp edge strip along the far-left screen edge — swipe right on it to pull out the file tree |
+| Editor area | Main region; a 28dp edge strip along the far-left screen edge — swipe right on it to pull out the file tree. `#RRGGBB` values in the code get a **color swatch background** (like VS Code) and **one tap copies them to the clipboard** while selecting the range |
 | Symbol bar | Quick-symbol strip at the bottom; enable it in the editor settings (off by default); it sits directly above the status bar |
 | Status bar | **Bottom-left: page switcher `n/N`** (shown only for multi-page documents; tapping it opens a dropdown where you can type a page number); **right side: read-only badge, encoding button (encoding type shown in full, never truncated), ⚙ settings (pinned rightmost)**. **No file name here**; Ln/Col and the selection count moved to the information bar, the match count now lives in the search panel's status line, and the word-wrap toggle now lives in the editor settings. The right group never compresses, so ⚙ is never pushed off screen on narrow displays |
 | File tree drawer | Slides in from the left; the ☰ icon at the top-left opens / closes it |
@@ -1208,19 +1237,21 @@ When no file is open, the editor shows a "No file open" empty state whose button
 | `Aa` | Match case |
 | `.*` | Regular expression |
 | `abc` | Whole word |
-| `Prev` / `Next` | Jump between matches across the whole file |
+| `Prev` / `Next` | Step through **all** matches; after tapping a row in "All results", that match is the baseline for prev/next |
+| `×` | Closes the panel and **clears** the query, replacement text and all results (next open starts from an empty panel); the top-bar search icon / back key only **collapses** it, keeping content and results — tapping again expands it as it was |
 | Status line | Above the list: progress / `N matches in whole file` / `No matches in whole file`; "All results" opens the full list when there are matches |
 | Expand arrow | Reveals the Replace field and the "Replace all (whole file)" button |
 
 In regex mode the replacement text supports `$1`, `$2` backreferences.
 
-Searching and replacing always operate on the **whole file for every document** (paged huge files are scanned page by page with a streaming pass, everything else in a single in-memory pass; progress is visible and cancellable), no toggle needed: results are listed as `absolute line:column`, and tapping one selects and **highlights the match**. Replace has a single entry — "Replace all (whole file)": paged files are rewritten page by page into the on-disk write-back spool and only land on disk on save; fully-loaded files are rewritten in one in-memory pass (undo history resets; reaches disk when you save). Both ask for confirmation first (details in 18.12). The full-results list's scrollbar is now **tappable and draggable** for proportional jumping (20 dp hit area, thumb follows the finger while dragging); the "All results" dialog caps its list height relative to the screen (55%, still at most 480 dp in portrait) so it no longer overflows in landscape or on short screens.
+Searching and replacing always operate on the **whole file for every document** (paged huge files are scanned page by page with a streaming pass, everything else in a single in-memory pass; progress is visible and cancellable), no toggle needed: results are listed as `absolute line:column`, and tapping one selects and **highlights the match**. Replace has a single entry — "Replace all (whole file)": paged files are rewritten page by page into the on-disk write-back spool and only land on disk on save; fully-loaded files are rewritten in one in-memory pass (undo history resets; reaches disk when you save). Both ask for confirmation first (details in 18.12). The full-results list's scrollbar is now **tappable and draggable** for proportional jumping (20 dp hit area, thumb follows the finger while dragging); the "All results" dialog caps its total height at `min(600 dp, 75% of screen height)` with the list sizing to its content (short lists make a shorter dialog), so it no longer overflows in landscape or on short screens. After tapping a result to locate it, `Prev` / `Next` **use that match as the baseline** — locating and stepping share one full list in one order, so matches beyond the first 500 previewed rows step correctly too.
 
 ### 18.6 More Actions Menu
 
 | Group | Items |
 |---|---|
 | Edit | Undo, Redo (greyed out when no history), Cut, Copy, Paste, Select all |
+| Selection | Open link, Translate (both need a selection first; open link also needs a link inside it — see 18.13) |
 | Line | Duplicate line, Cut line, Select line, Indent, Outdent |
 | Navigate | Go to line (1-based), Go to document start, Go to document end |
 | Other | Format code (see 18.10) |
@@ -1240,13 +1271,13 @@ Available with a hardware keyboard or the system split keyboard:
 
 ### 18.8 Editor Settings
 
-Open the settings panel from ⚙ at the bottom-right of the status bar. All 28 items are described below.
+Open the settings panel from ⚙ at the bottom-right of the status bar. All 29 settings are described below, **grouped by category with a horizontal divider between groups** (same order as the tables in this section), plus 2 management entries at the end of the page where **the whole row is tappable**.
 
 **Appearance & Typography**
 
 | Setting | Control | Default | Meaning |
 |---|---|---|---|
-| Theme | Button | dracula | The editor's color scheme. **Independent of the app's dark / light mode** — there is no such thing as a system "code editor theme". Several dark and light themes are bundled (dracula, one-dark-pro, github-light, ...) |
+| Theme | Button | Follows app light/dark when unset (light `light-plus` / dark `github-dark-dimmed`) | The editor's color scheme. **Independent of the app's dark / light mode** — there is no such thing as a system "code editor theme". The picker **dynamically lists every theme in the theme directory** (51 in 6.2.0: dracula, one-dark-pro, nord, github-light, ... plus any theme you imported), **sorted alphabetically (case-insensitive) with a search box at the top**, and the dark/light dot is decided from the theme file's own `type` / background luminance; a theme you picked yourself always wins |
 | Font size | Slider 10–24 | 14 | Body font size in sp; follows the system font scaling |
 | Line spacing | Slider 0.8–2.0 | 1.0 | Vertical spacing **multiplier** between lines. Below 1 is tighter, above 1 is airier |
 | Text width | Slider 0.8–1.3 | 1.0 | Horizontal stretch of characters, **without changing the font size**; raise it on wide screens to reduce horizontal scrolling |
@@ -1284,15 +1315,28 @@ Open the settings panel from ⚙ at the bottom-right of the status bar. All 28 i
 |---|---|---|---|
 | Auto completion | Switch | On | Pops up keyword suggestions while typing. Built-in word lists cover XML, HTML, CSS, Gradle, JSON, YAML and other config formats |
 | Cursor blink | Switch | On | Whether the caret blinks |
-| Selection popup | Switch | On | Shows a Cut / Copy / Paste popup after selecting text |
+| Selection popup | Switch | On | Shows a Cut / Copy / Paste popup after selecting text, plus Open link and Translate buttons (Open link only shows when a link is detected, see 18.13); it **auto-dismisses and never sits on top of** overlays like the settings page or the navigation drawer, and re-anchors to the new bounds when the editor viewport changes (symbol bar toggled, search panel expanding, …) so it never floats over the bottom symbol bar / pagination bar |
 | Symbol bar | Switch | Off | Shows a horizontally scrollable strip of symbols (`{}()[];:,=+-*/<>&\|!?'"._@#$%`) at the bottom. Tapping one inserts it through exactly the same path as the soft keyboard, so tapping `(` auto-completes `)` and tapping `"` pairs quotes |
 | Tab width | Segmented 2/4/8 | 4 | How many spaces a Tab key press or auto-indent occupies; the block guides follow it |
 | Line separator | Segmented LF/CRLF/CR | LF | Which line ending **newly inserted lines** use from now on. It **does not rewrite line endings already in the document**. LF is for Unix/Linux, CRLF for Windows, CR for classic macOS |
 
+**Startup & Restore**
+
+| Setting | Control | Default | Meaning |
+|---|---|---|---|
+| Restore last opened files | Switch | On | On a cold start, and when coming back from recents after the process was reclaimed, automatically reopens the last tabs, unsaved edits and page numbers (the session cache) plus the last opened document. **Turn it off and nothing is recorded and nothing is restored**: the editor goes straight to the "no file open" empty state, the stored session and "last opened" are cleared the moment you switch it off, and no record is written while it is off (including the exit fallback) — turning it back on starts recording and restoring from empty, so **files from before the switch-off never come back**; the "restored last opened…" toast is no longer shown either |
+
+**Management entries** (the last two rows of the page; **the whole row is tappable** — anywhere on the row, including the "Manage" label, opens the dialog on top of the still-open settings page)
+
+| Entry | Description |
+|---|---|
+| Syntax & theme files | Tabs list **built-in plus imported** themes and grammars. Built-in items are marked "Built-in" and read-only; "Import files" opens the system file picker with **multiple selection**, validates content (a theme needs `colors`, `tokenColors` or `settings`, and a grammar must declare a `scopeName` that does not clash with an existing one), writes into the app's private directory and **takes effect immediately** — every rejected file reports its reason. Imported items get a delete button: the registry has no hot-remove API, so already-loaded items **apply their deletion after a restart** |
+| Translation APIs | The three built-in channels (Bing / Google / MyMemory) each have a switch, and a switched-off one **no longer appears in the "Choose a translation method" list**. Below you can **add a custom LibreTranslate-compatible endpoint** (name + URL + optional key, with a "Test" button to verify connectivity right there) and delete it |
+
 ### 18.9 Syntax Highlighting
 
-- Tap the palette icon in the top bar to open the language list (50+ languages plus `Auto` and `Plain Text`)
-- By default the language is inferred from the **file extension** and shown as `Auto (by extension)`
+- Tap the palette icon in the top bar to open the language list (60+ languages plus `Auto` and `Plain Text`; added zig, smali, nim, protobuf, graphql, viml, luau, dot, brainfuck, gitignore, minecraft-lang and more — driven by `assets/textmate/languages.json` and its extension map, and **grammars you imported manually show up here too**); the list is **sorted alphabetically** (case-insensitive, `Auto` participating via its localized label) and has a **search box** at the top (clearable, with a hint when nothing matches)
+- By default the language is inferred from the **file extension** and shown as `Auto (by extension)`; the manifest's extension rules act as a fallback behind the built-in guess (existing built-in branches stay first, so behavior is unchanged)
 - Picking a language manually makes the current tab remember it and override the extension guess; switching back to `Auto` restores the guess
 - Grammars still load in the background for the first few seconds after a cold start, so a file opened during that window may briefly have no highlighting; it appears automatically once loading finishes
 
@@ -1325,6 +1369,19 @@ Files over 16 MB (as well as files rejected by the memory pre-check because the 
 - Changing the charset **rebuilds the index** with the new encoding and returns to page 1 (same semantics as a full reload, edits are overwritten);
 - **Save As is not supported** in this mode (the whole document is not in memory — it could only write out the current page) — save to the original file instead. If index rebuilding fails after a save, the tab is locked read-only with a hint to reopen the file.
 
+### 18.13 Selection Menu: Open Link & Translate
+
+When text is selected, the floating selection popup gains two buttons next to Cut / Copy / Paste / Select all (the top-bar ⋮ menu has the same entries, so they stay reachable when the "Selection popup" switch is off):
+
+- **Open link**: auto-detects URLs in the selection — `http(s)://…` links and bare domains (trailing punctuation is not part of the URL). One match opens in the system browser right away, several show a picker; **when no link is detected the icon / menu entry is not shown at all** (no dead entry that only toasts an error). Only `http` / `https` are allowed (`javascript:`, `file:` and the like are rejected).
+- **Translate**: first a "Choose a translation method" dialog — the online channels shown there follow the "Translation APIs" switches and custom endpoints (see 18.8), plus system translation; once inside an online result page **the target language defaults to the language the app itself is in** (Chinese UI → Simplified Chinese, English UI → English, and so on; each channel spells it differently — Bing `zh-Hans`, Google / MyMemory / custom `zh-CN` — falling back UI language → same prefix → Simplified Chinese, with the default chip placed first in the language strip). Tap a language chip to change it:
+  - **Bing Translator** (online): [bing-translate-api](https://github.com/plainheart/bing-translate-api)'s request flow is ported into the app (fetch the credentials from `bing.com/translator`, then POST `ttranslatev3`); the source language is auto-detected. Tap a target language to get the result, which **can be copied**. Over-long text (1000 chars for languages outside the whitelist, 3000 for whitelisted ones, 5000 on the China node) and rate-limit / captcha responses are reported clearly and can be retried; the API host adapts to the network (it re-sends via the other node when `www` answers empty or 302s to `cn`).
+  - **Google Translate** (online): the **free anonymous** gtx channel on `translate.googleapis.com`, source language auto-detected. The endpoint answers a "Sorry" risk-control page over HTTP/2, so this channel **forces HTTP/1.1**; when rate-limited it clearly suggests retrying later.
+  - **MyMemory Translate** (online): the **free anonymous** channel on `api.mymemory.translated.net` (translation-memory backfill, 5000 chars per day); exceeding the quota reports "daily quota exhausted". The source language is probed first and **when the reply echoes the source text, the request is re-sent with the explicit language pair the probe reported** (measured on 2026-10-31: English → Chinese echoes under `autodetect`, while `en|zh-CN` returns Chinese right away); the 500-char-per-request cap is absorbed by **splitting along line breaks** (the newlines between pieces are restored verbatim), and if not one piece comes back translated the app reports an error instead of passing the original text off as a translation.
+  - **Custom endpoint** (online): a **LibreTranslate-compatible** instance you added under "Translation APIs" (self-hosted or a reachable public one), speaking `POST <url>/translate` with an optional key; reachability depends on the URL you enter, and the "Test" button verifies it right where you add it.
+  - **System translation**: lists every app on the device that can process text (`ACTION_PROCESS_TEXT`, e.g. Google Translate); tapping one hands the selection to that app.
+- All of the above only read the selection and never modify content, so they work on read-only files too.
+
 
 ---
 
@@ -1336,13 +1393,13 @@ Q1: How to get more plugins?
 A: Install official plugins from the "Repository" page, or develop your own plugins.
 
 Q2: Are plugins safe?
-A: Plugins undergo SHA-256 signature verification during import, with independent permission control. It is recommended to only obtain plugins from trusted sources.
+A: Plugins go through **SHA-256 TOFU verification** on install/update: the file fingerprint is recorded on first install, an **update within the same version** must match it exactly (a mismatch is treated as tampering and rejected), while a version upgrade records the new fingerprint (old bare-hash records migrate automatically). The check can be temporarily disabled in "Development Tools" (debugging only). Permissions are controlled per plugin; only obtain plugins from trusted sources.
 
 Q3: Where is the working directory?
 A: Default path: /storage/emulated/0/UIN_Tool/
 
 Q4: How to use the terminal feature?
-A: Click "Dev" > "Open Terminal"; the Linux environment is automatically installed on first use.
+A: Click "Dev" > "Open Terminal". The rootfs ships inside the app and is unpacked offline on first use — no download required.
 
 Q5: Native plugin compilation fails?
 A: The current native plugin compilation feature is temporarily disabled (Android environment lacks tools.jar support). It is recommended to use Web plugins or compile on a PC.
@@ -1381,7 +1438,7 @@ Q16: What is force update?
 A: When the Release Tag format is {version code}-{version name}-1, users are forced to update and cannot skip.
 
 Q17: How to export development templates?
-A: Click "Export Template" on the "Dev" page; the 7 built-in packaged plugins are copied to `/storage/emulated/0/UIN_Tool/templates/` and a README.txt is generated.
+A: Click "Export Template" on the "Dev" page; the 8 built-in packaged plugins are copied to `/storage/emulated/0/UIN_Tool/templates/` and a README.txt is generated.
 
 Q18: What does the icon tint toggle do?
 A: When enabled, all icons use theme color tinting; when disabled, icons keep original colors.
@@ -1396,7 +1453,7 @@ Q21: How to create a Web plugin with backend?
 A: Click "Create Plugin" > Select "WebView + Backend" > Fill in backend startup command (default `sh scripts/start.sh`). The wizard auto-generates `scripts/start.sh` and `scripts/backend/server.py`; the backend runtime environment (built-in Debian container / real Termux) is globally configured in "Backend Runtime Settings" on the "Manage" page.
 
 Q22: What needs to be installed for the backend?
-A: The startup script `scripts/start.sh` automatically detects and installs dependencies (`pkg install python` / `apk add python3`), no need to manually install third-party libraries.
+A: The startup script `scripts/start.sh` detects the interpreter and runs `apt install -y python3` inside the container if missing (the only dependency command), no need to manually install third-party libraries.
 
 Q23: How to use the plugin notice feature?
 A: Add the notice field in plugin.json; it is automatically displayed on first opening.
@@ -1455,7 +1512,7 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 | Item | Info |
 |---|---|
 | Document Version | 6.2.0 |
-| Last Updated | October 16, 2026 |
+| Last Updated | October 31, 2026 |
 | Corresponding App Version | v6.2.0 (Build 26) |
 
 ---

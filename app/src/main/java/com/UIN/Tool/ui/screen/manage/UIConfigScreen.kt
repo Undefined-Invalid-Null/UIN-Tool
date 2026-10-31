@@ -115,6 +115,10 @@ fun UIConfigScreen(
         val savedStyle = uiConfig.getCurrentStyle()
         uiConfig.resetToDefault()
         configState = loadConfigFromUIConfig()
+        // 批次58：switchStyle 现按「缓存优先」返回该风格自己的配置（修复新拟态渐变
+        // 被全局槽踩回）——重置必须连同各风格缓存一并清空，否则旧自定义会被
+        // switchStyle 当作风格缓存原样恢复，重置被旧值盖回。
+        StyleManager.clearCache()
         try {
             configState = StyleManager.switchStyle(configState, savedStyle)
         } catch (_: Exception) {}
@@ -255,7 +259,7 @@ fun UIConfigScreen(
                 if (gradient != null) {
                     uiConfig.setGradientBackgroundEnabled(gradient.optBoolean("enabled", true))
                     uiConfig.setGradientMode(gradient.optString("mode", UIConfig.GRADIENT_MODE_SINGLE))
-                    uiConfig.setGradientColor(gradient.optString("color", "#FFC4D6DF"))
+                    uiConfig.setGradientColor(gradient.optString("color", "#FFF9F9F9"))
                     if (gradient.has("color_dark")) {
                         uiConfig.setGradientColorDark(gradient.optString("color_dark", "#FF4C4F51"))
                     }

@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -80,6 +81,12 @@ fun ReleaseChangelog(
                 val html = MarkdownRenderer.toHtml(markdown)
                 loadDataWithBaseURL("file:///android_asset/", html, "text/html", "UTF-8", null)
             }
+        },
+        // 关窗/离页必须 destroy：只 detach 不销毁时 WebView 的原生（Chromium）资源
+        // 不随组合释放，反复打开更新日志会持续累积
+        onRelease = { web ->
+            web.stopLoading()
+            web.destroy()
         },
         modifier = modifier
             .fillMaxWidth()
@@ -160,14 +167,14 @@ fun UpdateContent(
                 imageVector = if (forceUpdate) Icons.Outlined.Warning else Icons.Outlined.SystemUpdate,
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = if (forceUpdate) Color(0xFFD32F2F) else colorScheme.primary
+                tint = if (forceUpdate) colorScheme.error else colorScheme.primary
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = if (forceUpdate) Str.get(R.string.mandatory_update) else Str.get(R.string.new_version_found),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (forceUpdate) Color(0xFFD32F2F) else colorScheme.onSurface
+                color = if (forceUpdate) colorScheme.error else colorScheme.onSurface
             )
         }
 
@@ -283,8 +290,8 @@ fun UpdateContent(
                             .weight(1f)
                             .height(40.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFFEBEE),
-                            contentColor = Color(0xFFD32F2F)
+                            containerColor = colorScheme.errorContainer,
+                            contentColor = colorScheme.onErrorContainer
                         ),
                         shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
                     ) {

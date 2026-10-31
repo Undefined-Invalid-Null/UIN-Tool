@@ -12,9 +12,11 @@ object EditorSettingsStore {
 
     private const val PREFS = "editor_prefs"
 
-    /** theme 取该值时跟随系统深浅色。 */
-    const val THEME_FOLLOW_SYSTEM = ""
+    /** theme 空串 = 未选择（批次58：由 UI 层按软件深浅给默认，浅 light-plus / 深
+     *  github-dark-dimmed）。批次54 时期该串曾表示「跟随系统」，跟随系统项已移除。 */
     private const val K_THEME = "selected_theme"
+    /** 批次58：默认主题随深浅的一次性迁移标记（只跑一次，之后用户手动选的主题不再被清）。 */
+    private const val K_THEME_DEFAULT_MIGRATED = "theme_default_migrated_v62"
     private const val K_FONT_SIZE = "font_size"
     private const val K_TAB_WIDTH = "tab_width"
     private const val K_FONT_FAMILY = "font_family"
@@ -43,6 +45,8 @@ object EditorSettingsStore {
     private const val K_SHOW_MAGNIFIER = "show_magnifier"
     private const val K_LARGE_FILE_MODE = "large_file_mode"
     private const val K_FILE_TREE_MULTI_LINE = "file_tree_multi_line"
+    /** 批次62：启动恢复上次打开的文件（默认开）。 */
+    private const val K_RESTORE_LAST_OPENED = "restore_last_opened"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -50,6 +54,21 @@ object EditorSettingsStore {
     fun load(context: Context): EditorSettings {
         val p = prefs(context)
         val defaults = EditorSettings()
+        // 6.2.0 批次58（用户）：默认主题改为随软件深浅（浅 light-plus / 深
+        // github-dark-dimmed）。批次54 时期 github-dark-dimmed 被写进默认值与
+        // 任意设置项的自动保存，这里把「仍是该旧默认」的存量一次性归位为未选择
+        // （空串）；迁移置位后用户再手动选 github-dark-dimmed 会正常存值、不再被清。
+        if (!p.contains(K_THEME_DEFAULT_MIGRATED)) {
+            // 批次60 收敛：主题归位与迁移标记**同一批**写入（原实现两次 edit().apply()，
+            // 存在「标记已置位、归位没落盘」的半迁移窗口 —— 半迁移后旧默认值永远不再归位）。
+            // 单个 editor 内的多个 put 由 SharedPreferences 一次性提交，标记与归位要么都在、
+            // 要么都不在；即便都没落盘，下次 load 会重跑（归位判定本身幂等）。
+            val editor = p.edit()
+            if (p.contains(K_THEME) && p.getString(K_THEME, null) == "github-dark-dimmed") {
+                editor.putString(K_THEME, "")
+            }
+            editor.putBoolean(K_THEME_DEFAULT_MIGRATED, true).apply()
+        }
         return EditorSettings(
             theme = p.getString(K_THEME, defaults.theme) ?: defaults.theme,
             fontSize = p.getFloat(K_FONT_SIZE, defaults.fontSize),
@@ -78,7 +97,8 @@ object EditorSettingsStore {
             renderFunctionChars = p.getBoolean(K_RENDER_FN_CHARS, defaults.renderFunctionChars),
             showMagnifier = p.getBoolean(K_SHOW_MAGNIFIER, defaults.showMagnifier),
             largeFileMode = p.getBoolean(K_LARGE_FILE_MODE, defaults.largeFileMode),
-            fileTreeMultiLine = p.getBoolean(K_FILE_TREE_MULTI_LINE, defaults.fileTreeMultiLine)
+            fileTreeMultiLine = p.getBoolean(K_FILE_TREE_MULTI_LINE, defaults.fileTreeMultiLine),
+            restoreLastOpened = p.getBoolean(K_RESTORE_LAST_OPENED, defaults.restoreLastOpened)
         )
     }
 
@@ -112,6 +132,7 @@ object EditorSettingsStore {
             .putBoolean(K_SHOW_MAGNIFIER, s.showMagnifier)
             .putBoolean(K_LARGE_FILE_MODE, s.largeFileMode)
             .putBoolean(K_FILE_TREE_MULTI_LINE, s.fileTreeMultiLine)
+            .putBoolean(K_RESTORE_LAST_OPENED, s.restoreLastOpened)
             .apply()
     }
 
@@ -127,7 +148,15 @@ object EditorSettingsStore {
      * 原先会直接落进「未打开文件」空态，看着像内容全没了。这里记下路径供重建时恢复。
      */
     fun rememberLastOpened(context: Context, file: String?, uri: String?) {
-        prefs(context).edit()
+        val p = prefs(context)
+        // 批次62（用户「若关闭，则既不记录，也不恢复」）：开关关闭时记录入口整体退化
+        // 成清空 —— 关着的期间任何路径都别想把文件名写回去，重新打开开关后
+        // 「上次打开」一定是空的，不会把关掉之前的老文件复活。
+        if (!p.getBoolean(K_RESTORE_LAST_OPENED, true)) {
+            p.edit().remove(K_LAST_FILE).remove(K_LAST_URI).apply()
+            return
+        }
+        p.edit()
             .putString(K_LAST_FILE, file)
             .putString(K_LAST_URI, uri)
             .apply()
@@ -136,6 +165,8 @@ object EditorSettingsStore {
     /** @return Pair(上次文件路径, 上次 content:// URI)，两者都可能为 null。 */
     fun lastOpened(context: Context): Pair<String?, String?> {
         val p = prefs(context)
+        // 批次62：开关关闭 = 不恢复 —— 即便存值还残留（关闭瞬间的竞态窗口）也读作空。
+        if (!p.getBoolean(K_RESTORE_LAST_OPENED, true)) return null to null
         return p.getString(K_LAST_FILE, null) to p.getString(K_LAST_URI, null)
     }
 }

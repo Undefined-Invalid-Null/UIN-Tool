@@ -65,7 +65,7 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 |------|------|
 | 版本号 | 6.2.0 |
 | 版本代码 | 26 |
-| 更新日期 | 2026年10月16日 |
+| 更新日期 | 2026年10月31日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 9 (API 28) |
 | 编译 SDK 版本 | 36 (Android 16) |
@@ -75,7 +75,7 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 
 | 版本 | 构建号 | 日期 | 亮点 |
 |------|--------|------|------|
-| v6.2.0 | 26 | 2026-10-16 | 代码编辑器专项（文件树/多标签/直接磁盘读写/ACTION_VIEW 对外入口、Unified 界面统一、四轮语法高亮根因修复、sora 0.24.6 + Kotlin 2.3.10） |
+| v6.2.0 | 26 | 2026-10-31 | 代码编辑器专项（文件树/多标签/直接磁盘读写/ACTION_VIEW 对外入口、Unified 界面统一、四轮语法高亮根因修复、sora 0.24.6 + Kotlin 2.3.10） |
 | v6.1.0 | 25 | 2026-10-07 | 全量缺陷修复（启动/权限/主线程卡顿/深色主题/插件宿主安全/备份回滚/错误可见性/构建去重） |
 | v6.0.0 | 24 | 2026-09-26 | 去除 Termux 依赖、PRoot 容器系统、容器管理 UI、rootfs 导出压缩级别 |
 | v5.7.0 | 23 | 2026-08-31 | 多源仓库聚合、插件图标缓存、增量 CI 构建、UI 优化 |
@@ -110,7 +110,7 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 | 应用更新 | 版本忽略 | 已实现 | 可忽略版本 |
 | 应用更新 | 应用内下载 | 已实现 | 显示下载进度 |
 | GitHub 加速 | 镜像站管理 | 已实现 | 独立管理页 |
-| GitHub 加速 | 内置镜像站 | 已实现 | 13+ 默认镜像 |
+| GitHub 加速 | 内置镜像站 | 已实现 | 4 个默认镜像 |
 | GitHub 加速 | 自定义镜像 | 已实现 | 手动添加镜像 |
 | GitHub 加速 | 导入/导出 | 已实现 | TXT 格式 |
 | GitHub 加速 | CDN 加速 | 已实现 | 可开关 |
@@ -129,7 +129,7 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 | 插件引擎 | 资源隔离 | 已实现 | 独立 Context |
 | 插件引擎 | 生命周期管理 | 已实现 | 完整生命周期 |
 | 插件引擎 | WebView 支持 | 已实现 | HTML/CSS/JS |
-| 插件引擎 | JS Bridge API | 已实现 | 140+ API |
+| 插件引擎 | JS Bridge API | 已实现 | 170+ API |
 | 插件引擎 | 网络请求 API | 已实现 | HTTP GET/POST/PUT/DELETE |
 | 插件引擎 | 文件系统 API | 已实现 | 读写/删除/复制/移动 |
 | 插件引擎 | 存储 API | 已实现 | KV + JSON + 批量操作 |
@@ -172,8 +172,8 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Kotlin | 2.1.0 | 主要开发语言 |
-| Jetpack Compose | 2024.09.00 | 声明式 UI 框架 |
+| Kotlin | 2.3.10 | 主要开发语言 |
+| Jetpack Compose | 2025.08.00 | 声明式 UI 框架（BOM） |
 | Compose Material 3 | 1.3.0 | Material 3 组件 |
 | Compose Navigation | 2.7.7 | 页面导航 |
 | Android SDK | API 36 | Android 框架 |
@@ -182,9 +182,9 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 | Retrofit | 2.11.0 | REST API |
 | Gson | 2.11.0 | JSON 解析 |
 | CommonMark | 0.22.0 | Markdown 渲染 |
-| Sora Editor | 0.24.4 | 代码编辑器 |
-| Sora Editor TextMate | 0.24.4 | 语法高亮 |
-| MultiDex | 2.0.1 | Multi-DEX 支持 |
+| Sora Editor | 0.24.6 | 代码编辑器 |
+| Sora Editor TextMate | 0.24.6 | 语法高亮 |
+| MultiDex | 平台原生 | minSdk 23+ 自带 Multi-DEX，独立依赖已移除 |
 | NDK | 29.0.14033849 | C/C++ 原生支持 |
 
 ---
@@ -208,22 +208,22 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 
 1. 点击底部「Dev」标签
 2. 点击「打开终端」启动终端
-3. 首次启动自动安装 Linux 环境（约 30-60 秒）
+3. 首次启动离线解压内置 rootfs 就绪（随应用内置，无需联网下载）
 
 常用终端命令：
 
 ```bash
-# 更新软件源
-pkg update
+# 更新软件源（Debian 源）
+apt update
 
 # 安装 Python
-pkg install python
+apt install python3
 
 # 安装 git
-pkg install git
+apt install git
 
 # 安装 Node.js
-pkg install nodejs
+apt install nodejs
 ```
 
 ### 安装插件
@@ -320,7 +320,7 @@ pctx.writeFile("data.txt", "content")
 答：会。授权后权限状态永久保存，下次打开不再重复弹窗。
 
 问：Web 插件支持哪些 API？
-答：支持 140+ API，涵盖设备信息、传感器、位置、网络、文件系统、存储、权限、UI、剪贴板、振动、通知、系统操作等。
+答：支持 170+ API，涵盖设备信息、传感器、位置、网络、文件系统、存储、权限、UI、剪贴板、振动、通知、事件、系统操作等。
 
 问：代码编辑器支持哪些语言？
 答：支持 30+ 编程语言，包括 Java、Kotlin、Python、JavaScript、TypeScript、HTML、CSS、JSON、XML、Markdown、Shell、SQL、Go、Rust、PHP、Ruby、Swift、Dart、Lua、Scala、Perl、Haskell、Elixir、Erlang、Clojure、Groovy、Dockerfile、Makefile、INI、Properties、TOML、YAML 等。
@@ -329,7 +329,7 @@ pctx.writeFile("data.txt", "content")
 答：Web 插件可使用 UINPlugin.exportData() 导出所有数据为 JSON 格式。
 
 问：如何使用终端功能？
-答：点击底部「Dev」>「打开终端」；Linux 环境首次使用时自动安装。
+答：点击底部「Dev」>「打开终端」。rootfs 随应用内置、首次使用离线解压就绪，无需联网下载。
 
 ---
 

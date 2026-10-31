@@ -6,7 +6,7 @@
 |------|------|
 | Document Version | 6.2.0 |
 | Corresponding App Version | v6.2.0 (Build 26) |
-| Last Updated | October 16, 2026 |
+| Last Updated | October 31, 2026 |
 
 ---
 
@@ -35,6 +35,7 @@
 - [4.2 plugin.json Configuration](#42-pluginjson-configuration)
 - [4.3 HTML Template Example](#43-html-template-example)
 - [4.4 JavaScript Example](#44-javascript-example)
+- [4.5 Host Theme Sync (CSS Variables)](#45-host-theme-sync-css-variables)
 
 ### V. Web Plugin Development (With Backend)
 - [5.1 Overview](#51-overview)
@@ -94,6 +95,7 @@
 - [11.8 Permission API](#118-permission-api)
 - [11.9 Backend Communication API](#119-backend-communication-api)
 - [11.10 Data Statistics API](#1110-data-statistics-api)
+- [11.11 Location & Event API](#1111-location-event-api)
 
 ### XII. Packaging and Importing
 - [12.1 Packaging Methods](#121-packaging-methods)
@@ -179,7 +181,7 @@ The wizard "Basic Information" page can configure the following fields (all corr
 | MIME Types | File types supported by openWith (comma-separated) | text/*,application/pdf | No |
 | Receive Types | openWith accepts text / links / files | All | No |
 
-> Icon, plugin code, and resource files are configured in subsequent wizard steps. `signature` is maintained by the host, do not write manually.
+> Icon, plugin code, and resource files are configured in subsequent wizard steps. The `signature` field was removed in 6.2.0 (tamper detection now uses SHA-256 file fingerprint TOFU verification); do not write it.
 >
 > Since v5.5.0, wizard fields are streamlined: no longer provides "Max Memory / Max CPU Time / Max Concurrent Tasks (resource limits), Dependencies, API Level, Backend Keep-Alive" input fields (these fields are not written to wizard-generated plugin.json; `backendMaxRetries`/`backendLogLevel`/`backendEnv` are reserved fields, see 12.3.3). "Plugin Notice (notice)" is retained.
 
@@ -385,7 +387,7 @@ val assets = pctx.assets                // Contains plugin directory + plugin re
 
 > ⚠️ `PluginContext` overrides `getDataDir()`/`getCacheDir()` (deprecated aliases returning plugin data/ and cache/), and also overrides `getAssets()`/`getResources()` (redirected to plugin directory). It does **not** override `getFilesDir()` — returns the host app's internal files directory, **not** the plugin directory. Do not use it to locate plugin files.
 
-**Launch the host code editor (new in v6.2.0 batch 53)**
+**Launch the host code editor (new in v6.2.0)**
 
 Native plugins can open the host's built-in code editor directly (`PluginEditorApi` — static methods, usable from any Context, including `PluginContext`):
 
@@ -620,6 +622,28 @@ window.addEventListener('pause', () => { console.log('Plugin paused'); });
 window.addEventListener('destroy', () => { console.log('Plugin destroyed'); });
 ```
 
+### 4.5 Host Theme Sync (CSS Variables `--uin-*`)
+
+When the plugin page **finishes loading**, the host injects a `<style id="uin-theme-style">` exposing the current theme colors as CSS variables on `:root`, so the plugin page can follow the app theme with `var(--uin-*)` (reloading the page refreshes them after a light/dark switch):
+
+| Variable | Meaning |
+|---|---|
+| `--uin-primary` / `--uin-primary-dark` / `--uin-primary-light` / `--uin-accent` | Primary palette and accent |
+| `--uin-success` / `--uin-warning` / `--uin-error` / `--uin-info` | Semantic colors |
+| `--uin-text-primary` / `--uin-text-secondary` / `--uin-text-hint` | Text colors |
+| `--uin-background` / `--uin-surface` / `--uin-surface-variant` / `--uin-divider` | Background, surface, divider |
+| `--uin-glass-background` / `--uin-disabled` | Glass background, disabled color |
+| `--uin-button-radius` / `--uin-card-radius` / `--uin-input-radius` | Corner radii (px, from the shape configuration) |
+
+```css
+/* Example: button follows the host theme */
+.btn {
+    background: var(--uin-primary);
+    color: var(--uin-background);
+    border-radius: var(--uin-button-radius);
+}
+```
+
 ---
 
 ## V. Web Plugin Development (With Backend)
@@ -727,19 +751,22 @@ your-plugin/
 
 ```sh
 #!/usr/bin/env sh
+# <plugin name> backend startup script
+# Executed by UIN Tool with sh -lc: dependency check + start backend
 # Host has injected environment variables: PORT (dynamic port), PLUGIN_ID, PLUGIN_DIR, WORK_DIR
 set -e
 cd "$(dirname "$0")"
-# ---- Dependency detection: dynamically find interpreter, environment-agnostic (Termux uses pkg, container uses apk) ----
+# ---- Dependency detection: dynamically find interpreter, environment-agnostic (uses apt) ----
 if ! command -v python3 >/dev/null 2>&1; then
     echo "[start.sh] python3 not found, installing..."
-    pkg install python -y 2>/dev/null || apk add python3 -y 2>/dev/null || {
-        echo "[start.sh] failed to install python3, exit"
+    apt install -y python3 || {
+        # The failure reason must go to stderr so the host can collect "why it did not start"
+        echo "[start.sh] failed to install python3, exit" >&2
         exit 1
     }
 fi
 echo "[start.sh] starting backend on 127.0.0.1:${PORT:-8000}"
-exec python3 scripts/backend/server.py
+exec python3 backend/server.py
 ```
 
 `scripts/backend/server.py` template (rendered by `backend/server.py.tmpl`, built-in `http.server`, no third-party dependencies):
@@ -1028,8 +1055,8 @@ The terminal session automatically closes after the script ends (if the script d
 
 1. User opens CUI plugin → `PluginHostActivity` displays placeholder view: "Opening full-screen terminal to execute command..."
 2. Host selects execution environment based on global "Backend Runtime Settings": built-in Debian container uses environment pipeline (Debian ready → proot ready, if `backendRuntime: "proot"` is configured); real Termux directly calls `RUN_COMMAND`
-3. Through `RunCommandService`, starts **full-screen terminal session** in the plugin directory with `bash -lc "<startup command>"` (`backendPreCommand`), foreground directly launches `SimpleTerminalActivity` / `com.termux` full-screen terminal (no longer depends on overlay permission); when startup command is empty, opens interactive login Shell with `bash -l`
-4. Terminal session survives independently of the plugin page: closes when script/Shell exits; closing the plugin page **does not** force-kill the terminal (session managed by TermuxService)
+3. Starts a **full-screen terminal session** in the plugin directory with `sh -lc "<startup command>"` (`backendPreCommand`): the built-in environment launches `SimpleTerminalActivity` (PRoot container), real Termux goes through its `RUN_COMMAND` intent (no longer depends on overlay permission); when startup command is empty, opens an interactive login Shell
+4. Terminal session survives independently of the plugin page: closes when script/Shell exits; closing the plugin page **does not** force-kill the terminal (the session is owned by the built-in terminal page itself; `TermuxService` was removed in 6.0.0 and no longer exists in the app)
 
 ### 6.6 CUI and Backend/Proot Relationship
 
@@ -1287,12 +1314,36 @@ pctx.markDataMigrated()       // Mark as migrated
 | CAMERA | android.permission.CAMERA | Camera | Regular |
 | RECORD_AUDIO | android.permission.RECORD_AUDIO | Record audio | Regular |
 | ACCESS_FINE_LOCATION | android.permission.ACCESS_FINE_LOCATION | Precise location | Regular |
+| ACCESS_COARSE_LOCATION | android.permission.ACCESS_COARSE_LOCATION | Coarse location | Regular |
+| ACCESS_BACKGROUND_LOCATION | android.permission.ACCESS_BACKGROUND_LOCATION | Background location | Special |
+| CALL_PHONE | android.permission.CALL_PHONE | Place phone calls | Regular |
+| READ_PHONE_STATE | android.permission.READ_PHONE_STATE | Read phone state | Regular |
+| SEND_SMS | android.permission.SEND_SMS | Send SMS | Regular |
+| READ_SMS | android.permission.READ_SMS | Read SMS | Regular |
+| RECEIVE_SMS | android.permission.RECEIVE_SMS | Receive SMS | Regular |
+| READ_CONTACTS | android.permission.READ_CONTACTS | Read contacts | Regular |
+| WRITE_CONTACTS | android.permission.WRITE_CONTACTS | Write contacts | Regular |
+| READ_CALENDAR | android.permission.READ_CALENDAR | Read calendar | Regular |
+| WRITE_CALENDAR | android.permission.WRITE_CALENDAR | Write calendar | Regular |
+| ACCESS_NETWORK_STATE | android.permission.ACCESS_NETWORK_STATE | Query network state | Regular |
+| ACCESS_WIFI_STATE | android.permission.ACCESS_WIFI_STATE | Query Wi-Fi state | Regular |
+| VIBRATE | android.permission.VIBRATE | Vibrate | Regular |
+| WAKE_LOCK | android.permission.WAKE_LOCK | Keep screen/CPU awake | Regular |
+| FLASHLIGHT | android.permission.FLASHLIGHT | Flashlight (legacy permission) | Regular |
+| BLUETOOTH | android.permission.BLUETOOTH | Bluetooth (legacy permission) | Regular |
+| BLUETOOTH_ADMIN | android.permission.BLUETOOTH_ADMIN | Bluetooth admin (legacy permission) | Regular |
+| NFC | android.permission.NFC | Near-field communication (NFC) | Regular |
+| KILL_BACKGROUND_PROCESSES | android.permission.KILL_BACKGROUND_PROCESSES | Kill background processes | Regular |
+| READ_LOGS | android.permission.READ_LOGS | Read logs (requires adb grant; not obtainable by a normally installed app) | Special |
 | MANAGE_EXTERNAL_STORAGE | android.permission.MANAGE_EXTERNAL_STORAGE | Manage all files | Special |
 | SYSTEM_ALERT_WINDOW | android.permission.SYSTEM_ALERT_WINDOW | Overlay window | Special |
 | WRITE_SETTINGS | android.permission.WRITE_SETTINGS | Modify system settings | Special |
 | REQUEST_INSTALL_PACKAGES | android.permission.REQUEST_INSTALL_PACKAGES | Install unknown apps | Special |
 | PACKAGE_USAGE_STATS | android.permission.PACKAGE_USAGE_STATS | App usage statistics | Special |
-| ACCESSIBILITY | android.permission.ACCESSIBILITY | Accessibility service | Special |
+| ACCESSIBILITY | (no matching system permission name; handled by the host as a special permission) | Accessibility service | Special |
+| SHIZUKU | (reserved label) | Authorization via Shizuku (host currently does not check it; declaring is enough) | Reserved |
+| DHIZUKU | (reserved label) | Authorization via Dhizuku (host currently does not check it; declaring is enough) | Reserved |
+| ROOT | (reserved label) | Root capability (host currently does not check it; declaring is enough) | Reserved |
 | POST_NOTIFICATIONS | android.permission.POST_NOTIFICATIONS | Send notifications (Android 13+) | Special |
 | READ_CLIPBOARD | (Pseudo-permission) | Read clipboard (`getClipboard`/`paste`/`clearClipboard`) | Pseudo-permission |
 | WRITE_CLIPBOARD | (Pseudo-permission) | Write clipboard (`setClipboard`/`copyToClipboard`) | Pseudo-permission |
@@ -1461,12 +1512,11 @@ The host isolates multiple running instances of the same plugin using "**instanc
 
 | Backend Multi-Instance Mode | Behavior | Configuration |
 |----------------------------|----------|---------------|
-| **Shared Port** | All instances of the same plugin share the same backend process (the first launched instance holds its primary instance key) | Default; "Development Tools" > "Per-Instance Independent Backend Port" **off** |
-| **Independent Port** | Each instance launches an independent backend process and port (`PluginBackendManager.startBackendInstance` starts by instance key), instances independent of each other | "Development Tools" > "Per-Instance Independent Backend Port" **on** |
+| **Per-instance isolation** (the only current mode) | Every plugin instance uses `pluginId:instanceId` as its backend key and starts an **independent backend process and port** (`PluginBackendManager.startBackendInstance` starts by instance key); plugin-level stop / status queries group all instance keys of that plugin by prefix | **No toggle** — the "Per-Instance Independent Backend Port" option does not exist in the code; whether a Web plugin can really multi-open is decided by "Keep Session on Close" (single-window dedup), see below |
 
-> In multi-instance scenarios with independent port mode configured, the plugin backend perceives which instance it is via the `$PORT` environment variable (`$PORT` is exclusive to that instance); in shared port mode, only the primary instance holds the backend, other instances reuse its `$PORT`.
+> In multi-instance scenarios each instance's backend **owns its own `$PORT`** (exclusive to that instance), so a backend can tell which instance it belongs to via `$PORT`.
 
-**Keep Session Single Window (v5.5.0)**: "Keep Session on Close" toggle is **enabled by default** — default single-window deduplication (shared port mode + Web plugins keep only one background window for the same plugin, repeated openings bring it to the foreground and end this startup, no more multi-instance, multi-task window only shows one). Users can explicitly disable it in "Development Tools", after which Web / CUI plugins create independent instances each time (supporting multi-instance).
+**Keep Session Single Window (v5.5.0)**: "Keep Session on Close" toggle is **enabled by default** — default single-window deduplication (for Web plugins with session retention on, only one background window is kept for the same plugin, repeated openings bring it to the foreground and end this startup, no more multi-instance, multi-task window only shows one). Users can explicitly disable it in "Development Tools", after which Web / CUI plugins create independent instances each time (supporting multi-instance).
 
 ---
 
@@ -1496,7 +1546,7 @@ UINPlugin.callHost('setFullscreen', 'true');            // Fullscreen (string tr
 UINPlugin.callHost('setKeepScreenOn', 'true');          // Keep screen on (string true/false)
 UINPlugin.callHost('sendNotification', 'Title,Message'); // Send notification
 UINPlugin.callHost('takeScreenshot', '');               // Screenshot (requires storage permission, saves to downloads/screenshots/)
-UINPlugin.callHost('openEditor', JSON.stringify({path: '/sdcard/a.txt'})); // Open the code editor (v6.2.0 batch 53: file opens directly, directory opens browse mode; unknown extensions open as txt; optional project_dir attaches a project tree)
+UINPlugin.callHost('openEditor', JSON.stringify({path: '/sdcard/a.txt'})); // Open the code editor (v6.2.0: file opens directly, directory opens browse mode; unknown extensions open as txt; optional project_dir attaches a project tree)
 ```
 
 **Dialogs / Loading (Since v4.4.4, popups unified through host Compose queue)**
@@ -1856,6 +1906,42 @@ const exported = UINPlugin.exportData();
 UINPlugin.importData(exported);
 ```
 
+### 11.11 Location & Event API
+
+**Location** (requires `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION`, see 8.5; returns `"permission_denied"` when not granted):
+
+```javascript
+// Get current location (synchronous, returns a JSON string)
+// Fields: latitude, longitude, accuracy, altitude, speed, bearing, provider, time
+const loc = JSON.parse(UINPlugin.getLocation());
+
+// Reverse geocoding: lat/lng -> address (synchronous, returns JSON: address, country, ...)
+const addr = JSON.parse(UINPlugin.getAddress(loc.latitude, loc.longitude));
+```
+
+**Events (host -> page)**:
+
+```javascript
+// Dispatch a custom event to the page: the host runs window.dispatchEvent(new CustomEvent(name, {detail}))
+// data may be a JSON object/array (passed through as-is) or a plain string (escaped)
+UINPlugin.sendEvent('backend_status', JSON.stringify({ ready: true }));
+
+// The page receives it with the standard DOM API
+window.addEventListener('backend_status', (e) => {
+    console.log('event data:', e.detail);
+});
+```
+
+> ⚠️ `UINPlugin.addEventListener(eventName, callbackId)` is a **stub**: it only ever calls back `{"success":false,"error":"unsupported_use_window_addEventListener"}`, and the host never pushes events to the page. The real event channel is `sendEvent` (-> `window.dispatchEvent`); on the page side always receive with `window.addEventListener`.
+
+**Other bridge methods**:
+
+```javascript
+const instanceId = UINPlugin.getInstanceId();  // current multi-instance ID (for distinguishing instances)
+UINPlugin.cancelVibration();                    // stop an ongoing vibration (pairs with callHost('vibrate'))
+UINPlugin.callPlugin('some_method', '{}');      // reserved: cross-plugin call; the host currently only logs it, no actual dispatch
+```
+
 ---
 
 ## XII. Packaging and Importing
@@ -1992,13 +2078,14 @@ A complete example of a Web plugin with Python backend + Proot container:
 | `mainClass` | string | `""` | Native Yes | **Native plugin entry class full class name** (e.g., `com.example.MainPlugin`). Host loads via `DexClassLoader` then instantiates with `loadClass(mainClass).newInstance() as PluginInterface`. Leave empty for Web/CUI plugins. |
 | `updateUrl` | string | `""` | No | Plugin update check URL (GitHub Release page), used for in-app update checks. |
 | `apiLevel` | int | `21` | No | Plugin required host API level (minimum 21). |
-| `category` | string | `Uncategorized` | No | Plugin category name, used for category display on the plugin management page. |
-| `signature` | string | `""` | No | Plugin signature (written and verified by the host on installation, prevents tampering). Generally maintained by the host, do not write manually. |
+| `category` | string | `uncategorized` | No | Plugin category name, used for category display on the plugin management page (the default key is `uncategorized`, rendered as "Uncategorized" per language). |
+| `sourceId` | string | `""` | No | Written by the host: the **source ID** this plugin was installed from (pairs with source management to record which repo/mirror it came from); empty for manually imported plugins. Generally maintained by the host, do not write manually. |
+| `signature` | string | `""` | No | **Removed from the model/parser in 6.2.0**: writing this field is ignored, the host no longer reads or writes it. Tamper detection now relies on the **SHA-256 file fingerprint (TOFU)** — recorded on first install, an update within the same version must match (a mismatch is rejected), a version upgrade records a new fingerprint. |
 | `uiType` | string | `native` | Yes | Frontend type: `native` (native View), `web` (WebView), `cui` (full-screen terminal). Determines the host's loading branch. |
 | `entry` | string | `web/index.html` | Web Yes | Web plugin entry page (relative to plugin root, host loads with `file://<pluginDir>/<entry>`). Leave empty for CUI. Must point to an HTML page; correctly generated since v5.1.0 wizard, older plugins with `entry` pointing to script path need manual correction. |
 | `permissions` | string | `""` | No | Required permissions list. **Both formats acceptable**: comma-separated string (e.g., `android.permission.INTERNET,android.permission.VIBRATE`) or JSON array. Since v5.5.0, `parseStringList()` is compatible with both formats; old versions only recognized comma-separated strings. Includes pseudo-permissions (`READ_CLIPBOARD`/`WRITE_CLIPBOARD`). Generated via wizard "Permissions" popup multi-select. |
 | `dependencies` | string | `""` | No | Dependency plugin ID list. **Both formats acceptable** (comma-separated string or JSON array). Host checks dependency existence before startup. |
-| `frontendConfig` | object | `{}`` | No | **Reserved field**. Model declared (`Map<String, Any>`), but current version does not participate in JSON read/write, has no consumers, do not fill in plugin.json. |
+| `frontendConfig` | object | `{}`` | No | **Reserved field**. Read and written as JSON normally (parsing and serialization are both implemented), but the host has **no consumers** — filling it produces no behavior; not recommended for now. |
 
 #### 12.3.3 Backend Configuration Fields
 
@@ -2015,9 +2102,9 @@ A complete example of a Web plugin with Python backend + Proot container:
 | `backendMaxRetries` | int | `3` | No | **Reserved field**. Model declared, participates in JSON read/write, but host currently has no retry logic (prompts on failure, does not auto-retry). |
 | `backendLogLevel` | string | `info` | No | **Reserved field**. Model declared, participates in JSON read/write, but host currently does not switch log level based on it (logs are fixed output, does not read this value). |
 | `backendKeepAlive` | boolean | `false` | No | Whether to keep backend running after plugin closes. When `true`, host does not stop backend in onDestroy. |
-| `backendEnv` | object | `{}`` | No | **Note: Current version does not read this JSON field, and `fromJson()`/`toJson()` has not read/written it yet; writing it in plugin.json will not take effect** (can only be set internally by the host program). Pass-through behavior varies by environment: built-in Debian container injects via `ProcessBuilder` process environment, proot container inherits this environment; **real Termux uses `RUN_COMMAND` intent, has no environment variable channel, `backendEnv` does not pass through at all** — when variables are needed, please write them directly into `backendStartCommand` (e.g., `export KEY=value; ...`). |
+| `backendEnv` | object | `{}`` | No | Read and written as JSON normally; the host injects it into the backend process environment (`ProcessBuilder` env): the **built-in Debian container (proot) inherits it and it takes effect**; **real Termux uses the `RUN_COMMAND` intent with no environment variable channel, so `backendEnv` does not pass through** — in that environment write the variables directly into `backendStartCommand` (e.g., `export KEY=value; ...`). |
 
-> Legacy fields (still readable and auto-migrated on loading, not recommended for new plugins): `backendRuntime` (`termux`/`proot`), `backendPort`, `backendEntry`, `backendPreCommand`, `backendBinary`, `backendInstallCmd`, `backendCheckCmd`, `backendPhpDocRoot`, `backendJavaClass`, `backendJavaJar`, `backendArgs`.
+> Legacy fields (**all are parsed** and drive `getInstallCommand()` / `getCheckCommand()` / `getBackendCommand()`, and are auto-migrated to `backendStartCommand` on load; not recommended for new plugins): `backendRuntime` (`termux`/`proot`), `backendPort`, `backendEntry`, `backendPreCommand`, `backendBinary`, `backendInstallCmd`, `backendCheckCmd`, `backendPhpDocRoot`, `backendJavaClass`, `backendJavaJar`, `backendArgs`.
 
 #### 12.3.4 External Content Reception (openWith, New in v5.4.0)
 
@@ -2208,7 +2295,7 @@ Click "**Export Template**" on the "Dev" page; the app copies built-in packaged 
 | Release assets | Must contain `.tpk` file (host takes first .tpk asset, no integrity check) |
 | Repository visibility | Must be public |
 
-> Note: Host reads plugin lists paginated with `repos?per_page=100` (100 per page limit), and filters repositories whose names start with `.github` or are `Docs`/`docs`.
+> Note: the host **no longer pages through repositories one by one** — plugin lists come from **source indexes** (each source maintains its own `source.json`, which the host pulls and aggregates via `SourceIndexFetcher`, ~5-minute cache, entries carry official / community trust levels); only the app’s own update check calls the GitHub Releases API (`per_page=30`).
 
 ### 13.2 Publishing Steps
 
@@ -2239,7 +2326,7 @@ UIN Tool includes a complete terminal environment; core engine is based on the b
 | Multi-Window | Android 7.0+ multi-window support (new window button) |
 | Safe Mode | New sessions can enable safe mode |
 
-Terminal environment variables: `HOME=/data/data/com.UIN.Tool/files/home`, `PREFIX=/data/data/com.UIN.Tool/files/usr`, `TMPDIR=$PREFIX/tmp`, `PATH=$PREFIX/bin`, etc. Sessions are managed by `TermuxService` (foreground service + notification); `SimpleTerminalActivity` destruction/recreation does not interrupt sessions.
+Terminal environment variables (built-in PRoot container, see `ProotRuntime`): `HOME=/root`, `PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`, etc.; the rootfs is mounted inside the app private directory, and the session is owned by `SimpleTerminalActivity`, so page destruction/recreation does not interrupt it. **Note**: `HOME=/data/data/com.UIN.Tool/files/home`, `PREFIX=.../files/usr`, `PATH=$PREFIX/bin` are legacy variables of the **external Termux** backend and are not used by the built-in terminal.
 
 ### 14.3 Common Commands
 
@@ -2353,8 +2440,9 @@ print("Debug info")
 ### 16.3 WebView Remote Debugging
 
 1. Open chrome://inspect in Chrome browser
-2. Ensure WebView debugging is enabled
-3. Supports breakpoints, console, network monitoring
+2. Select the target device and WebView page to set breakpoints and inspect console / network
+
+> **Note**: this app does **not** enable `setWebContentsDebuggingEnabled`, so standard chrome://inspect currently **cannot discover** this app’s WebView. To debug plugin pages prefer the **logcat source** in "Manage" > "Runtime Logs" (it captures exceptions libraries write straight to logcat).
 
 ---
 
@@ -2414,7 +2502,7 @@ Terminal sessions do not auto-inject environment variables; you must manually ex
 
 Q14: How to export built-in plugin templates?
 
-Click "Export Template" on the "Dev" page; the 7 built-in packaged plugins will be copied to `/storage/emulated/0/UIN_Tool/templates/`, and a README.txt will be generated.
+Click "Export Template" on the "Dev" page; the 8 built-in packaged plugins will be copied to `/storage/emulated/0/UIN_Tool/templates/`, and a README.txt will be generated.
 
 Q15: Export template keeps showing "Exporting..."?
 
@@ -2479,7 +2567,7 @@ Document Information
 |------|------|
 | Document Version | 6.2.0 |
 | Corresponding App Version | v6.2.0 (Build 26) |
-| Last Updated | October 16, 2026 |
+| Last Updated | October 31, 2026 |
 
 ---
 

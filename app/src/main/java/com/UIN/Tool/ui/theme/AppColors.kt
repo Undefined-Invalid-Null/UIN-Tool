@@ -150,9 +150,14 @@ object AppColors {
     
     @Composable
     fun shadow(): Color = Color.Black.copy(alpha = 0.1f)
-    
+
     @Composable
-    fun glassEnabled(): Boolean = UIConfig.isInitialized() && UIConfig.isGlassEffectEnabled()
+    fun glassEnabled(): Boolean {
+        // 订阅配置版本：玻璃开关不在 colorScheme 输入快照里，不订阅则保存后
+        // 各卡片/输入框要等下次无关重组才切换玻璃底（表现为「开关不生效」）。
+        UIConfig.configVersion.collectAsState().value
+        return UIConfig.isInitialized() && UIConfig.isGlassEffectEnabled()
+    }
 
     @Composable
     fun translucentAlpha(): Float {
@@ -185,6 +190,9 @@ object AppColors {
      */
     @Composable
     fun pageBackground(): Color {
+        // 订阅配置版本：渐变开关不在 colorScheme 输入快照里，且「渐变开启」分支提前 return
+        // 读不到 glassEnabled —— 不显式订阅则保存后 Scaffold 底色仍是旧值，渐变被不透明底盖住。
+        UIConfig.configVersion.collectAsState().value
         if (UIConfig.isInitialized() && UIConfig.isGradientBackgroundEnabled()) {
             return Color.Transparent
         }

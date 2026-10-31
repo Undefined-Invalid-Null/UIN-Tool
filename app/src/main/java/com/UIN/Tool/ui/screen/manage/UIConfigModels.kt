@@ -341,7 +341,8 @@ fun saveConfigToUIConfig(config: ConfigState) {
 
     if (saveWasDark) {
         gradient.put("color_dark", config.gradientColor)
-        gradient.put("color", existingGradient?.optString("color", "#FFC4D6DF") ?: "#FFC4D6DF")
+        // 批次58：深色下保存时保浅槽的缺省兜底同步 #FFC4D6DF → #FFF9F9F9。
+        gradient.put("color", existingGradient?.optString("color", "#FFF9F9F9") ?: "#FFF9F9F9")
         gradient.put("mode_dark", config.gradientMode)
         gradient.put("mode", existingGradient?.optString("mode", UIConfig.GRADIENT_MODE_SINGLE) ?: UIConfig.GRADIENT_MODE_SINGLE)
         val darkColors = org.json.JSONArray()

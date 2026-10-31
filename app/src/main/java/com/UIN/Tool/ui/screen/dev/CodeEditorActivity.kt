@@ -26,6 +26,9 @@ import java.io.File
 
 private const val TAG = "CodeEditorActivity"
 
+/** 批次61：长按图标快捷方式「打开代码编辑器」的 action（须与 res/xml/shortcuts.xml 一致）。 */
+private const val ACTION_OPEN_CODE_EDITOR = "com.UIN.Tool.action.OPEN_CODE_EDITOR"
+
 /**
  * 6.2.0 代码编辑器入口。
  *
@@ -227,6 +230,17 @@ class CodeEditorActivity : AppCompatActivity() {
                 viewModel.restoreLastOpenedIfAny()
             }
             return
+        }
+
+        // 批次61（用户改口径：「为什么不加载缓存（未保存的和关闭的文件）……如果没有
+        // 文件，默认显示未打开文件，如果有，则显示文件」）：快捷方式启动与正常冷启动
+        // **同款** —— 会话缓存（未保存改动、上次开着的标签）照常恢复，恢复不出文件就
+        // 落到既有「未打开文件」空态（附「从目录树打开」引导）。本分支只额外保证目录树
+        // 挂设备存储根；不再压制会话恢复，也不再提前 return —— 向下走完 file_path/
+        // project_dir（本 intent 皆无）后照常执行 restoreLastOpenedIfAny。
+        if (intent.action == ACTION_OPEN_CODE_EDITOR) {
+            AppLog.d(TAG, "shortcut open_code_editor: session cache + device tree")
+            viewModel.ensureDefaultRoot()
         }
 
         // 6.2.0 批次53：插件 API（Web callHost "openEditor" / 原生 PluginEditorApi）

@@ -1495,6 +1495,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * 不在启动瞬间弹错误提示。
      */
     fun restoreLastOpenedIfAny() {
+        // 批次62（用户）：设置「恢复上次打开的文件」关闭 —— 冷启动与多任务重建的
+        // 所有调用点（Activity 各入口）统一在这里挡掉，不再自动重开上次文件。
+        if (!_settings.value.restoreLastOpened) {
+            AppLog.d(TAG, "restoreLastOpened: skipped, restore_last_opened is off")
+            return
+        }
         if (_tabs.value.isNotEmpty()) return
         val (file, uri) = EditorSettingsStore.lastOpened(getApplication())
         // 6.2.0 修「从多任务回来文件又没了」时查无对证：恢复路径原先零日志，
@@ -1855,6 +1861,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      * URI 标签只恢复「打开」本身（草稿不跨 content:// —— 授权时效不在本流程兜）。
      */
     private fun restoreSession() {
+        // 批次62（用户「新增『恢复上次打开的文件』选项」）：设置关闭 —— 整个启动恢复
+        // 跳过；「不记录」由 sessionPersistAllowed()（要求开关为开）统一把门，与本
+        // 标记无关。注意 sessionPersistReady 还兼任「恢复已收尾」哨兵（向导模式的
+        // maybeExitWizardFor 等靠它区分恢复期），跳过恢复时**必须照常置位**，否则
+        // 关闭开关期间打开设备文件不会退出草稿模式（批次57③ 的老问题会复发）。
+        // 注：本函数在 init 里同步调起，`_settings` 字段（声明于 init 之后）此刻还没
+        // 初始化 —— 必须直接读持久化层，不能读 _settings.value（会 NPE）。
+        if (!EditorSettingsStore.load(getApplication()).restoreLastOpened) {
+            AppLog.d(TAG, "session restore skipped: restore_last_opened is off")
+            // 批次62 二改（用户「若关闭，则既不记录，也不恢复」）：关闭不仅不恢复，
+            // 还要把**已存**的上一份会话与「上次打开」清掉 —— 否则重新打开开关会把
+            // 关闭之前的老文件复活。清盘放后台，绝不能挡编辑器打开。
+            sessionPersistReady = true
+            clearPersistedRestoreState()
+            return
+        }
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.IO) {
                 runCatching { sessionStore.load() }
@@ -1942,8 +1964,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                                 } else t
                             } }
                         } else if (draft != null && ex.window != null) {
-                            // 复查三修：草稿确实存在但按上注释无法安全并入 —— 明示丢弃，
-                            // 免得收尾「已恢复」提示与实际不符。
+                            // 复查三修：草稿确实存在但按上注释无法安全并入 —— 明示丢弃
+                            //（批次62 已去掉收尾「已恢复」提示，这条丢弃原因仍要说）。
                             emit("文件已变大为分页档，上一会话的未保存文本未恢复")
                         }
                         if (e.active) activeId = ex.id
@@ -1978,11 +2000,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             sessionPersistReady = true
             // 复查二修：防抖可能已在 pendingRestores 非空期间烧完 —— 收尾主动补拍。
             scheduleSessionSnapshot()
-            // 批次57②：向导模式下用户标签是**隐藏**的，这句「已恢复…」会与所见（只有
-            // 插件文件）自相矛盾 —— 静默；下次正常打开时恢复完成照常提示。
-            if (_tabs.value.isNotEmpty() && _wizardDraftPrefix.value == null) {
-                emit("已恢复上次打开的标签与未保存修改")
-            }
+            // 批次62（用户「不要弹出『已恢复上次打开…』这个 toast」）：恢复完成不再
+            // 提示 —— 恢复是静默的既定行为，有无文件一眼可见；批次57② 原为向导模式
+            // 加的静默判断随之整体移除。
         }
     }
 
@@ -2042,17 +2062,48 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         windowState[tabId]?.doc?.pageForLine(absLine)
 
     /**
+     * 批次62 二改：会话落盘总闸 —— 启动恢复已收尾 **且**「恢复上次打开的文件」开着
+     * 才允许写。开关直接读持久化层（`_settings` 声明在 init 之后，启动期读会 NPE；
+     * SharedPreferences 命中的是内存缓存，热路径上无磁盘 IO）。
+     */
+    private fun sessionPersistAllowed(): Boolean =
+        sessionPersistReady && EditorSettingsStore.load(getApplication()).restoreLastOpened
+
+    /**
+     * 批次62 二改（用户「若关闭，则既不记录，也不恢复」）：关掉开关的收尾 —— 取消在途
+     * 防抖快照，清掉已存的会话与「上次打开」。写盘放 IO 线程、与快照写共用
+     * [sessionWriteLock]：先保存开关（写侧进入临界区即见 false 而自停），清理再拿锁
+     * 执行，绝不会出现「旧快照排在清理之后把清单又写回非空」。
+     */
+    private fun clearPersistedRestoreState() {
+        sessionSaveJob?.cancel()
+        EditorSettingsStore.rememberLastOpened(getApplication(), null, null)
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                synchronized(sessionWriteLock) { sessionStore.clear() }
+            }.onFailure { AppLog.w(TAG, "clear session on restore-off failed: $it") }
+        }
+        AppLog.d(TAG, "restore_last_opened off: session cache and last-opened cleared")
+    }
+
+    /**
      * 批次56：抓一份会话快照并异步落盘。**必须在主线程调用** —— 先把活动脏大文档的
      * 最新文本回灌进 VM（防写旧快照），再取 overlays 副本；IO 交给 [Dispatchers.IO]。
      * 指纹相同则整轮跳过（每轮要拼 JSON + 可能写十几 MB 草稿）。
      */
     private fun snapshotSession() {
+        // 批次62 二改：开关关着 = 不记录 —— 任何入口到这里都直接停（含关掉瞬间
+        // 已经排上队的那一拍）。
+        if (!sessionPersistAllowed()) return
         val snap = buildSessionSnapshot() ?: return
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 // 批次56 复查修「乱序覆盖」：按序号单向写 —— 旧快照的 IO 协程若晚于
                 // 新快照落锁，直接跳过，session.json 永不回退。
                 synchronized(sessionWriteLock) {
+                    // 批次62 二改：拿锁后再验一次闸门 —— 拿锁前一瞬才被关掉的话，
+                    // 这份快照就是「关闭期间的记录」，不得落盘。
+                    if (!sessionPersistAllowed()) return@synchronized
                     if (snap.seq <= lastWrittenSeq) return@synchronized
                     lastWrittenSeq = snap.seq
                     sessionStore.save(snap.entries, snap.drafts, snap.overlays)
@@ -2217,7 +2268,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     override fun onCleared() {
         super.onCleared()
         runCatching {
-            if (!sessionPersistReady) return
+            // 批次62 二改：开关关着 = 关闭期间的这份退出快照不许写。
+            if (!sessionPersistAllowed()) return
             // refreshEditor=false：编辑器视图可能已随 Activity 拆除，跳过回灌（最后一拍
             // 输入由 1.2s 防抖快照覆盖，这里只兜已回灌过的内容）。
             val snap = buildSessionSnapshot(refreshEditor = false) ?: return
@@ -2225,6 +2277,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 withTimeoutOrNull(1500) {
                     withContext(Dispatchers.IO) {
                         synchronized(sessionWriteLock) {
+                            if (!sessionPersistAllowed()) return@synchronized
                             if (snap.seq > lastWrittenSeq) {
                                 lastWrittenSeq = snap.seq
                                 sessionStore.save(snap.entries, snap.drafts, snap.overlays)
@@ -2901,9 +2954,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // ==================== 设置 ====================
 
     fun updateSettings(transform: (EditorSettings) -> EditorSettings) {
-        val next = transform(_settings.value)
+        val prev = _settings.value
+        val next = transform(prev)
         _settings.value = next
+        // 设置先落盘，再做「关」的收尾 —— 写侧的闸门（sessionPersistAllowed /
+        // EditorSettingsStore 的记录入口）读的是这份偏好，保存在前才能立刻生效。
         EditorSettingsStore.save(getApplication(), next)
+        // 批次62 二改（用户「若关闭，则既不记录，也不恢复」）：在编辑器开着的时候关掉
+        // 开关，同样要清掉已存会话与「上次打开」，让重新打开开关后从空开始，
+        // 而不是复活关闭之前的老文件。
+        if (prev.restoreLastOpened && !next.restoreLastOpened) {
+            clearPersistedRestoreState()
+        }
     }
 
     private fun newId(): String = UUID.randomUUID().toString().substring(0, 8)

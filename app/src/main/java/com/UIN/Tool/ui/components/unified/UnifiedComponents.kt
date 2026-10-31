@@ -66,6 +66,7 @@ enum class ButtonVariant {
 enum class ButtonSize(
     val height: Dp,
     val minWidth: Dp,
+    /** 兜底圆角；Medium 的实际值见 [effectiveCornerRadius]。 */
     val cornerRadius: Dp,
     val fontSize: Float
 ) {
@@ -78,7 +79,8 @@ enum class ButtonSize(
     Medium(
         height = 44.dp,
         minWidth = 80.dp,
-        cornerRadius = AppDimens.buttonCornerRadius,
+        // 与 AppDimens.buttonCornerRadius 的未初始化兜底值一致（12.dp）
+        cornerRadius = 12.dp,
         fontSize = 14f
     ),
     Large(
@@ -86,7 +88,15 @@ enum class ButtonSize(
         minWidth = 100.dp,
         cornerRadius = 16.dp,
         fontSize = 16f
-    )
+    );
+
+    /**
+     * 按钮实际使用的圆角：Medium 跟随「按钮圆角」配置（[AppDimens.buttonCornerRadius] 动态读取），
+     * Small/Large 固定。原先直接把 AppDimens.buttonCornerRadius 写进枚举构造器 ——
+     * 枚举类初始化只求值一次，之后配置页怎么改按钮圆角都不会生效。
+     */
+    val effectiveCornerRadius: Dp
+        get() = if (this == Medium) AppDimens.buttonCornerRadius else cornerRadius
 }
 
 enum class IconPosition {
@@ -124,10 +134,11 @@ fun UnifiedButton(
         }
     }
 
-    val shape = RoundedCornerShape(size.cornerRadius)
+    val shape = RoundedCornerShape(size.effectiveCornerRadius)
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
-    val glass = AppColors.glassEnabled()
+    // 订阅配置版本（玻璃开关读取即登记依赖）：保存后本按钮重组重读新拟态/深浅色等配置
+    AppColors.glassEnabled()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -139,10 +150,12 @@ fun UnifiedButton(
             else -> {
                 val neuInset = UIConfig.isNeumorphismInsetEnabled()
                 val currentOffset = if (isPressed) 0f else 5f
+                // 不给 neu* 传 backgroundColor：Button 自身的 containerColor 已经铺底
+                // （批次60 起 neuRaised/neuInset 会真按该参数铺色，再铺一层是重复叠加）。
                 if (neuInset && isPressed) {
-                    Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = resolvedContainerColor, offset = currentOffset)
+                    Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.effectiveCornerRadius, offset = currentOffset)
                 } else {
-                    Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.cornerRadius, backgroundColor = resolvedContainerColor, offset = currentOffset)
+                    Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.effectiveCornerRadius, offset = currentOffset)
                 }
             }
         }
@@ -393,7 +406,9 @@ fun UnifiedTextField(
         val bgColor = if (containerColor != null) containerColor else if (glass) AppColors.glassBackground() else surfaceColor
         Box(
             modifier = modifier
-                .neuInset(RoundedCornerShape(AppDimens.inputCornerRadius), isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = AppDimens.inputCornerRadius, backgroundColor = bgColor)
+                // 铺底由紧随其后的 .background(bgColor) 承担：neuInset 现在会真的按
+                // backgroundColor 铺一层（批次60），玻璃态下两层半透明底叠加会比旧版更实。
+                .neuInset(RoundedCornerShape(AppDimens.inputCornerRadius), isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = AppDimens.inputCornerRadius)
                 .background(bgColor, RoundedCornerShape(AppDimens.inputCornerRadius))
         ) {
             Row(
@@ -427,21 +442,33 @@ fun UnifiedTextField(
                     }
                 )
                 if (isPassword) {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }, modifier = Modifier.size(28.dp)) {
+                    IconButton(
+                        onClick = { passwordVisible = !passwordVisible },
+                        enabled = enabled,
+                        modifier = Modifier.size(28.dp)
+                    ) {
                         Icon(
                             if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = null,
+                            contentDescription = if (passwordVisible) Str.get(R.string.hide_password) else Str.get(R.string.show_password),
                             modifier = Modifier.size(20.dp)
                         )
                     }
                 }
                 if (showClearButton && value.isNotEmpty()) {
-                    IconButton(onClick = { onValueChange("") }, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(20.dp))
+                    IconButton(
+                        onClick = { onValueChange("") },
+                        enabled = enabled,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(Icons.Default.Clear, contentDescription = Str.get(R.string.clear_2), modifier = Modifier.size(20.dp))
                     }
                 }
                 trailingIcon?.let {
-                    IconButton(onClick = { onTrailingIconClick?.invoke() }, modifier = Modifier.size(28.dp)) {
+                    IconButton(
+                        onClick = { onTrailingIconClick?.invoke() },
+                        enabled = enabled,
+                        modifier = Modifier.size(28.dp)
+                    ) {
                         Icon(it, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                 }
@@ -596,11 +623,9 @@ fun UnifiedSwitch(
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
 
-    val glass = AppColors.glassEnabled()
+    // 订阅配置版本（玻璃开关读取即登记依赖）：保存后本开关重组，深浅色/新拟态等配置即时生效
+    AppColors.glassEnabled()
     if (neu) {
-        val isToggleOn = remember { mutableStateOf(checked) }
-        LaunchedEffect(checked) { isToggleOn.value = checked }
-
         val trackColor by animateColorAsState(
             targetValue = if (checked) MaterialTheme.colorScheme.primary
             else if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surfaceVariant,
@@ -894,6 +919,14 @@ fun UnifiedEmptyState(
 
 // ==================== 统一图标按钮 ====================
 
+/**
+ * 统一图标按钮。
+ *
+ * **无障碍警示**：[contentDescription] 默认 `null` —— 不传时 TalkBack 只会念「按钮」，
+ * 读不出这个图标是干什么的（纯装饰性图标才允许留空）。除装饰性图标外，**所有调用点
+ * 都应显式传入**（一般用 `Str.get(R.string.…)`），不要依赖默认值；默认值保持 null
+ * 只是为了不破坏既有调用点。
+ */
 @Composable
 fun UnifiedIconButton(
     icon: ImageVector,

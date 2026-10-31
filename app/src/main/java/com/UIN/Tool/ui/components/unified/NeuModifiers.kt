@@ -18,7 +18,9 @@ import androidx.compose.ui.draw.DrawModifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -98,17 +100,55 @@ object NeuDefaults {
     )
 }
 
+/**
+ * 批次60（收敛）：按 [shape] 的轮廓把 [color] 铺满当前绘制区 —— 即「按形状裁剪填充」，
+ * 供 [neuRaised]/[neuInset] 的底色（backgroundColor）使用。Rectangle / Rounded 是本工程
+ * 全部调用点（RoundedCornerShape、CircleShape、0 圆角），Generic 为自定义路径轮廓，
+ * 原样并入、不猜形状。只在底色不透明时才调用，避免每帧白建 Path。
+ */
+private fun ContentDrawScope.fillShape(shape: Shape, color: Color) {
+    val path = Path()
+    when (val outline = shape.createOutline(size, layoutDirection, this)) {
+        is Outline.Rectangle -> path.addRect(outline.rect)
+        is Outline.Rounded -> path.addRoundRect(outline.roundRect)
+        is Outline.Generic -> path.addPath(outline.path)
+    }
+    drawPath(path, color)
+}
+
+/**
+ * 新拟态**凸起**：先画双侧柔影（亮影与暗影各偏移一次），再按 [backgroundColor] 在
+ * 影与内容之间铺一层底，最后画内容。
+ *
+ * 参数语义（6.x 收敛，SE 上报「shape/backgroundColor 只声明不使用」后补齐）：
+ *  - [cornerRadius] —— **阴影几何**：阴影按 `size ± offset` 的圆角矩形绘制，圆角取此值；
+ *  - [shape] —— **铺底形状**：[backgroundColor] 按 shape 的 Outline 轮廓填充（等价于
+ *    按形状裁剪），调用点几乎都传与 [cornerRadius] 同值的圆角，两者视觉一致；
+ *  - [backgroundColor] —— 铺在**影与内容之间**的一层底色。默认 `Color.Transparent`
+ *    = 不铺底，与历史渲染逐像素一致（阴影本身已画出不透明底板），只有显式传色的
+ *    调用点才会多出这一层 —— 别把默认值改回不透明色，否则玻璃/渐变底的调用点会被盖掉。
+ *
+ * 阴影仍画在最外层：调用方必须把它放在滚动容器/clip **外层**（见 CodeEditorScreen
+ * 的 neuChrome 规则），否则阴影会被裁掉。
+ *
+ * [punchInterior]（批次61，用户「编辑器背景依旧用渐变背景，不要发灰」）：影色是**不透明**
+ * 的（亮影 #FFFFFF/#D9D9D9、暗影 #2C2C2C/#111111），整块底板会把透明 chrome 下的页面
+ * 渐变盖成灰条。置 true 时按内容圆角矩形把底板**中心挖空**（`ClipOp.Difference` 裁剪差集），只留四周一圈柔影 ——
+ * 内部透出渐变/玻璃，外圈仍是凸起阴影，等价于「浮在渐变上的凸起」。默认 false，
+ * 存量调用点（不透明底的卡片/按钮，底板本来就被自己的底色盖住）渲染不变。
+ */
 fun Modifier.neuRaised(
     shape: Shape,
     isDark: Boolean = false,
     intensity: NeuDefaults.Intensity = NeuDefaults.Intensity.MEDIUM,
     cornerRadius: Dp = 0.dp,
-    backgroundColor: Color = if (isDark) NeuDefaults.DarkBackground else NeuDefaults.LightBackground,
+    backgroundColor: Color = Color.Transparent,
     shadowColorLight: Color = if (isDark) NeuDefaults.DarkShadowLight else NeuDefaults.LightShadowLight,
     shadowColorDark: Color = if (isDark) NeuDefaults.DarkShadowDark else NeuDefaults.LightShadowDark,
     blurRadius: Float = 4f,
     lightSource: Int = NeuLightSource.DEFAULT,
-    offset: Float = 5f
+    offset: Float = 5f,
+    punchInterior: Boolean = false
 ): Modifier = then(object : DrawModifier {
     override fun ContentDrawScope.draw() {
         val effectiveOffset = offset * intensity.factor
@@ -143,29 +183,67 @@ fun Modifier.neuRaised(
             else -> Offset(0f, 0f)
         }
         drawIntoCanvas {
-            it.drawRoundRect(
-                lightOffset.x, lightOffset.y,
-                this.size.width + lightOffset.x, this.size.height + lightOffset.y,
-                cornerRadius.toPx(), cornerRadius.toPx(),
-                paintShadowLight
-            )
-            it.drawRoundRect(
-                darkOffset.x, darkOffset.y,
-                this.size.width + darkOffset.x, this.size.height + darkOffset.y,
-                cornerRadius.toPx(), cornerRadius.toPx(),
-                paintShadowDark
-            )
+            if (punchInterior) {
+                // 批次61：把「内容圆角矩形」从裁剪区挖掉（ClipOp.Difference），影子只落在
+                // 外圈 —— 内部不落任何影色，页面渐变/玻璃原样透出（等价挖空底板中心，
+                // 且无需离屏图层）。save/restore 包住裁剪，不影响后续 fillShape/drawContent。
+                val r = cornerRadius.toPx()
+                val interior = Path().apply {
+                    addRoundRect(RoundRect(0f, 0f, size.width, size.height, r, r))
+                }
+                it.save()
+                it.clipPath(interior, ClipOp.Difference)
+                it.drawRoundRect(
+                    lightOffset.x, lightOffset.y,
+                    this.size.width + lightOffset.x, this.size.height + lightOffset.y,
+                    r, r,
+                    paintShadowLight
+                )
+                it.drawRoundRect(
+                    darkOffset.x, darkOffset.y,
+                    this.size.width + darkOffset.x, this.size.height + darkOffset.y,
+                    r, r,
+                    paintShadowDark
+                )
+                it.restore()
+            } else {
+                it.drawRoundRect(
+                    lightOffset.x, lightOffset.y,
+                    this.size.width + lightOffset.x, this.size.height + lightOffset.y,
+                    cornerRadius.toPx(), cornerRadius.toPx(),
+                    paintShadowLight
+                )
+                it.drawRoundRect(
+                    darkOffset.x, darkOffset.y,
+                    this.size.width + darkOffset.x, this.size.height + darkOffset.y,
+                    cornerRadius.toPx(), cornerRadius.toPx(),
+                    paintShadowDark
+                )
+            }
+        }
+        // 批次60 收敛：补上 backgroundColor 语义 —— 按 shape 的轮廓在**影与内容之间**
+        // 铺一层底色；默认透明 = 不铺底（与历史渲染一致），仅显式传色的调用点生效。
+        if (backgroundColor.alpha > 0f) {
+            fillShape(shape, backgroundColor)
         }
         drawContent()
     }
 })
 
+/**
+ * 新拟态**内凹**：先按 [backgroundColor] 在内容之下铺一层底，画完内容后再在**内容之上**
+ * 画双侧描边（描边被 [cornerRadius] 的路径裁在内侧，形成内凹阴影）。
+ *
+ * 参数语义与 [neuRaised] 一致：[cornerRadius] 决定阴影几何、[shape] 决定 [backgroundColor]
+ * 的铺底形状；默认透明 = 不铺底（与历史渲染一致 —— neuInset 只描边、本就不画底板）。
+ * 调用方同样要把本修饰符放在滚动容器/clip 外层。
+ */
 fun Modifier.neuInset(
     shape: Shape,
     isDark: Boolean = false,
     intensity: NeuDefaults.Intensity = NeuDefaults.Intensity.MEDIUM,
     cornerRadius: Dp = 0.dp,
-    backgroundColor: Color = if (isDark) NeuDefaults.DarkBackground else NeuDefaults.LightBackground,
+    backgroundColor: Color = Color.Transparent,
     shadowColorLight: Color = if (isDark) NeuDefaults.DarkShadowLight else NeuDefaults.LightShadowLight,
     shadowColorDark: Color = if (isDark) NeuDefaults.DarkShadowDark else NeuDefaults.LightShadowDark,
     blurRadius: Float = 4f,
@@ -215,6 +293,11 @@ fun Modifier.neuInset(
             else -> Offset(0f, 0f)
         }
 
+        // 批次60 收敛：补上 backgroundColor 语义 —— 铺底必须在内容**之前**（内凹描边画在
+        // 内容之上，铺底若放在其后会盖住描边与内容）；默认透明 = 不铺底，历史渲染不变。
+        if (backgroundColor.alpha > 0f) {
+            fillShape(shape, backgroundColor)
+        }
         drawContent()
 
         drawIntoCanvas {
@@ -248,6 +331,44 @@ fun Modifier.neuInset(
         }
     }
 })
+
+/**
+ * 新拟态风格下的 **chrome 凸起**（自绘顶栏/标签栏/搜索面板/底栏/符号栏/文件树这类条状、
+ * 卡片状外壳）：非新拟态风格原样返回，布局与旧版逐像素一致；新拟态风格下叠一层
+ * [neuRaised] 双侧柔影（亮度取 LIGHT、底色恒 [Color.Transparent]，不额外铺底）。
+ *
+ * 6.2.0 批次58（用户）提出，原本内联在 CodeEditorScreen；批次60 收敛时下沉到 unified，
+ * 供其他自绘外壳复用（调用点同步迁移，行为不变）。
+ *
+ * **修饰符顺序铁律（批次59 修标签栏/符号栏时定，改调用点前先读）**：本修饰必须放在
+ * **滚动容器（horizontalScroll / verticalScroll）与 clip 的外层、background 的内层之前**：
+ * `Modifier.fillMaxWidth().neuChrome().horizontalScroll(state).background(color)`。
+ * 放进滚动容器内层时阴影会落在滚动内容的边界上 —— 滚动容器把它裁掉、紧随其后的
+ * pageBackground 又把留在内部的部分盖住，整条「凸起」实际画不出来。
+ *
+ * 注（批次61 改口径，用户「编辑器背景依旧用渐变背景，不要发灰」）：[neuRaised] 的柔影
+ * 原本是一块不透明底板（亮影 #FFFFFF/#D9D9D9），会把渐变开启时的页面底色盖成灰条 ——
+ * 现改为 `punchInterior = true` **挖空底板中心**：chrome 内部透出页面渐变/玻璃，
+ * 只有外圈保留一圈柔影，「凸起」与渐变同时成立。
+ */
+fun Modifier.neuChrome(
+    shape: Shape = RoundedCornerShape(0.dp),
+    cornerRadius: Dp = 0.dp
+): Modifier =
+    if (UIConfig.isNeumorphismEnabled()) {
+        then(
+            Modifier.neuRaised(
+                shape = shape,
+                isDark = UIConfig.shouldUseDarkTheme(),
+                intensity = NeuDefaults.Intensity.LIGHT,
+                cornerRadius = cornerRadius,
+                backgroundColor = Color.Transparent,
+                punchInterior = true
+            )
+        )
+    } else {
+        this
+    }
 
 fun Modifier.neuGlow(
     color: Color = NeuDefaults.GlowColor,
@@ -298,14 +419,16 @@ fun Modifier.neuPressable(
 fun Modifier.neuCard(
     isDark: Boolean = false,
     intensity: NeuDefaults.Intensity = NeuDefaults.Intensity.MEDIUM,
-    backgroundColor: Color = if (isDark) NeuDefaults.DarkBackground else NeuDefaults.LightBackground
+    // 默认透明：省略该参数的调用点保持原样（此前该参数根本未被绘制）
+    backgroundColor: Color = Color.Transparent
 ): Modifier = this.neuRaised(RoundedCornerShape(14.dp), isDark, intensity, cornerRadius = 14.dp, backgroundColor = backgroundColor)
 
 @Composable
 fun Modifier.neuButton(
     isDark: Boolean = false,
     intensity: NeuDefaults.Intensity = NeuDefaults.Intensity.MEDIUM,
-    backgroundColor: Color = if (isDark) NeuDefaults.DarkBackground else NeuDefaults.LightBackground
+    // 默认透明：省略该参数的调用点保持原样（此前该参数根本未被绘制）
+    backgroundColor: Color = Color.Transparent
 ): Modifier = this.neuRaised(RoundedCornerShape(12.dp), isDark, intensity, cornerRadius = 12.dp, backgroundColor = backgroundColor)
 
 @Composable

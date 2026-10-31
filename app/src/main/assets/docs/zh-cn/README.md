@@ -6,7 +6,7 @@
 |------|------|
 | 文档版本 | 6.2.0 |
 | 对应应用版本 | v6.2.0 (Build 26) |
-| 最后更新 | 2026年10月16日 |
+| 最后更新 | 2026年10月31日 |
 
 ---
 
@@ -35,6 +35,7 @@
 - [4.2 plugin.json 配置](#42-pluginjson-配置)
 - [4.3 HTML 模板示例](#43-html-模板示例)
 - [4.4 JavaScript 示例](#44-javascript-示例)
+- [4.5 宿主主题同步（CSS 变量）](#45-宿主主题同步css-变量)
 
 ### 五、Web 插件开发（带后端）
 - [5.1 概述](#51-概述)
@@ -94,6 +95,7 @@
 - [11.8 权限 API](#118-权限-api)
 - [11.9 后端通信 API](#119-后端通信-api)
 - [11.10 数据统计 API](#1110-数据统计-api)
+- [11.11 位置与事件 API](#1111-位置与事件-api)
 
 ### 十二、打包与导入
 - [12.1 打包方式](#121-打包方式)
@@ -179,7 +181,7 @@
 | MIME 类型 | openWith 支持的文件类型（逗号分隔） | text/*,application/pdf | ❌ |
 | 接收类型 | openWith 接受文本 / 链接 / 文件 | 全开 | ❌ |
 
-> 图标、插件代码、资源文件在向导后续步骤中配置。`signature` 由宿主维护，勿手写。
+> 图标、插件代码、资源文件在向导后续步骤中配置。`signature` 字段已随 6.2.0 移除（防篡改改用 SHA-256 文件指纹 TOFU 校验），勿再写入。
 >
 > v5.5.0 起向导字段精简：不再提供「最大内存 / 最长 CPU 时间 / 最大并发任务数（资源限制）、依赖项、API 级别、后端保活」等输入项（这些字段不写向导生成的 plugin.json；`backendMaxRetries`/`backendLogLevel`/`backendEnv` 等为预留字段，见 12.3.3）。「插件说明（notice）」保留。
 
@@ -385,7 +387,7 @@ val assets = pctx.assets                // 含插件目录 + 插件 res/
 
 > ⚠️ `PluginContext` 覆写了 `getDataDir()`/`getCacheDir()`（废弃别名返回插件 data/ 与 cache/），也覆写了 `getAssets()`/`getResources()`（重定向到插件目录）。它**没有**覆写 `getFilesDir()`——返回的是宿主 App 内部 files 目录，**不是**插件目录，请勿用它定位插件文件。
 
-**调用宿主代码编辑器（v6.2.0 批次53 新增）**
+**调用宿主代码编辑器（v6.2.0 新增）**
 
 原生插件可直接拉起宿主内置代码编辑器（`PluginEditorApi`，静态方法，任何 Context 均可，含 `PluginContext`）：
 
@@ -618,6 +620,28 @@ window.addEventListener('pause', () => { console.log('插件暂停'); });
 window.addEventListener('destroy', () => { console.log('插件销毁'); });
 ```
 
+### 4.5 宿主主题同步（CSS 变量 `--uin-*`）
+
+宿主在插件页面**加载完成时**注入一段 `<style id="uin-theme-style">`，把当前主题配色暴露为 `:root` 上的 CSS 变量，插件网页用 `var(--uin-*)` 即可跟随应用主题（深浅色切换后需重新加载页面才会刷新）：
+
+| 变量 | 含义 |
+|---|---|
+| `--uin-primary` / `--uin-primary-dark` / `--uin-primary-light` / `--uin-accent` | 主色系与强调色 |
+| `--uin-success` / `--uin-warning` / `--uin-error` / `--uin-info` | 语义色 |
+| `--uin-text-primary` / `--uin-text-secondary` / `--uin-text-hint` | 文本色 |
+| `--uin-background` / `--uin-surface` / `--uin-surface-variant` / `--uin-divider` | 背景、表面与分割线 |
+| `--uin-glass-background` / `--uin-disabled` | 玻璃背景、禁用色 |
+| `--uin-button-radius` / `--uin-card-radius` / `--uin-input-radius` | 圆角（单位 px，来自形状配置） |
+
+```css
+/* 示例：按钮跟随宿主主题 */
+.btn {
+    background: var(--uin-primary);
+    color: var(--uin-background);
+    border-radius: var(--uin-button-radius);
+}
+```
+
 ---
 
 ## 五、Web 插件开发（带后端）
@@ -644,7 +668,7 @@ Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统�
 | **后端实现** | **内置 Debian 容器**（默认） | 使用应用**内置的 Debian 容器**（无需安装任何东西），通过 **Proot 共享 Debian 容器**（固定容器名 `debian`）运行插件后端，实现环境隔离 |
 | | **实体 Termux** | 调用外部安装的 **Termux**（`com.termux`）的 `RUN_COMMAND` 服务运行插件后端，适合需要原生 Termux 生态（pip/npm 等）的场景 |
 
-- **内置 Debian 容器**：首装无需联网，Debian rootfs 从应用 assets 离线恢复（约 19MB，一次性解压）；首次安装耗时不涉及网络
+- **内置 Debian 容器**：首装无需联网，Debian rootfs 从应用 assets 离线恢复（约 42MB，一次性解压）；首次安装耗时不涉及网络
 - **实体 Termux**：需要设备已安装 Termux，并完成一次初始化（见 5.2.4 初始化命令），否则启动失败会弹出引导
 
 #### 5.2.2 后端环境（仅实体 Termux）
@@ -724,19 +748,22 @@ your-plugin/
 
 ```sh
 #!/usr/bin/env sh
+# <插件名> 后端启动脚本
+# 由 UIN Tool 用 sh -lc 执行：依赖检测 + 启动后端
 # 宿主已注入环境变量：PORT（动态端口）、PLUGIN_ID、PLUGIN_DIR、WORK_DIR
 set -e
 cd "$(dirname "$0")"
-# ---- 依赖检测：动态查找解释器，环境无关（用 apt/dpkg 或 apt） ----
+# ---- 依赖检测：动态查找解释器，环境无关（使用 apt） ----
 if ! command -v python3 >/dev/null 2>&1; then
     echo "[start.sh] python3 not found, installing..."
-    pkg install python -y 2>/dev/null || apk add python3 -y 2>/dev/null || {
-        echo "[start.sh] failed to install python3, exit"
+    apt install -y python3 || {
+        # 失败原因必须落到 stderr，宿主才能采集到「为什么没起来」
+        echo "[start.sh] failed to install python3, exit" >&2
         exit 1
     }
 fi
 echo "[start.sh] starting backend on 127.0.0.1:${PORT:-8000}"
-exec python3 scripts/backend/server.py
+exec python3 backend/server.py
 ```
 
 `scripts/backend/server.py` 模板（由 `backend/server.py.tmpl` 渲染，内置 `http.server`，无第三方依赖）：
@@ -1025,8 +1052,8 @@ python3 scripts/tool.py
 
 1. 用户打开 CUI 插件 → `PluginHostActivity` 显示占位视图：「正在打开全屏终端执行命令...」
 2. 宿主按全局「后端运行设置」选择执行环境：内置 Debian 容器走环境流水线（Debian 就绪，若配置了 `backendRuntime: "proot"`）；实体 Termux 直接调用 `RUN_COMMAND`
-3. 通过 `RunCommandService` 以 `bash -lc "<启动命令>"`（`backendPreCommand`）在插件目录启动**全屏终端会话**，前台直接拉起 `SimpleTerminalActivity` / `com.termux` 全屏终端（不再依赖悬浮窗权限）；启动命令留空时以 `bash -l` 打开交互式登录 Shell
-4. 终端会话独立于插件页存活：脚本/Shell 退出即关闭；插件页关闭**不会**强制杀死终端（会话归 TermuxService 管理）
+3. 以 `sh -lc "<启动命令>"`（`backendPreCommand`）在插件目录启动**全屏终端会话**：内置环境拉起 `SimpleTerminalActivity`（PRoot 容器），实体 Termux 走其 `RUN_COMMAND` intent（不再依赖悬浮窗权限）；启动命令留空时以登录 Shell 打开交互式会话
+4. 终端会话独立于插件页存活：脚本/Shell 退出即关闭；插件页关闭**不会**强制杀死终端（会话由内置终端页自身管理；`TermuxService` 已随 6.0.0 移除，应用内不再有该服务）
 
 ### 6.6 CUI 与后端/Proot 的关系
 
@@ -1285,12 +1312,36 @@ val migrated = pctx.isDataMigrated()
 | CAMERA | android.permission.CAMERA | 相机 | 普通 |
 | RECORD_AUDIO | android.permission.RECORD_AUDIO | 录音 | 普通 |
 | ACCESS_FINE_LOCATION | android.permission.ACCESS_FINE_LOCATION | 精确位置 | 普通 |
+| ACCESS_COARSE_LOCATION | android.permission.ACCESS_COARSE_LOCATION | 粗略位置 | 普通 |
+| ACCESS_BACKGROUND_LOCATION | android.permission.ACCESS_BACKGROUND_LOCATION | 后台定位 | 特殊 |
+| CALL_PHONE | android.permission.CALL_PHONE | 拨打电话 | 普通 |
+| READ_PHONE_STATE | android.permission.READ_PHONE_STATE | 读取手机状态 | 普通 |
+| SEND_SMS | android.permission.SEND_SMS | 发送短信 | 普通 |
+| READ_SMS | android.permission.READ_SMS | 读取短信 | 普通 |
+| RECEIVE_SMS | android.permission.RECEIVE_SMS | 接收短信 | 普通 |
+| READ_CONTACTS | android.permission.READ_CONTACTS | 读取联系人 | 普通 |
+| WRITE_CONTACTS | android.permission.WRITE_CONTACTS | 写入联系人 | 普通 |
+| READ_CALENDAR | android.permission.READ_CALENDAR | 读取日历 | 普通 |
+| WRITE_CALENDAR | android.permission.WRITE_CALENDAR | 写入日历 | 普通 |
+| ACCESS_NETWORK_STATE | android.permission.ACCESS_NETWORK_STATE | 查询网络状态 | 普通 |
+| ACCESS_WIFI_STATE | android.permission.ACCESS_WIFI_STATE | 查询 Wi-Fi 状态 | 普通 |
+| VIBRATE | android.permission.VIBRATE | 振动 | 普通 |
+| WAKE_LOCK | android.permission.WAKE_LOCK | 保持屏幕/CPU 唤醒 | 普通 |
+| FLASHLIGHT | android.permission.FLASHLIGHT | 手电筒（旧版权限） | 普通 |
+| BLUETOOTH | android.permission.BLUETOOTH | 蓝牙（旧版权限） | 普通 |
+| BLUETOOTH_ADMIN | android.permission.BLUETOOTH_ADMIN | 蓝牙管理（旧版权限） | 普通 |
+| NFC | android.permission.NFC | 近场通信（NFC） | 普通 |
+| KILL_BACKGROUND_PROCESSES | android.permission.KILL_BACKGROUND_PROCESSES | 结束后台进程 | 普通 |
+| READ_LOGS | android.permission.READ_LOGS | 读取日志（需 adb 授权，直装应用拿不到） | 特殊 |
 | MANAGE_EXTERNAL_STORAGE | android.permission.MANAGE_EXTERNAL_STORAGE | 管理所有文件 | 特殊 |
 | SYSTEM_ALERT_WINDOW | android.permission.SYSTEM_ALERT_WINDOW | 悬浮窗 | 特殊 |
 | WRITE_SETTINGS | android.permission.WRITE_SETTINGS | 修改系统设置 | 特殊 |
 | REQUEST_INSTALL_PACKAGES | android.permission.REQUEST_INSTALL_PACKAGES | 安装未知应用 | 特殊 |
 | PACKAGE_USAGE_STATS | android.permission.PACKAGE_USAGE_STATS | 应用使用统计 | 特殊 |
-| ACCESSIBILITY | android.permission.ACCESSIBILITY | 无障碍服务 | 特殊 |
+| ACCESSIBILITY | （无对应系统权限名，宿主按特殊权限处理） | 无障碍服务 | 特殊 |
+| SHIZUKU | （预留标签） | 借助 Shizuku 授权（宿主当前不校验，声明即可） | 预留 |
+| DHIZUKU | （预留标签） | 借助 Dhizuku 授权（宿主当前不校验，声明即可） | 预留 |
+| ROOT | （预留标签） | Root 能力（宿主当前不校验，声明即可） | 预留 |
 | POST_NOTIFICATIONS | android.permission.POST_NOTIFICATIONS | 发送通知（Android 13+） | 特殊 |
 | READ_CLIPBOARD | （伪权限） | 读取剪贴板（`getClipboard`/`paste`/`clearClipboard`） | 伪权限 |
 | WRITE_CLIPBOARD | （伪权限） | 写入剪贴板（`setClipboard`/`copyToClipboard`） | 伪权限 |
@@ -1459,12 +1510,11 @@ class MainPlugin : PluginInterface {
 
 | 后端多开模式 | 行为 | 配置 |
 |--------------|------|------|
-| **共享端口** | 同一插件的所有实例复用同一个后端进程（首个启动的实例持有其主实例键） | 默认；「开发工具」→「每实例独立后端端口」**关闭** |
-| **独立端口** | 每个实例启动独立的后端进程与端口（`PluginBackendManager.startBackendInstance` 按实例键启动），实例互不干扰 | 「开发工具」→「每实例独立后端端口」**开启** |
+| **按实例隔离**（当前唯一模式） | 每个打开的插件实例以 `插件ID:实例ID` 作为后端键，各自启动**独立的后端进程与端口**（`PluginBackendManager.startBackendInstance` 按实例键启动）；插件级「停止 / 状态查询」按键前缀归组到该插件的全部实例 | **无开关** —— 代码中并不存在「每实例独立后端端口」选项；Web 插件能否真正多开由「关闭时保留会话」（单窗口去重）决定，见下 |
 
-> 多开场景下若配置了独立端口模式，插件后端通过 `$PORT` 环境变量感知自己是哪个实例（`$PORT` 该实例独享）；共享端口模式下仅主实例持有后端，其余实例复用其 `$PORT`。
+> 多开时每个实例的后端**各持有一个自己的 `$PORT`**（该实例独享），后端可通过 `$PORT` 区分自己属于哪个实例。
 
-**保留会话单窗口（v5.5.0）**：「关闭时保留会话」开关默认**开启**——默认启用单窗口去重（共享端口模式 + Web 插件时，同一插件**只保留一个后台窗口**，重复打开会把已有窗口带到前台并结束本次启动，不再多开实例，多任务窗口仅显示一个）。用户可在「开发工具」中显式关闭后，Web / CUI 插件每次打开都是独立实例（支持多开）。
+**保留会话单窗口（v5.5.0）**：「关闭时保留会话」开关默认**开启**——默认启用单窗口去重（Web 插件开启保留会话时，同一插件**只保留一个后台窗口**，重复打开会把已有窗口带到前台并结束本次启动，不再多开实例，多任务窗口仅显示一个）。用户可在「开发工具」中显式关闭后，Web / CUI 插件每次打开都是独立实例（支持多开）。
 
 ---
 
@@ -1494,7 +1544,7 @@ UINPlugin.callHost('setFullscreen', 'true');     // 全屏（字符串 true/fals
 UINPlugin.callHost('setKeepScreenOn', 'true');   // 屏幕常亮（字符串 true/false）
 UINPlugin.callHost('sendNotification', '标题,消息'); // 发送通知
 UINPlugin.callHost('takeScreenshot', '');        // 截图（需存储权限，存到下载目录 screenshots/）
-UINPlugin.callHost('openEditor', JSON.stringify({path: '/sdcard/a.txt'})); // 打开代码编辑器（v6.2.0 批次53：文件直接打开、目录为浏览模式；未知后缀按 txt 打开；可带 project_dir 挂项目树）
+UINPlugin.callHost('openEditor', JSON.stringify({path: '/sdcard/a.txt'})); // 打开代码编辑器（v6.2.0：文件直接打开、目录为浏览模式；未知后缀按 txt 打开；可带 project_dir 挂项目树）
 ```
 
 **对话框 / 加载（v4.4.4 起弹窗统一走宿主 Compose 队列）**
@@ -1854,6 +1904,42 @@ const exported = UINPlugin.exportData();
 UINPlugin.importData(exported);
 ```
 
+### 11.11 位置与事件 API
+
+**位置**（需 `ACCESS_FINE_LOCATION` 或 `ACCESS_COARSE_LOCATION` 权限，见 8.5；未授权时返回 `"permission_denied"`）：
+
+```javascript
+// 获取当前位置（同步，返回 JSON 字符串）
+// 字段：latitude, longitude, accuracy, altitude, speed, bearing, provider, time
+const loc = JSON.parse(UINPlugin.getLocation());
+
+// 逆地理编码：经纬度 → 地址（同步，返回 JSON：address, country, ...）
+const addr = JSON.parse(UINPlugin.getAddress(loc.latitude, loc.longitude));
+```
+
+**事件（宿主 → 页面）**：
+
+```javascript
+// 向页面派发自定义事件：宿主执行 window.dispatchEvent(new CustomEvent(name, {detail}))
+// data 可为 JSON 对象/数组（原样透传）或普通字符串（自动转义）
+UINPlugin.sendEvent('backend_status', JSON.stringify({ ready: true }));
+
+// 页面侧用标准 DOM API 接收
+window.addEventListener('backend_status', (e) => {
+    console.log('事件数据:', e.detail);
+});
+```
+
+> ⚠️ `UINPlugin.addEventListener(eventName, callbackId)` **是占位实现**：调用只会回调 `{"success":false,"error":"unsupported_use_window_addEventListener"}`，宿主从不主动向页面推事件。事件的真实通道是 `sendEvent`（→ `window.dispatchEvent`），页面侧请一律用 `window.addEventListener` 接收。
+
+**其他桥方法**：
+
+```javascript
+const instanceId = UINPlugin.getInstanceId();  // 当前多开实例 ID（多实例下区分用）
+UINPlugin.cancelVibration();                    // 停止进行中的振动（配合 callHost('vibrate')）
+UINPlugin.callPlugin('some_method', '{}');      // 预留：跨插件调用，当前宿主仅记日志、无实际分发
+```
+
 ---
 
 ## 十二、打包与导入
@@ -1990,13 +2076,14 @@ plugin.tpk
 | `mainClass` | string | `""` | 原生✅ | **原生插件入口类完整类名**（如 `com.example.MainPlugin`）。宿主用 `DexClassLoader` 加载后 `loadClass(mainClass).newInstance() as PluginInterface` 实例化。Web/CUI 插件留空。 |
 | `updateUrl` | string | `""` | ❌ | 插件更新检测地址（GitHub Release 页），用于应用内检查更新。 |
 | `apiLevel` | int | `21` | ❌ | 插件要求的宿主 API 等级（最小 21）。 |
-| `category` | string | `未分类` | ❌ | 插件分类名，用于插件管理页分类展示。 |
-| `signature` | string | `""` | ❌ | 插件签名（宿主安装时写入并校验，防篡改）。一般由宿主维护，勿手写。 |
+| `category` | string | `uncategorized` | ❌ | 插件分类名，用于插件管理页分类展示（缺省键为 `uncategorized`，界面按语言显示为「未分类」等）。 |
+| `sourceId` | string | `""` | ❌ | 宿主写入：该插件**安装来源**的源 ID（配合源管理记录来自哪个仓库/镜像）；手动导入的插件为空。一般由宿主维护，勿手写。 |
+| `signature` | string | `""` | ❌ | **已随 6.2.0 从模型/解析器移除**：写入该字段会被忽略，宿主不再读写它。防篡改改由**安装文件的 SHA-256 指纹（TOFU）**承担 —— 首次安装记录指纹，同版本更新包必须一致（不一致即拒装），版本升级记录新指纹。 |
 | `uiType` | string | `native` | ✅ | 前端类型：`native`（原生 View）、`web`（WebView）、`cui`（全屏终端）。决定宿主的加载分支。 |
 | `entry` | string | `web/index.html` | Web✅ | Web 插件入口页面（相对插件根目录，宿主用 `file://<pluginDir>/<entry>` 加载）。CUI 留空。必须指向 HTML 页面；v5.1.0 向导已正确生成，旧版生成的插件若 `entry` 指向脚本路径需手动改回。 |
 | `permissions` | string | `""` | ❌ | 所需权限列表。**两种格式均可**：逗号分隔字符串（如 `android.permission.INTERNET,android.permission.VIBRATE`）或 JSON 数组。v5.5.0 起 `parseStringList()` 兼容两种格式；旧版只认逗号分隔字符串。含伪权限（`READ_CLIPBOARD`/`WRITE_CLIPBOARD`）。向导「权限」弹窗多选生成。 |
 | `dependencies` | string | `""` | ❌ | 依赖插件 ID 列表。**两种格式均可**（逗号分隔字符串或 JSON 数组）。宿主启动前检查依赖是否存在。 |
-| `frontendConfig` | object | `{}` | ❌ | **预留字段**。模型已声明（`Map<String, Any>`），但当前版本不参与 JSON 读写、无任何消费者，勿在 plugin.json 中填写。 |
+| `frontendConfig` | object | `{}` | ❌ | **预留字段**。随 JSON 正常读写（解析与序列化都已实现），但宿主**没有任何消费者** —— 填写后不产生任何行为，暂不建议使用。 |
 
 #### 12.3.3 后端配置字段
 
@@ -2013,9 +2100,9 @@ plugin.tpk
 | `backendMaxRetries` | int | `3` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未实现重试逻辑（失败即提示，不自动重试）。 |
 | `backendLogLevel` | string | `info` | ❌ | **预留字段**。模型已声明、随 JSON 读写，但宿主当前未按其切换日志级别（日志固定输出，不读取该值）。 |
 | `backendKeepAlive` | boolean | `false` | ❌ | 插件关闭后是否保持后端运行。`true` 时宿主不在 onDestroy 时停止后端。 |
-| `backendEnv` | object | `{}` | ❌ | **注意：当前不读取该 JSON 字段，且 `fromJson()`/`toJson()` 尚未读写它，写在 plugin.json 中不会生效**（仅能由宿主程序内部设置）。透传行为分环境：内置 Debian 容器经 `ProcessBuilder` 进程环境注入，proot 容器继承该环境生效；**实体 Termux 走 `RUN_COMMAND` intent，无环境变量通道，`backendEnv` 完全不透传**——需要变量时请直接写进 `backendStartCommand`（如 `export KEY=value; ...`）。 |
+| `backendEnv` | object | `{}` | ❌ | 随 JSON 正常读写，宿主会把它注入后端进程环境（`ProcessBuilder` env）：**内置 Debian 容器（proot）继承该环境、生效**；**实体 Termux 走 `RUN_COMMAND` intent，无环境变量通道、不透传** —— 该环境下需要变量时直接写进 `backendStartCommand`（如 `export KEY=value; ...`）。 |
 
-> 旧式字段（仍可被读取并在加载时自动迁移，不建议新插件使用）：`backendRuntime`（`termux`/`proot`）、`backendPort`、`backendEntry`、`backendPreCommand`、`backendBinary`、`backendInstallCmd`、`backendCheckCmd`、`backendPhpDocRoot`、`backendJavaClass`、`backendJavaJar`、`backendArgs`。
+> 旧式字段（**全部会被解析**并驱动 `getInstallCommand()` / `getCheckCommand()` / `getBackendCommand()`，加载时还会自动迁移为 `backendStartCommand`，不建议新插件使用）：`backendRuntime`（`termux`/`proot`）、`backendPort`、`backendEntry`、`backendPreCommand`、`backendBinary`、`backendInstallCmd`、`backendCheckCmd`、`backendPhpDocRoot`、`backendJavaClass`、`backendJavaJar`、`backendArgs`。
 
 #### 12.3.4 外部内容接收（openWith，v5.4.0 新增）
 
@@ -2206,7 +2293,7 @@ context.startActivity(intent)
 | Release 资产 | 必须包含 `.tpk` 文件（宿主取第一个 .tpk 资产，无完整性校验） |
 | 仓库可见性 | 必须是公开仓库 |
 
-> 说明：宿主在拉取插件列表时按 `repos?per_page=100` 分页读取（单页上限 100），并过滤名称以 `.github` 开头或为 `Docs`/`docs` 的仓库。
+> 说明：宿主**不再逐仓库分页拉取** —— 插件列表按**源索引**获取（每个源维护自己的 `source.json`，宿主用 `SourceIndexFetcher` 拉取并聚合，约 5 分钟缓存，条目带官方 / 社区信任级别）；只有「应用自身更新检查」才调 GitHub Releases 接口（`per_page=30`）。
 
 ### 13.2 发布步骤
 
@@ -2228,31 +2315,31 @@ UIN Tool 内置完整的终端环境，核心引擎基于 Termux 改编。
 
 | 特性 | 说明 |
 |------|------|
-| Shell | 默认 bash；zsh、fish 等需 `pkg install` 自行安装 |
-| 包管理器 | `pkg`/`apt`（Termux 自有软件源 termux-packages，非 Debian/Ubuntu 源） |
+| Shell | 默认 bash；zsh、fish 等可用 `apt install` 自行安装 |
+| 包管理器 | `apt`（Debian/Ubuntu 软件源；内置终端基于 PRoot 容器，rootfs 随应用离线内置） |
 | 开发工具 | gcc、clang、make、git |
-| 脚本语言 | Python、Node.js、Ruby 等（`pkg install` 安装） |
+| 脚本语言 | Python、Node.js、Ruby 等（`apt install` 安装） |
 | 网络工具 | curl、wget、openssh |
 | 多会话 | 支持多个终端会话同时运行 |
 | 多窗口 | Android 7.0+ 多窗口支持（新建窗口按钮） |
 | 安全模式 | 新建会话可开启安全模式 |
 
-终端环境变量：`HOME=/data/data/com.UIN.Tool/files/home`、`PREFIX=/data/data/com.UIN.Tool/files/usr`、`TMPDIR=$PREFIX/tmp`、`PATH=$PREFIX/bin` 等。会话由 `TermuxService`（前台服务 + 通知）管理，`SimpleTerminalActivity` 销毁/重建不会中断会话。
+终端环境变量（内置 PRoot 容器，见 `ProotRuntime`）：`HOME=/root`、`PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` 等，rootfs 挂载于应用私有目录，会话由 `SimpleTerminalActivity` 持有，页面销毁/重建不会中断。**注意**：`HOME=/data/data/com.UIN.Tool/files/home`、`PREFIX=.../files/usr`、`PATH=$PREFIX/bin` 是**外部 Termux** 后端的遗留变量，内置终端并不使用。
 
 ### 14.3 常用命令
 
 ```bash
-# 更新软件源（Termux 自有仓库）
-pkg update
+# 更新软件源（Debian 源）
+apt update
 
 # 安装 Python
-pkg install python
+apt install python3
 
 # 安装 Node.js
-pkg install nodejs
+apt install nodejs
 
 # 安装 git
-pkg install git
+apt install git
 
 # SSH 连接服务器
 ssh user@hostname
@@ -2351,8 +2438,9 @@ print("调试信息")
 ### 16.3 WebView 远程调试
 
 1. 在 Chrome 浏览器打开 chrome://inspect
-2. 确保 WebView 调试已启用
-3. 支持断点、控制台、网络监控
+2. 选择目标设备与 WebView 页面，即可断点、查看控制台与网络
+
+> **注意**：本应用**未启用** `setWebContentsDebuggingEnabled`，标准 chrome://inspect 目前**发现不了**本应用的 WebView。排查插件页问题请优先用「管理」→「运行日志」的 **logcat 来源**（含库直接写 logcat 的异常）。
 
 ---
 
@@ -2412,7 +2500,7 @@ Q13: CUI 插件脚本如何获取插件 ID 和目录？
 
 Q14: 如何导出内置插件模板？
 
-在「开发」页面点击「导出模板」，内置的 7 个打包插件会被复制到 `/storage/emulated/0/UIN_Tool/templates/`，并生成 README.txt。
+在「开发」页面点击「导出模板」，内置的 8 个打包插件会被复制到 `/storage/emulated/0/UIN_Tool/templates/`，并生成 README.txt。
 
 Q15: 导出模板一直显示「导出中...」？
 
@@ -2477,7 +2565,7 @@ Q15: 导出模板一直显示「导出中...」？
 |------|------|
 | 文档版本 | 6.2.0 |
 | 对应应用版本 | v6.2.0 (Build 26) |
-| 最后更新 | 2026年10月16日 |
+| 最后更新 | 2026年10月31日 |
 
 ---
 
