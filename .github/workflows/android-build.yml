@@ -45,6 +45,13 @@ jobs:
           # 打出来的 APK 内 rootfs 是坏的且不报错
           lfs: true
 
+      # CI 没有本地那份 keystore.properties（被 .gitignore 忽略、也没配 secrets），
+      # 而 app/build.gradle 在配置期就取签名口令，取不到会直接抛 GradleException，
+      # 导致 lint / test 一秒都跑不到执行阶段（2026-10-08 起连红的根因）。
+      # 这里装的是随仓库提交的 debug 测试钥匙口令，仅供构建使用。
+      - name: Prepare signing properties (debug test key)
+        run: cp ci-signing.properties keystore.properties
+
       # A-31：zh-rCN 与 default 字符串键/占位符必须对齐（6.1.0 质量基线），失败即止
       - name: Check strings.xml parity
         run: python3 scripts/check_strings_parity.py
@@ -61,6 +68,20 @@ jobs:
 
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      # terminal-emulator 走 ndkBuild，ndkVersion 被 gradle.properties 钉死；
+      # runner 自带的 NDK 版本未必对得上，先尽力装好对应版本（装不上只告警不失败，
+      # 真正需要 NDK 的 assembleDebug 会自己报错，用不到 NDK 的步骤不受影响）
+      - name: Install pinned NDK (best effort)
+        run: |
+          ndkver=$(sed -n 's/^ndkVersion=//p' gradle.properties)
+          echo "pinned ndkVersion=$ndkver"
+          if [ -z "$ndkver" ] || [ -d "$ANDROID_HOME/ndk/$ndkver" ]; then
+            echo "already satisfied"
+          else
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;$ndkver" \
+              || echo "::warning::NDK $ndkver install failed (terminal-emulator 的 ndkBuild 需要它)"
+          fi
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -81,16 +102,18 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          # lint 任务可能在任一模块执行，放开到全仓（原来只盯 app/ 会漏报告）
           name: lint-reports
-          path: app/build/reports/lint-results*.html
+          path: '**/build/reports/lint-results*.html'
           retention-days: 14
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          # 单测在 terminal-emulator 等模块跑，报告不在 app/ 下，原来那个路径永远匹配不到
           name: test-reports
-          path: app/build/reports/tests/
+          path: '**/build/reports/tests/**'
           retention-days: 14
 
   ###############################################################
@@ -110,6 +133,10 @@ jobs:
           # 打出来的 APK 内 rootfs 是坏的且不报错
           lfs: true
 
+      # 同 job1：CI 上没有 keystore.properties，缺了它 app/build.gradle 配置期就抛异常
+      - name: Prepare signing properties (debug test key)
+        run: cp ci-signing.properties keystore.properties
+
       # A-54：gradlew/wrapper jar 被篡改是最常见的 CI 供应链攻击面，先校验再执行
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v4
@@ -122,6 +149,20 @@ jobs:
 
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      # terminal-emulator 走 ndkBuild，ndkVersion 被 gradle.properties 钉死；
+      # runner 自带的 NDK 版本未必对得上，先尽力装好对应版本（装不上只告警不失败，
+      # 真正需要 NDK 的 assembleDebug 会自己报错，用不到 NDK 的步骤不受影响）
+      - name: Install pinned NDK (best effort)
+        run: |
+          ndkver=$(sed -n 's/^ndkVersion=//p' gradle.properties)
+          echo "pinned ndkVersion=$ndkver"
+          if [ -z "$ndkver" ] || [ -d "$ANDROID_HOME/ndk/$ndkver" ]; then
+            echo "already satisfied"
+          else
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;$ndkver" \
+              || echo "::warning::NDK $ndkver install failed (terminal-emulator 的 ndkBuild 需要它)"
+          fi
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -136,7 +177,9 @@ jobs:
           f=app/src/main/assets/debian-rootfs.tar.xz
           size=$(stat -c %s "$f")
           echo "debian-rootfs.tar.xz = $size bytes"
-          if [ "$size" -lt 100000000 ]; then
+          # 指针文件只有 ~130 字节；真实资产 44MB，阈值取 10MB（曾误写成 100MB，
+          # 真文件 44179912 < 100000000 会被误判成指针而 exit 1）
+          if [ "$size" -lt 10000000 ]; then
             echo "::error::$f is $size bytes - looks like an LFS pointer, check lfs:true"
             exit 1
           fi
