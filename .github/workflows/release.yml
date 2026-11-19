@@ -107,6 +107,13 @@ jobs:
           echo "keystore restored: $(stat -c %s "$ks") bytes"
           # 供后续 gradle 步骤使用（job 级 env 拿不到 runner 上下文）
           echo "UIN_RELEASE_KEYSTORE=$ks" >> "$GITHUB_ENV"
+          # 先验一遍文件与口令：base64 贴漏一段 / 口令多一个字符，在这里几秒内就报出来，
+          # 不用等 assembleRelease 跑完才在 apksigner 那里失败
+          if ! keytool -list -keystore "$ks" -storepass "$UIN_RELEASE_STORE_PASSWORD" > /dev/null 2>&1; then
+            echo "::error::密钥库打不开：检查 RELEASE_KEYSTORE_BASE64 是否完整、RELEASE_STORE_PASSWORD 是否正确（注意末尾字符）"
+            exit 1
+          fi
+          echo "keystore ok"
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v4
