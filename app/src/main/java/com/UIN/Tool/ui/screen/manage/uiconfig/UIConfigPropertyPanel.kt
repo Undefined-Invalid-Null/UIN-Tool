@@ -1,5 +1,6 @@
 package com.UIN.Tool.ui.screen.manage.uiconfig
 
+import com.UIN.Tool.ui.components.unified.UnifiedDropdownMenu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -148,6 +151,11 @@ fun DropdownPropertyRow(
     var expanded by remember { mutableStateOf(false) }
     val displayName = options.find { it.first == value }?.second ?: value
 
+    // 用户反馈⑭：下拉**列表**的宽度要与标签（也就是这一整行）对齐，不再用内容撑开的窄条。
+    // DropdownMenu 是 Popup，拿不到父约束，只能先量锚点尺寸再把宽度写进去。
+    // 值在首次布局就确定，之后不再变化 —— snapshot 只在真的变了才通知，不会引起布局循环。
+    var anchorWidth by remember { mutableStateOf(0.dp) }
+
     val rowShape = RoundedCornerShape(AppDimens.cardCornerRadius)
 
     Column(
@@ -165,7 +173,16 @@ fun DropdownPropertyRow(
             color = textPrimary,
             modifier = Modifier.padding(bottom = AppDimens.spacingSmall)
         )
-        Box {
+        // `LocalDensity.current` 是 @Composable，只在组合上下文里取得到 ——
+        // 而 `onGloballyPositioned` 的回调不是组合上下文，直接在里面读会编译错
+        // （"…can only happen from the context of a @Composable function"）。
+        // 所以先取出来存局部变量，回调里只用这个已经取好的值。
+        val density = LocalDensity.current
+        Box(
+            modifier = Modifier.onGloballyPositioned { coords ->
+                anchorWidth = with(density) { coords.size.width.toDp() }
+            }
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -187,11 +204,16 @@ fun DropdownPropertyRow(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            DropdownMenu(
+            UnifiedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 modifier = Modifier
-                    .width(IntrinsicSize.Max)
+                    // 用户反馈⑭：量到锚点宽度就按它铺满；首帧（还没布局）退回内容宽，
+                    // 否则 0dp 会让菜单彻底不可见。
+                    .then(
+                        if (anchorWidth > 0.dp) Modifier.width(anchorWidth)
+                        else Modifier.width(IntrinsicSize.Max)
+                    )
                     .clip(RoundedCornerShape(AppDimens.inputCornerRadius))
             ) {
                 options.forEach { (optionValue, optionName) ->

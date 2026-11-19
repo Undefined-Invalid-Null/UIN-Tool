@@ -1,11 +1,13 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/manage/GitHubMirrorScreen.kt
 package com.UIN.Tool.ui.screen.manage
 
+import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +22,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.domain.model.MirrorItem
 import com.UIN.Tool.ui.components.unified.*
@@ -27,6 +30,7 @@ import com.UIN.Tool.ui.theme.AppColors
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.UIN.Tool.ui.viewmodel.GitHubMirrorViewModel
 import com.UIN.Tool.constants.AppConstants as Constants
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 
 private const val TAG = "GitHubMirrorScreen"
 
@@ -53,7 +57,7 @@ fun GitHubMirrorScreen(
     val pullRefreshState = rememberPullToRefreshState()
 
     val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         if (uri != null) {
             mirrorViewModel.importMirrors(uri)
@@ -61,7 +65,7 @@ fun GitHubMirrorScreen(
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument()
+        InAppFilePicker.CreateDocument()
     ) { uri: Uri? ->
         if (uri != null) {
             mirrorViewModel.exportMirrors(uri)
@@ -79,10 +83,19 @@ fun GitHubMirrorScreen(
             )
         },
         floatingActionButton = {
+            // k.txt 第 3 条：不再用实心主色圆形按钮 —— 透明底 + 主色描边/图标，
+            // 与全局「文字 + 描边」口径一致，深浅主题下都不出现白字压色块。
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                // FAB 没有 border 参数 —— 描边走 Modifier，形状与默认 FAB 一致。
+                modifier = Modifier.border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = FloatingActionButtonDefaults.shape
+                ),
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary,
+                elevation = FloatingActionButtonDefaults.elevation(0.dp)
             ) {
                 Icon(
                     Icons.Default.Add,
@@ -108,7 +121,7 @@ fun GitHubMirrorScreen(
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
         ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item {

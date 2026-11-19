@@ -1,9 +1,6 @@
 package com.UIN.Tool.ui.screen.proot
 
-import android.app.Activity
-import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -18,17 +15,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.proot.ProotInstaller
 import com.UIN.Tool.proot.RootfsManager
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.components.LongTaskRegistry
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.utils.AppToast
+import com.UIN.Tool.utils.Str
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -134,105 +137,108 @@ fun ContainerManagementScreen() {
         DownloadableDistro("arch", "Arch Linux", "archlinux-rootfs.tar.xz", "distro_arch_desc", "~80 MB", bundled = false)
     )
 
+    // m.txt 第 7 条：导入 rootfs 也走内置选择器。返回值仍是 content URI，
+    // 由 InAppPickerProvider 提供真实读写，下面的 openInputStream / query 不变。
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-                    result.data?.data?.let { uri ->
-                scope.launch {
-                    isInstalling = true
-                    try {
-                        val inputStream = context.contentResolver.openInputStream(uri) ?: return@launch
-                        val displayName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                            cursor.moveToFirst()
-                            if (nameIndex >= 0) cursor.getString(nameIndex) else null
-                        } ?: "imported-rootfs"
-                        val validExtensions = listOf(".tar.xz", ".tar.gz", ".tgz", ".tar.zst", ".zst", ".tar")
-                        val ext = validExtensions.firstOrNull { displayName.lowercase().endsWith(it) }
-                        if (ext == null) {
-                            statusMessage = context.getString(com.UIN.Tool.R.string.container_import_failed, "Unsupported format: $displayName")
-                            isInstalling = false
-                            return@launch
-                        }
-                        val tempFile = File(context.cacheDir, "imported-$displayName")
-                        tempFile.outputStream().use { out -> inputStream.copyTo(out) }
-                        inputStream.close()
-
-                        val containerName = displayName.removeSuffix(ext)
-                            .replace(Regex("[^a-zA-Z0-9_-]"), "_")
-                            .ifEmpty { "imported" }
-
-                        val totalEntries = withContext(Dispatchers.IO) {
-                            RootfsManager.countTarEntries(tempFile)
-                        }
-
-                        LongTaskRegistry.begin(CONTAINER_TASK, context.getString(com.UIN.Tool.R.string.container_importing))
-                        val result = RootfsManager.installFromFile(context, containerName, tempFile) { entryCount, entryName, bytesProcessed, totalBytes ->
-                            publishContainerProgress(
-                                context.getString(com.UIN.Tool.R.string.container_importing),
-                                entryCount, totalEntries, bytesProcessed, totalBytes, entryName
-                            )
-                        }
-                        if (result.isSuccess) LongTaskRegistry.finish(CONTAINER_TASK)
-                        else LongTaskRegistry.fail(CONTAINER_TASK, result.exceptionOrNull()?.message ?: "")
-                        tempFile.delete()
-
-                        refreshContainers()
-                        statusMessage = if (result.isSuccess) {
-                            context.getString(com.UIN.Tool.R.string.container_import_success, containerName)
-                        } else {
-                            context.getString(com.UIN.Tool.R.string.container_import_failed, result.exceptionOrNull()?.message ?: "")
-                        }
-                    } catch (e: Exception) {
-                        statusMessage = context.getString(com.UIN.Tool.R.string.container_import_failed, e.message ?: "")
-                        LongTaskRegistry.fail(CONTAINER_TASK, e.message ?: "")
-                    } finally {
+        contract = InAppFilePicker.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                isInstalling = true
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri) ?: return@launch
+                    val displayName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        cursor.moveToFirst()
+                        if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                    } ?: "imported-rootfs"
+                    val validExtensions = listOf(".tar.xz", ".tar.gz", ".tgz", ".tar.zst", ".zst", ".tar")
+                    val ext = validExtensions.firstOrNull { displayName.lowercase().endsWith(it) }
+                    if (ext == null) {
+                        statusMessage = context.getString(com.UIN.Tool.R.string.container_import_failed, "Unsupported format: $displayName")
                         isInstalling = false
+                        return@launch
                     }
+                    val tempFile = File(context.cacheDir, "imported-$displayName")
+                    // rootfs 包动辄几百 MB，整段拷贝在主线程跑会把导入页冻住直到 ANR
+                    // （同函数下面的 countTarEntries 早已包了 IO，只有这步漏了）
+                    withContext(Dispatchers.IO) {
+                        tempFile.outputStream().use { out -> inputStream.copyTo(out) }
+                    }
+                    inputStream.close()
+
+                    val containerName = displayName.removeSuffix(ext)
+                        .replace(Regex("[^a-zA-Z0-9_-]"), "_")
+                        .ifEmpty { "imported" }
+
+                    val totalEntries = withContext(Dispatchers.IO) {
+                        RootfsManager.countTarEntries(tempFile)
+                    }
+
+                    LongTaskRegistry.begin(CONTAINER_TASK, context.getString(com.UIN.Tool.R.string.container_importing))
+                    val result = RootfsManager.installFromFile(context, containerName, tempFile) { entryCount, entryName, bytesProcessed, totalBytes ->
+                        publishContainerProgress(
+                            context.getString(com.UIN.Tool.R.string.container_importing),
+                            entryCount, totalEntries, bytesProcessed, totalBytes, entryName
+                        )
+                    }
+                    if (result.isSuccess) LongTaskRegistry.finish(CONTAINER_TASK)
+                    else LongTaskRegistry.fail(CONTAINER_TASK, result.exceptionOrNull()?.message ?: "")
+                    tempFile.delete()
+
+                    refreshContainers()
+                    statusMessage = if (result.isSuccess) {
+                        context.getString(com.UIN.Tool.R.string.container_import_success, containerName)
+                    } else {
+                        context.getString(com.UIN.Tool.R.string.container_import_failed, result.exceptionOrNull()?.message ?: "")
+                    }
+                } catch (e: Exception) {
+                    statusMessage = context.getString(com.UIN.Tool.R.string.container_import_failed, e.message ?: "")
+                    LongTaskRegistry.fail(CONTAINER_TASK, e.message ?: "")
+                } finally {
+                    isInstalling = false
                 }
             }
         }
     }
 
+    // m.txt 第 7 条：导出容器文件改用内置「另存为」，不再弹系统 CreateDocument。
     val exportSaverLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri ->
-                val name = exportContainerName ?: return@rememberLauncherForActivityResult
-                scope.launch {
-                    isInstalling = true
-                    LongTaskRegistry.begin(CONTAINER_TASK, context.getString(com.UIN.Tool.R.string.container_exporting, name))
-                    try {
-                        val exportDir = File(context.cacheDir, "export")
-                        val result = RootfsManager.exportContainer(context, name, exportDir, exportCompressionLevel) { fileCount, totalFiles, bytesWritten, totalBytes, currentFile ->
-                            publishContainerProgress(
-                                context.getString(com.UIN.Tool.R.string.container_exporting, name),
-                                fileCount, totalFiles, bytesWritten, totalBytes, currentFile
-                            )
-                        }
-                        if (result.isSuccess) LongTaskRegistry.finish(CONTAINER_TASK)
-                        else LongTaskRegistry.fail(CONTAINER_TASK, result.exceptionOrNull()?.message ?: "")
-                        if (result.isSuccess) {
-                            val exportedFile = result.getOrThrow()
-                            withContext(Dispatchers.IO) {
-                                context.contentResolver.openOutputStream(uri)?.use { out ->
-                                    exportedFile.inputStream().use { inp -> inp.copyTo(out) }
-                                }
-                            }
-                            exportedFile.delete()
-                            statusMessage = context.getString(com.UIN.Tool.R.string.container_export_success, name)
-                        } else {
-                            statusMessage = context.getString(com.UIN.Tool.R.string.container_export_failed, result.exceptionOrNull()?.message ?: "")
-                        }
-                    } catch (e: Exception) {
-                        statusMessage = context.getString(com.UIN.Tool.R.string.container_export_failed, e.message ?: "")
-                        LongTaskRegistry.fail(CONTAINER_TASK, e.message ?: "")
-                    } finally {
-                        isInstalling = false
-                        exportContainerName = null
+        contract = InAppFilePicker.CreateDocument("application/zstd")
+    ) { uri ->
+        if (uri != null) {
+            val name = exportContainerName ?: return@rememberLauncherForActivityResult
+            scope.launch {
+                isInstalling = true
+                LongTaskRegistry.begin(CONTAINER_TASK, context.getString(com.UIN.Tool.R.string.container_exporting, name))
+                try {
+                    val exportDir = File(context.cacheDir, "export")
+                    val result = RootfsManager.exportContainer(context, name, exportDir, exportCompressionLevel) { fileCount, totalFiles, bytesWritten, totalBytes, currentFile ->
+                        publishContainerProgress(
+                            context.getString(com.UIN.Tool.R.string.container_exporting, name),
+                            fileCount, totalFiles, bytesWritten, totalBytes, currentFile
+                        )
                     }
+                    if (result.isSuccess) LongTaskRegistry.finish(CONTAINER_TASK)
+                    else LongTaskRegistry.fail(CONTAINER_TASK, result.exceptionOrNull()?.message ?: "")
+                    if (result.isSuccess) {
+                        val exportedFile = result.getOrThrow()
+                        withContext(Dispatchers.IO) {
+                            context.contentResolver.openOutputStream(uri)?.use { out ->
+                                exportedFile.inputStream().use { inp -> inp.copyTo(out) }
+                            }
+                        }
+                        exportedFile.delete()
+                        statusMessage = context.getString(com.UIN.Tool.R.string.container_export_success, name)
+                    } else {
+                        statusMessage = context.getString(com.UIN.Tool.R.string.container_export_failed, result.exceptionOrNull()?.message ?: "")
+                    }
+                } catch (e: Exception) {
+                    statusMessage = context.getString(com.UIN.Tool.R.string.container_export_failed, e.message ?: "")
+                    LongTaskRegistry.fail(CONTAINER_TASK, e.message ?: "")
+                } finally {
+                    isInstalling = false
+                    exportContainerName = null
                 }
             }
         }
@@ -363,6 +369,8 @@ fun ContainerManagementScreen() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            // k.txt 第 6 条：容器行涟漪按 8dp 圆角裁切。
+                            .clip(RoundedCornerShape(8.dp))
                             .combinedClickable(
                                 onClick = {
                                     defaultContainer = container.name
@@ -423,13 +431,7 @@ fun ContainerManagementScreen() {
         ) {
             UnifiedButton(
                 text = context.getString(com.UIN.Tool.R.string.container_import),
-                onClick = {
-                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                        type = "*/*"
-                    }
-                    filePickerLauncher.launch(intent)
-                },
+                onClick = { filePickerLauncher.launch(arrayOf("*/*")) },
                 modifier = Modifier.weight(1f),
                 enabled = !rootfsLocked,
                 icon = Icons.Default.FolderOpen
@@ -552,13 +554,8 @@ fun ContainerManagementScreen() {
                     text = context.getString(com.UIN.Tool.R.string.confirm),
                     onClick = {
                         showExportConfirm = null
-                        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                            type = "application/zstd"
-                            putExtra(Intent.EXTRA_TITLE, "${name}-rootfs.tar.zst")
-                        }
                         exportContainerName = name
-                        exportSaverLauncher.launch(intent)
+                        exportSaverLauncher.launch("${name}-rootfs.tar.zst")
                     }
                 )
             },
@@ -782,10 +779,31 @@ private fun formatSize(bytes: Long): String {
     }
 }
 
+/**
+ * 一行「标签 + 值」（容器信息）。
+ *
+ * 用户反馈 d6「排查其他工具属性的长按复制」：这里原先也复制不了 ——
+ * 根目录路径动辄几十个字符，看得到抄不走。长按复制，点一下也复制：
+ * 只给长按的话，轻点那片就是个没反应的死区。
+ */
 @Composable
 private fun InfoRow(label: String, value: String) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val copy = {
+        clipboard.setText(AnnotatedString(value))
+        AppToast.info(context, Str.get(com.UIN.Tool.R.string.copied_to_clipboard))
+    }
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(4.dp))
+            .combinedClickable(
+                enabled = value.isNotBlank(),
+                onClick = copy,
+                onLongClick = copy
+            )
+            .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         UnifiedCaptionText(

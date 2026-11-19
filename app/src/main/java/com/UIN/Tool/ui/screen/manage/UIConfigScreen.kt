@@ -5,9 +5,12 @@ import com.UIN.Tool.utils.Str
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,15 +18,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import com.UIN.Tool.ui.components.FullColorPickerDialog
 import com.UIN.Tool.ui.components.unified.UnifiedButton
@@ -35,6 +42,7 @@ import com.UIN.Tool.ui.components.unified.UnifiedIconButton
 import com.UIN.Tool.ui.components.unified.UnifiedSlider
 import com.UIN.Tool.ui.common.StyleManager
 import com.UIN.Tool.ui.common.StylePresets
+import com.UIN.Tool.ui.screen.files.FilePrefs
 import com.UIN.Tool.ui.screen.manage.uiconfig.UIConfigSidebar
 import com.UIN.Tool.ui.screen.manage.uiconfig.NumericPropertyRow
 import com.UIN.Tool.ui.screen.manage.uiconfig.DropdownPropertyRow
@@ -44,15 +52,24 @@ import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.FileUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.gradientBackgroundBrush
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 
 private const val TAG = "UIConfigScreen"
+
+/**
+ * v.txt 第 4 条（用户）：切深浅色/语言不再重建 Activity，但进程级兜底仍留着 ——
+ * 万一系统回收后重建、saved state 也丢了，至少还停在上次看的分区，而不是跳回「风格」。
+ */
+private var lastSelectedSection: String? = null
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +79,9 @@ fun UIConfigScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // l.txt 第 4 条：「默认启动页」选中后要立刻回显。配置每次保存都会自增版本号，
+    // 这里订阅它，保存完就重组，下拉行重新读取真正的当前值（而不是首帧那份）。
+    val configVersion by UIConfig.getInstance().configVersion.collectAsState()
 
     var styleVersion by remember { mutableIntStateOf(0) }
     var configState by remember(styleVersion) { mutableStateOf(loadConfigFromUIConfig()) }
@@ -72,7 +92,10 @@ fun UIConfigScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showDarkPalette by remember { mutableStateOf(false) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
-    var selectedSection by remember { mutableStateOf("style_default") }
+    // u.txt 第 4 条（用户）：切换深浅色 / 语言会重建 Activity —— 用 rememberSaveable
+    // 把当前分区存进 saved state，重建后仍停在同一分区，而不是跳回第一项「风格」。
+    var selectedSection by rememberSaveable { mutableStateOf(lastSelectedSection ?: "appearance_style") }
+    LaunchedEffect(selectedSection) { lastSelectedSection = selectedSection }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
@@ -114,14 +137,16 @@ fun UIConfigScreen(
         val uiConfig = UIConfig.getInstance()
         val savedStyle = uiConfig.getCurrentStyle()
         uiConfig.resetToDefault()
-        configState = loadConfigFromUIConfig()
-        // 批次58：switchStyle 现按「缓存优先」返回该风格自己的配置（修复新拟态渐变
-        // 被全局槽踩回）——重置必须连同各风格缓存一并清空，否则旧自定义会被
-        // switchStyle 当作风格缓存原样恢复，重置被旧值盖回。
+        // 重置必须连同各风格缓存一并清空，否则旧自定义会被当作该风格的配置原样恢复。
         StyleManager.clearCache()
+        // w.txt 第 5 条（用户）：重置要按**当前风格自己的预设**铺底 —— 以前这里
+        // 走 switchStyle，拿到的是刚被 resetToDefault 覆盖的出厂（默认风格）配置，
+        // 新拟态重置后颜色/渐变全变成默认风格那一套。
         try {
-            configState = StyleManager.switchStyle(configState, savedStyle)
-        } catch (_: Exception) {}
+            configState = StyleManager.resetStyle(savedStyle)
+        } catch (_: Exception) {
+            configState = loadConfigFromUIConfig()
+        }
         saveConfigToUIConfig(configState)
         AppToast.info(context, Str.get(R.string.reset_to_default_config))
         showResetDialog = false
@@ -134,12 +159,16 @@ fun UIConfigScreen(
         configState = configState.updatePaletteColor(key, value)
     }
 
-    fun importConfig(uri: Uri) {
+    /** 真正的导入：拷贝 → 解析 → 逐项写入 → 落盘，全程不占主线程。 */
+    suspend fun applyImport(uri: Uri) {
         try {
             AppLog.i(TAG, Str.get(R.string.start_importing_ui_config))
             val tempFile = File(context.cacheDir, "ui_config_import.json")
-            if (FileUtils.copyUriToFile(context, uri, tempFile)) {
-                val json = tempFile.readText()
+            val copied = withContext(Dispatchers.IO) {
+                FileUtils.copyUriToFile(context, uri, tempFile)
+            }
+            if (copied) {
+                val json = withContext(Dispatchers.IO) { tempFile.readText() }
                 val obj = JSONObject(json)
 
                 val uiConfig = UIConfig.getInstance()
@@ -283,6 +312,9 @@ fun UIConfigScreen(
                     }
                 }
 
+                // 6.3.0：文件页设置（FilePrefs，4.17/N12）随统一配置一起导入
+                obj.optJSONObject("files")?.let { files -> FilePrefs.importJson(files) }
+
                 uiConfig.saveConfig()
                 configState = loadConfigFromUIConfig()
 
@@ -296,11 +328,27 @@ fun UIConfigScreen(
         }
     }
 
+    /**
+     * 导入入口（[androidx.activity.result.ActivityResultCallback] 里调）。
+     *
+     * 声明必须排在 [applyImport] **之后** —— Kotlin 的局部函数不许前向引用，
+     * 这也正是上一版编不过的原因（`Unresolved reference 'applyImport'`）。
+     */
+    fun importConfig(uri: Uri) {
+        // 拷贝 + JSON 解析 + 上百次配置写入全在主线程会把导入页直接卡死（横向排查），
+        // 整段挪到 IO。落盘与提示都是线程安全的（AppToast 自带切主线程）。
+        scope.launch { applyImport(uri) }
+    }
+
     fun exportConfig(uri: Uri) {
         try {
             AppLog.i(TAG, Str.get(R.string.start_exporting_ui_config))
             val uiConfig = UIConfig.getInstance()
-            val json = uiConfig.getConfig().toString(4)
+            // 6.3.0：把文件页设置（FilePrefs，4.17/N12）合进导出 JSON。**先复制一份再 put**——
+            // getConfig() 返回的是活配置对象，直接写会把它污染（下次导出/保存都带着 files 段）
+            val merged = JSONObject(uiConfig.getConfig().toString())
+            merged.put("files", FilePrefs.exportJson())
+            val json = merged.toString(4)
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(json.toByteArray())
             }
@@ -313,13 +361,13 @@ fun UIConfigScreen(
     }
 
     val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         if (uri != null) importConfig(uri)
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
+        InAppFilePicker.CreateDocument("application/json")
     ) { uri: Uri? ->
         if (uri != null) exportConfig(uri)
     }
@@ -341,10 +389,46 @@ fun UIConfigScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
             ) {
             when (selectedSection) {
-                "style_default", "style_neumorphism" -> {
+                // ===== 6.3.0 M1.5（决策 2）：侧栏顶级节点「导航」=====
+                "nav_default" -> {
+                    item {
+                        DropdownPropertyRow(
+                            label = Str.get(R.string.sidebar_nav_default),
+                            value = remember(configVersion) {
+                                UIConfig.getInstance().getDefaultTab()
+                            },
+                            options = navTabOptions(),
+                            onValueChange = { UIConfig.getInstance().setDefaultTab(it) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.sidebar_nav_default_hint),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+
+                "nav_order" -> {
+                    item {
+                        UnifiedCaptionText(
+                            text = Str.get(R.string.sidebar_nav_order_hint),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(AppDimens.cardCornerRadius))
+                                .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else Color.Transparent)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        NavOrderEditor()
+                    }
+                }
+
+                "appearance_style", "style_default", "style_neumorphism" -> {
                     item {
                         val isCurrentDefault = StyleManager.getCurrentStyleName() == "default"
                         val isCurrentNeumorphism = StyleManager.getCurrentStyleName() == "neumorphism"
@@ -1251,5 +1335,144 @@ private fun gradientDirectionLabel(dir: String): String {
         UIConfig.GRADIENT_DIR_TOP_RIGHT -> Str.get(R.string.gradient_dir_top_right)
         UIConfig.GRADIENT_DIR_BOTTOM_LEFT -> Str.get(R.string.gradient_dir_bottom_left)
         else -> Str.get(R.string.gradient_dir_bottom_right)
+    }
+}
+
+// ===== 6.3.0 M1.5（决策 2）：导航设置（侧栏顶级节点「导航」） =====
+
+/** 底部导航 5 个 tab 的 id → 显示名；复用各 tab 自己的标题串，避免出现两套文案 */
+private fun navTabOptions(): List<Pair<String, String>> = listOf(
+    "dev" to Str.get(R.string.developer),
+    "tools" to Str.get(R.string.plugins),
+    "files" to Str.get(R.string.files),
+    "repo" to Str.get(R.string.repository),
+    "manage" to Str.get(R.string.manage)
+)
+
+private fun navTabLabel(id: String): String =
+    navTabOptions().firstOrNull { it.first == id }?.second ?: id
+
+/**
+ * 导航顺序编辑器：**只排序、不隐藏**（决策 2 自行拍板，可否决）。
+ * 观察 configVersion —— 导入配置/恢复默认后会重新取值，避免界面顺序与实际生效顺序脱节。
+ *
+ * l.txt 第 4 条：上下箭头改成**长按拖动** —— 按住一行上下拖，松手落位并持久化。
+ * 拖动中不实时改 [order]（那会让 pointerInput 因 key 变化而中断手势），只在抬手时
+ * 按位移换算目标下标，一次性交换并保存。
+ *
+ * m.txt 第 4 条：拖动起来的卡片外观必须与静止时一致（不再放大/抬阴影/换底色），
+ * 并且其余行要按落点平滑上移/下移让位，松手即落位。
+ */
+@Composable
+private fun NavOrderEditor() {
+    var order by remember { mutableStateOf(UIConfig.getInstance().getTabOrder()) }
+    val cfgVersion by UIConfig.configVersion.collectAsState()
+    LaunchedEffect(cfgVersion) { order = UIConfig.getInstance().getTabOrder() }
+
+    val density = LocalDensity.current
+    // n.txt 第 7 条：行改成**卡片**，行间留 6dp；拖动的落点换算必须把这段间隙
+    // 一起算进去，否则往下拖一格会差半个卡片。
+    val rowHeight = 48.dp
+    val rowGap = 6.dp
+    val stepPx = with(density) { (rowHeight + rowGap).toPx() }
+    var draggingIndex by remember { mutableIntStateOf(-1) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+
+    // 落点槽位：拖动过程中实时算，让其余行提前动画让位；松手时直接用它提交。
+    val targetIndex = if (draggingIndex < 0) -1
+    else (draggingIndex + (dragOffset / stepPx).toInt()).coerceIn(0, order.lastIndex)
+
+    val cardShape = RoundedCornerShape(10.dp)
+    // 卡片底**必须不透明**：拖动时被拖的行会从别的行上经过，半透明底会让两行文字
+    // 叠在一起，看上去像重影（用户反馈的原话）。玻璃模式下也一样用实色 ——
+    // 这里要的是可读性，不是透出背景。
+    val rowBg = MaterialTheme.colorScheme.surface
+    val idleBorder = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+    val dragBorder = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(rowGap)
+    ) {
+        order.forEachIndexed { index, id ->
+            val dragging = draggingIndex == index
+            // 被拖动的行跟手；其余行按目标槽位让位一格，并带过渡动画。
+            val shiftPx = when {
+                dragging || targetIndex < 0 || targetIndex == draggingIndex -> 0f
+                draggingIndex < index && index <= targetIndex -> -stepPx
+                draggingIndex > index && index >= targetIndex -> stepPx
+                else -> 0f
+            }
+            val animatedShift by animateFloatAsState(
+                targetValue = shiftPx,
+                animationSpec = tween(durationMillis = 150),
+                label = "navRowShift$index"
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(rowHeight)
+                    .zIndex(if (dragging) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = if (dragging) dragOffset else animatedShift
+                    }
+                    .clip(cardShape)
+                    .background(rowBg)
+                    .border(1.dp, if (dragging) dragBorder else idleBorder, cardShape)
+                    .pointerInput(order, index) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                draggingIndex = index
+                                dragOffset = 0f
+                            },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                dragOffset += amount.y
+                            },
+                            onDragEnd = {
+                                val target = (index + (dragOffset / stepPx).toInt())
+                                    .coerceIn(0, order.lastIndex)
+                                draggingIndex = -1
+                                dragOffset = 0f
+                                if (target != index) {
+                                    val next = order.toMutableList()
+                                    next.removeAt(index)
+                                    next.add(target, id)
+                                    UIConfig.getInstance().setTabOrder(next)
+                                    order = next
+                                }
+                            },
+                            onDragCancel = {
+                                draggingIndex = -1
+                                dragOffset = 0f
+                            }
+                        )
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DragHandle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(start = 8.dp).size(20.dp)
+                )
+                Text(
+                    text = navTabLabel(id),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 10.dp)
+                )
+            }
+        }
+        Text(
+            text = Str.get(R.string.nav_order_drag_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 6.dp)
+        )
     }
 }

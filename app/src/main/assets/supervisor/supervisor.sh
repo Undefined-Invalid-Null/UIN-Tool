@@ -5,6 +5,10 @@ CTRL=$ROOT/.uin
 LOGDIR=$CTRL/logs
 LOG=$LOGDIR/supervisor.log
 mkdir -p $CTRL/cmd $CTRL/pid $CTRL/stop $CTRL/idle $CTRL/done $CTRL/rc $LOGDIR
+# 这些目录可能由宿主建（0700 归宿主）、也可能由上一轮的我们建（0700 归 Termux），
+# 两个 uid 互不相让：谁属主谁能写，另一边就是 EPERM。以属主身份统一放到 777，
+# 宿主投递的 cmd 文件才写得进去（写不进去时 supervisor 只能一直 cmd=0 空转）。
+chmod 777 $CTRL/cmd $CTRL/pid $CTRL/stop $CTRL/idle $CTRL/done $CTRL/rc $LOGDIR 2>/dev/null
 
 log() { echo "[$(date '+%H:%M:%S')] $*" >> "$LOG"; }
 # 递归杀进程树：pgrep 不可用时用 /proc 兜底

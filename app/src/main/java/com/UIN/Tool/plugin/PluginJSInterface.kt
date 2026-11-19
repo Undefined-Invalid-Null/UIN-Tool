@@ -152,7 +152,9 @@ class PluginJSInterface(
     private val cachedPluginContext: PluginContext? by lazy {
         try {
             val pluginDir = File(Constants.PLUGIN_DIR, pluginId)
-            PluginContext(context, pluginDir.absolutePath)
+            // v.txt 第 3 条（用户）：绝对路径（共享外部存储原路径）只在插件声明并
+            // 获得了存储能力时放行 —— 每次解析动态问 checkCapability，权限撤销后立即失效。
+            PluginContext(context, pluginDir.absolutePath) { checkCapability("storage") }
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.failed_to_get_plugincontext), e)
             null

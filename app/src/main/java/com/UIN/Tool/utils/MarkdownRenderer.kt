@@ -1,9 +1,19 @@
 package com.UIN.Tool.utils
 
 import com.UIN.Tool.R
-import android.text.TextUtils
-import java.util.regex.Matcher
-import java.util.regex.Pattern
+import org.commonmark.ext.gfm.tables.TablesExtension
+import org.commonmark.node.AbstractVisitor
+import org.commonmark.node.Code
+import org.commonmark.node.HardLineBreak
+import org.commonmark.node.Heading
+import org.commonmark.node.Node
+import org.commonmark.node.SoftLineBreak
+import org.commonmark.node.Text
+import org.commonmark.parser.Parser
+import org.commonmark.renderer.html.AttributeProvider
+import org.commonmark.renderer.html.AttributeProviderContext
+import org.commonmark.renderer.html.AttributeProviderFactory
+import org.commonmark.renderer.html.HtmlRenderer
 
 /**
  * Markdown 渲染器
@@ -15,11 +25,35 @@ object MarkdownRenderer {
     private const val MAX_PARSE_CHARS = 512 * 1024
 
     /**
-     * 将 Markdown 转换为 HTML
+     * 将 Markdown 转换为 HTML。
+     *
+     * 保留「正文内嵌目录」的老行为给帮助页 / 更新日志用；Markdown 阅读页改用
+     * [render] 并把目录交给标题栏侧边栏（l.txt 第 1 条）。
      */
-    fun toHtml(markdown: String): String {
+    fun toHtml(markdown: String): String = render(markdown, includeToc = true).html
+
+    /** Markdown 渲染结果：HTML + 标题目录（供阅读页侧边栏跳转）。 */
+    data class Rendered(
+        val html: String,
+        val toc: List<TocItem>
+    )
+
+    /** 一个可跳转的标题（[id] 已注入正文对应 `<h*>` 的 id）。 */
+    data class TocItem(
+        val level: Int,
+        val id: String,
+        val title: String
+    )
+
+    /**
+     * l.txt 第 1 条：渲染 Markdown，目录**不再塞进正文**。
+     *
+     * @param includeToc true 时正文顶部仍带可折叠目录（帮助页等旧入口）；阅读页传 false，
+     *        目录只经返回值 [Rendered.toc] 交给侧边栏。
+     */
+    fun render(markdown: String, includeToc: Boolean = false): Rendered {
         if (markdown.isEmpty()) {
-            return getEmptyHtml()
+            return Rendered(getEmptyHtml(), emptyList())
         }
 
         var truncated = false
@@ -39,7 +73,7 @@ object MarkdownRenderer {
         html.append("<html>\n")
         html.append("<head>\n")
         html.append("    <meta charset='UTF-8'>\n")
-        html.append("    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes'>\n")
+        html.append("    <meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes'>\n")
         html.append("    <title>Document</title>\n")
         html.append("    <style>\n")
         html.append(getCss())
@@ -55,8 +89,8 @@ object MarkdownRenderer {
         val result = parseMarkdownWithToc(source)
         val tocHtml = generateTocHtml(result.tocItems)
 
-        // 添加目录
-        if (result.tocItems.isNotEmpty()) {
+        // 添加目录（仅 includeToc；阅读页走侧边栏）
+        if (includeToc && result.tocItems.isNotEmpty()) {
             html.append("<div class='toc-container'>\n")
             html.append(Str.get(R.string.div_class_toc_header_onclick_togglet))
             html.append("    <div class='toc-content' id='tocContent'>\n")
@@ -79,7 +113,7 @@ object MarkdownRenderer {
         html.append("</body>\n")
         html.append("</html>")
 
-        return html.toString()
+        return Rendered(html.toString(), result.tocItems)
     }
 
     private fun getCss(): String {
@@ -106,6 +140,10 @@ object MarkdownRenderer {
         val strongColor = if (dark) "#ECEFF1" else "#2C3E50"
         return """
             * { margin: 0; padding: 0; box-sizing: border-box; }
+            /* o.txt 第 6 条：正文宽度必须严格等于可视宽度 —— 只要根元素允许横向滚动，
+               右滑就会滑出一段没有任何内容的空白。宽内容（代码块 / 表格）各自有
+               overflow-x: auto，自己内部横滚，不受这里影响。 */
+            html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
             body { 
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; 
                 line-height: 1.6; 
@@ -271,6 +309,22 @@ object MarkdownRenderer {
                 th, td { padding: 6px 8px; } 
             }
             html { scroll-behavior: smooth; }
+            /* 用户反馈 d11：文档滑条加粗到 16px 并圆角 —— 系统默认那根细滑条在手机上点不中。
+               轨道透明，只留拇指；拇指长度由内容比例决定（CSS 管不了），
+               所以「长」靠下面 WebView 关掉自动淡出来保证它一直在。 */
+            ::-webkit-scrollbar { width: 16px; height: 16px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb {
+                background: rgba(128, 128, 128, 0.55);
+                background-clip: padding-box;
+                border: 4px solid transparent;
+                border-radius: 999px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(128, 128, 128, 0.85);
+                background-clip: padding-box;
+            }
+            ::-webkit-scrollbar-corner { background: transparent; }
         """.trimIndent()
     }
 
@@ -349,11 +403,29 @@ object MarkdownRenderer {
                     }
                 });
                 
+                // 表格横滚：commonmark 出的是裸 <table>，包一层才吃得到 .table-wrapper 的 overflow-x。
+                // 与上面 <pre> 同一套「缺 wrapper 才包」的判断，重复渲染不会套两层。
+                var tables = document.querySelectorAll('table');
+                tables.forEach(function(tbl) {
+                    if (tbl.parentElement && !tbl.parentElement.classList.contains('table-wrapper')) {
+                        var tw = document.createElement('div');
+                        tw.className = 'table-wrapper';
+                        tbl.parentNode.insertBefore(tw, tbl);
+                        tw.appendChild(tbl);
+                    }
+                });
+                
                 var headers = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
                 headers.forEach(function(header) {
                     if (!header.id) {
-                        var text = header.innerText;
-                        var id = text.toLowerCase().replace(/[^\\w\\u4e00-\\u9fa5]+/g, '-');
+                        // 兜底：正常标题 id 由 AttributeProvider 注入，这里只补漏网的。规则必须与
+                        // Kotlin 侧 slugify() 同源（GitHub 口径）。本函数是 Kotlin **原始字符串**，
+                        // 反斜杠只写一个 —— 原先写成 \\w，JS 实际拿到「字面反斜杠 + w」，
+                        // 这条兜底从一开始就是坏的（只是渲染器总设 id 才没暴露）。
+                        var id = header.innerText.toLowerCase()
+                            .replace(/[^\w\u4e00-\u9fa5\s-]+/g, '')
+                            .replace(/\s/g, '-')
+                            .replace(/^-|-$/g, '');
                         header.id = id;
                     }
                 });
@@ -376,261 +448,95 @@ object MarkdownRenderer {
         val tocItems: List<TocItem>
     )
 
-    private data class TocItem(
-        val level: Int,
-        val id: String,
-        val title: String
-    )
-
+    /**
+     * 解析 Markdown → HTML + 目录项。
+     *
+     * 解析交给 **commonmark-java**（CommonMark 规范实现，本项目早就在依赖里），
+     * 不再逐行手写 —— 手写版的 `inList` 只是个布尔量，**列表永远只有一层**
+     * （文档里 308 处缩进子项会被拍平），段落续行、引用块、转义也各有边界情况。
+     * 这里只保留手写版才需要做的三件事：
+     *   1. 给标题分配 id（GitHub 规则 + 重复去重），供顶部目录与正文手写目录 `(#...)` 跳转；
+     *   2. 收集目录项；
+     *   3. 交给 HtmlRenderer 出 HTML。
+     * 复制按钮与表格横滚由页面 JS 自动补（`<pre>` / `<table>` 缺 wrapper 时包一层）。
+     */
     private fun parseMarkdownWithToc(markdown: String): ParseResult {
-        val result = StringBuilder()
+        val extensions = listOf(TablesExtension.create())
+        val document = Parser.builder().extensions(extensions).build().parse(markdown)
+
+        // 第一遍：收标题、算 id。slug 用标题的**纯文本**口径（去掉 `**`、反引号等行内标记），
+        // 与文档手写目录按 GitHub 规则生成的锚点一致。
         val tocItems = mutableListOf<TocItem>()
-        val lines = markdown.split("\n")
+        val idByNode = HashMap<Node, String>()
+        val seen = HashSet<String>()
+        document.accept(object : AbstractVisitor() {
+            override fun visit(heading: Heading) {
+                val text = plainTextOf(heading)
+                val id = slugify(text, seen)
+                idByNode[heading] = id
+                tocItems.add(TocItem(heading.level, id, text))
+                super.visit(heading)
+            }
+        })
 
-        var inCodeBlock = false
-        var inList = false
-        var inOrderedList = false
-        var inBlockquote = false
-        val codeBlock = StringBuilder()
-        val blockquoteContent = StringBuilder()
-        var currentLanguage = ""
-
-        var i = 0
-        while (i < lines.size) {
-            val line = lines[i]
-            val trimmedLine = line.trim()
-
-            // 代码块
-            if (trimmedLine.startsWith("```")) {
-                if (!inCodeBlock) {
-                    if (inList) {
-                        result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                        inList = false
+        // 第二遍：渲染，标题 id 由 AttributeProvider 注入。
+        // （页面 JS 只在 `!header.id` 时才兜底，所以这里设了就不会被覆盖。）
+        val body = HtmlRenderer.builder()
+            .extensions(extensions)
+            .attributeProviderFactory(object : AttributeProviderFactory {
+                override fun create(context: AttributeProviderContext): AttributeProvider =
+                    object : AttributeProvider {
+                        override fun setAttributes(
+                            node: Node,
+                            tagName: String,
+                            attributes: MutableMap<String, String>
+                        ) {
+                            if (node is Heading) idByNode[node]?.let { attributes["id"] = it }
+                        }
                     }
-                    if (inBlockquote) {
-                        result.append("</blockquote>\n")
-                        inBlockquote = false
-                    }
-                    inCodeBlock = true
-                    currentLanguage = trimmedLine.substring(3).trim()
-                    codeBlock.clear()
-                } else {
-                    inCodeBlock = false
-                    result.append("<div class='code-block-wrapper'><pre><code")
-                    if (currentLanguage.isNotEmpty()) {
-                        result.append(" class='language-").append(escapeHtml(currentLanguage)).append("'")
-                    }
-                    result.append(">")
-                    result.append(escapeHtml(codeBlock.toString()))
-                    result.append(Str.get(R.string.code_pre_button_class_copy_btn_oncli))
-                }
-                i++
-                continue
+            })
+            .build()
+            .render(document)
+
+        return ParseResult(body, tocItems)
+    }
+
+    /** 取节点纯文本：标题里 `**粗体**`、`` `代码` `` 的标记要去掉，才能与浏览器 innerText 对齐。 */
+    private fun plainTextOf(node: Node): String {
+        val sb = StringBuilder()
+        var child: Node? = node.firstChild
+        while (child != null) {
+            val cur = child
+            when (cur) {
+                is Text -> sb.append(cur.literal)
+                is Code -> sb.append(cur.literal)
+                is SoftLineBreak, is HardLineBreak -> sb.append(' ')
+                else -> sb.append(plainTextOf(cur))
             }
-
-            if (inCodeBlock) {
-                codeBlock.append(line).append("\n")
-                i++
-                continue
-            }
-
-            // 表格
-            if (trimmedLine.contains("|") && trimmedLine.startsWith("|")) {
-                if (inList) {
-                    result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                    inList = false
-                }
-                if (inBlockquote) {
-                    result.append("</blockquote>\n")
-                    inBlockquote = false
-                }
-                val tableHtml = parseTable(lines, i)
-                if (tableHtml != null) {
-                    result.append(tableHtml)
-                    while (i + 1 < lines.size && lines[i + 1].contains("|")) {
-                        i++
-                    }
-                    i++
-                    continue
-                }
-            }
-
-            // 标题
-            var level = 0
-            var titleText = ""
-            var headerTag = ""
-
-            when {
-                trimmedLine.startsWith("# ") -> {
-                    level = 1
-                    titleText = trimmedLine.substring(2)
-                    headerTag = "h1"
-                }
-                trimmedLine.startsWith("## ") -> {
-                    level = 2
-                    titleText = trimmedLine.substring(3)
-                    headerTag = "h2"
-                }
-                trimmedLine.startsWith("### ") -> {
-                    level = 3
-                    titleText = trimmedLine.substring(4)
-                    headerTag = "h3"
-                }
-                trimmedLine.startsWith("#### ") -> {
-                    level = 4
-                    titleText = trimmedLine.substring(5)
-                    headerTag = "h4"
-                }
-                trimmedLine.startsWith("##### ") -> {
-                    level = 5
-                    titleText = trimmedLine.substring(6)
-                    headerTag = "h5"
-                }
-                trimmedLine.startsWith("###### ") -> {
-                    level = 6
-                    titleText = trimmedLine.substring(7)
-                    headerTag = "h6"
-                }
-            }
-
-            if (level > 0) {
-                if (inList) {
-                    result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                    inList = false
-                }
-                if (inBlockquote) {
-                    result.append("</blockquote>\n")
-                    inBlockquote = false
-                }
-                val id = titleText.lowercase()
-                    .replace(Regex("[^\\w\\u4e00-\\u9fa5]+"), "-")
-                    .replace(Regex("^-|-$"), "")
-                tocItems.add(TocItem(level, id, titleText))
-                result.append("<").append(headerTag).append(" id='").append(id).append("'>")
-                result.append(parseInline(escapeHtml(titleText)))
-                result.append("</").append(headerTag).append(">\n")
-                i++
-                continue
-            }
-
-            // 引用
-            if (trimmedLine.startsWith(">")) {
-                if (inList) {
-                    result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                    inList = false
-                }
-                if (!inBlockquote) {
-                    inBlockquote = true
-                    blockquoteContent.clear()
-                }
-                val quoteLine = trimmedLine.substring(1).trim()
-                if (quoteLine.isEmpty() && blockquoteContent.isNotEmpty()) {
-                    result.append("<blockquote>").append(parseInline(escapeHtml(blockquoteContent.toString()))).append("</blockquote>\n")
-                    inBlockquote = false
-                } else {
-                    blockquoteContent.append(quoteLine).append("\n")
-                }
-                i++
-                continue
-            }
-
-            if (inBlockquote && !trimmedLine.startsWith(">")) {
-                result.append("<blockquote>").append(parseInline(escapeHtml(blockquoteContent.toString()))).append("</blockquote>\n")
-                inBlockquote = false
-            }
-
-            // 分隔线
-            if (trimmedLine.matches(Regex("^[-*_]{3,}$"))) {
-                if (inList) {
-                    result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                    inList = false
-                }
-                if (inBlockquote) {
-                    result.append("</blockquote>\n")
-                    inBlockquote = false
-                }
-                result.append("<hr>\n")
-                i++
-                continue
-            }
-
-            // 无序列表
-            if (trimmedLine.matches(Regex("^[-*+]\\s+.*"))) {
-                if (!inList || inOrderedList) {
-                    if (inList) result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                    result.append("<ul>\n")
-                    inList = true
-                    inOrderedList = false
-                }
-                val content = trimmedLine.substring(1).trim()
-                if (content.startsWith("[ ] ")) {
-                    val taskContent = content.substring(4)
-                    result.append("<li class='task-list-item'><input type='checkbox' disabled> ").append(parseInline(escapeHtml(taskContent))).append("</li>\n")
-                } else if (content.startsWith("[x] ") || content.startsWith("[X] ")) {
-                    val taskContent = content.substring(4)
-                    result.append("<li class='task-list-item'><input type='checkbox' checked disabled> ").append(parseInline(escapeHtml(taskContent))).append("</li>\n")
-                } else {
-                    result.append("<li>").append(parseInline(escapeHtml(content))).append("</li>\n")
-                }
-                i++
-                continue
-            }
-
-            // 有序列表
-            if (trimmedLine.matches(Regex("^\\d+\\.\\s+.*"))) {
-                if (!inList || !inOrderedList) {
-                    if (inList) result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                    result.append("<ol>\n")
-                    inList = true
-                    inOrderedList = true
-                }
-                val content = trimmedLine.substring(trimmedLine.indexOf('.') + 1).trim()
-                result.append("<li>").append(parseInline(escapeHtml(content))).append("</li>\n")
-                i++
-                continue
-            }
-
-            // 空行
-            if (trimmedLine.isEmpty()) {
-                if (inList) {
-                    result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                    inList = false
-                }
-                i++
-                continue
-            }
-
-            // 普通段落
-            if (inList) {
-                result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-                inList = false
-            }
-
-            val paragraph = StringBuilder(line)
-            while (i + 1 < lines.size && lines[i + 1].trim().isNotEmpty() &&
-                !lines[i + 1].trim().startsWith("#") &&
-                !lines[i + 1].trim().startsWith("```") &&
-                !lines[i + 1].trim().matches(Regex("^[-*+>\\d].*")) &&
-                !lines[i + 1].trim().matches(Regex("^\\|.*\\|$"))) {
-                i++
-                paragraph.append("\n").append(lines[i])
-            }
-
-            result.append("<p>").append(parseInline(escapeHtml(paragraph.toString()))).append("</p>\n")
-            i++
+            child = cur.next
         }
+        return sb.toString()
+    }
 
-        if (inCodeBlock) {
-            result.append("<div class='code-block-wrapper'><pre><code>").append(escapeHtml(codeBlock.toString())).append(Str.get(R.string.code_pre_button_class_copy_btn_oncli))
+    /**
+     * GitHub 兼容 slug + 重复去重：小写 → 删掉「非单词/非中文/非空白/非连字符」→
+     * **每个**空白各转一个连字符 → 去首尾连字符；撞了补 `-1`、`-2`。
+     *
+     * 手写版是「非单词**连续段**压成一个连字符」，`1.1 核心功能` 会得到 `1-1-核心功能`，
+     * 而文档手写目录按 GitHub 规则写的是 `#11-核心功能` —— 正文那份目录整片点不动。
+     * 顶部自动目录因为 href 与 id 同源，始终自洽，所以这个错一直看不出来。
+     */
+    private fun slugify(text: String, seen: MutableSet<String>): String {
+        var id = text.lowercase()
+            .replace(Regex("[^\\w\\u4e00-\\u9fa5\\s-]+"), "")
+            .replace(Regex("\\s"), "-")
+            .replace(Regex("^-|-$"), "")
+        if (!seen.add(id)) {
+            var n = 1
+            while (!seen.add("$id-$n")) n++
+            id = "$id-$n"
         }
-        if (inList) {
-            result.append(if (inOrderedList) "</ol>\n" else "</ul>\n")
-        }
-        if (inBlockquote) {
-            result.append("<blockquote>").append(parseInline(escapeHtml(blockquoteContent.toString()))).append("</blockquote>\n")
-        }
-
-        return ParseResult(result.toString(), tocItems)
+        return id
     }
 
     private fun generateTocHtml(tocItems: List<TocItem>): String {
@@ -661,143 +567,6 @@ object MarkdownRenderer {
         return html.toString()
     }
 
-    private fun parseTable(lines: List<String>, startIndex: Int): String? {
-        try {
-            val rows = mutableListOf<Array<String>>()
-            var i = startIndex
-
-            while (i < lines.size && lines[i].trim().contains("|")) {
-                var line = lines[i].trim()
-                if (line.startsWith("|")) line = line.substring(1)
-                if (line.endsWith("|")) line = line.substring(0, line.length - 1)
-                val cells = line.split("|").map { it.trim() }.toTypedArray()
-                rows.add(cells)
-                i++
-            }
-
-            if (rows.size < 2) return null
-
-            val hasSeparator = if (rows.size > 1) {
-                rows[1].any { it.matches(Regex("^[-:]+[-:]*$")) }
-            } else false
-
-            val table = StringBuilder()
-            table.append("<div class='table-wrapper'>\n")
-            table.append("<table>\n")
-
-            table.append("<thead>\n<tr>\n")
-            val headers = rows[0]
-            for (j in headers.indices) {
-                var align = ""
-                if (hasSeparator && rows.size > 1 && j < rows[1].size) {
-                    val sep = rows[1][j]
-                    align = when {
-                        sep.startsWith(":") && sep.endsWith(":") -> " center"
-                        sep.endsWith(":") -> " right"
-                        sep.startsWith(":") -> " left"
-                        else -> ""
-                    }
-                }
-                table.append("<th style='text-align:").append(if (align.isEmpty()) "left" else align.trim()).append("'>")
-                table.append(parseInline(escapeHtml(headers[j])))
-                table.append("</th>\n")
-            }
-            table.append("</tr></thead>\n")
-
-            table.append("<tbody>\n")
-            val startRow = if (hasSeparator) 2 else 1
-            for (r in startRow until rows.size) {
-                table.append("<tr>\n")
-                val cells = rows[r]
-                for (j in cells.indices) {
-                    table.append("<td>").append(parseInline(escapeHtml(cells[j]))).append("</td>\n")
-                }
-                table.append("</tr>\n")
-            }
-            table.append("</tbody>\n")
-            table.append("</table>\n")
-            table.append("</div>\n")
-
-            return table.toString()
-        } catch (e: Exception) {
-            return null
-        }
-    }
-
-    private fun parseInline(text: String): String {
-        if (text.isEmpty()) return text
-
-        var result = text
-
-        // 粗体 **text** 或 __text__
-        result = result.replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
-        result = result.replace(Regex("__([^_]+)__"), "<strong>$1</strong>")
-
-        // 斜体 *text* 或 _text_
-        result = result.replace(Regex("\\*([^*]+)\\*"), "<em>$1</em>")
-        result = result.replace(Regex("_([^_]+)_"), "<em>$1</em>")
-
-        // 删除线 ~~text~~
-        result = result.replace(Regex("~~([^~]+)~~"), "<del>$1</del>")
-
-        // 行内代码 `code`
-        val codePattern = Pattern.compile("`([^`]+)`")
-        var matcher = codePattern.matcher(result)
-        val sb = StringBuffer()
-        while (matcher.find()) {
-            matcher.appendReplacement(sb, Matcher.quoteReplacement("<code>" + matcher.group(1) + "</code>"))
-        }
-        matcher.appendTail(sb)
-        result = sb.toString()
-
-        // 图片 ![alt](url)
-        val imgPattern = Pattern.compile("!\\[([^\\]]*)\\]\\(([^)]+)\\)")
-        matcher = imgPattern.matcher(result)
-        val sb2 = StringBuffer()
-        while (matcher.find()) {
-            val alt = matcher.group(1)
-            val src = matcher.group(2)
-            val safeSrc = sanitizeLink(src, allowImage = true)
-            matcher.appendReplacement(sb2, Matcher.quoteReplacement("<img src='$safeSrc' alt='$alt'>"))
-        }
-        matcher.appendTail(sb2)
-        result = sb2.toString()
-
-        // 链接 [text](url)
-        val linkPattern = Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+)\\)")
-        matcher = linkPattern.matcher(result)
-        val sb3 = StringBuffer()
-        while (matcher.find()) {
-            val text2 = matcher.group(1)
-            val url = matcher.group(2)
-            val safeUrl = sanitizeLink(url, allowImage = false)
-            matcher.appendReplacement(sb3, Matcher.quoteReplacement("<a href='$safeUrl'>$text2</a>"))
-        }
-        matcher.appendTail(sb3)
-        result = sb3.toString()
-
-        return result
-    }
-
-    /**
-     * 链接 scheme 白名单：仅允许 http/https/mailto/#/data(仅图片)。
-     * 拦截 javascript:、vbscript:、file: 等可执行 scheme，并转义单引号防属性逃逸。
-     */
-    private fun sanitizeLink(raw: String, allowImage: Boolean): String {
-        val url = raw.trim()
-        val lower = url.lowercase()
-        val allowed = when {
-            lower.startsWith("http://") || lower.startsWith("https://") -> true
-            lower.startsWith("mailto:") -> true
-            lower.startsWith("#") -> true
-            allowImage && lower.startsWith("data:image/") -> true
-            allowImage && lower.startsWith("data:") -> true
-            else -> false
-        }
-        if (!allowed) return "#"
-        return url.replace("'", "&#39;").replace("\"", "&quot;")
-    }
-
     private fun escapeHtml(text: String): String {
         if (text.isEmpty()) return ""
         return text.replace("&", "&amp;")
@@ -818,7 +587,7 @@ object MarkdownRenderer {
             <html>
             <head>
                 <meta charset='UTF-8'>
-                <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes'>
+                <meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes'>
                 <style>
                     body { 
                         font-family: sans-serif; 

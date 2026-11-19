@@ -26,7 +26,11 @@ class FileManager(private val context: Context) {
     fun copyUriToFile(uri: Uri, destFile: File): Boolean {
         return try {
             val resolver: ContentResolver = context.contentResolver
-            resolver.openInputStream(uri)?.use { inputStream ->
+            // m.txt 第 7 条：内置选择器也可能给出打不开的 URI（路径不可读）。
+            // 原先 null 流也算成功（`use` 不执行，函数照样返回 true），
+            // 调用方于是拿到一个 0 字节的临时文件还当成了导入成功。
+            val input = resolver.openInputStream(uri) ?: return false
+            input.use { inputStream ->
                 FileOutputStream(destFile).use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }

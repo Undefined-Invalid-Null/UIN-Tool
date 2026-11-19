@@ -75,6 +75,19 @@ object AppDimens {
         get() = tracked { if (UIConfig.isInitialized()) UIConfig.getInputCornerRadius().dp else 8.dp }
 
     // ==================== 卡片 ====================
+    /**
+     * o.txt 第 3 条：**多卡片之间的间距**。
+     *
+     * 新拟态的凸起靠「卡片外侧一圈柔影」表达，影子会越出卡片边界一点。原来列表/宫格
+     * 统一用 8dp，相邻两张卡片的亮影与暗影正好落在同一条缝里，看着像两条边互相压住
+     * （用户反馈「边框互相遮挡」）。新拟态下给到 16dp，两侧影子各自留出余地；
+     * 其他风格影子本来就没有（elevation 很小），保持 8dp 的紧凑排布不变。
+     */
+    val cardSpacing: Dp
+        get() = tracked {
+            if (UIConfig.isInitialized() && UIConfig.isNeumorphismEnabled()) 16.dp else 8.dp
+        }
+
     val cardElevation: Dp
         get() = tracked { if (UIConfig.isInitialized()) UIConfig.getCardElevation().dp else 4.dp }
     val cardPressedElevation: Dp = 8.dp
@@ -88,7 +101,26 @@ object AppDimens {
     val dialogPadding: Dp = spacingXXLarge
     val dialogCornerRadius: Dp
         get() = tracked { if (UIConfig.isInitialized()) UIConfig.getDialogCornerRadius().dp else 20.dp }
+    /**
+     * 内容型弹窗（标题 + 正文 + 按钮）的宽度占比。0.92 是历史观感，**别随手改**。
+     * 手机上 0.92 × 360dp ≈ 331dp，与主流系统弹窗一个量级。
+     */
     val dialogWidthFraction: Float = 0.92f
+    /**
+     * 轻量弹窗（转圈、下载进度这类没几行字的）宽度占比 —— 比内容型窄一档，
+     * 免得一张只有一行字的卡片横着铺满半屏。
+     */
+    val dialogCompactFraction: Float = 0.85f
+    /**
+     * 弹窗卡片的**宽度上限**（e22）。屏宽再大也不铺满：一行字拖到几十个字符就读不动了。
+     * 手机上 0.92 份额本就低于它，所以这条**只在平板/横屏生效**，竖屏观感与改前一致。
+     */
+    val dialogMaxWidth: Dp = 560.dp
+    /**
+     * 弹窗卡片**上下各留的边距**（e22）。高度上限 = 屏高 − 它 ×2，
+     * 超出的部分交给正文区滚动 —— 按钮永远留在屏幕内，不会被内容顶出去。
+     */
+    val dialogVerticalMargin: Dp = 48.dp
 
     // ==================== 图标 ====================
     val iconXSmall: Dp = 12.dp

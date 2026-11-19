@@ -1,6 +1,11 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/dev/CodeEditorScreen.kt
+// m.txt 第 14 条：标签行用 BringIntoViewRequester 把当前文件滚进可视区，
+// 该 API 仍带 ExperimentalFoundationApi 标记，文件级 opt-in 一次即可。
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.UIN.Tool.ui.screen.dev
 
+import com.UIN.Tool.ui.components.unified.UnifiedDropdownMenu
 import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.graphics.Typeface
@@ -24,6 +29,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.horizontalScroll
@@ -42,14 +49,15 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -60,6 +68,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -78,6 +88,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -97,12 +108,15 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,14 +125,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.UIN.Tool.R
 import com.UIN.Tool.UinApplication
+import com.UIN.Tool.ui.components.unified.AppToastHost
 import com.UIN.Tool.ui.components.unified.UnifiedButton
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.components.unified.UnifiedEmptyState
 import com.UIN.Tool.ui.components.unified.UnifiedIconButton
+import com.UIN.Tool.ui.components.unified.UnifiedLinearProgressIndicator
 import com.UIN.Tool.ui.components.unified.UnifiedTextField
 import com.UIN.Tool.ui.components.unified.UnifiedSlider
 import com.UIN.Tool.ui.components.unified.ButtonSize
@@ -134,6 +153,22 @@ import com.UIN.Tool.ui.screen.dev.editor.MatchHighlights
 import com.UIN.Tool.ui.screen.dev.editor.TextMateInitState
 import com.UIN.Tool.ui.screen.dev.editor.TextMateThemes
 import com.UIN.Tool.ui.screen.dev.editor.WholeSearch
+import com.UIN.Tool.ui.screen.files.FileBackgroundTasksDialog
+import com.UIN.Tool.ui.screen.files.FileManageViewModel
+import com.UIN.Tool.ui.screen.files.FileOpenWithManageScreen
+import com.UIN.Tool.ui.screen.files.FilePropertiesDialog
+import com.UIN.Tool.ui.screen.files.FileSettingsScreen
+import com.UIN.Tool.ui.screen.files.M3Dialogs
+import com.UIN.Tool.ui.screen.files.MultiSelectBar
+import com.UIN.Tool.ui.screen.files.NormalBar
+import com.UIN.Tool.ui.screen.files.OpenWithDialog
+import com.UIN.Tool.ui.screen.files.OpUiState
+import com.UIN.Tool.ui.screen.files.PaneBox
+import com.UIN.Tool.ui.screen.files.PendingTransferBar
+import com.UIN.Tool.ui.screen.files.RunningPill
+import com.UIN.Tool.ui.screen.files.Side
+import com.UIN.Tool.ui.screen.files.FileTypeIcon
+import com.UIN.Tool.ui.screen.files.fileIconFor
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
@@ -181,6 +216,7 @@ import org.eclipse.tm4e.core.registry.IGrammarSource
 import org.eclipse.tm4e.core.registry.IThemeSource
 
 private const val TAG = "CodeEditorScreen"
+
 private const val DEBUG_TAG = "EditorDebug"
 
 // 6.2.0 批次43：分页导航 —— 每页固定 2000 行，「跳转到页」的粗粒度导航。
@@ -261,30 +297,13 @@ private const val DARK_DEFAULT = "one-dark-pro"
 private const val LIGHT_DEFAULT = "github-light"
 
 // ==================== 文件图标 ====================
-private fun getFileIcon(fileName: String): ImageVector = when {
-    fileName.endsWith(".java") -> Icons.Default.Code
-    fileName.endsWith(".kt") || fileName.endsWith(".kts") -> Icons.Default.Code
-    fileName.endsWith(".xml") -> Icons.Default.Description
-    fileName.endsWith(".html") || fileName.endsWith(".htm") -> Icons.Default.Language
-    fileName.endsWith(".css") || fileName.endsWith(".scss") || fileName.endsWith(".less") ->
-        Icons.Default.Palette
-    fileName.endsWith(".js") || fileName.endsWith(".jsx") ||
-        fileName.endsWith(".ts") || fileName.endsWith(".tsx") -> Icons.Default.Javascript
-    fileName.endsWith(".json") || fileName.endsWith(".yml") ||
-        fileName.endsWith(".yaml") || fileName.endsWith(".toml") -> Icons.Default.DataArray
-    fileName.endsWith(".py") -> Icons.Default.Code
-    fileName.endsWith(".md") || fileName.endsWith(".markdown") -> Icons.Default.Article
-    fileName.endsWith(".txt") || fileName.endsWith(".log") -> Icons.Default.Description
-    fileName.endsWith(".gradle") || fileName.endsWith(".pro") ||
-        fileName.endsWith(".properties") || fileName.endsWith(".ini") -> Icons.Default.Settings
-    fileName.endsWith(".sh") || fileName.endsWith(".bash") || fileName.endsWith(".bat") ->
-        Icons.Default.Terminal
-    fileName.endsWith(".sql") -> Icons.Default.Storage
-    fileName.endsWith(".png") || fileName.endsWith(".jpg") ||
-        fileName.endsWith(".jpeg") || fileName.endsWith(".gif") ||
-        fileName.endsWith(".webp") -> Icons.Default.Image
-    else -> Icons.Default.InsertDriveFile
-}
+/**
+ * 文件树里的文件图标 —— 直接调文件列表那一份（e7 顺手对齐）。
+ *
+ * 这里原先另写了一套短得多的清单：归档包、安装包、PDF、表格、字体、演示……
+ * 在树里**一律掉进「未知文件」**，同一个文件列表与树里还长得不一样。
+ * n.txt 第 6 条起改用 [FileTypeIcon]（类型图标 + 后缀角标），文件页/树/标签页同一套。
+ */
 
 // ==================== 语言 Scope ====================
 private fun getLanguageScopeName(fileName: String): String {
@@ -293,6 +312,8 @@ private fun getLanguageScopeName(fileName: String): String {
         "java" -> "source.java"
         "kt", "kts" -> "source.kotlin"
         "xml" -> "text.xml"
+        // j.txt 第 1 条：解码后的 AXML 就是普通 XML 文本，直接复用 XML 高亮。
+        "axml" -> "text.xml"
         "html", "htm", "xhtml" -> "text.html.basic"
         "css" -> "source.css"
         // 6.2.0 批次12：以下几项原先写的是「看起来对」但语法文件**实际声明的 scope** 不同，
@@ -343,11 +364,23 @@ private fun getLanguageScopeName(fileName: String): String {
         "groovy" -> "source.groovy"
         "dockerfile" -> "source.dockerfile"
         "makefile", "mk" -> "source.makefile"
+        "cmake" -> "source.cmake"
         "ini" -> "source.ini"
         "fs", "fsx" -> "source.fsharp"
         "diff", "patch" -> "source.diff"
         "dotenv", "env" -> "source.dotenv"
-        "hlsl", "glsl" -> "source.hlsl"
+        "hlsl" -> "source.hlsl"
+        // j.txt 第 1 条：新增的内置语法（csv / lrc / cmake / nginx / 汇编 / GLSL /
+        // Vue / QML / Svelte）。此前 glsl 错归到 source.hlsl，这里一并修正。
+        "csv", "tsv" -> "text.csv"
+        "lrc" -> "text.lrc"
+        "nginx", "ngx" -> "source.nginx"
+        "asm", "nasm", "yasm", "s" -> "source.asm.x86_64"
+        "glsl", "vert", "frag", "geom", "vsh", "fsh", "gsh",
+        "vshader", "fshader", "gshader" -> "source.glsl"
+        "vue" -> "text.html.vue"
+        "qml" -> "source.qml"
+        "svelte" -> "source.svelte"
         "julia" -> "source.julia"
         "latex", "tex" -> "text.tex.latex"
         "shader", "shaderlab" -> "source.shaderlab"
@@ -638,13 +671,27 @@ private fun getDarkColorScheme(): EditorColorScheme = createFallbackScheme(true)
  *
  * 修法：先写入全新解析的 raw，再逐出 `_grammars[scope]` 缓存，随后 `findGrammar()` 触发重建
  * —— 新实例所见的 `IRawRule` 全是 id=null 的干净对象，编译时会把自己用到的规则全部
- * re-register 进自己的 map。**每次设语言都执行**：即便中途又被别的语法污染，切回来即自愈。
+ * re-register 进自己的 map。
+ *
+ * **d19 起不再无条件重建**：这一段跑在 UI 线程（Compose 的 factory/update 里），
+ * 读资产 + 解析 JSON + 整份重编译，每次切文件、切语法都要付一遍，是「打开慢 / 高亮慢」
+ * 的大头。污染只发生在被别的语法 include 的 scope 上，而且坏掉时**有迹可循**
+ * （见 [grammarHealthy]）—— 先查健康，健康就直接复用，坏了才走下面的重建。
  *
  * 全程 try/catch：失败则继续用旧实例，只退回原状、不影响基本功能。
  *
- * @return 是否成功重建
+ * @return 该 scope 现在是否持有一个可用实例
  */
 private fun refreshGrammar(context: Context, scopeName: String): Boolean {
+    // 先问现有实例要答案：findGrammar 命中缓存时只是一次 map 查找，
+    // 未命中才会编译（那一次是本来就躲不掉的）
+    val existing = try {
+        GrammarRegistry.getInstance().findGrammar(scopeName)
+    } catch (ex: Throwable) {
+        null
+    }
+    if (grammarHealthy(existing)) return true
+
     val path = UinApplication.grammarAssetPaths[scopeName] ?: return false
     return try {
         // 批次66追加：用户导入的语法存放在 filesDir（绝对路径），按路径类型分流读取
@@ -667,13 +714,70 @@ private fun refreshGrammar(context: Context, scopeName: String): Boolean {
         @Suppress("UNCHECKED_CAST")
         val grammarMap = fieldOf(sync, "_grammars").get(sync) as MutableMap<String, Any>
         // 顺序很重要：先换 raw 再逐出缓存，否则重建会读到旧的污染对象。
-        rawMap[scopeName] = freshRaw
-        grammarMap.remove(scopeName)
+        //
+        // e14：这两句**必须持住 registry 自己那把锁** —— 它们改的是 tm4e 的普通 HashMap，
+        // 而分析线程随时可能在 `findGrammar` 里遍历同一张表；下面的后台语法预热更是会从
+        // IO 线程直接调进来。只锁这两句、**把 findGrammar 留在锁外**：Java 监视器可重入，
+        // 锁里再调它虽然不会自锁，但那样就同时握着两把锁，别的线程反过来取会成环。
+        synchronized(sync) {
+            rawMap[scopeName] = freshRaw
+            grammarMap.remove(scopeName)
+        }
         val rebuilt = gr.findGrammar(scopeName)
         AppLog.d(DEBUG_TAG, "grammar-refresh: scope=$scopeName rebuilt=${rebuilt != null}")
         rebuilt != null
     } catch (ex: Throwable) {
         AppLog.w(DEBUG_TAG, "grammar-refresh failed scope=$scopeName: ${ex.javaClass.name}: ${ex.message}")
+        false
+    }
+}
+
+/**
+ * 语法实例是否可用（d19 的前置判断）。两个条件缺一不可：
+ *
+ *  · `_ruleId2desc` 的条数不小于 `_lastRuleId` —— 「自增了却没 put」的缺口正是
+ *    共享 raw 被别的实例占位时的典型症状（实测 a.xml：mapSize=39 < lastRuleId=44）；
+ *  · **根规则查得到** —— tokenize 第一步就是 `getRule(rootId)`，查不到直接抛
+ *    `No rule with index N`，sora 的分析线程当场死掉 → 整篇无高亮。
+ *    还盖住另一种占位：别人先把共享 self 的 id 写死，本实例一个都没 register，
+ *    这时 mapSize 与 lastRuleId 反而可能相等，只靠条数判断会漏判。
+ *
+ * 就是几次反射 + 一次 map 查找，微秒级；比起「读资产 + 解析 + 整份重编译」可以忽略。
+ * 字段名对不上时抛异常 → 返回 false → 照旧每次重建，退化回原行为而不是静默放行。
+ */
+private fun grammarHealthy(grammar: Any?): Boolean {
+    if (grammar == null) return false
+    return try {
+        val c = grammar.javaClass
+        fun field(n: String) = c.getDeclaredField(n).apply { isAccessible = true }
+        val lastRuleId = field("_lastRuleId").getInt(grammar)
+        @Suppress("UNCHECKED_CAST")
+        val map = field("_ruleId2desc").get(grammar) as Map<*, *>
+        if (map.size < lastRuleId) return false
+        // `_rootId` 是 **RuleId 包装对象**，不是 int；`_ruleId2desc` 的键同样是 RuleId
+        //（sora 的 language-textmate 0.24.6 实测：`private volatile RuleId _rootId` /
+        // `Map<RuleId, Rule> _ruleId2desc`）。旧实现只认 Int / Number 两个分支，
+        // 两个都匹配不上 → 落到 else → **恒为 false** → 每次切文件、切语法都白重建一遍
+        //（a.log 里 `rebuilt=true` 刷屏、每切一个文件 refresh 2~42ms 就是这么来的）。
+        // RuleId 的 equals/hashCode 是值语义，拿同一个对象直接查表即可。
+        val rootId = field("_rootId").get(grammar) ?: return false
+        if (map.containsKey(rootId)) return true
+        // 兜底：万一换了 tm4e 版本、这里又退回 int 口径，两种键都试一遍
+        val rootInt = when (rootId) {
+            is Int -> rootId
+            is Number -> rootId.toInt()
+            else -> runCatching { rootId.javaClass.getField("id").getInt(rootId) }.getOrNull()
+        } ?: return false
+        return map.keys.any { k ->
+            when (k) {
+                is Int -> k == rootInt
+                null -> false
+                else -> runCatching {
+                    k.javaClass.getField("id").getInt(k) == rootInt
+                }.getOrDefault(false)
+            }
+        }
+    } catch (ex: Throwable) {
         false
     }
 }
@@ -702,17 +806,27 @@ private fun setEditorLanguage(
     val scopeName = overrideScope ?: getLanguageScopeName(fileName)
     AppLog.d(DEBUG_TAG, "setEditorLanguage: scope=$scopeName file=$fileName override=$overrideScope")
     // 6.2.0 批次33：先重建该 scope 的干净语法实例，再 create 语言（见 refreshGrammar 注释）。
+    // e14：两段各自计时 —— 「切文件高亮要等一下」到底等在健康检查、整份重编译、还是
+    // create 新实例，看这一行就有答案，不用猜。
+    val tRefresh = System.currentTimeMillis()
     refreshGrammar(editor.context, scopeName)
+    val refreshCost = System.currentTimeMillis() - tRefresh
     // 注意：TextMateLanguage.create() 在语法未注册时是**抛异常**而不是返回 null，
     // 而且 "text.plain" 在我们的语法表里同样不存在（再抛一次）。
     // 原实现两个 create 都失败时 language=null 直接 return，编辑器会**沿用上一个文件的语言**，
     // 表现为「换了文件高亮还是旧的」。这里改用 EmptyLanguage 作为真正的兜底。
+    val tCreate = System.currentTimeMillis()
     val language = try {
         TextMateLanguage.create(scopeName, true)
     } catch (e: Exception) {
         AppLog.w(TAG, "create($scopeName) failed, ${e.message}")
         null
     }
+    val createCost = System.currentTimeMillis() - tCreate
+    AppLog.d(
+        DEBUG_TAG,
+        "setEditorLanguage cost: refresh=${refreshCost}ms create=${createCost}ms scope=$scopeName"
+    )
     if (language == null) {
         AppLog.w(TAG, "no language available for $fileName, using EmptyLanguage")
         editor.setEditorLanguage(EmptyLanguage())
@@ -885,25 +999,11 @@ private fun applyColorSchemeTweaks(editor: CodeEditor) {
 /**
  * 给纵向滚动条滑块装一个 [StateListDrawable]。
  *
- * **为什么必须装**（sora 0.24.6 上游 bug，`EditorRenderer.drawScrollBarVertical`）：
- * ```java
- * getVerticalScrollBarRect(tmpRect, ...);          // tmpRect = 滑块矩形
- * if (holdVerticalScrollBar()) {
- *     drawLineInfoPanel(canvas, ...);              // ← 内部把 tmpRect 改写成「面板矩形」
- * }
- * if (verticalScrollbarThumbDrawable != null) {
- *     setBounds(verticalScrollBarRect); ...        // ← 用的是先前保存的矩形，正确
- * } else {
- *     drawColor(canvas, THUMB_PRESSED, tmpRect);   // ← 用的是被污染的 tmpRect，错误
- * }
- * ```
- * `tmpRect` 是字段级共享对象，`drawLineInfoPanel()` 会把它改写成位置面板的矩形。
- * 没装 Drawable 时 sora 用这个已被污染的 `tmpRect` 画滑块 →
- * **一块与面板同尺寸的纯色矩形直接盖在刚画好的面板（含文字）上**。
- * 装了 Drawable 就走 `!= null` 分支，用的是调用前保存的 `verticalScrollBarRect`，
- * 宽度只有 `SCROLLBAR_WIDTH_DIP`（8dp），且面板右缘在 `width-30dp`，两者不重叠。
- *
- * 横向滚动条没有这条调用路径（无位置面板），不受影响。
+ * 0.24.6 时代这是**规避上游 bug** 的必需品（`EditorRenderer.drawScrollBarVertical` 在
+ * 按住滑块时用被 `drawLineInfoPanel()` 污染的共享 `tmpRect` 画纯色块，盖住位置面板）；
+ * 0.24.7 已把该分支改成用保存好的 `verticalScrollBarRect`，bug 不再存在。
+ * 现在仍装 Drawable 是**为了外观**：默认纯色方角与整套圆角药丸不一致，状态切换也需要
+ * `state_pressed` 变色；顺带不再依赖上游那条分支的行为。横向同理。
  */
 private fun installScrollbarThumbDrawable(editor: CodeEditor, normal: Int, pressed: Int) {
     val dp = editor.dpUnit
@@ -1138,22 +1238,22 @@ private fun dumpGrammarState(grammar: Any, tag: String, scope: String) {
 }
 
 // ==================== 运行期外观设置 ====================
-// 6.2.0 批次39（SE 审计 T2-12）：原先只开前三个（行内前/中/后空白），
-// 于是即便设置了 LF/CRLF/CR 也**看不到行尾符**。这里补齐另外 5 个 flag：
-//  - FOR_EMPTY_LINE  空行的缩进空白也画出来（原来只画有字符的行）
-//  - LINE_SEPARATOR  行尾符（配合 lineSeparator 设置排查 CRLF/LF 混用）
-//  - TAB_SAME_AS_SPACE Tab 画成等宽点，避免与真实空格混淆
-//  - WHITESPACE_IN_SELECTION 选区内空白高亮，方便看清选了什么
-//  - SOFT_WRAP       自动换行处画折行标记（wordWrap 开启时才有意义）
+// 「显示空白字符」只画**空格/Tab 的点**，并且只保留最稳的四个 flag。
+//
+// g19：原先还开了 LINE_SEPARATOR / SOFT_WRAP / TAB_SAME_AS_SPACE / IN_SELECTION。
+// 上游渲染器里这几种标记不是按字符格中心画的：
+//  · 行尾符 / 软换行标记用的是**文本行末的绘制偏移**，横向滚动或软换行时这个偏移
+//    和字符格不是一套坐标，标记会压到最后一个字上；
+//  · TAB_SAME_AS_SPACE 按 tabWidth 个空格宽度连点，Tab 实际占位与之不等时
+//    多出来的点就叠到下一个字符上。
+// 这正是「空白字符的标记和普通字符重叠」。空格/Tab 的点本身是逐格中心画在
+// 自己的格子里，不会越界，所以只留这四种范围（前导/中间/行尾/空行）。
+// 行尾符（LF/CRLF/CR）改由底部状态栏的「换行符」设置项表达，不再靠正文标记。
 private val WHITESPACE_FLAGS =
     CodeEditor.FLAG_DRAW_WHITESPACE_LEADING or
         CodeEditor.FLAG_DRAW_WHITESPACE_INNER or
         CodeEditor.FLAG_DRAW_WHITESPACE_TRAILING or
-        CodeEditor.FLAG_DRAW_WHITESPACE_FOR_EMPTY_LINE or
-        CodeEditor.FLAG_DRAW_LINE_SEPARATOR or
-        CodeEditor.FLAG_DRAW_TAB_SAME_AS_SPACE or
-        CodeEditor.FLAG_DRAW_WHITESPACE_IN_SELECTION or
-        CodeEditor.FLAG_DRAW_SOFT_WRAP
+        CodeEditor.FLAG_DRAW_WHITESPACE_FOR_EMPTY_LINE
 
 private fun applyRuntimeSettings(editor: CodeEditor, s: EditorSettings, largeActive: Boolean = false) {
     // sora 的 setDividerWidth / setCursorWidth / setTextBorderWidth 只收 **px**，
@@ -1173,8 +1273,7 @@ private fun applyRuntimeSettings(editor: CodeEditor, s: EditorSettings, largeAct
     editor.setHighlightBracketPair(s.bracketMatching)
     editor.setPinLineNumber(true)
     editor.setFirstLineNumberAlwaysVisible(true)
-    // 6.2.0 批次39（SE 审计 T2-12）：此前只开 LEADING|INNER|TRAILING，已有的 LF/CRLF/CR
-    // 设置根本「看不见」行尾符；这里补齐空行空白、行尾符、Tab 占位、选区内空白、软换行标记。
+    // g19：只开前导/中间/行尾/空行四种空白范围（见 WHITESPACE_FLAGS 的说明）。
     editor.setNonPrintablePaintingFlags(if (s.showNonPrintable) WHITESPACE_FLAGS else 0)
     // 大文件省耗：粘性滚动要在滚动时反复解析块结构，关掉省一大截 CPU。
     editor.props.stickyScroll = s.stickyScroll && !largeActive
@@ -1334,9 +1433,9 @@ class EditorController {
      */
     data class PendingSel(val line: Int, val col: Int, val length: Int = 0)
     var pendingSelection: PendingSel? = null
-    /** 6.2.0 批次31：十六进制颜色背景。setEditorLanguage 会清掉背景，需在重设语言后手动 refresh。 */
+    /** 6.2.0 批次31：十六进制颜色背景。setEditorLanguage 会清掉合并容器，需在重设语言后手动 refresh。 */
     var hexHints: HexColorHints? = null
-    /** 6.2.0 批次57（用户）：搜索结果编辑器内高亮。与 hex 共用 setHighlightTexts 通道，成对补写。 */
+    /** 6.2.0 批次57（用户）：搜索结果编辑器内高亮。0.24.7 起与 hex 各自注册 provider。 */
     var matchHighlights: MatchHighlights? = null
     /**
      * 6.2.0 批次63（用户「选中菜单增强」）：待弹的「打开链接」候选。
@@ -1387,9 +1486,10 @@ class EditorController {
     }
 
     /**
-     * 6.2.0 批次57：`setEditorLanguage` 内部会 `setHighlightTexts(null)` 清空整个背景容器 ——
-     * 两个背景来源（hex 色块 / 搜索高亮）成对补写。先后无关：后写的会把先写的按颜色类型
-     * （hex=ConstColor、搜索=EditorColor）带载回来，见 MatchHighlights KDoc。
+     * 6.3.0：`setEditorLanguage` 内部会清空 sora 的合并高亮容器（0.24.7 为
+     * `internalSetHighlightTexts(null)`），但不会注销已注册的 provider。这里让 hex 重扫
+     * （可能换了文档对象）并让 sora 用两个 provider 的镜像重新合并；先后无关，两份来源
+     * 各自独立，见 [MatchHighlights] / [HexColorHints] 的 KDoc。
      */
     fun restoreDecorations() {
         hexHints?.refresh()
@@ -1406,13 +1506,14 @@ class EditorController {
         contentListener = view.subscribeEvent(ContentChangeEvent::class.java) { event, _ ->
             if (event.action == ContentChangeEvent.ACTION_SET_NEW_TEXT) return@subscribeEvent
             // 批次57②复查：插入点撞命中起点时 sora 只平移终点（起点比较是严格 <），
-            // 条目左扩会把刚敲的字符吃进高亮 —— 事件在容器平移之后派发，就地补平移
-            //（详见 MatchHighlights.onInserted）。删除侧 sora 语义正确，不接。
-            if (event.action == ContentChangeEvent.ACTION_INSERT) {
-                val start = event.changeStart
-                val end = event.changeEnd
-                matchHighlights?.onInserted(start.line, start.column, end.line, end.column)
-            }
+            // 条目左扩会把刚敲的字符吃进高亮 —— 事件在合并容器平移之后派发，镜像做同口径
+            // 平移并补正起点（详见 MatchHighlights.onContentChanged）。hex 镜像由
+            // HexColorHints 自己的 ContentChangeEvent 订阅平移，这里不重复处理。
+            val start = event.changeStart
+            val end = event.changeEnd
+            matchHighlights?.onContentChanged(
+                event.action, start.line, start.column, end.line, end.column
+            )
             // 批次54 修 2026-10-21 22:26 OOM：每个按键都把整档 toString 全文（30MB 档
             // ≈ 57MB 字符数组/键），堆 531/537MB 顶穿。大文档只回传 null = 脏信号；
             // 最新文本由保存/搜索/替换/切走前的 contentRefresher 统一回灌。
@@ -1544,6 +1645,14 @@ fun ThemeSelectionDialog(
             .sortedWith(Comparator<String> { a, b -> a.compareTo(b, ignoreCase = true) })
     }
     var query by remember { mutableStateOf("") }
+    // j.txt 第 4 条：选择器里的搜索框也属于「弹窗输入框」—— 打开就聚焦并弹键盘。
+    val queryFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        delay(120)
+        runCatching { queryFocus.requestFocus() }
+        keyboard?.show()
+    }
     val filtered = remember(themes, query) {
         val q = query.trim()
         if (q.isEmpty()) themes else themes.filter { it.contains(q, ignoreCase = true) }
@@ -1553,8 +1662,11 @@ fun ThemeSelectionDialog(
         // （dialogBackgroundOf），原先 UnifiedCard(solid) 是纯色、风格割裂。
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
+                // e22：`widthIn` 必须排在 `fillMaxWidth` **外面** —— 排反了是先按整屏
+                // 定宽、上限再套，等于白设（这三个选择器框在手机上一直铺满整屏，
+                // 比别的弹窗宽出一截）。先封顶再按比例铺：手机 0.92×屏宽与其它弹窗齐平。
                 .widthIn(max = 480.dp)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .height(dialogHeightCap(520.dp))
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
             shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
@@ -1590,7 +1702,8 @@ fun ThemeSelectionDialog(
                         .padding(
                             horizontal = AppDimens.spacingLarge,
                             vertical = AppDimens.spacingSmall
-                        ),
+                        )
+                        .focusRequester(queryFocus),
                     placeholder = Str.get(R.string.editor_theme_search_hint),
                     showClearButton = true,
                     singleLine = true,
@@ -1640,6 +1753,8 @@ private fun ThemeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // k.txt 第 6 条：整行涟漪按 8dp 圆角裁切。
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = AppDimens.spacingLarge, vertical = AppDimens.spacingMedium),
         verticalAlignment = Alignment.CenterVertically,
@@ -1689,8 +1804,8 @@ fun EncodingSelectionDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
                 .widthIn(max = 480.dp)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .height(dialogHeightCap(460.dp))
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
             shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
@@ -1772,6 +1887,14 @@ fun SyntaxSelectionDialog(
             })
     }
     var query by remember { mutableStateOf("") }
+    // j.txt 第 4 条：同上 —— 语法选择器的搜索框打开即聚焦、弹键盘。
+    val queryFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        delay(120)
+        runCatching { queryFocus.requestFocus() }
+        keyboard?.show()
+    }
     val filtered = remember(entries, query) {
         val q = query.trim()
         if (q.isEmpty()) entries
@@ -1783,8 +1906,11 @@ fun SyntaxSelectionDialog(
         // 6.2.0 批次17：与主题选择器/新建/重命名等弹窗统一 —— 同款渐变背景。
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
+                // e22：`widthIn` 必须排在 `fillMaxWidth` **外面** —— 排反了是先按整屏
+                // 定宽、上限再套，等于白设（这三个选择器框在手机上一直铺满整屏，
+                // 比别的弹窗宽出一截）。先封顶再按比例铺：手机 0.92×屏宽与其它弹窗齐平。
                 .widthIn(max = 480.dp)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .height(dialogHeightCap(520.dp))
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius))),
             shape = RoundedCornerShape(AppDimens.dialogCornerRadius),
@@ -1820,7 +1946,8 @@ fun SyntaxSelectionDialog(
                         .padding(
                             horizontal = AppDimens.spacingLarge,
                             vertical = AppDimens.spacingSmall
-                        ),
+                        )
+                        .focusRequester(queryFocus),
                     placeholder = Str.get(R.string.editor_syntax_search_hint),
                     showClearButton = true,
                     singleLine = true,
@@ -1866,6 +1993,8 @@ private fun SyntaxRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // k.txt 第 6 条：整行涟漪按 8dp 圆角裁切。
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = AppDimens.spacingLarge, vertical = AppDimens.spacingMedium),
         verticalAlignment = Alignment.CenterVertically,
@@ -2142,140 +2271,6 @@ private fun flattenNodes(
     }
 }
 
-/**
- * 属性对话框里的一行「标签 : 值」。值超长自动换行，方便看完整路径。
- * 批次43：整行可点击（带涟漪）→ 复制该值到剪贴板；「—」占位值没有复制意义，禁用。
- */
-@Composable
-private fun PropertyRow(label: String, value: String) {
-    val clipboard = LocalClipboardManager.current
-    val context = LocalContext.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .clickable(
-                enabled = value.isNotBlank() && value != "—",
-                onClick = {
-                    clipboard.setText(AnnotatedString(value))
-                    AppToast.info(context, Str.get(R.string.copied_to_clipboard))
-                }
-            )
-            .padding(vertical = 2.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = AppColors.textSecondary(),
-            modifier = Modifier.width(88.dp)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-// ============================================================
-// 属性弹窗（批次43：文件树 ⋮ 与长按标签共用；行数/字节/字符数 IO 流式统计）
-// ============================================================
-@Composable
-private fun FilePropertiesDialog(file: java.io.File, onDismiss: () -> Unit) {
-    val isDir = file.isDirectory
-    val typeValue = if (isDir) Str.get(R.string.folder)
-    else file.extension.ifEmpty { Str.get(R.string.file) }
-    val sizeValue = if (isDir) "—" else FileAccess.formatSize(file.length())
-    val timeValue = if (file.lastModified() > 0L) {
-        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
-            .format(java.util.Date(file.lastModified()))
-    } else "—"
-    var linesValue by remember { mutableStateOf("…") }
-    var bytesValue by remember { mutableStateOf("…") }
-    var charsValue by remember { mutableStateOf("…") }
-    LaunchedEffect(file) {
-        if (isDir) {
-            linesValue = "—"
-            bytesValue = "—"
-            charsValue = "—"
-        } else {
-            bytesValue = file.length().toString()
-            val (l, c) = withContext(Dispatchers.IO) { countLinesAndChars(file) }
-            linesValue = l
-            charsValue = c
-        }
-    }
-    UnifiedDialog(
-        onDismissRequest = onDismiss,
-        title = Str.get(R.string.file_properties),
-        content = {
-            Column(verticalArrangement = Arrangement.spacedBy(AppDimens.spacingSmall)) {
-                PropertyRow(Str.get(R.string.name), file.name)
-                PropertyRow(Str.get(R.string.location), file.absolutePath)
-                PropertyRow(Str.get(R.string.file_type), typeValue)
-                PropertyRow(Str.get(R.string.container_info_size), sizeValue)
-                PropertyRow(Str.get(R.string.editor_prop_lines), linesValue)
-                PropertyRow(Str.get(R.string.editor_prop_bytes), bytesValue)
-                PropertyRow(Str.get(R.string.editor_prop_chars), charsValue)
-                PropertyRow(Str.get(R.string.editor_modified_time), timeValue)
-            }
-        },
-        confirmButton = {
-            UnifiedButton(
-                text = Str.get(R.string.close),
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    )
-}
-
-/**
- * 批次43：流式数行数/字符数 —— 永不整读进内存。
- *  - 只开一次头（≤64KB）判定编码（[FileAccess.detectCharsetFromHead]），随后从同一条流解码；
- *  - >128MB 直接报「—」（数完要好几秒，弹窗上不值得卡）；字节数始终精确（File.length O(1)）；
- *  - 行数口径与 sora 一致：空文档 1 行，n 个 `\n` → n+1 行。
- */
-private fun countLinesAndChars(file: java.io.File): Pair<String, String> = try {
-    val maxCountBytes = 128L * 1024 * 1024
-    val total = file.length()
-    if (total > maxCountBytes) {
-        "—" to "—"
-    } else {
-        FileInputStream(file).use { fis ->
-            val head = ByteArray(minOf(total, 65_536L).toInt().coerceAtLeast(1))
-            val n = fis.read(head)
-            if (n < 0) {
-                "1" to "0"
-            } else {
-                val sample = if (n == head.size) head else head.copyOf(n)
-                val charset = FileAccess.detectCharsetFromHead(sample)
-                // 批次59 修统计恒为「1 行 0 字」：探测用的 head 已把 n 字节从流里读走，
-                // 直接包 InputStreamReader 会把这段**跳过** —— 小于 64KB 的文件整份被跳过
-                // （一个字符都读不到），更大的文件则少算开头 64KB、行数跟着少算。
-                // 用 PushbackInputStream unread 回去从头解码；跨边界的多字节字符也不会被切断。
-                val pushback = java.io.PushbackInputStream(fis, n)
-                pushback.unread(sample)
-                InputStreamReader(pushback, charset).use { r ->
-                    var chars = 0L
-                    var lines = 0L
-                    val buf = CharArray(8192)
-                    while (true) {
-                        val k = r.read(buf)
-                        if (k < 0) break
-                        chars += k
-                        for (i in 0 until k) if (buf[i] == '\n') lines++
-                    }
-                    (if (chars == 0L) 1L else lines + 1).toString() to chars.toString()
-                }
-            }
-        }
-    }
-} catch (_: Exception) {
-    "—" to "—"
-}
-
 @Composable
 private fun FileNodeRow(
     node: FileNode,
@@ -2310,7 +2305,10 @@ private fun FileNodeRow(
                     cornerRadius = 8.dp,
                     backgroundColor = Color.Transparent
                 ).background(rowBg, RoundedCornerShape(8.dp))
-                else Modifier.background(rowBg)
+                    // h.txt 第 5 条：药丸形选中底 + 涟漪，不裁切就会漏出圆角
+                    .clip(RoundedCornerShape(8.dp))
+                // k.txt 第 6 条：普通行也按圆角裁切，涟漪不再铺成整条矩形。
+                else Modifier.background(rowBg).clip(RoundedCornerShape(8.dp))
             )
             // 6.2.0 批次42：长按行 = 点行尾 ⋮，弹出同一菜单（锚定仍在 ⋮ 按钮处）。
             .combinedClickable(onClick = onToggle, onLongClick = { menuOpen = true })
@@ -2333,15 +2331,17 @@ private fun FileNodeRow(
             Spacer(modifier = Modifier.size(AppDimens.iconSmall))
         }
         Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
-        Icon(
-            imageVector = if (node is FileNode.DirNode) {
-                if (node.isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder
-            } else getFileIcon(node.name),
-            contentDescription = null,
-            modifier = Modifier.size(AppDimens.iconSmall),
-            tint = if (node is FileNode.DirNode) MaterialTheme.colorScheme.primary
-            else AppColors.textSecondary()
-        )
+        if (node is FileNode.DirNode) {
+            Icon(
+                imageVector = if (node.isExpanded) Icons.Default.FolderOpen else Icons.Default.Folder,
+                contentDescription = null,
+                modifier = Modifier.size(AppDimens.iconSmall),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        } else {
+            // n.txt 第 6 条：文件树与文件页共用「类型图标 + 后缀角标」。
+            FileTypeIcon(fileName = node.name, size = AppDimens.iconSmall)
+        }
         Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
         // 6.2.0 批次42：修「文件名过长时行尾 ⋮ 显示不出来」。
         // Text 不加 weight(1f) 时按**整行宽度**测量 —— 省略号要到整行宽度才触发，
@@ -2401,7 +2401,7 @@ private fun FileNodeMenu(
     // 6.2.0 批次14：由「居中 Dialog（近似全屏）」改为锚定在 ⋮ 按钮旁的小弹层。
     // DropdownMenu 自动定位到调用处的父 Box（即 ⋮ 图标），宽度收窄、点击外部自动关闭。
     // 注意：Material3 的 DropdownMenu 首参是 expanded（外部已用 if (menuOpen) 包裹，此处恒 true）。
-    DropdownMenu(
+    UnifiedDropdownMenu(
         expanded = true,
         onDismissRequest = onDismiss,
         modifier = Modifier
@@ -2486,6 +2486,16 @@ private fun EditorTabRow(
     onLongPress: (EditorTab) -> Unit
 ) {
     val scroll = rememberScrollState()
+    val activeBringIntoView = remember { BringIntoViewRequester() }
+    LaunchedEffect(activeId, tabs.size) {
+        // m.txt 第 14 条：只在**手指正拖着标签行**时让位 —— 用户持续横滑浏览时
+        // 不能把他拽回去；但一旦切了文件（activeId 变）或标签增减，就必须把当前
+        // 标签滚到可见位置，哪怕是刚滑完 1 秒内点的文件。
+        if (scroll.isScrollInProgress) return@LaunchedEffect
+        // 等新标签完成布局再滚动，否则 bringIntoView 找不到目标边界。
+        delay(60)
+        runCatching { activeBringIntoView.bringIntoView() }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2503,9 +2513,17 @@ private fun EditorTabRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         tabs.forEach { tab ->
+            // l.txt 第 5 条：按 tab.id 建组合键 —— 关闭中间标签后，后面的标签会整体前移；
+            // 没有 key 时 Compose 按位置复用槽位，被关那个标签的涟漪状态（InteractionSource）
+            // 就落到顶上来的下一个标签上。key 让状态跟着标签本身走。
+            key(tab.id) {
             val active = tab.id == activeId
             Row(
                 modifier = Modifier
+                    .then(
+                        if (active) Modifier.bringIntoViewRequester(activeBringIntoView)
+                        else Modifier
+                    )
                     .fillMaxHeight()
                     .background(
                         if (active) AppColors.cardBackground() else Color.Transparent,
@@ -2524,12 +2542,11 @@ private fun EditorTabRow(
                     .padding(horizontal = AppDimens.spacingMedium),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = getFileIcon(tab.name),
-                    contentDescription = null,
-                    // 批次48：16 → 20dp，与加高后的行匹配，占满更多容器高度。
-                    modifier = Modifier.size(AppDimens.iconMedium),
-                    tint = if (active) MaterialTheme.colorScheme.primary else AppColors.textSecondary()
+                // n.txt 第 6 条：标签页图标同样带后缀角标；当前签仍用主色。
+                FileTypeIcon(
+                    fileName = tab.name,
+                    size = AppDimens.iconMedium,
+                    tint = if (active) MaterialTheme.colorScheme.primary else null
                 )
                 Spacer(modifier = Modifier.width(AppDimens.spacingSmall))
                 Text(
@@ -2551,8 +2568,9 @@ private fun EditorTabRow(
                 // 热区贴满容器高度、宽度独立于图标大小，手指按下去按得准、也不易蹭到相邻标签的 ×。
                 Box(
                     modifier = Modifier
-                        .width(36.dp)
-                        .fillMaxHeight()
+                        .size(36.dp)
+                        // k.txt 第 6 条：× 的涟漪按圆形裁切，不再是一块矩形水波。
+                        .clip(CircleShape)
                         .clickable { onClose(tab.id) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -2563,6 +2581,7 @@ private fun EditorTabRow(
                         tint = AppColors.textSecondary()
                     )
                 }
+            }
             }
         }
     }
@@ -2899,6 +2918,9 @@ private fun SearchPanel(
     /** 全量列表的行内预览缓存（列表下标 → 预览；空时先显示占位、可见后懒加载）。 */
     fullPreviews: Map<Int, String> = emptyMap(),
     onLoadPreviews: (Int, Int) -> Unit = { _, _ -> },
+    /** w.txt 第 1 条：二次筛选结果（按页一趟扫描，与搜索同速）。 */
+    filterResult: EditorViewModel.WholeFilterUi? = null,
+    onStartFilter: (String) -> Unit = {},
     // 批次57②：面板状态由 Screen 持有（见 SearchPanelState）—— 收起重开不丢查询/选项。
     state: SearchPanelState
 ) {
@@ -2912,6 +2934,16 @@ private fun SearchPanel(
     // 新一轮搜索（换词/换选项）时归零重新导航。
     var showWholeReplaceConfirm by remember { mutableStateOf(false) }
     var matchIdx by state.matchIdx
+
+    // j.txt 第 4 条：点搜索图标展开面板后自动聚焦查询框并弹键盘 —— 面板每次展开
+    // 都是一次新的组合，LaunchedEffect(Unit) 正好每次打开执行一次。
+    val queryFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        delay(120)
+        runCatching { queryFocus.requestFocus() }
+        keyboard?.show()
+    }
 
     // ---- 批次53：整档搜索唯一入口（输入 450ms 防抖）—— 空输入即清结果，输入即扫。
     // （批次39 的 sora 异步计数订阅、批次47 的「全文」开关 LaunchedEffect 均已随
@@ -2944,10 +2976,13 @@ private fun SearchPanel(
     // 批次53：**移除**「替换完成后自动重跑全文搜索」—— GB 级替换后紧跟一次全文重扫要再等
     // 数十秒，面板被旧结果+新进度反复刷屏，用户要的只是「替换成功」。现在替换完成直接
     // 显示成功并给手动「重新搜索」按钮（见下方状态行）。
-    var showFull by remember { mutableStateOf(false) }
+    // l.txt 第 13 条：「全部结果」不再先弹窗再放大 —— 直接进整页（唯一的结果浏览入口）。
+    var showFullPage by remember { mutableStateOf(false) }
     // 全量结果页开着时新一轮搜索启动/出错/被清空 → 自动收起（旧结果继续挂着会误导）。
-    LaunchedEffect(showFull, whole) {
-        if (showFull && (whole == null || whole.running || whole.error)) showFull = false
+    LaunchedEffect(showFullPage, whole) {
+        if (whole == null || whole.running || whole.error) {
+            showFullPage = false
+        }
     }
 
     // ---- 上一个/下一个：批次53 起在**整档结果**间移动（sora 页内翻页随双轨一并移除）----
@@ -2987,7 +3022,7 @@ private fun SearchPanel(
         UnifiedTextField(
             value = query,
             onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().focusRequester(queryFocus),
             singleLine = true,
             placeholder = Str.get(R.string.editor_find),
             leadingIcon = Icons.Default.Search
@@ -3112,7 +3147,8 @@ private fun SearchPanel(
                     }
                 }
                 if (hasResults) {
-                    TextButton(onClick = { showFull = true }) {
+                    // l.txt 第 13 条：一步到整页 —— 中间那层弹窗去掉。
+                    TextButton(onClick = { showFullPage = true }) {
                         Text(
                             text = Str.get(R.string.editor_search_full_btn),
                             style = MaterialTheme.typography.labelSmall
@@ -3120,6 +3156,12 @@ private fun SearchPanel(
                     }
                 }
             }
+        }
+        // k.txt 第 9 条：搜索进度条 —— 文本百分比之外再给一条确定进度，
+        // 0 → 100 连续推进；结束后进度条随 running=false 消失。
+        if (whole?.running == true) {
+            Spacer(modifier = Modifier.height(4.dp))
+            UnifiedLinearProgressIndicator(progress = whole.progress / 100f)
         }
         // 批次56：原「动作按钮独立一行」与「面板内结果列表（200.dp）」已移除 ——
         // 重搜/「全部结果」并入上方状态行右侧；匹配的选择与浏览只走「全部结果」弹窗
@@ -3168,106 +3210,294 @@ private fun SearchPanel(
         )
     }
 
-    // ---- 批次53：全量结果页 —— 面板只列前500条，完整列表在此对话框里看 ----
-    // 紧凑项不带预览（百万级列表不可能预生成），可见范围经 snapshotFlow 驱动按需懒加载；
-    // 点击行跳转并收起（复用面板同款 onJumpMatch 定位）。批次57（用户）：搜索一趟全量收齐，
-    //「加载更多」按钮与其 loading/error 展示一并移除。
-    if (showFull) {
-        val f = full
-        UnifiedDialog(
-            onDismissRequest = { showFull = false },
-            title = Str.get(R.string.editor_search_full_title),
-            // 批次57（用户反馈「占满全屏 + 结果被裁切」）：原 55%/480dp 封顶只约束列表，而
-            // 滚动条 fillMaxHeight 把列表行撑到屏高上限 —— 标题/状态/按钮再叠上去必然顶出
-            // 屏幕（横屏尤甚），于是「全屏 + 底部被裁」。改为对话框**总高**封顶
-            //（min(600dp, 75% 屏高)），内部列表行 weight 吃剩余：长列表在封顶内滚动，
-            // 短列表不撑高，标题/状态/按钮恒在屏内。
-            modifier = Modifier.heightIn(
-                max = minOf(600.dp, (LocalConfiguration.current.screenHeightDp * 0.75f).dp)
-            ),
-            content = {
-                Text(
-                    text = Str.get(
-                        R.string.editor_search_full_loaded,
-                        f?.matches?.size ?: 0,
-                        f?.total ?: 0
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = AppColors.textSecondary()
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                val listState = rememberLazyListState()
-                // 批次57：滚动条高度跟随列表**实测高度**（onSizeChanged）—— 原 fillMaxHeight 在
-                // wrap 高度的 Row 里把行撑到约束上限，正是「弹窗贴满全屏」的元凶；列表也不再
-                // 自设 55%/480dp 上限，高度统一由对话框总高封顶 + 本行 weight 决定（单一来源）。
-                val barDensity = LocalDensity.current
-                var listH by remember { mutableStateOf(0.dp) }
-                // 行吃对话框封顶后的剩余高度（fill=false → 长内容在行内滚动、短内容不撑高）。
-                Row(
+
+    // ---- j.txt 第 13 条：搜索整页（放大后）—— 与文件管理器「结果整页」同款 ----
+    if (showFullPage) {
+        Dialog(
+            onDismissRequest = {
+                showFullPage = false
+            },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            // i.txt 第 10 条：Dialog 窗口后面没有主页面渐变，必须自己铺一层；
+            // 无渐变时退回不透明底色。
+            val brush = pageGradientBrush()
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding(),
+                color = if (brush != null) AppColors.background() else AppColors.pageBackground()
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
+                        .fillMaxSize()
+                        .then(if (brush != null) Modifier.background(brush) else Modifier)
                 ) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .onSizeChanged { listH = with(barDensity) { it.height.toDp() } }
-                ) {
-                    val rows = f?.matches ?: emptyList()
-                    itemsIndexed(rows) { i, m ->
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // o.txt 第 12 条：整页右上角加「在结果中搜索」。
+                        var resultFilterOpen by remember { mutableStateOf(false) }
+                        var resultFilter by remember { mutableStateOf("") }
+                        // q.txt 第 7 条（用户）：二次筛选要**点搜索才生效**，不再边打字边筛。
+                        var appliedFilter by remember { mutableStateOf("") }
+                        // w.txt 第 1 条：筛选交给 ViewModel 按页一趟扫描（与搜索同一套逻辑），
+                        // 不再在组合里补全量预览。清空条件时同时取消在途扫描。
+                        LaunchedEffect(appliedFilter) { onStartFilter(appliedFilter) }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    // 批次64：定位即回写游标 —— 点行定位这条后，面板的
-                                    // 上一个/下一个要以**这条**为基准移动（此前不回写，
-                                    // 箭头还按旧基准跳，跳的根本不是它的上/下一条）。
-                                    matchIdx = i
-                                    onJumpMatch(m)
-                                    showFull = false
-                                }
-                                .padding(vertical = 3.dp),
+                                .padding(horizontal = 4.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "${m.absLine}:${m.column + 1}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = AppColors.textSecondary(),
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1,
-                                modifier = Modifier.width(74.dp)
+                            UnifiedIconButton(
+                                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                onClick = {
+                                showFullPage = false
+                            },
+                                contentDescription = Str.get(R.string.back),
                             )
                             Text(
-                                text = fullPreviews[i] ?: m.preview,
-                                style = MaterialTheme.typography.labelSmall,
+                                text = Str.get(R.string.editor_search_full_title),
+                                style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f)
                             )
+                            UnifiedIconButton(
+                                icon = if (resultFilterOpen) Icons.Default.Close else Icons.Default.Search,
+                                onClick = {
+                                    resultFilterOpen = !resultFilterOpen
+                                    // 收起即清条件：否则列表仍被筛着，看着像「结果丢了」。
+                                    if (!resultFilterOpen) {
+                                        resultFilter = ""
+                                        appliedFilter = ""
+                                    }
+                                },
+                                contentDescription = Str.get(R.string.search_in_results),
+                                tint = if (resultFilterOpen) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
                         }
-                    }
-                }
-                // 右侧滚动条：随列表位置指示；批次54 起支持点按/拖动跳转（热区 20dp）。
-                // 批次57：高度 = 列表实测高度（原 fillMaxHeight 会把 wrap 高度的 Row 撑满）。
-                SimpleVerticalScrollbar(
-                    state = listState,
-                    modifier = Modifier.height(listH)
-                )
-                }
-                // 可见范围驱动按需预览（前后各留 2 行缓冲，滚动即预取）。
-                LaunchedEffect(listState, f?.matches?.size) {
-                    snapshotFlow { listState.layoutInfo.visibleItemsInfo }.collect { vis ->
-                        if (vis.isNotEmpty()) {
-                            onLoadPreviews(vis.first().index - 2, (vis.last().index + 4) - (vis.first().index - 2))
+                        if (resultFilterOpen) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                UnifiedTextField(
+                                    value = resultFilter,
+                                    onValueChange = { resultFilter = it },
+                                    placeholder = Str.get(R.string.search_in_results_hint),
+                                    singleLine = true,
+                                    showClearButton = true,
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Search
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onSearch = { appliedFilter = resultFilter }
+                                    ),
+                                    onTrailingIconClick = {
+                                        resultFilter = ""
+                                        appliedFilter = ""
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                UnifiedIconButton(
+                                    icon = Icons.Default.Search,
+                                    onClick = { appliedFilter = resultFilter },
+                                    contentDescription = Str.get(R.string.files_search),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
+                        EditorFullResultsContent(
+                            full = full,
+                            fullPreviews = fullPreviews,
+                            onLoadPreviews = onLoadPreviews,
+                            onJump = { i, m ->
+                                matchIdx = i
+                                onJumpMatch(m)
+                                showFullPage = false
+                            },
+                            // fill=true → 整页时限高，列表自己吃掉剩余高度。
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            fillHeight = true,
+                            filter = appliedFilter,
+                            filterResult = filterResult
+                        )
                     }
+                    // m.txt 第 13 条：整页搜索窗口自己的 AppToast 宿主 —— 长按复制的
+                    // 「已复制」保持 AppToast 样式（不再因为弹窗层而退回系统 Toast）。
+                    AppToastHost(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 24.dp, vertical = 24.dp)
+                    )
                 }
-            },
-            confirmButton = {
-                UnifiedDialogTextButton(onClick = { showFull = false }) { Text(Str.get(R.string.ok_2)) }
             }
+        }
+    }
+}
+
+/**
+ * j.txt 第 11/13 条：全文搜索结果列表（弹窗与整页共用）。
+ *
+ * 预览按可见范围懒加载；这里把范围放宽到**上下各一段**（-8 / +16），快速滑动时下一屏
+ * 的预览已在路上，可见行不会先空一截再补字。真正拿到预览前显示「…」占位，
+ * 不留纯白行。
+ */
+@Composable
+private fun EditorFullResultsContent(
+    full: EditorViewModel.WholeFullUi?,
+    fullPreviews: Map<Int, String>,
+    onLoadPreviews: (Int, Int) -> Unit,
+    onJump: (Int, WholeSearch.WholeMatch) -> Unit,
+    modifier: Modifier = Modifier,
+    /** 整页时 true：列表吃满剩余高度；弹窗时 false：短列表不撑高。 */
+    fillHeight: Boolean = false,
+    /**
+     * o.txt 第 12 条：整页右上角「在结果中搜索」的条件。
+     * 只筛**已经搜到的**结果，不重扫文件。
+     */
+    filter: String = "",
+    /** w.txt 第 1 条：筛选结果由 ViewModel 按页一趟扫描产出（与搜索同速）。 */
+    filterResult: EditorViewModel.WholeFilterUi? = null
+) {
+    Column(modifier = modifier) {
+        val allRows = full?.matches ?: emptyList()
+        val filterText = filter.trim()
+        // w.txt 第 1 条（用户）：筛选不再在组合里补全量预览、也不再逐批重扫整表。
+        // 真正的扫描在 [EditorViewModel.startWholeFilter] 里按页一趟完成；这里只负责
+        // 展示它的进度与命中，预览仍交给可见范围的懒加载（[onLoadPreviews]）。
+        val indexedRows = remember(allRows) { allRows.withIndex().toList() }
+        // 只认「当前关键词」的那份结果：用户刚点搜索、扫描还没起来时不能沿用上一轮命中。
+        val activeFilter = filterResult?.takeIf { it.query == filterText }
+        val rows = if (filterText.isEmpty()) indexedRows else (activeFilter?.hits ?: emptyList())
+        val scanned = if (filterText.isEmpty()) 0 else (activeFilter?.scanned ?: 0)
+        if (filterText.isNotEmpty() && scanned < allRows.size) {
+            LinearProgressIndicator(
+                progress = { scanned.toFloat() / allRows.size.coerceAtLeast(1) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = Str.get(
+                    R.string.search_in_results_loading,
+                    scanned,
+                    allRows.size
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = AppColors.textSecondary()
+            )
+        }
+        Text(
+            text = if (filterText.isEmpty()) {
+                Str.get(
+                    R.string.editor_search_full_loaded,
+                    allRows.size,
+                    full?.total ?: 0
+                )
+            } else {
+                Str.get(
+                    R.string.search_in_results_matched,
+                    rows.size,
+                    allRows.size
+                )
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = AppColors.textSecondary()
         )
+        // m.txt 第 11 条：结果页不再封顶，「只显示前 N 条」的提示与截断一并消失。
+        Spacer(modifier = Modifier.height(2.dp))
+        val listState = rememberLazyListState()
+        // 批次57：滚动条高度跟随列表**实测高度**（onSizeChanged）—— 原 fillMaxHeight 在
+        // wrap 高度的 Row 里把行撑到约束上限，正是「弹窗贴满全屏」的元凶。
+        val barDensity = LocalDensity.current
+        var listH by remember { mutableStateOf(0.dp) }
+        // l.txt 第 13 条：结果行横向滑动看完整行；长按复制整行。
+        val clipboard = LocalClipboardManager.current
+        val context = LocalContext.current
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = fillHeight)
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f, fill = fillHeight)
+                    .onSizeChanged { listH = with(barDensity) { it.height.toDp() } }
+            ) {
+                items(
+                    rows,
+                    // 结果只追加不重排；用内容型 key 让行状态（横向滚动位）跟着结果走，
+                    // 而不是跟着下标走。
+                    key = { (i, m) -> "$i:${m.page}:${m.inPageLine}:${m.column}:${m.length}" }
+                ) { (i, m) ->
+                    val line = fullPreviews[i] ?: m.preview.ifEmpty { "…" }
+                    val hScroll = rememberScrollState()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // k.txt 第 6 条：结果行涟漪按 8dp 圆角裁切，不铺成通栏矩形。
+                            .clip(RoundedCornerShape(8.dp))
+                            .combinedClickable(
+                                onClick = { onJump(i, m) },
+                                onLongClick = {
+                                    // 整行仍在按需加载时只复制占位毫无意义 —— 等行文本到了再说。
+                                    if (line != "…") {
+                                        clipboard.setText(AnnotatedString(line))
+                                        AppToast.info(context, Str.get(R.string.files_copied))
+                                    }
+                                }
+                            )
+                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${m.absLine}:${m.column + 1}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AppColors.textSecondary(),
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 1,
+                            modifier = Modifier.width(74.dp)
+                        )
+                        Text(
+                            // 预览未到时显示省略号占位，绝不把行画成空白。
+                            // l.txt 第 13 条：单行**不省略**，超出部分在行内横向滑动查看。
+                            text = line,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(hScroll)
+                        )
+                    }
+                }
+            }
+            // 右侧滚动条：随列表位置指示；批次54 起支持点按/拖动跳转（热区 20dp）。
+            SimpleVerticalScrollbar(
+                state = listState,
+                modifier = Modifier.height(listH)
+            )
+        }
+        // 可见范围驱动按需预览：上下各留一段缓冲，滚动中下一屏已在加载。
+        LaunchedEffect(listState, full?.matches?.size) {
+            snapshotFlow { listState.layoutInfo.visibleItemsInfo }.collect { vis ->
+                if (vis.isNotEmpty()) {
+                    val first = (vis.first().index - 8).coerceAtLeast(0)
+                    val last = (vis.last().index + 16).coerceAtMost((full?.matches?.size ?: 0) - 1)
+                    if (last >= first) onLoadPreviews(first, last - first + 1)
+                }
+            }
+        }
     }
 }
 
@@ -3291,6 +3521,14 @@ private fun SimpleVerticalScrollbar(
     val scope = rememberCoroutineScope()
     // 拖动中的手指纵坐标（节点坐标系）；null = 非拖动态，拇指按列表实际位置画。
     var dragY by remember { mutableStateOf<Float?>(null) }
+    // m.txt 第 11 条：拖动时**只保留最后一次跳转**。
+    // 旧实现每个拖动事件都 `scope.launch { scrollToItem(index) }` —— 快速拖一次会
+    // 堆上百个协程排队执行，松手后列表还在自己追，看起来就是「拖滚动条卡死」。
+    // 现在：目标下标没变直接跳过；变了就取消上一个未完成的跳转再发新的。
+    // 用普通数组而不是 Compose State：拖动中这些值每帧都变，塞进 State 会反过来
+    // 让整根滚动条持续重组（这正是要修的卡顿之一）。
+    val jumpJobRef = remember { arrayOfNulls<kotlinx.coroutines.Job>(1) }
+    val lastJumpIndex = remember { intArrayOf(-1) }
 
     /** y（节点坐标）→ 列表比例 → 目标下标；仅按下标跳转（LazyList 原生能力）。 */
     fun jumpBy(y: Float, height: Float) {
@@ -3298,7 +3536,10 @@ private fun SimpleVerticalScrollbar(
         val total = state.layoutInfo.totalItemsCount
         if (total <= 0) return
         val index = ((y / height).coerceIn(0f, 1f) * (total - 1)).toInt()
-        scope.launch { state.scrollToItem(index) }
+        if (index == lastJumpIndex[0]) return
+        lastJumpIndex[0] = index
+        jumpJobRef[0]?.cancel()
+        jumpJobRef[0] = scope.launch { state.scrollToItem(index) }
     }
 
     Box(
@@ -3317,8 +3558,14 @@ private fun SimpleVerticalScrollbar(
                         dragY = change.position.y
                         jumpBy(change.position.y, size.height.toFloat())
                     },
-                    onDragEnd = { dragY = null },
-                    onDragCancel = { dragY = null }
+                    onDragEnd = {
+                        dragY = null
+                        lastJumpIndex[0] = -1
+                    },
+                    onDragCancel = {
+                        dragY = null
+                        lastJumpIndex[0] = -1
+                    }
                 )
             },
         contentAlignment = Alignment.CenterEnd
@@ -3331,7 +3578,10 @@ private fun SimpleVerticalScrollbar(
             val info = state.layoutInfo
             val total = info.totalItemsCount
             val visible = info.visibleItemsInfo
-            if (total <= 1 || visible.isEmpty() || size.height <= 0f || size.width <= 0f) {
+            // j.txt 第 12 条：内容装得下一屏时不画滑条（否则会先闪一下满高度再消失）。
+            if (total <= 1 || visible.isEmpty() || size.height <= 0f || size.width <= 0f ||
+                (!state.canScrollForward && !state.canScrollBackward)
+            ) {
                 return@Canvas
             }
             // 以「已滚过的条目 + 首条被裁掉的比例」估算视口占比与位置：
@@ -3374,10 +3624,11 @@ private fun FilterChipToggle(label: String, checked: Boolean, onChange: (Boolean
     Row(
         modifier = Modifier
             .padding(horizontal = AppDimens.spacingXSmall)
+            // h5：选中态是圆角胶囊，涟漪要裁进圆角内。
+            .clip(RoundedCornerShape(AppDimens.radiusSmall))
             .background(
                 if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-                else Color.Transparent,
-                RoundedCornerShape(AppDimens.radiusSmall)
+                else Color.Transparent
             )
             .clickable { onChange(!checked) }
             .padding(horizontal = AppDimens.spacingSmall, vertical = AppDimens.spacingXSmall),
@@ -3420,7 +3671,7 @@ private fun EditorActionMenu(
     onPickLink: (List<String>) -> Unit,
     onTranslate: (String) -> Unit
 ) {
-    DropdownMenu(
+    UnifiedDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss
     ) {
@@ -3710,11 +3961,9 @@ private fun SettingsSheet(
             SwitchRow(Str.get(R.string.editor_large_file_mode), settings.largeFileMode) {
                 onChange(settings.copy(largeFileMode = it))
             }
-            // 6.2.0 批次42：文件树名称多行显示 —— 关（默认）单行裁切，保证长文件名不把
-            // 行尾 ⋮ 挤出屏幕；开则名称换多行、行高自适应。
-            SwitchRow(Str.get(R.string.editor_tree_multi_line), settings.fileTreeMultiLine) {
-                onChange(settings.copy(fileTreeMultiLine = it))
-            }
+            // 6.2.0 批次42 那条「文件树多行显示」随 e20 ③ 一起撤掉：抽屉里现在是
+            // 单窗口文件管理器，行高归它自己的「文件名多行显示」管（FilePrefs.multiLineNames），
+            // 编辑器设置里再摆一个不管用的开关只会让人以为没生效。
             SettingsGroupDivider()
 
             // ---------- 滚动与定位 ----------
@@ -3815,6 +4064,8 @@ private fun SettingRow(label: String, onClick: (() -> Unit)? = null, content: @C
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // k.txt 第 6 条：整行涟漪按 8dp 圆角裁切。
+            .clip(RoundedCornerShape(8.dp))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = AppDimens.spacingSmall),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -3959,9 +4210,58 @@ fun CodeEditorScreen(
     // 批次55：按新编码重建分页索引中（只读互斥的可观察信号）—— 与 scanningActive 同理，
     // 重建期页偏移/文件字节在换代，编辑/翻页/替换/保存全都要挡。
     val rebuildingSet by viewModel.rebuildingCharset.collectAsState()
-    val projectRoot by viewModel.projectRoot.collectAsState()
+    // e20 ③（用户 2026-11-07 拍板）：编辑器侧边栏**直接用单窗口文件管理器** ——
+    // 抽屉里原来那份目录树整个换成「文件」页关掉双窗格时的那一栏。这里自己持一份
+    // FileManageViewModel：与「文件」页（MainActivity 那份）互不干扰，各归各的活动；
+    // 排序 / 密度 / 行数这类写进 FilePrefs 的设置本来就是全局的，两边自然一致。
+    // e20 ③：与「文件」页**共用进程级那一份**状态机 —— 侧边栏要的就是「直接用」
+    // 单窗口文件管理器：同一个当前目录、同一份拿起待粘贴、同一条进度通知。
+    val fmVm: FileManageViewModel = FileManageViewModel.shared()
+    val fmState by fmVm.state.collectAsState()
+    // 抽屉里能进的两张全屏页（文件管理设置 / 打开方式管理）与「打开方式」弹窗。
+    // 三者都**摆在抽屉外面**渲染：抽屉内容只在开合期间留在组合里，
+    // 摆在里面会随抽屉收起一起被卸载，表现就是「点了没反应」。
+    var fmFileSettings by remember { mutableStateOf(false) }
+    var fmOpenManage by remember { mutableStateOf(false) }
+    var fmOpenWith by remember { mutableStateOf("") }
+    // o.txt 第 5 条：抽屉顶部路径与单窗格一致 —— 点 = 跳转输入框，长按 = 复制路径。
+    var fmJumpOpen by remember { mutableStateOf(false) }
+    var fmJumpPath by remember { mutableStateOf("") }
+    var fmJumpError by remember { mutableStateOf(false) }
+    // f20：编辑器抽屉里的「后台任务」清单（与文件页同一个弹窗，只是宿主换成编辑器）
+    var fmTasksOpen by remember { mutableStateOf(false) }
     // 6.2.0 批次27：语法+主题后台加载完毕后翻转，EditorCanvas 据此补设主题与语言（消除启动竞态）。
     val grammarsReady by TextMateInitState.grammarsReady.collectAsState()
+    // e14「连续切换文件，高亮要等一下」：一个 scope **第一次**被用到时，编译（读资产 +
+    // 解析 JSON + 整份重编译规则）是落在 **UI 线程**上的，切到那个文件就会看见一瞬没有
+    // 高亮。趁语法刚注册完、分析线程还没轮到它，先把**当前打开的标签**要用的 scope 编掉 ——
+    // 会话恢复出来的几个标签在用户第一次切之前就已经编完了。
+    // `refreshGrammar` 自带健康判断，编好的直接跳过，重复触发几乎零成本。
+    //
+    // 两处刻意为之：
+    //  · 已编过的记在并发 Set 里（写在 IO 线程、读在主线程），避免每轮重算；
+    //  · **键只用 Int/String**（`grammarsReady` / `tabs.size` / `activeTabId`）。直接把
+    //    `tabs` 当键不行 —— 草稿前缀非空时它每次重组都是新 List，这个协程会被反复打断、
+    //    永远编不完。
+    val warmedScopes = remember { java.util.concurrent.ConcurrentHashMap.newKeySet<String>() }
+    LaunchedEffect(grammarsReady, tabs.size, activeTabId) {
+        if (!grammarsReady) return@LaunchedEffect
+        val pending = tabs.mapNotNull { t ->
+            (t.languageScope ?: getLanguageScopeName(t.name)).takeIf { it != "text.plain" }
+        }.distinct().filter { it !in warmedScopes }
+        if (pending.isEmpty()) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            pending.forEach { scope ->
+                val t0 = System.currentTimeMillis()
+                val ok = runCatching { refreshGrammar(context, scope) }.getOrDefault(false)
+                val cost = System.currentTimeMillis() - t0
+                if (ok) warmedScopes.add(scope)
+                if (cost >= 16) {
+                    AppLog.d(DEBUG_TAG, "grammar-warm: scope=$scope ok=$ok ${cost}ms")
+                }
+            }
+        }
+    }
     // 6.2.0 批次27：最近一次打开失败的原因（如 Android/data 系统保护目录），空状态用它替换「未打开文件」。
     val lastOpenError by viewModel.lastOpenError.collectAsState()
     // 6.2.0 批次47：全文搜索/替换状态（窗口模式）。
@@ -3970,10 +4270,33 @@ fun CodeEditorScreen(
     // 批次53：全量结果页（完整列表）与其懒加载预览缓存。
     val wholeFull by viewModel.wholeFull.collectAsState()
     val wholeFullPreviews by viewModel.wholePreviews.collectAsState()
+    // w.txt 第 1 条：结果页二次筛选（按页一趟扫描）。
+    val wholeFilterState by viewModel.wholeFilter.collectAsState()
     // 批次50：窗口渐进式打开的索引进度（tabId → 0..100），底部左下角显示。
     val windowScan by viewModel.windowScanProgress.collectAsState()
     // 批次51：保存进度（写盘 + 索引重建全程），底部左下角「保存中 N%」。
     val windowSave by viewModel.windowSaveProgress.collectAsState()
+    // m.txt 第 5 条：被其他应用修改的待提示项。
+    val externalChange by viewModel.externalChange.collectAsState()
+
+    // m.txt 第 5 条：前台每 2 秒看一次文件指纹；回到前台立即补查一次。
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.checkExternalChanges()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        try {
+            while (true) {
+                delay(2_000)
+                if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    viewModel.checkExternalChanges()
+                }
+            }
+        } finally {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val controller = remember { EditorController() }
     var cursorLine by remember { mutableStateOf(1) }
@@ -4000,6 +4323,16 @@ fun CodeEditorScreen(
     // 批次56：顶栏「全部」下拉 → 关闭全部文件前的丢弃确认。
     var showCloseAllConfirm by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    // n.txt 第 13 条：收起搜索面板 / 打开文件列表抽屉时要把软键盘一起收掉 ——
+    // 搜索框自动聚焦会让键盘一直悬在抽屉边缘，部分 ROM 上「抽屉 + IME」还会互相
+    // 触发 insets 重排，看起来就像界面卡住。
+    val shellKeyboard = LocalSoftwareKeyboardController.current
+    /** n.txt 13：收起搜索面板的统一出口（保留已完成的结果，停掉仍在跑的扫描）。 */
+    fun collapseSearchPanel() {
+        showSearch = false
+        shellKeyboard?.hide()
+        viewModel.stopWholeSearchIfRunning()
+    }
     // 批次57②（用户反馈）：搜索面板状态提升到 Screen —— 面板收起时整树卸载，面板内
     // remember 全丢，重开会以空查询触发「空输入即清结果」把已搜结果与高亮一起误清。
     // 提升后收起重开原样保留；清空只由面板关闭图标 X 显式执行（见 SearchPanel 调用点）。
@@ -4135,90 +4468,253 @@ fun CodeEditorScreen(
                     if (settingsTick == tick && !settingsVisible) showSettings = false
                 }
             }
-            showSearch -> showSearch = false
+            // n.txt 13：收起面板时停掉在途扫描（已完成的结果保留）—— 不让一趟
+            // GB 级全文检索挂在后台陪着用户回文件列表。
+            showSearch -> collapseSearchPanel()
             showCharsetPicker -> showCharsetPicker = false
             showActionMenu -> showActionMenu = false
+            // e20 ③：抽屉里的文件管理页优先于「关抽屉」—— 文件设置 / 打开方式管理是整屏页，
+            // 打开时抽屉多半已经被顶掉了，先退这两页才不会一步退回编辑器。
+            fmOpenWith.isNotEmpty() -> fmOpenWith = ""
+            fmOpenManage -> fmOpenManage = false
+            fmFileSettings -> fmFileSettings = false
             drawerState.isOpen -> drawerScope.launch { drawerState.close() }
             viewModel.hasUnsaved() -> showExitConfirm = true
-            else -> onExit()
+            else -> {
+                // n.txt 13：退出编辑器前先清掉搜索任务与结果集 —— 否则 Activity 销毁
+                // 与这份可能上百万条的结果同时发生，返回文件列表会长时间停顿。
+                viewModel.cancelWholeSearch()
+                onExit()
+            }
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        // 没有打开任何目录时禁用滑动手势，避免误触拉出空抽屉
-        // 6.2.0：ModalNavigationDrawer 内置滑动手势作用于**整个内容区**，会把编辑器里
-        // 横向滚动代码的拖拽一并抢走。改为：
-        //  - 关闭时禁用内置手势（gesturesEnabled=false）→ 代码横向滚动恢复正常；
-        //  - 由内容区最左侧的 DrawerEdgeOpener 窄条（28dp）检测右滑打开抽屉；
-        //  - 抽屉打开后启用内置手势 → 抽屉上任意位置左滑即可关闭。
-        gesturesEnabled = drawerState.isOpen && projectRoot != null,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier
-                    .width(280.dp)
-                    .then(
-                        // 批次61（用户指定「目录树抽屉也需要新拟态」）：与 UI 个性化页抽屉
-                        // （UIConfigSidebar）同款凸起 —— 影在抽屉外圈，内部由下方渐变 Box
-                        // 盖住底板，透出渐变不发灰；非新拟态风格原样。
-                        if (UIConfig.isNeumorphismEnabled()) Modifier.neuRaised(
-                            RoundedCornerShape(topEnd = 16.dp),
-                            UIConfig.shouldUseDarkTheme(),
-                            NeuDefaults.Intensity.LIGHT,
-                            cornerRadius = 16.dp,
-                            backgroundColor = Color.Transparent
-                        ) else Modifier
-                    ),
-                // 批次61 二轮反馈（用户「目录树没有同款凸起」）：容器底色改为与 UIConfigSidebar
-                // 抽屉完全一致（玻璃/纯色不透明面板）。此前的透明底让抽屉没有自己的"面"，
-                // 全靠后铺的渐变撑底 —— 凸起感读不出来。
-                drawerContainerColor = if (AppColors.glassEnabled()) AppColors.glassBackground()
-                else MaterialTheme.colorScheme.background
-            ) {
-                // 批次61 二轮反馈：与 UIConfigSidebar 抽屉逐项对齐 —— 渐变按**抽屉自身尺寸**
-                // （280×600）取样。旧实现用整屏取样的 pageGradientBrush 铺进 280 宽的抽屉，
-                // 画出来与身后页面同色同向，抽屉像"贴"在页面上，凸起看不出来；渐变关闭时
-                // 露容器底色（与侧栏一致），凸起由外圈柔影 + 不透明面板承担。
-                Box(modifier = Modifier.fillMaxSize()) {
-                    val widthPx = with(LocalDensity.current) { 280.dp.toPx() }
-                    val heightPx = with(LocalDensity.current) { 600.dp.toPx() }
-                    val brush = gradientBackgroundBrush(widthPx, heightPx)
-                    if (brush != null) {
-                        Box(modifier = Modifier.fillMaxSize().background(brush))
+    // e20 ③：外层 Box —— 抽屉（单窗口文件管理器）与它那几张整屏页要能互相叠。
+    // 只包一层不改布局：ModalNavigationDrawer 仍是唯一那块铺满的子节点，
+    // 文件设置 / 打开方式管理两页按「后画的压上面」盖在编辑器之上。
+    Box(modifier = Modifier.fillMaxSize()) {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            // e20 ③：抽屉里现在是**单窗口文件管理器**（不再依赖是否打开过目录），
+            // 所以「没目录就不给拉」这条已经作废 —— 没开过文件夹也照样能拉出文件栏。
+            // 6.2.0：ModalNavigationDrawer 内置滑动手势作用于**整个内容区**，会把编辑器里
+            // 横向滚动代码的拖拽一并抢走。改为：
+            //  - 关闭时禁用内置手势（gesturesEnabled=false）→ 代码横向滚动恢复正常；
+            //  - 由内容区最左侧的 DrawerEdgeOpener 窄条（28dp）检测右滑打开抽屉；
+            //  - 抽屉打开后启用内置手势 → 抽屉上任意位置左滑即可关闭。
+            gesturesEnabled = drawerState.isOpen,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier
+                        .width(280.dp)
+                        .then(
+                            // 批次61（用户指定「目录树抽屉也需要新拟态」）：与 UI 个性化页抽屉
+                            // （UIConfigSidebar）同款凸起 —— 影在抽屉外圈，内部由下方渐变 Box
+                            // 盖住底板，透出渐变不发灰；非新拟态风格原样。
+                            if (UIConfig.isNeumorphismEnabled()) Modifier.neuRaised(
+                                RoundedCornerShape(topEnd = 16.dp),
+                                UIConfig.shouldUseDarkTheme(),
+                                NeuDefaults.Intensity.LIGHT,
+                                cornerRadius = 16.dp,
+                                backgroundColor = Color.Transparent
+                            ) else Modifier
+                        ),
+                    // 批次61 二轮反馈（用户「目录树没有同款凸起」）：容器底色改为与 UIConfigSidebar
+                    // 抽屉完全一致（玻璃/纯色不透明面板）。此前的透明底让抽屉没有自己的"面"，
+                    // 全靠后铺的渐变撑底 —— 凸起感读不出来。
+                    drawerContainerColor = if (AppColors.glassEnabled()) AppColors.glassBackground()
+                    else MaterialTheme.colorScheme.background
+                ) {
+                    // 批次61 二轮反馈：与 UIConfigSidebar 抽屉逐项对齐 —— 渐变按**抽屉自身尺寸**
+                    // （280×600）取样。旧实现用整屏取样的 pageGradientBrush 铺进 280 宽的抽屉，
+                    // 画出来与身后页面同色同向，抽屉像"贴"在页面上，凸起看不出来；渐变关闭时
+                    // 露容器底色（与侧栏一致），凸起由外圈柔影 + 不透明面板承担。
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        val widthPx = with(LocalDensity.current) { 280.dp.toPx() }
+                        val heightPx = with(LocalDensity.current) { 600.dp.toPx() }
+                        val brush = gradientBackgroundBrush(widthPx, heightPx)
+                        if (brush != null) {
+                            Box(modifier = Modifier.fillMaxSize().background(brush))
+                        }
+                        // e20 ③（用户 2026-11-07 拍板）：这里不再放目录树，放**单窗口文件管理器**
+                        // 那一栏 —— 与「文件」页关掉双窗格时走的是同一个 [PaneBox]，列表、
+                        // 长按菜单、复制移动、压缩解压、属性框全部共用一份实现，不另写一套。
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // 头：只留当前目录。树没了之后，这是抽屉里唯一还看得见「我在哪」的地方。
+                            // 不摆搜索/排序那张顶栏（那套状态还在文件页里），要的话下一步单独接。
+                            // 头：当前目录 + 「后台任务」入口（f20）。树没了之后，这是抽屉里
+                            // 唯一还看得见「我在哪」的地方；右侧那个入口与文件页侧边栏同义 ——
+                            // 列被「隐藏」收起、但还在跑的文件操作（否则抽屉里只剩进度胶囊一条路）。
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // o.txt 第 5 条：与单窗格文件页同款路径交互。
+                                val drawerClipboard = LocalClipboardManager.current
+                                Text(
+                                    text = fmState.left.cwd,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = AppColors.textSecondary(),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .combinedClickable(
+                                            onClick = {
+                                                fmJumpPath = fmState.left.cwd
+                                                fmJumpError = false
+                                                fmJumpOpen = true
+                                            },
+                                            onLongClick = {
+                                                drawerClipboard.setText(AnnotatedString(fmState.left.cwd))
+                                                AppToast.info(context, Str.get(R.string.files_path_copied))
+                                            }
+                                        )
+                                )
+                                Text(
+                                    text = Str.get(R.string.files_tasks_title),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = AppColors.primary(),
+                                    maxLines = 1,
+                                    modifier = Modifier
+                                        .clickable { fmTasksOpen = true }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                                )
+                            }
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                            PaneBox(
+                                side = Side.LEFT,
+                                state = fmState,
+                                vm = fmVm,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                onOpenSettings = { fmFileSettings = true },
+                                onRequestOpenWith = { fmOpenWith = it },
+                            // 抽屉只画一栏：菜单与「复制/移动」一律按单窗口口径
+                            singlePane = true,
+                                // o.txt 第 5 条：点普通文件直接用编辑器打开，不经过「打开方式」。
+                                // q.txt 第 6 条：显式点开 → 焦点钉子（恢复收尾不得抢焦点）。
+                                onFileOpen = { entry ->
+                                    viewModel.openFileExplicit(java.io.File(entry.path))
+                                    drawerScope.launch { drawerState.close() }
+                                }
+                            )
+                            // 进度被收进胶囊时（4.12），抽屉里也得有回到进度框的入口，否则断头路
+                            if (fmState.op is OpUiState.Running && (fmState.op as OpUiState.Running).hidden) {
+                                RunningPill(
+                                    progress = (fmState.op as OpUiState.Running).progress,
+                                    onClick = { fmVm.showOp() }
+                                )
+                            }
+                            // 底栏照搬文件页：多选态整排换成「只动选择」的四个键
+                            if (fmState.multiSelect) {
+                                MultiSelectBar(
+                                    count = fmState.selectedCount,
+                                    onSelectAll = { fmVm.selectAll(Side.LEFT) },
+                                    onInvert = { fmVm.invertSelection(Side.LEFT) },
+                                    onSameType = { fmVm.selectSameType(Side.LEFT) },
+                                    // 与文件页同一个语义：退出 = 只收选择，不碰目录
+                                    onExit = { fmVm.exitMultiSelectKeepingOtherPane() }
+                                )
+                            } else {
+                                NormalBar(
+                                    canBack = fmState.left.canGoBack,
+                                    canForward = fmState.left.canGoForward,
+                                    canUp = fmState.left.canGoUp,
+                                    // 单窗口没有「另一栏」可同步 —— 与文件页同口径恒为 false
+                                    canSync = false,
+                                    canCreate = !fmState.left.readOnly,
+                                    onBack = { fmVm.goBack(Side.LEFT) },
+                                    onForward = { fmVm.goForward(Side.LEFT) },
+                                    onSync = {},
+                                    onUp = { fmVm.goUp(Side.LEFT) },
+                                    onCreate = { fmVm.requestCreate(Side.LEFT) }
+                                )
+                            }
+                        }
+                        // o.txt 第 5 条：路径点击 → 跳转输入框（与文件页同一个交互与文案）。
+                        if (fmJumpOpen) {
+                            UnifiedDialog(
+                                onDismissRequest = { fmJumpOpen = false },
+                                title = Str.get(R.string.files_jump_title),
+                                content = {
+                                    UnifiedTextField(
+                                        value = fmJumpPath,
+                                        onValueChange = {
+                                            fmJumpPath = it
+                                            fmJumpError = false
+                                        },
+                                        label = Str.get(R.string.files_jump_hint),
+                                        singleLine = true,
+                                        error = if (fmJumpError) {
+                                            Str.get(R.string.files_jump_invalid)
+                                        } else null,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                },
+                                confirmButton = {
+                                    UnifiedDialogTextButton(
+                                        onClick = {
+                                            val target = fmJumpPath.trim()
+                                            if (target.isNotEmpty() && java.io.File(target).isDirectory) {
+                                                fmVm.navigateTo(Side.LEFT, target)
+                                                fmJumpOpen = false
+                                            } else {
+                                                fmJumpError = true
+                                            }
+                                        },
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    ) { Text(Str.get(R.string.ok)) }
+                                },
+                                dismissButton = {
+                                    UnifiedDialogTextButton(onClick = { fmJumpOpen = false }) {
+                                        Text(Str.get(R.string.cancel))
+                                    }
+                                }
+                            )
+                        }
+                        // 单窗口「拿起待粘贴」的悬浮按钮：与文件页同一个锚点（右下角）。
+                        // 抽屉收起时它随内容一起离场，但**拿起的状态还在**，重开照样能粘 ——
+                        // 少了它，拿起之后就是一条断头路（文件页正是为此加的这个按钮）。
+                        if (fmState.pendingTransfer != null) {
+                            PendingTransferBar(
+                                onPaste = { fmVm.pastePending(fmState.left.cwd) },
+                                onClose = { fmVm.cancelPendingTransfer() },
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                            )
+                        }
                     }
-                    FileTreePanel(
-                        viewModel = viewModel,
-                        activePath = activeTab?.file?.absolutePath,
-                        onOpenFile = { viewModel.openFile(it) },
-                        onOpenFolder = onOpenFolder,
-                        multiLine = settings.fileTreeMultiLine,
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(280.dp)
-                    )
                 }
             }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    // 批次58（用户）：新拟态下顶栏整条凸起（透明底，渐变/玻璃透出）。
-                    modifier = Modifier.neuChrome(),
-                    title = {
-                        // 批次45：标题整个移除 —— 右侧动作图标一多，标题槽被挤到零宽，
-                        // 「代码编辑器」省略成纯文本的「…」（用户反馈的“最左边三个横点、
-                        // 点不动”就是它）。文件名已在标签栏，顶栏不再显示任何标题。
-                        Spacer(modifier = Modifier)
-                    },
-                    navigationIcon = {
-                        // 6.2.0 批次24：只有建了树根（能定位/已打开文件夹）才显示目录树开关；
-                        // 从外部打开却无法定位的文件（content:// 或无存储权限）直接显示文件本身，
-                        // 不显示目录树、也不显示目录树开关图标。
-                        if (projectRoot != null) {
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        // 批次58（用户）：新拟态下顶栏整条凸起（透明底，渐变/玻璃透出）。
+                        modifier = Modifier.neuChrome(),
+                        title = {
+                            // 批次45：标题整个移除 —— 右侧动作图标一多，标题槽被挤到零宽，
+                            // 「代码编辑器」省略成纯文本的「…」（用户反馈的“最左边三个横点、
+                            // 点不动”就是它）。文件名已在标签栏，顶栏不再显示任何标题。
+                            Spacer(modifier = Modifier)
+                        },
+                        navigationIcon = {
+                            // e20 ③：抽屉 = 单窗口文件管理器，**任何时候都给入口**。
+                            // 6.2.0 批次24 那条「只有建了树根才显示目录树开关」随树一起作废 ——
+                            // 从外部打开、连文件夹都没选过的文件也该能翻文件（那时树确实空，
+                            // 现在的文件栏不空）。
                             UnifiedIconButton(
                                 icon = Icons.Default.Menu,
                                 onClick = {
+                                    // n.txt 13：先收起搜索面板（停掉在途扫描、收键盘），
+                                    // 再开文件列表抽屉 —— 搜索框还占着焦点/IME 时打开抽屉，
+                                    // 既看不到列表刷新，也容易把「等扫描」误当成卡死。
+                                    collapseSearchPanel()
                                     drawerScope.launch {
                                         if (drawerState.isOpen) drawerState.close()
                                         else drawerState.open()
@@ -4226,603 +4722,695 @@ fun CodeEditorScreen(
                                 },
                                 contentDescription = Str.get(R.string.editor_file_tree)
                             )
-                        }
-                    },
-                    actions = {
-                        // 6.2.0 批次44：撤销/重做放到**动作区最左**（其他图标左侧），
-                        // 收紧到 40dp（其余仍 48dp）。可用性由 historyTick（光标/内容回调
-                        // bump）+ activeTabId 触发重算；不可用置灰但仍可点（与 ⋮ 菜单一致）。
-                        // 批次50：readOnlyEff 含「索引扫描中」—— 扫描期连保存/撤销都不给。
-                        if (!readOnlyEff) {
-                            UnifiedIconButton(
-                                icon = Icons.Default.Undo,
-                                onClick = { if (canUndoOn) controller.editor?.undo() },
-                                tint = if (canUndoOn) null
-                                else AppColors.textSecondary().copy(alpha = 0.45f),
-                                contentDescription = Str.get(R.string.editor_undo),
-                                modifier = Modifier.size(40.dp)
-                            )
-                            UnifiedIconButton(
-                                icon = Icons.Default.Redo,
-                                onClick = { if (canRedoOn) controller.editor?.redo() },
-                                tint = if (canRedoOn) null
-                                else AppColors.textSecondary().copy(alpha = 0.45f),
-                                contentDescription = Str.get(R.string.editor_redo),
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
-                        if (!readOnlyEff) {
-                            // 短按=保存到原位置；长按=系统「另存为」（可另指定文件名 + 位置）。
-                            UnifiedIconButton(
-                                icon = Icons.Default.Save,
-                                onClick = { viewModel.saveActive() },
-                                onLongClick = { viewModel.requestSaveAsDoc() },
-                                contentDescription = Str.get(R.string.editor_save),
-                                // 批次45：与撤销/重做统一 40dp —— 图标间距同步收紧（24 → 16dp 视觉空隙）。
-                                modifier = Modifier.size(40.dp)
-                            )
-                        }
-                        // 批次56：顶部「全部」图标 —— 下拉：保存全部文件 / 关闭全部文件。
-                        Box {
-                            var allMenu by remember { mutableStateOf(false) }
-                            UnifiedIconButton(
-                                icon = Icons.Default.DoneAll,
-                                onClick = { allMenu = true },
-                                contentDescription = Str.get(R.string.editor_all),
-                                modifier = Modifier.size(40.dp)
-                            )
-                            DropdownMenu(
-                                expanded = allMenu,
-                                onDismissRequest = { allMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(Str.get(R.string.editor_save_all)) },
-                                    leadingIcon = { Icon(Icons.Default.Save, null) },
-                                    onClick = {
-                                        allMenu = false
-                                        viewModel.saveAllDirty()
-                                    }
+                        },
+                        actions = {
+                            // 6.2.0 批次44：撤销/重做放到**动作区最左**（其他图标左侧），
+                            // 收紧到 40dp（其余仍 48dp）。可用性由 historyTick（光标/内容回调
+                            // bump）+ activeTabId 触发重算；不可用置灰但仍可点（与 ⋮ 菜单一致）。
+                            // 批次50：readOnlyEff 含「索引扫描中」—— 扫描期连保存/撤销都不给。
+                            if (!readOnlyEff) {
+                                UnifiedIconButton(
+                                    icon = Icons.Default.Undo,
+                                    onClick = { if (canUndoOn) controller.editor?.undo() },
+                                    tint = if (canUndoOn) null
+                                    else AppColors.textSecondary().copy(alpha = 0.45f),
+                                    contentDescription = Str.get(R.string.editor_undo),
+                                    modifier = Modifier.size(40.dp)
                                 )
-                                DropdownMenuItem(
-                                    text = { Text(Str.get(R.string.editor_close_all)) },
-                                    leadingIcon = { Icon(Icons.Default.Close, null) },
-                                    onClick = {
-                                        allMenu = false
-                                        if (viewModel.hasUnsaved()) showCloseAllConfirm = true
-                                        else viewModel.closeAllTabs()
-                                    }
+                                UnifiedIconButton(
+                                    icon = Icons.Default.Redo,
+                                    onClick = { if (canRedoOn) controller.editor?.redo() },
+                                    tint = if (canRedoOn) null
+                                    else AppColors.textSecondary().copy(alpha = 0.45f),
+                                    contentDescription = Str.get(R.string.editor_redo),
+                                    modifier = Modifier.size(40.dp)
                                 )
                             }
-                        }
-                        UnifiedIconButton(
-                            icon = Icons.Default.Search,
-                            onClick = { showSearch = !showSearch },
-                            contentDescription = Str.get(R.string.editor_find),
-                            modifier = Modifier.size(40.dp)
-                        )
-                        // 6.2.0 批次16：右上角原「主题」图标改为「语法」图标。
-                        // 主题只能在设置面板里选；这里改为手动为当前文件挑选高亮语法。
-                        UnifiedIconButton(
-                            icon = Icons.Default.DataObject,
-                            onClick = { showSyntaxDialog = true },
-                            contentDescription = Str.get(R.string.editor_syntax),
-                            modifier = Modifier.size(40.dp)
-                        )
-                        // 6.2.0 批次32：「更多操作」菜单 —— 撤销/重做/剪贴板/缩进/格式化/跳转到行。
-                        // DropdownMenu 必须锚定在一个父 Box 上，才能贴着 ⋮ 按钮弹出。
-                        Box {
+                            if (!readOnlyEff) {
+                                // 短按=保存到原位置；长按=系统「另存为」（可另指定文件名 + 位置）。
+                                // l.txt 第 5 条：没有未保存改动时保存图标置灰（仍可点，但不该
+                                // 看起来像「有个红的等着你按」）。
+                                val saveNeeded = activeTab?.isModified == true
+                                UnifiedIconButton(
+                                    icon = Icons.Default.Save,
+                                    onClick = { viewModel.saveActive() },
+                                    onLongClick = { viewModel.requestSaveAsDoc() },
+                                    tint = if (saveNeeded) null
+                                    else AppColors.textSecondary().copy(alpha = 0.45f),
+                                    contentDescription = Str.get(R.string.editor_save),
+                                    // 批次45：与撤销/重做统一 40dp —— 图标间距同步收紧（24 → 16dp 视觉空隙）。
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                            // 批次56：顶部「全部」图标 —— 下拉：保存全部文件 / 关闭全部文件。
+                            Box {
+                                var allMenu by remember { mutableStateOf(false) }
+                                UnifiedIconButton(
+                                    icon = Icons.Default.DoneAll,
+                                    onClick = { allMenu = true },
+                                    contentDescription = Str.get(R.string.editor_all),
+                                    modifier = Modifier.size(40.dp)
+                                )
+                                UnifiedDropdownMenu(
+                                    expanded = allMenu,
+                                    onDismissRequest = { allMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(Str.get(R.string.editor_save_all)) },
+                                        leadingIcon = { Icon(Icons.Default.Save, null) },
+                                        onClick = {
+                                            allMenu = false
+                                            viewModel.saveAllDirty()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(Str.get(R.string.editor_close_all)) },
+                                        leadingIcon = { Icon(Icons.Default.Close, null) },
+                                        onClick = {
+                                            allMenu = false
+                                            if (viewModel.hasUnsaved()) showCloseAllConfirm = true
+                                            else viewModel.closeAllTabs()
+                                        }
+                                    )
+                                }
+                            }
                             UnifiedIconButton(
-                                icon = Icons.Default.MoreVert,
-                                onClick = { showActionMenu = true },
-                                contentDescription = Str.get(R.string.editor_more),
+                                icon = Icons.Default.Search,
+                                onClick = {
+                                    if (showSearch) collapseSearchPanel()
+                                    else showSearch = true
+                                },
+                                contentDescription = Str.get(R.string.editor_find),
                                 modifier = Modifier.size(40.dp)
                             )
-                            EditorActionMenu(
-                                expanded = showActionMenu,
-                                onDismiss = { showActionMenu = false },
-                                editor = controller.editor,
-                                fileName = activeTab?.name ?: "",
-                                onGoto = {
-                                    showActionMenu = false
-                                    showGotoDialog = true
-                                },
-                                onFormat = {
-                                    showActionMenu = false
-                                    runFormat(controller, activeTab?.name ?: "") { msg ->
-                                        viewModel.emit(msg)
-                                    }
-                                },
-                                // 6.2.0 批次63：选中菜单增强的顶栏入口，回填与选中窗相同的请求状态。
-                                onPickLink = { links -> controller.pendingLinks = links },
-                                onTranslate = { t -> controller.pendingTranslateText = t }
+                            // 6.2.0 批次16：右上角原「主题」图标改为「语法」图标。
+                            // 主题只能在设置面板里选；这里改为手动为当前文件挑选高亮语法。
+                            UnifiedIconButton(
+                                icon = Icons.Default.DataObject,
+                                onClick = { showSyntaxDialog = true },
+                                contentDescription = Str.get(R.string.editor_syntax),
+                                modifier = Modifier.size(40.dp)
                             )
-                        }
-                        // 6.2.0 批次17：移除右上角「打开文件夹」图标 —— 有文件时才用得上、
-                        // 与文件树重复。打开入口改由「空状态按钮」+「侧栏文件树头部」提供。
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = AppColors.pageBackground(),
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                        actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                            // 6.2.0 批次32：「更多操作」菜单 —— 撤销/重做/剪贴板/缩进/格式化/跳转到行。
+                            // DropdownMenu 必须锚定在一个父 Box 上，才能贴着 ⋮ 按钮弹出。
+                            Box {
+                                UnifiedIconButton(
+                                    icon = Icons.Default.MoreVert,
+                                    onClick = { showActionMenu = true },
+                                    contentDescription = Str.get(R.string.editor_more),
+                                    modifier = Modifier.size(40.dp)
+                                )
+                                EditorActionMenu(
+                                    expanded = showActionMenu,
+                                    onDismiss = { showActionMenu = false },
+                                    editor = controller.editor,
+                                    fileName = activeTab?.name ?: "",
+                                    onGoto = {
+                                        showActionMenu = false
+                                        showGotoDialog = true
+                                    },
+                                    onFormat = {
+                                        showActionMenu = false
+                                        runFormat(controller, activeTab?.name ?: "") { msg ->
+                                            viewModel.emit(msg)
+                                        }
+                                    },
+                                    // 6.2.0 批次63：选中菜单增强的顶栏入口，回填与选中窗相同的请求状态。
+                                    onPickLink = { links -> controller.pendingLinks = links },
+                                    onTranslate = { t -> controller.pendingTranslateText = t }
+                                )
+                            }
+                            // 6.2.0 批次17：移除右上角「打开文件夹」图标 —— 有文件时才用得上、
+                            // 与文件树重复。打开入口改由「空状态按钮」+「侧栏文件树头部」提供。
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = AppColors.pageBackground(),
+                            titleContentColor = MaterialTheme.colorScheme.onBackground,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                            actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                        )
                     )
-                )
-            },
-            bottomBar = {
-                EditorStatusBar(
-                    readOnly = readOnlyEff,
-                    // 编码标签：自动档显示「自动检测·实际编码」，选手动档显示所选编码。
-                    // 6.2.0：底部**不再重复显示文件名**（顶栏/标签栏已有）。
-                    charset = activeTab?.let { t ->
-                        if (t.charset == FileAccess.CHARSET_AUTO) {
-                            "${Str.get(R.string.editor_encoding_auto)}·${t.effectiveCharset}"
-                        } else t.effectiveCharset
-                    } ?: Str.get(R.string.editor_encoding_auto),
-                    onPickCharset = { showCharsetPicker = true },
-                    // 批次43：跳到页 → 光标落到页首行并滚到位（currentPage 由光标行推导，
-                    // setSelection 触发光标回调后自动更新 n/N）。
-                    // 批次46：窗口模式 = **真换页**（flush spool → 读新页 → contentRev 触发
-                    // setText），编辑器内容跟着换；整档模式保持原「滚动定位」。
-                    currentPage = currentPage,
-                    totalPages = totalPages,
-                    // 批次50：索引扫描中 → 左下角显示「扫描 N%」（此时 totalPages=0 本就不显示分页）。
-                    scanPercent = activeTab?.let { t -> windowScan[t.id] },
-                    savePercent = activeTab?.let { t -> windowSave[t.id] },
-                    onJumpPage = { p ->
-                        val t = activeTab
-                        if (t?.window != null) {
-                            viewModel.jumpWindowPage(t.id, p)
-                        } else controller.editor?.let { e ->
-                            val line = ((p - 1) * PAGE_LINES)
-                                .coerceIn(0, (e.lineCount - 1).coerceAtLeast(0))
-                            // 批次54：与「跳转到行」对话框同一条已验证路径 —— jumpToLine
-                            // 落光标到页首行，底部 n/N 随光标回调同步到目标页。
-                            e.jumpToLine(line)
-                            e.ensureSelectionVisible()
-                        }
-                    },
-                    onOpenSettings = { settingsTick++; showSettings = true }
-                )
-            },
-            containerColor = AppColors.pageBackground()
-        ) { padding ->
-            // 文件树已移入 ModalNavigationDrawer，这里只保留编辑区
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .imePaddingCompat()
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    if (tabs.isNotEmpty()) {
-                        EditorTabRow(
-                            tabs = tabs,
-                            activeId = activeTabId,
-                            onSelect = { viewModel.setActive(it) },
-                            onClose = { id ->
-                                val tab = tabs.firstOrNull { it.id == id }
-                                if (tab != null && tab.isModified) pendingClose = id
-                                else viewModel.closeTab(id, force = true)
-                            },
-                            // 批次43：长按标签 → 完整属性弹窗；uri/未落盘标签没有本地文件，不弹。
-                            onLongPress = { tab -> tab.file?.let { tabPropertiesTarget = it } }
-                        )
-                        // 批次43：标签栏下方信息栏 —— n/N行 · n字节 · n字符 · 选中n个。
-                        // 批次46：窗口模式行号换算为**绝对行**（页码 × 页宽 + 页内行），
-                        // 总行数取磁盘索引；带「窗口模式」徽标提示语义差异。
-                        EditorInfoBar(
-                            // 批次56：窗口档绝对行按真实行基址（分页行数不等后
-                            //「页号×页宽」会错位）；非窗口无基址概念，页内行即绝对行。
-                            line = win?.let { w ->
-                                (viewModel.absLineBase(activeTab?.id ?: "", w.page - 1)
-                                    ?: ((w.page - 1) * PAGE_LINES)) + cursorLine
-                            } ?: cursorLine,
-                            totalLines = win?.totalLines ?: totalLines,
-                            bytes = activeTab?.file?.length(),
-                            chars = activeTab?.content?.length ?: 0,
-                            selection = selectionLen,
-                            windowed = win != null
-                        )
-                    }
-                    // 6.2.0 批次57（用户）：**搜索结果在编辑器内高亮** —— 当前标签的全部命中
-                    // 涂主题 findMatch 色（见 MatchHighlights）。键里刻意不含 contentRev：
-                    // 编辑期间不重算，由 sora 的 updateOnInsertion/Deletion 把已画条目随内容
-                    // 自动平移（不回跳）；「内容已修改」横幅照常提示过期，重搜/换页/切标签
-                    // 才换新批次。editor 入键是因为 factory 重建编辑器后要立即补画。
-                    // 批次57②复查（用户反馈「编辑后高亮偏移/旁边空格被涂」）：键只取
-                    // **matches 列表引用**，不取整个 ui 对象 —— 「内容已修改」的 stale 标记
-                    // 与进度更新都是 whole 对象的 copy（matches 引用不变），键整个对象会让
-                    // 每次编辑都触发一次用**过期行/列**的重画：高亮被拽回编辑前位置（偏移）、
-                    // 刚输入的字符被算进旧区间（旁边的空格被涂）。列表引用只在「新一轮搜索
-                    // 出结果 / 结果被清空」时变化（startWholeSearch 以 emptyList() 单例起头），
-                    // 编辑期间一律靠 sora 的 afterInsert/afterDelete 自动平移。
-                    LaunchedEffect(
-                        controller.editor,
-                        wholeSearch?.matches,
-                        wholeFull?.matches,
-                        activeTab?.id,
-                        win?.page,
-                        viewModel.wholeSearchOwner
-                    ) {
-                        val mh = controller.matchHighlights ?: return@LaunchedEffect
-                        val owner = viewModel.wholeSearchOwner
-                        // 结果是全局单例：只属于其发起标签，切走即清（与面板同一门槛）。
-                        if (owner == null || owner != activeTab?.id) {
-                            mh.clear()
-                            return@LaunchedEffect
-                        }
-                        // 全量列表优先（批次57 起搜索一趟收齐）；未就绪时退回面板前 500 条。
-                        val src = wholeFull?.matches?.takeIf { it.isNotEmpty() }
-                            ?: wholeSearch?.matches
-                            ?: emptyList()
-                        val page = win?.page
-                        val items = ArrayList<HighlightTextContainer.HighlightText>()
-                        for (m in src) {
-                            // 窗口档只画当前页（编辑器里只有这一页的文本）；行号口径与跳转一致。
-                            val line = if (page != null) {
-                                if (m.page != page) continue
-                                m.inPageLine
-                            } else {
-                                m.absLine - 1
-                            }
-                            // 0 长度匹配只是定位点、无区间可涂；越界列由 sora 绘制时自行夹住。
-                            if (line < 0 || m.length <= 0) continue
-                            items.add(MatchHighlights.matchItem(line, m.column, m.length))
-                            if (items.size >= MatchHighlights.MAX_ITEMS) break
-                        }
-                        if (items.isEmpty()) mh.clear() else mh.apply(items)
-                    }
-                    // 6.2.0 批次19：搜索面板用「抽屉式」竖向展开/收起动画（从顶部滑入，更美观）；
-                    // 只靠关闭按钮退出，不支持手势滑动。
-                    AnimatedVisibility(
-                        visible = showSearch,
-                        enter = expandVertically(
-                            expandFrom = Alignment.Top,
-                            animationSpec = tween(220, easing = FastOutSlowInEasing)
-                        ) + fadeIn(animationSpec = tween(220)),
-                        exit = shrinkVertically(
-                            shrinkTowards = Alignment.Top,
-                            animationSpec = tween(180, easing = FastOutSlowInEasing)
-                        ) + fadeOut(animationSpec = tween(180))
-                    ) {
-                        SearchPanel(
-                            state = searchState,
-                            // 批次57②（用户指定）：只有面板关闭图标 X 才清除结果与高亮
-                            //（cancelWholeSearch 清空 whole/wholeFull → 高亮 effect 随之
-                            // 清画）；顶栏搜索图标/返回键只是收起，结果与高亮原样保留。
-                            onClose = {
-                                showSearch = false
-                                viewModel.cancelWholeSearch()
-                            },
-                            // ---- 批次53：搜索/替换一律整档（「全文」开关已删）；
-                            // 非窗口文档的替换走 VM 内存整写，确认文案按此切换。
-                            inMemoryReplace = win == null,
-                            // 复查：whole 状态是全局单例 —— 只展示**当前标签**的结果
-                            //（切标签后旧结果不得再显示/跳转，防错位与越界）；tabKey
-                            // 让防抖效果在切标签后用同一查询对新标签重搜。
-                            tabKey = activeTab?.id ?: "",
-                            whole = wholeSearch?.takeIf { viewModel.wholeSearchOwner == activeTab?.id },
-                            wholeReplace = wholeReplaceUi?.takeIf { viewModel.wholeReplaceOwner == activeTab?.id },
-                            // 批次53：全量结果页接线（完整列表 + 懒加载预览；批次57 起搜索即全量收齐）。
-                            full = wholeFull?.takeIf { viewModel.wholeSearchOwner == activeTab?.id },
-                            fullPreviews = wholeFullPreviews,
-                            onLoadPreviews = { from, count ->
-                                viewModel.requestWholePreviews(from, count)
-                            },
-                            onWholeSearch = { q, c, w, r ->
-                                activeTab?.let { t ->
-                                    viewModel.startWholeSearch(t.id, q, c, w, r)
-                                }
-                            },
-                            onCancelWhole = { viewModel.cancelWholeSearch() },
-                            onWholeReplace = { q, c, w, r, rep ->
-                                activeTab?.let { t ->
-                                    viewModel.startWholeReplace(t.id, q, c, w, r, rep)
-                                }
-                            },
-                            onJumpMatch = { m ->
-                                activeTab?.let { t ->
-                                    // 批次49：非窗口大文件（单页整读扫描）—— 无需换页，
-                                    // absLine 即全文行号（1 起），直接在编辑器里选中定位。
-                                    // 复查：结果可能因编辑过期 —— 行/列全部夹到当前文档
-                                    // 边界再定位（越界 setSelectionRegion 会直接崩）。
-                                    if (t.window == null) {
-                                        controller.editor?.let { e ->
-                                            val maxLine = (e.lineCount - 1).coerceAtLeast(0)
-                                            val line0 = (m.absLine - 1).coerceIn(0, maxLine)
-                                            val maxCol = e.text.getLine(line0).length
-                                            val col0 = m.column.coerceIn(0, maxCol)
-                                            val endCol = (col0 + m.length).coerceIn(col0, maxCol)
-                                            if (endCol > col0) {
-                                                e.setSelectionRegion(line0, col0, line0, endCol)
-                                            } else {
-                                                e.setSelection(line0, col0)
-                                            }
-                                            e.ensurePositionVisible(line0, col0, true)
-                                            e.requestFocus()
-                                        }
-                                        return@let
-                                    }
-                                    if (t.window?.page == m.page) {
-                                        // 同页命中：无需换页，直接选中高亮匹配文本（同样夹界）。
-                                        controller.editor?.let { e ->
-                                            val maxLine = (e.lineCount - 1).coerceAtLeast(0)
-                                            val line0 = m.inPageLine.coerceIn(0, maxLine)
-                                            val maxCol = e.text.getLine(line0).length
-                                            val col0 = m.column.coerceIn(0, maxCol)
-                                            val endCol = (col0 + m.length).coerceIn(col0, maxCol)
-                                            if (endCol > col0) {
-                                                e.setSelectionRegion(line0, col0, line0, endCol)
-                                            } else {
-                                                e.setSelection(line0, col0)
-                                            }
-                                            e.ensurePositionVisible(line0, col0, true)
-                                            e.requestFocus()
-                                        }
-                                    } else {
-                                        // 跨页命中：换页落地后再选中（消费点已夹界，见 EditorCanvas）。
-                                        controller.pendingSelection =
-                                            EditorController.PendingSel(m.inPageLine, m.column, m.length)
-                                        if (!viewModel.jumpWindowPage(t.id, m.page)) {
-                                            controller.pendingSelection = null
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (activeTab == null) {
-                            // 6.2.0 批次27：最近一次打开失败（如 Android/data 系统保护目录）时，
-                            // 用具体原因替换「未打开文件」，失败原因常驻可见而非一闪而过的 toast。
-                            val openError = lastOpenError
-                            UnifiedEmptyState(
-                                title = if (openError != null) {
-                                    Str.get(R.string.editor_open_failed_title)
-                                } else {
-                                    Str.get(R.string.editor_empty_title)
-                                },
-                                description = openError ?: Str.get(R.string.editor_empty_hint),
-                                icon = Icons.Default.Description,
-                                // 6.2.0 批次40：这里**不该**再叫用户「打开文件夹」——
-                                // 启动时就申请了存储权限，目录树本来就有内容（见
-                                // EditorViewModel.ensureDefaultRoot）。按钮改成展开目录树，
-                                // 让用户直接挑文件。真要换根目录，侧栏头部一直有 FolderOpen。
-                                actionText = Str.get(R.string.editor_open_from_tree),
-                                onAction = { drawerScope.launch { drawerState.open() } },
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(AppDimens.spacingXLarge)
-                            )
-                        } else {
-                            // 6.2.0 批次24：打开的文件一律直接显示内容，不再因「无存储权限」
-                            // 替换成「授予权限」引导页 —— content:// 打开的文件本就无需存储权限，
-                            // 只读也能看。原先 readOnly && !hasStorageAccess 时整块被换成权限页，
-                            // 用户看到的是「未打开文件/需要权限」而非文件本身。
-                            EditorCanvas(
-                                controller = controller,
-                                tab = activeTab,
-                                settings = settings,
-                                effectiveTheme = effectiveTheme,
-                                // 批次50：扫描期只读（setEditable(false) 拦键盘/输入法）。
-                                readOnly = readOnlyEff,
-                                grammarsReady = grammarsReady
-                            )
-                        }
-                        // 6.2.0：抽屉左缘窄感应条（28dp）。ModalNavigationDrawer 内置手势已在关闭时禁用，
-                        // 仅在此窄条内右滑打开抽屉；放在编辑区 Box 内（屏幕左缘）且位于 EditorCanvas 之上，
-                        // 既不会遮挡顶栏菜单键，也能精确捕捉最左侧的滑动，其余区域代码横向滚动不受影响。
-                        DrawerEdgeOpener(
-                            enabled = projectRoot != null && !drawerState.isOpen,
-                            onOpen = { drawerScope.launch { drawerState.open() } },
-                            modifier = Modifier.align(Alignment.CenterStart)
-                        )
-                    }
-                    if (settings.symbolBar && !readOnlyEff) {
-                        SymbolBar(
-                            onInsert = { sym ->
-                                controller.editor?.let { e ->
-                                    // 6.2.0 批次39（SE 审计 T1-6）：**修缺陷** —— 原先直接
-                                    // `e.text.insert(...)` 绕过编辑器入口，于是符号栏点 `(` 不会
-                                    // 自动补 `)`、点 `"` 不会成对补全、也不会走自动缩进与
-                                    // QuickQuoteHandler。改用 commitText 走与软键盘完全一致的链路。
-                                    // 点按符号栏通常是在点击后立刻想在编辑器里继续改，先请求焦点。
-                                    e.requestFocus()
-                                    e.commitText(sym)
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    } // ModalNavigationDrawer
-
-    if (showThemeDialog) {
-        ThemeSelectionDialog(
-            // 批次58：未选择时把解析后的生效主题（随软件深浅）传入，选择器高亮当前实际主题。
-            currentTheme = resolvedEditorTheme(settings),
-            onSelect = { theme ->
-                viewModel.updateSettings { it.copy(theme = theme) }
-                showThemeDialog = false
-            },
-            onDismiss = { showThemeDialog = false }
-        )
-    }
-
-    // 批次66追加：语法 / 主题文件管理（导入即热生效；删除对已加载项等重启）
-    if (showAssetsManage) {
-        AssetsManageDialog(onDismiss = { showAssetsManage = false })
-    }
-
-    // 批次66追加：翻译接口管理（启停内置 + 自定义接口）
-    if (showTranslateManage) {
-        TranslateApiManageDialog(onDismiss = { showTranslateManage = false })
-    }
-
-    // 6.2.0 批次16：右上角语法选择器 —— 手动为当前文件挑选高亮语法，覆盖后缀名推断。
-    if (showSyntaxDialog) {
-        SyntaxSelectionDialog(
-            currentScope = activeTab?.languageScope,
-            onSelect = { scope ->
-                viewModel.setActiveLanguageScope(scope)
-                showSyntaxDialog = false
-            },
-            onDismiss = { showSyntaxDialog = false }
-        )
-    }
-
-    // 6.2.0 批次32：顶栏「更多操作 → 跳转到行」。
-    if (showGotoDialog) {
-        GotoLineDialog(
-            editor = controller.editor,
-            onDismiss = { showGotoDialog = false },
-            // 批次46：窗口标签按绝对行号跳 —— 目标页不在当前页时先切页、
-            // 新文本落地后再定位（pendingSelection 由 EditorCanvas 消费）。
-            windowedMaxLine = win?.totalLines?.takeIf { it > 0 },
-            onWindowedGoto = activeTab?.let { t ->
-                { absLine: Int ->
-                    val w = t.window
-                    if (w != null) {
-                        // 批次56：行→页按前缀和二分定位 —— 分页行数不等后，
-                        //「除以页宽」会把目标页算错、页内行跟着错位。
-                        val page = viewModel.pageForAbsLine(t.id, absLine)
-                            ?: ((absLine - 1) / PAGE_LINES + 1)
-                        val base = viewModel.absLineBase(t.id, page - 1)
-                            ?: ((page - 1) * PAGE_LINES)
-                        val within = (absLine - 1 - base).coerceAtLeast(0)  // 0 基页内行
-                        if (page == w.page) {
-                            controller.editor?.let { e ->
-                                e.jumpToLine(within)
-                                e.ensureSelectionVisible()
-                                e.requestFocus()
-                            }
-                        } else {
-                            controller.pendingSelection = EditorController.PendingSel(within, 0)
-                            if (!viewModel.jumpWindowPage(t.id, page)) {
-                                controller.pendingSelection = null
-                            }
-                        }
-                    }
-                }
-            }
-        )
-    }
-
-    // 6.2.0：底部状态栏「编码」按钮 → 编码选择器。
-    if (showCharsetPicker) {
-        EncodingSelectionDialog(
-            currentCharset = activeTab?.charset ?: FileAccess.CHARSET_AUTO,
-            detectedCharset = activeTab?.effectiveCharset ?: "UTF-8",
-            onSelect = { name ->
-                activeTab?.let { viewModel.setTabCharset(it.id, name) }
-                showCharsetPicker = false
-            },
-            onDismiss = { showCharsetPicker = false }
-        )
-    }
-
-    // 6.2.0 批次63（选中菜单增强）：选中窗/顶栏菜单回填的两个请求状态 → 弹对应弹窗。
-    controller.pendingLinks?.let { links ->
-        SelectionLinkDialog(links = links, onDismiss = { controller.pendingLinks = null })
-    }
-    controller.pendingTranslateText?.let { selected ->
-        TranslateActionDialog(text = selected, onDismiss = { controller.pendingTranslateText = null })
-    }
-
-    if (showSettings) {
-        // 批次56（用户指定）：设置页**滑入/滑出**动画 —— 进出都走水平滑动 + 淡入淡出；
-        // 滑出动画放完才卸载（否则一闪即逝）。点「返回」与系统返回键走同一收尾。
-        val settingsScope = rememberCoroutineScope()
-        LaunchedEffect(settingsTick) { settingsVisible = true }
-        val dismissSettings: () -> Unit = {
-            settingsVisible = false
-            val tick = settingsTick
-            settingsScope.launch {
-                delay(280)
-                if (settingsTick == tick && !settingsVisible) showSettings = false
-            }
-        }
-        AnimatedVisibility(
-            visible = settingsVisible,
-            enter = slideInHorizontally(animationSpec = tween(280)) { it } +
-                fadeIn(animationSpec = tween(280)),
-            exit = slideOutHorizontally(animationSpec = tween(280)) { it } +
-                fadeOut(animationSpec = tween(280))
-        ) {
-            SettingsSheet(
-                settings = settings,
-                onChange = { viewModel.updateSettings { _ -> it } },
-                onOpenThemePicker = {
-                    settingsVisible = false
-                    showSettings = false
-                    showThemeDialog = true
                 },
-                // 批次66追加：管理对话框叠在设置页之上，设置页保持打开
-                onOpenAssetsManage = { showAssetsManage = true },
-                onOpenTranslateManage = { showTranslateManage = true },
-                onDismiss = dismissSettings
+                bottomBar = {
+                    EditorStatusBar(
+                        readOnly = readOnlyEff,
+                        // 编码标签：自动档显示「自动检测·实际编码」，选手动档显示所选编码。
+                        // 6.2.0：底部**不再重复显示文件名**（顶栏/标签栏已有）。
+                        charset = activeTab?.let { t ->
+                            if (t.charset == FileAccess.CHARSET_AUTO) {
+                                "${Str.get(R.string.editor_encoding_auto)}·${t.effectiveCharset}"
+                            } else t.effectiveCharset
+                        } ?: Str.get(R.string.editor_encoding_auto),
+                        onPickCharset = { showCharsetPicker = true },
+                        // 批次43：跳到页 → 光标落到页首行并滚到位（currentPage 由光标行推导，
+                        // setSelection 触发光标回调后自动更新 n/N）。
+                        // 批次46：窗口模式 = **真换页**（flush spool → 读新页 → contentRev 触发
+                        // setText），编辑器内容跟着换；整档模式保持原「滚动定位」。
+                        currentPage = currentPage,
+                        totalPages = totalPages,
+                        // 批次50：索引扫描中 → 左下角显示「扫描 N%」（此时 totalPages=0 本就不显示分页）。
+                        scanPercent = activeTab?.let { t -> windowScan[t.id] },
+                        savePercent = activeTab?.let { t -> windowSave[t.id] },
+                        onJumpPage = { p ->
+                            val t = activeTab
+                            if (t?.window != null) {
+                                viewModel.jumpWindowPage(t.id, p)
+                            } else controller.editor?.let { e ->
+                                val line = ((p - 1) * PAGE_LINES)
+                                    .coerceIn(0, (e.lineCount - 1).coerceAtLeast(0))
+                                // 批次54：与「跳转到行」对话框同一条已验证路径 —— jumpToLine
+                                // 落光标到页首行，底部 n/N 随光标回调同步到目标页。
+                                e.jumpToLine(line)
+                                e.ensureSelectionVisible()
+                            }
+                        },
+                        onOpenSettings = { settingsTick++; showSettings = true }
+                    )
+                },
+                containerColor = AppColors.pageBackground()
+            ) { padding ->
+                // 文件树已移入 ModalNavigationDrawer，这里只保留编辑区
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .imePaddingCompat()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        if (tabs.isNotEmpty()) {
+                            EditorTabRow(
+                                tabs = tabs,
+                                activeId = activeTabId,
+                                onSelect = { viewModel.setActive(it) },
+                                onClose = { id ->
+                                    val tab = tabs.firstOrNull { it.id == id }
+                                    if (tab != null && tab.isModified) pendingClose = id
+                                    else viewModel.closeTab(id, force = true)
+                                },
+                                // 批次43：长按标签 → 完整属性弹窗；uri/未落盘标签没有本地文件，不弹。
+                                onLongPress = { tab -> tab.file?.let { tabPropertiesTarget = it } }
+                            )
+                            // 批次43：标签栏下方信息栏 —— n/N行 · n字节 · n字符 · 选中n个。
+                            // 批次46：窗口模式行号换算为**绝对行**（页码 × 页宽 + 页内行），
+                            // 总行数取磁盘索引；带「窗口模式」徽标提示语义差异。
+                            EditorInfoBar(
+                                // 批次56：窗口档绝对行按真实行基址（分页行数不等后
+                                //「页号×页宽」会错位）；非窗口无基址概念，页内行即绝对行。
+                                line = win?.let { w ->
+                                    (viewModel.absLineBase(activeTab?.id ?: "", w.page - 1)
+                                        ?: ((w.page - 1) * PAGE_LINES)) + cursorLine
+                                } ?: cursorLine,
+                                totalLines = win?.totalLines ?: totalLines,
+                                bytes = activeTab?.file?.length(),
+                                chars = activeTab?.content?.length ?: 0,
+                                selection = selectionLen,
+                                windowed = win != null
+                            )
+                        }
+                        // 6.2.0 批次57（用户）：**搜索结果在编辑器内高亮** —— 当前标签的全部命中
+                        // 涂主题 findMatch 色（见 MatchHighlights）。键里刻意不含 contentRev：
+                        // 编辑期间不重算，由 sora 的 updateOnInsertion/Deletion 把已画条目随内容
+                        // 自动平移（不回跳）；「内容已修改」横幅照常提示过期，重搜/换页/切标签
+                        // 才换新批次。editor 入键是因为 factory 重建编辑器后要立即补画。
+                        // 批次57②复查（用户反馈「编辑后高亮偏移/旁边空格被涂」）：键只取
+                        // **matches 列表引用**，不取整个 ui 对象 —— 「内容已修改」的 stale 标记
+                        // 与进度更新都是 whole 对象的 copy（matches 引用不变），键整个对象会让
+                        // 每次编辑都触发一次用**过期行/列**的重画：高亮被拽回编辑前位置（偏移）、
+                        // 刚输入的字符被算进旧区间（旁边的空格被涂）。列表引用只在「新一轮搜索
+                        // 出结果 / 结果被清空」时变化（startWholeSearch 以 emptyList() 单例起头），
+                        // 编辑期间一律靠 sora 的 afterInsert/afterDelete 自动平移。
+                        LaunchedEffect(
+                            controller.editor,
+                            wholeSearch?.matches,
+                            wholeFull?.matches,
+                            activeTab?.id,
+                            win?.page,
+                            viewModel.wholeSearchOwner
+                        ) {
+                            val mh = controller.matchHighlights ?: return@LaunchedEffect
+                            val owner = viewModel.wholeSearchOwner
+                            // 结果是全局单例：只属于其发起标签，切走即清（与面板同一门槛）。
+                            if (owner == null || owner != activeTab?.id) {
+                                mh.clear()
+                                return@LaunchedEffect
+                            }
+                            // 全量列表优先（批次57 起搜索一趟收齐）；未就绪时退回面板前 500 条。
+                            val src = wholeFull?.matches?.takeIf { it.isNotEmpty() }
+                                ?: wholeSearch?.matches
+                                ?: emptyList()
+                            val page = win?.page
+                            val items = ArrayList<HighlightTextContainer.HighlightText>()
+                            for (m in src) {
+                                // 窗口档只画当前页（编辑器里只有这一页的文本）；行号口径与跳转一致。
+                                val line = if (page != null) {
+                                    if (m.page != page) continue
+                                    m.inPageLine
+                                } else {
+                                    m.absLine - 1
+                                }
+                                // 0 长度匹配只是定位点、无区间可涂；越界列由 sora 绘制时自行夹住。
+                                if (line < 0 || m.length <= 0) continue
+                                items.add(MatchHighlights.matchItem(line, m.column, m.length))
+                                if (items.size >= MatchHighlights.MAX_ITEMS) break
+                            }
+                            if (items.isEmpty()) mh.clear() else mh.apply(items)
+                        }
+                        // 6.2.0 批次19：搜索面板用「抽屉式」竖向展开/收起动画（从顶部滑入，更美观）；
+                        // 只靠关闭按钮退出，不支持手势滑动。
+                        AnimatedVisibility(
+                            visible = showSearch,
+                            enter = expandVertically(
+                                expandFrom = Alignment.Top,
+                                animationSpec = tween(220, easing = FastOutSlowInEasing)
+                            ) + fadeIn(animationSpec = tween(220)),
+                            exit = shrinkVertically(
+                                shrinkTowards = Alignment.Top,
+                                animationSpec = tween(180, easing = FastOutSlowInEasing)
+                            ) + fadeOut(animationSpec = tween(180))
+                        ) {
+                            SearchPanel(
+                                state = searchState,
+                                // 批次57②（用户指定）：只有面板关闭图标 X 才清除结果与高亮
+                                //（cancelWholeSearch 清空 whole/wholeFull → 高亮 effect 随之
+                                // 清画）；顶栏搜索图标/返回键只是收起，结果与高亮原样保留。
+                                onClose = {
+                                    showSearch = false
+                                    viewModel.cancelWholeSearch()
+                                },
+                                // ---- 批次53：搜索/替换一律整档（「全文」开关已删）；
+                                // 非窗口文档的替换走 VM 内存整写，确认文案按此切换。
+                                inMemoryReplace = win == null,
+                                // 复查：whole 状态是全局单例 —— 只展示**当前标签**的结果
+                                //（切标签后旧结果不得再显示/跳转，防错位与越界）；tabKey
+                                // 让防抖效果在切标签后用同一查询对新标签重搜。
+                                tabKey = activeTab?.id ?: "",
+                                whole = wholeSearch?.takeIf { viewModel.wholeSearchOwner == activeTab?.id },
+                                wholeReplace = wholeReplaceUi?.takeIf { viewModel.wholeReplaceOwner == activeTab?.id },
+                                // 批次53：全量结果页接线（完整列表 + 懒加载预览；批次57 起搜索即全量收齐）。
+                                full = wholeFull?.takeIf { viewModel.wholeSearchOwner == activeTab?.id },
+                                fullPreviews = wholeFullPreviews,
+                                onLoadPreviews = { from, count ->
+                                    viewModel.requestWholePreviews(from, count)
+                                },
+                                filterResult = wholeFilterState?.takeIf {
+                                    viewModel.wholeSearchOwner == activeTab?.id
+                                },
+                                onStartFilter = { q -> viewModel.startWholeFilter(q) },
+                                onWholeSearch = { q, c, w, r ->
+                                    activeTab?.let { t ->
+                                        viewModel.startWholeSearch(t.id, q, c, w, r)
+                                    }
+                                },
+                                onCancelWhole = { viewModel.cancelWholeSearch() },
+                                onWholeReplace = { q, c, w, r, rep ->
+                                    activeTab?.let { t ->
+                                        viewModel.startWholeReplace(t.id, q, c, w, r, rep)
+                                    }
+                                },
+                                onJumpMatch = { m ->
+                                    activeTab?.let { t ->
+                                        // 批次49：非窗口大文件（单页整读扫描）—— 无需换页，
+                                        // absLine 即全文行号（1 起），直接在编辑器里选中定位。
+                                        // 复查：结果可能因编辑过期 —— 行/列全部夹到当前文档
+                                        // 边界再定位（越界 setSelectionRegion 会直接崩）。
+                                        if (t.window == null) {
+                                            controller.editor?.let { e ->
+                                                val maxLine = (e.lineCount - 1).coerceAtLeast(0)
+                                                val line0 = (m.absLine - 1).coerceIn(0, maxLine)
+                                                val maxCol = e.text.getLine(line0).length
+                                                val col0 = m.column.coerceIn(0, maxCol)
+                                                val endCol = (col0 + m.length).coerceIn(col0, maxCol)
+                                                if (endCol > col0) {
+                                                    e.setSelectionRegion(line0, col0, line0, endCol)
+                                                } else {
+                                                    e.setSelection(line0, col0)
+                                                }
+                                                e.ensurePositionVisible(line0, col0, true)
+                                                e.requestFocus()
+                                            }
+                                            return@let
+                                        }
+                                        if (t.window?.page == m.page) {
+                                            // 同页命中：无需换页，直接选中高亮匹配文本（同样夹界）。
+                                            controller.editor?.let { e ->
+                                                val maxLine = (e.lineCount - 1).coerceAtLeast(0)
+                                                val line0 = m.inPageLine.coerceIn(0, maxLine)
+                                                val maxCol = e.text.getLine(line0).length
+                                                val col0 = m.column.coerceIn(0, maxCol)
+                                                val endCol = (col0 + m.length).coerceIn(col0, maxCol)
+                                                if (endCol > col0) {
+                                                    e.setSelectionRegion(line0, col0, line0, endCol)
+                                                } else {
+                                                    e.setSelection(line0, col0)
+                                                }
+                                                e.ensurePositionVisible(line0, col0, true)
+                                                e.requestFocus()
+                                            }
+                                        } else {
+                                            // 跨页命中：换页落地后再选中（消费点已夹界，见 EditorCanvas）。
+                                            controller.pendingSelection =
+                                                EditorController.PendingSel(m.inPageLine, m.column, m.length)
+                                            if (!viewModel.jumpWindowPage(t.id, m.page)) {
+                                                controller.pendingSelection = null
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (activeTab == null) {
+                                // 6.2.0 批次27：最近一次打开失败（如 Android/data 系统保护目录）时，
+                                // 用具体原因替换「未打开文件」，失败原因常驻可见而非一闪而过的 toast。
+                                val openError = lastOpenError
+                                UnifiedEmptyState(
+                                    title = if (openError != null) {
+                                        Str.get(R.string.editor_open_failed_title)
+                                    } else {
+                                        Str.get(R.string.editor_empty_title)
+                                    },
+                                    description = openError ?: Str.get(R.string.editor_empty_hint),
+                                    icon = Icons.Default.Description,
+                                    // 6.2.0 批次40：这里**不该**再叫用户「打开文件夹」——
+                                    // 启动时就申请了存储权限，目录树本来就有内容（见
+                                    // EditorViewModel.ensureDefaultRoot）。按钮改成展开目录树，
+                                    // 让用户直接挑文件。真要换根目录，侧栏头部一直有 FolderOpen。
+                                    actionText = Str.get(R.string.editor_open_from_tree),
+                                    onAction = { drawerScope.launch { drawerState.open() } },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(AppDimens.spacingXLarge)
+                                )
+                            } else {
+                                // 6.2.0 批次24：打开的文件一律直接显示内容，不再因「无存储权限」
+                                // 替换成「授予权限」引导页 —— content:// 打开的文件本就无需存储权限，
+                                // 只读也能看。原先 readOnly && !hasStorageAccess 时整块被换成权限页，
+                                // 用户看到的是「未打开文件/需要权限」而非文件本身。
+                                EditorCanvas(
+                                    controller = controller,
+                                    tab = activeTab,
+                                    settings = settings,
+                                    effectiveTheme = effectiveTheme,
+                                    // 批次50：扫描期只读（setEditable(false) 拦键盘/输入法）。
+                                    readOnly = readOnlyEff,
+                                    grammarsReady = grammarsReady
+                                )
+                            }
+                            // 6.2.0：抽屉左缘窄感应条（28dp）。ModalNavigationDrawer 内置手势已在关闭时禁用，
+                            // 仅在此窄条内右滑打开抽屉；放在编辑区 Box 内（屏幕左缘）且位于 EditorCanvas 之上，
+                            // 既不会遮挡顶栏菜单键，也能精确捕捉最左侧的滑动，其余区域代码横向滚动不受影响。
+                            DrawerEdgeOpener(
+                                enabled = !drawerState.isOpen,
+                                onOpen = { drawerScope.launch { drawerState.open() } },
+                                modifier = Modifier.align(Alignment.CenterStart)
+                            )
+                        }
+                        if (settings.symbolBar && !readOnlyEff) {
+                            SymbolBar(
+                                onInsert = { sym ->
+                                    controller.editor?.let { e ->
+                                        // 6.2.0 批次39（SE 审计 T1-6）：**修缺陷** —— 原先直接
+                                        // `e.text.insert(...)` 绕过编辑器入口，于是符号栏点 `(` 不会
+                                        // 自动补 `)`、点 `"` 不会成对补全、也不会走自动缩进与
+                                        // QuickQuoteHandler。改用 commitText 走与软键盘完全一致的链路。
+                                        // 点按符号栏通常是在点击后立刻想在编辑器里继续改，先请求焦点。
+                                        e.requestFocus()
+                                        e.commitText(sym)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        } // ModalNavigationDrawer
+
+        if (showThemeDialog) {
+            ThemeSelectionDialog(
+                // 批次58：未选择时把解析后的生效主题（随软件深浅）传入，选择器高亮当前实际主题。
+                currentTheme = resolvedEditorTheme(settings),
+                onSelect = { theme ->
+                    viewModel.updateSettings { it.copy(theme = theme) }
+                    showThemeDialog = false
+                },
+                onDismiss = { showThemeDialog = false }
             )
         }
-    }
 
-    // 6.2.0 批次43：长按标签页 → 完整属性（与文件树 ⋮「属性」共用 FilePropertiesDialog）。
-    tabPropertiesTarget?.let { file ->
-        FilePropertiesDialog(file = file, onDismiss = { tabPropertiesTarget = null })
-    }
+        // 批次66追加：语法 / 主题文件管理（导入即热生效；删除对已加载项等重启）
+        if (showAssetsManage) {
+            AssetsManageDialog(onDismiss = { showAssetsManage = false })
+        }
 
-    if (showCloseAllConfirm) {
-        UnifiedConfirmDialog(
-            title = Str.get(R.string.editor_unsaved_title),
-            message = Str.get(R.string.editor_close_all_confirm),
-            isDestructive = true,
-            confirmText = Str.get(R.string.editor_close_all),
-            dismissText = Str.get(R.string.cancel),
-            onConfirm = {
-                showCloseAllConfirm = false
-                viewModel.closeAllTabs()
-            },
-            onDismiss = { showCloseAllConfirm = false }
-        )
-    }
+        // 批次66追加：翻译接口管理（启停内置 + 自定义接口）
+        if (showTranslateManage) {
+            TranslateApiManageDialog(onDismiss = { showTranslateManage = false })
+        }
 
-    pendingClose?.let { id ->
-        UnifiedConfirmDialog(
-            title = Str.get(R.string.editor_unsaved_title),
-            message = Str.get(R.string.editor_unsaved_message, tabs.firstOrNull { it.id == id }?.name ?: ""),
-            isDestructive = false,
-            confirmText = Str.get(R.string.editor_save),
-            dismissText = Str.get(R.string.editor_discard),
-            onConfirm = {
-                // 批次55：保存成功才关标签；窗口档/SAF 的异步保存由 VM 推迟到完成回调兑现。
-                viewModel.saveAndClose(id)
-                pendingClose = null
-            },
-            onDismiss = {
-                viewModel.closeTab(id, force = true)
-                pendingClose = null
+        // 6.2.0 批次16：右上角语法选择器 —— 手动为当前文件挑选高亮语法，覆盖后缀名推断。
+        if (showSyntaxDialog) {
+            SyntaxSelectionDialog(
+                currentScope = activeTab?.languageScope,
+                onSelect = { scope ->
+                    viewModel.setActiveLanguageScope(scope)
+                    showSyntaxDialog = false
+                },
+                onDismiss = { showSyntaxDialog = false }
+            )
+        }
+
+        // 6.2.0 批次32：顶栏「更多操作 → 跳转到行」。
+        if (showGotoDialog) {
+            GotoLineDialog(
+                editor = controller.editor,
+                onDismiss = { showGotoDialog = false },
+                // 批次46：窗口标签按绝对行号跳 —— 目标页不在当前页时先切页、
+                // 新文本落地后再定位（pendingSelection 由 EditorCanvas 消费）。
+                windowedMaxLine = win?.totalLines?.takeIf { it > 0 },
+                onWindowedGoto = activeTab?.let { t ->
+                    { absLine: Int ->
+                        val w = t.window
+                        if (w != null) {
+                            // 批次56：行→页按前缀和二分定位 —— 分页行数不等后，
+                            //「除以页宽」会把目标页算错、页内行跟着错位。
+                            val page = viewModel.pageForAbsLine(t.id, absLine)
+                                ?: ((absLine - 1) / PAGE_LINES + 1)
+                            val base = viewModel.absLineBase(t.id, page - 1)
+                                ?: ((page - 1) * PAGE_LINES)
+                            val within = (absLine - 1 - base).coerceAtLeast(0)  // 0 基页内行
+                            if (page == w.page) {
+                                controller.editor?.let { e ->
+                                    e.jumpToLine(within)
+                                    e.ensureSelectionVisible()
+                                    e.requestFocus()
+                                }
+                            } else {
+                                controller.pendingSelection = EditorController.PendingSel(within, 0)
+                                if (!viewModel.jumpWindowPage(t.id, page)) {
+                                    controller.pendingSelection = null
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
+        // 6.2.0：底部状态栏「编码」按钮 → 编码选择器。
+        if (showCharsetPicker) {
+            EncodingSelectionDialog(
+                currentCharset = activeTab?.charset ?: FileAccess.CHARSET_AUTO,
+                detectedCharset = activeTab?.effectiveCharset ?: "UTF-8",
+                onSelect = { name ->
+                    activeTab?.let { viewModel.setTabCharset(it.id, name) }
+                    showCharsetPicker = false
+                },
+                onDismiss = { showCharsetPicker = false }
+            )
+        }
+
+        // 6.2.0 批次63（选中菜单增强）：选中窗/顶栏菜单回填的两个请求状态 → 弹对应弹窗。
+        controller.pendingLinks?.let { links ->
+            SelectionLinkDialog(links = links, onDismiss = { controller.pendingLinks = null })
+        }
+        controller.pendingTranslateText?.let { selected ->
+            TranslateActionDialog(text = selected, onDismiss = { controller.pendingTranslateText = null })
+        }
+
+        if (showSettings) {
+            // 批次56（用户指定）：设置页**滑入/滑出**动画 —— 进出都走水平滑动 + 淡入淡出；
+            // 滑出动画放完才卸载（否则一闪即逝）。点「返回」与系统返回键走同一收尾。
+            val settingsScope = rememberCoroutineScope()
+            LaunchedEffect(settingsTick) { settingsVisible = true }
+            val dismissSettings: () -> Unit = {
+                settingsVisible = false
+                val tick = settingsTick
+                settingsScope.launch {
+                    delay(280)
+                    if (settingsTick == tick && !settingsVisible) showSettings = false
+                }
             }
-        )
-    }
-
-    if (showExitConfirm) {
-        UnifiedConfirmDialog(
-            title = Str.get(R.string.editor_unsaved_title),
-            message = Str.get(R.string.editor_unsaved_message, activeTab?.name ?: ""),
-            isDestructive = false,
-            confirmText = Str.get(R.string.editor_save),
-            dismissText = Str.get(R.string.editor_discard),
-            onConfirm = {
-                // 批次55：保存**全部**脏标签（原 saveActive 只存活动标签，其余静默丢失）。
-                viewModel.saveAllDirty()
-                showExitConfirm = false
-                onExit()
-            },
-            onDismiss = {
-                showExitConfirm = false
-                onExit()
+            AnimatedVisibility(
+                visible = settingsVisible,
+                enter = slideInHorizontally(animationSpec = tween(280)) { it } +
+                    fadeIn(animationSpec = tween(280)),
+                exit = slideOutHorizontally(animationSpec = tween(280)) { it } +
+                    fadeOut(animationSpec = tween(280))
+            ) {
+                SettingsSheet(
+                    settings = settings,
+                    onChange = { viewModel.updateSettings { _ -> it } },
+                    onOpenThemePicker = {
+                        settingsVisible = false
+                        showSettings = false
+                        showThemeDialog = true
+                    },
+                    // 批次66追加：管理对话框叠在设置页之上，设置页保持打开
+                    onOpenAssetsManage = { showAssetsManage = true },
+                    onOpenTranslateManage = { showTranslateManage = true },
+                    onDismiss = dismissSettings
+                )
             }
-        )
+        }
+
+        // 6.2.0 批次43：长按标签页 → 完整属性（与文件树 ⋮「属性」共用 FilePropertiesDialog）。
+        tabPropertiesTarget?.let { file ->
+            FilePropertiesDialog(file = file, onDismiss = { tabPropertiesTarget = null })
+        }
+
+        // m.txt 第 5 条：其他应用改了当前打开的文件 → 明确提示，让用户决定重载还是保留。
+        externalChange?.let { change ->
+            // n.txt 第 10 条：两个底栏按钮必须是**同一套圆角**。原先左边是 UnifiedButton
+            // （Medium，圆角跟随按钮配置），右边是 UnifiedDialogTextButton（TextButton 默认
+            // shape）—— 两个圆角各自取值，看起来一个圆一个方。改走 UnifiedConfirmDialog，
+            // 两侧都由同一个按钮组件出，圆角/高度/权重天然一致。
+            UnifiedConfirmDialog(
+                title = Str.get(R.string.editor_external_change_title),
+                message = Str.get(
+                    if (change.hasLocalEdits) {
+                        R.string.editor_external_change_message_dirty
+                    } else {
+                        R.string.editor_external_change_message
+                    },
+                    change.tabName
+                ),
+                // 有未保存改动时「重载」= 丢弃本地编辑，按危险操作对待。
+                isDestructive = change.hasLocalEdits,
+                confirmText = Str.get(R.string.editor_external_change_reload),
+                dismissText = Str.get(R.string.editor_external_change_keep),
+                onConfirm = { viewModel.reloadExternalChange() },
+                onDismiss = { viewModel.keepExternalChange() }
+            )
+        }
+
+        if (showCloseAllConfirm) {
+            UnifiedConfirmDialog(
+                title = Str.get(R.string.editor_unsaved_title),
+                message = Str.get(R.string.editor_close_all_confirm),
+                isDestructive = true,
+                confirmText = Str.get(R.string.editor_close_all),
+                dismissText = Str.get(R.string.cancel),
+                onConfirm = {
+                    showCloseAllConfirm = false
+                    viewModel.closeAllTabs()
+                },
+                onDismiss = { showCloseAllConfirm = false }
+            )
+        }
+
+        pendingClose?.let { id ->
+            UnifiedConfirmDialog(
+                title = Str.get(R.string.editor_unsaved_title),
+                message = Str.get(R.string.editor_unsaved_message, tabs.firstOrNull { it.id == id }?.name ?: ""),
+                isDestructive = false,
+                confirmText = Str.get(R.string.editor_save),
+                dismissText = Str.get(R.string.editor_discard),
+                onConfirm = {
+                    // 批次55：保存成功才关标签；窗口档/SAF 的异步保存由 VM 推迟到完成回调兑现。
+                    viewModel.saveAndClose(id)
+                    pendingClose = null
+                },
+                onDismiss = {
+                    viewModel.closeTab(id, force = true)
+                    pendingClose = null
+                }
+            )
+        }
+
+        if (showExitConfirm) {
+            UnifiedConfirmDialog(
+                title = Str.get(R.string.editor_unsaved_title),
+                message = Str.get(R.string.editor_unsaved_message, activeTab?.name ?: ""),
+                isDestructive = false,
+                confirmText = Str.get(R.string.editor_save),
+                dismissText = Str.get(R.string.editor_discard),
+                onConfirm = {
+                    // 批次55：保存**全部**脏标签（原 saveActive 只存活动标签，其余静默丢失）。
+                    viewModel.saveAllDirty()
+                    showExitConfirm = false
+                    viewModel.cancelWholeSearch()
+                    onExit()
+                },
+                onDismiss = {
+                    showExitConfirm = false
+                    viewModel.cancelWholeSearch()
+                    onExit()
+                }
+            )
+        }
+
+        // ============ e20 ③：抽屉里那栏单窗口文件管理器的弹窗与整屏页 ============
+        // 这几样都摆在抽屉**外面**渲染：抽屉内容只在开合期间留在组合里，长按菜单点出来的
+        // 重命名 / 属性框、以及文件设置页若挂在抽屉内，会随抽屉收起一起被卸载 ——
+        // 表现就是「点了没反应」。组件与文件页是同一批，只是宿主换成了编辑器。
+        if (fmFileSettings) {
+            FileSettingsScreen(
+                onBack = {
+                    fmFileSettings = false
+                    fmVm.applySettings()
+                },
+                onOpenManage = {
+                    // 与文件页同口径：设置页只给入口，管理页与它平级，回来时两层状态都要收干净
+                    fmFileSettings = false
+                    fmOpenManage = true
+                }
+            )
+        }
+
+        if (fmOpenManage) {
+            FileOpenWithManageScreen(onBack = { fmOpenManage = false })
+        }
+
+        if (fmOpenWith.isNotEmpty()) {
+            OpenWithDialog(
+                path = fmOpenWith,
+                onDismiss = { fmOpenWith = "" },
+                onOpenManage = {
+                    fmOpenWith = ""
+                    fmOpenManage = true
+                }
+            )
+        }
+
+        // 文件页那边「后台任务」已改成整页（g18），编辑器抽屉仍用弹窗 ——
+        // 整页替换会把编辑器整个盖掉，抽屉里只需要一眼看清在跑什么。
+        if (fmTasksOpen) {
+            FileBackgroundTasksDialog(
+                op = fmState.op as? OpUiState.Running,
+                onShow = {
+                    fmTasksOpen = false
+                    fmVm.showOp()
+                },
+                onCancel = {
+                    fmTasksOpen = false
+                    fmVm.cancelOp()
+                },
+                onDismiss = { fmTasksOpen = false }
+            )
+        }
+
+        // 压缩 / 解压 / 新建 / 重命名 / 属性 / 删除确认 / 归档密码…… 一整套状态机弹窗
+        M3Dialogs(vm = fmVm, state = fmState)
     }
 }
 

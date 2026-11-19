@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.R
 import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.SourceInfo
@@ -119,7 +120,7 @@ fun SourceManageScreen() {
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 items(sources, key = { it.sourceId }) { source ->

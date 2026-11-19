@@ -81,3 +81,8 @@
 # 行号信息（便于崩溃堆栈定位）
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# o.txt 第 11 条：BouncyCastle 的类通过反射按算法名加载，minify 下保留并忽略可选依赖
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+-dontwarn javax.naming.**

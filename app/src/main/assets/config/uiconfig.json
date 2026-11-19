@@ -1,0 +1,113 @@
+{
+  "_comment": "v.txt 第 7 条（用户）：UI 默认配置不再硬编码在 Kotlin 里，统一放在 assets/config/uiconfig.json。修改这里即可调整出厂默认值；用户已保存的配置仍以 SharedPreferences 为准，缺失的键在升级时自动补齐。",
+  "theme": {
+    "primary": "#FF1A3A4A",
+    "primary_dark": "#FF0F2838",
+    "primary_light": "#FF2D5A70",
+    "accent": "#FF4A8A9E",
+    "success": "#FF4CAF50",
+    "warning": "#FFFF9800",
+    "error": "#FFF44336",
+    "info": "#FF2196F3",
+    "text_primary": "#FF212121",
+    "text_secondary": "#FF757575",
+    "text_hint": "#FFBDBDBD",
+    "text_primary_inverse": "#FFFFFFFF",
+    "background": "#FFF5F7FA",
+    "surface": "#FFFFFFFF",
+    "surface_variant": "#FFF5F7FA",
+    "divider": "#FFE0E4E8",
+    "glass_background": "#B3FFFFFF",
+    "disabled": "#FFBDBDBD",
+    "status_bar": "#FF0F2838",
+    "navigation_bar": "#FFFFFFFF",
+    "nav_selected": "#FF1A3A4A",
+    "nav_unselected": "#FF9AA6B2"
+  },
+  "theme_dark": {
+    "primary": "#FF8B949E",
+    "primary_dark": "#FFD0D0D0",
+    "primary_light": "#FFE6E6E6",
+    "accent": "#FF8B949E",
+    "success": "#FF66BB6A",
+    "warning": "#FFFFB74D",
+    "error": "#FFFF6E6E",
+    "info": "#FF26C6DA",
+    "text_primary": "#FFE8E8E8",
+    "text_secondary": "#FFA8A8A8",
+    "text_hint": "#FF6E6E6E",
+    "text_primary_inverse": "#FF1A1A1A",
+    "background": "#FF2A2A2A",
+    "surface": "#FF363636",
+    "surface_variant": "#FF3F3F3F",
+    "divider": "#FF484848",
+    "glass_background": "#B32A2A2A",
+    "disabled": "#FF666666",
+    "status_bar": "#FF1F1F1F",
+    "navigation_bar": "#FF2A2A2A",
+    "nav_selected": "#FF8B949E",
+    "nav_unselected": "#FF7A7A7A"
+  },
+  "shape": {
+    "cornerRadiusSmall": 8,
+    "cornerRadiusMedium": 12,
+    "cornerRadiusLarge": 16,
+    "cornerRadiusExtraLarge": 24,
+    "buttonCornerRadius": 12,
+    "cardCornerRadius": 16,
+    "dialogCornerRadius": 20,
+    "inputCornerRadius": 8
+  },
+  "size": {
+    "buttonHeight": 44,
+    "buttonMinWidth": 80,
+    "buttonElevation": 2,
+    "cardElevation": 4,
+    "cardPadding": 16,
+    "spacingSmall": 4,
+    "spacingMedium": 8,
+    "spacingLarge": 16,
+    "iconSizeSmall": 16,
+    "iconSizeMedium": 20,
+    "iconSizeLarge": 24,
+    "progressHeight": 4,
+    "titleTextSize": 20,
+    "bodyTextSize": 14,
+    "captionTextSize": 12,
+    "sectionTitleTextSize": 18
+  },
+  "font": {
+    "fontFamily": "sans-serif",
+    "enableBold": true,
+    "language": "system"
+  },
+  "experimental": {
+    "enableGlassEffect": true,
+    "enableRipple": true,
+    "enableNeumorphism": false,
+    "enableNeumorphismInset": true,
+    "enableNeumorphismGlow": true,
+    "neumorphismIntensity": "light",
+    "animationSpeed": "medium"
+  },
+  "gradient": {
+    "enabled": true,
+    "mode": "single",
+    "mode_dark": "single",
+    "color": "#FFF9F9F9",
+    "color_dark": "#FF4C4F51",
+    "from": "bottom_right",
+    "from_dark": "bottom_right",
+    "to": "top_left",
+    "to_dark": "top_left",
+    "colors": ["#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA"],
+    "colors_dark": ["#FF4C4F51", "#FF5A5E62", "#FF6B6F73"]
+  },
+  "nav": {
+    "defaultTab": "tools",
+    "tabOrder": ["dev", "tools", "files", "repo", "manage"]
+  },
+  "widget": {
+    "autoRefresh": true
+  }
+}

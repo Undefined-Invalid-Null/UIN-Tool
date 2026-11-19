@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- s.txt 第 2 条（用户）：快捷方式图标**用已有的图标**，不再手画图形路径。
+     静态兜底（动态发布失败时用）：白色圆角底 + 已有的 @drawable/ic_terminal_prompt。
+     动态发布成功后由 ThemeShortcuts 按主题色重画（渐变底 + 白色图形），覆盖这一条。
+     底图自己已收进 8%，这里不再加 inset，否则会叠成两层边距、图形变小。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/bg_shortcut_badge" />
+    <item
+        android:drawable="@drawable/ic_terminal_prompt"
+        android:width="19.2dp"
+        android:height="19.2dp"
+        android:gravity="center" />
+</layer-list>

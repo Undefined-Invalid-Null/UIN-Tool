@@ -25,20 +25,38 @@ import java.util.*
 
 // ==================== Widget Configurations ====================
 
+/**
+ * o.txt 第 16 条：3x3 小部件**实际就是 9 个格子**（见 [WidgetProvider.MAX_PLUGINS]），
+ * 但配置模型原先只有 `pluginId1..3` 三个字段，后 6 格只能靠「未配置的位置自动补位」，
+ * 用户根本无法指定 —— 配 9 个选择器之前，先把存储模型扩到 9。
+ */
+const val WIDGET_PLUGIN_SLOTS = 9
+
 class WidgetConfig(
-    var pluginId1: String = "",
-    var pluginId2: String = "",
-    var pluginId3: String = ""
+    /** 下标 0..8 对应小部件的第 1..9 格；空串 = 未指定（由 provider 自动补位）。 */
+    val pluginIds: List<String>
 ) {
-    fun hasSelectedPlugins(): Boolean = pluginId1.isNotEmpty() || pluginId2.isNotEmpty() || pluginId3.isNotEmpty()
+    /** 兼容旧写法 `WidgetConfig(id1, id2, ...)`，短于 9 个的其余位置留空。 */
+    constructor(vararg ids: String) : this(
+        List(WIDGET_PLUGIN_SLOTS) { ids.getOrElse(it) { "" } }
+    )
+
+    fun idAt(index: Int): String = pluginIds.getOrElse(index) { "" }
+
+    /** 兼容旧日志文案：前三个位置。 */
+    val pluginId1: String get() = idAt(0)
+    val pluginId2: String get() = idAt(1)
+    val pluginId3: String get() = idAt(2)
+
+    fun hasSelectedPlugins(): Boolean = pluginIds.any { it.isNotEmpty() }
 
     fun save(context: Context, appWidgetId: Int) {
         val key = "widget_$appWidgetId"
         Logger.d("WidgetConfig", Str.get(R.string.saving_config_appwidgetid_appwidgeti, appWidgetId))
         context.getSharedPreferences(Constants.PREF_WIDGET, Context.MODE_PRIVATE).edit().apply {
-            putString("${key}_1", pluginId1)
-            putString("${key}_2", pluginId2)
-            putString("${key}_3", pluginId3)
+            for (i in 0 until WIDGET_PLUGIN_SLOTS) {
+                putString("${key}_${i + 1}", idAt(i))
+            }
         }.apply()
         Logger.success("WidgetConfig", Str.get(R.string.config_saved_2))
     }
@@ -47,35 +65,42 @@ class WidgetConfig(
         fun load(context: Context, appWidgetId: Int): WidgetConfig? {
             val key = "widget_$appWidgetId"
             val prefs = context.getSharedPreferences(Constants.PREF_WIDGET, Context.MODE_PRIVATE)
-            val id1 = prefs.getString("${key}_1", "") ?: ""
-            val id2 = prefs.getString("${key}_2", "") ?: ""
-            val id3 = prefs.getString("${key}_3", "") ?: ""
-            
-            Logger.d("WidgetConfig", Str.get(R.string.loading_config_appwidgetid_appwidget, appWidgetId, id1, id2, id3))
-            
-            if (id1.isNotEmpty() || id2.isNotEmpty() || id3.isNotEmpty()) {
-                return WidgetConfig(id1, id2, id3)
+            val ids = List(WIDGET_PLUGIN_SLOTS) { i ->
+                prefs.getString("${key}_${i + 1}", "") ?: ""
+            }
+
+            Logger.d(
+                "WidgetConfig",
+                Str.get(
+                    R.string.loading_config_appwidgetid_appwidget,
+                    appWidgetId,
+                    ids[0], ids[1], ids[2]
+                )
+            )
+
+            if (ids.any { it.isNotEmpty() }) {
+                return WidgetConfig(ids)
             }
             // G-27：本小部件没有单独配置时回退到「全局配置」。
             // 原先配置页写的 widget_global_config 全局选择没有任何消费方 → 死开关。
             val global = context.getSharedPreferences("widget_global_config", Context.MODE_PRIVATE)
-            val g1 = global.getString("global_plugin_1", "") ?: ""
-            val g2 = global.getString("global_plugin_2", "") ?: ""
-            val g3 = global.getString("global_plugin_3", "") ?: ""
-            return if (g1.isEmpty() && g2.isEmpty() && g3.isEmpty()) {
+            val gids = List(WIDGET_PLUGIN_SLOTS) { i ->
+                global.getString("global_plugin_${i + 1}", "") ?: ""
+            }
+            return if (gids.none { it.isNotEmpty() }) {
                 null
             } else {
-                Logger.d("WidgetConfig", "using global widget config: $g1,$g2,$g3")
-                WidgetConfig(g1, g2, g3)
+                Logger.d("WidgetConfig", "using global widget config: $gids")
+                WidgetConfig(gids)
             }
         }
 
         fun delete(context: Context, appWidgetId: Int) {
             val key = "widget_$appWidgetId"
             context.getSharedPreferences(Constants.PREF_WIDGET, Context.MODE_PRIVATE).edit().apply {
-                remove("${key}_1")
-                remove("${key}_2")
-                remove("${key}_3")
+                for (i in 0 until WIDGET_PLUGIN_SLOTS) {
+                    remove("${key}_${i + 1}")
+                }
             }.apply()
         }
     }
@@ -112,7 +137,8 @@ class WidgetProvider : AppWidgetProvider() {
     companion object {
         private const val TAG = "WidgetProvider"
         const val ACTION_REFRESH_WIDGET = "com.UIN.Tool.REFRESH_WIDGET"
-        private const val MAX_PLUGINS = 9
+        /** 与 [WIDGET_PLUGIN_SLOTS] 同源：3x3 小部件就是 9 个格子。 */
+        private const val MAX_PLUGINS = WIDGET_PLUGIN_SLOTS
         // 小部件图标目标尺寸（主网格）
         private const val ICON_SIZE = 64
 
@@ -227,7 +253,7 @@ class WidgetProvider : AppWidgetProvider() {
                 
                 if (allPlugins.isEmpty()) {
                     Logger.w(TAG, Str.get(R.string.time_no_installed_plugins, time))
-                    views.setTextViewText(R.id.widget_title, context.getString(R.string.app_name))
+                    // q.txt 第 10 条：布局里已去掉标题栏（widget_title），不再设置它。
                     for (i in 0 until MAX_PLUGINS) {
                         val slotId = getSlotId(i)
                         views.setViewVisibility(slotId, android.view.View.GONE)
@@ -255,10 +281,16 @@ class WidgetProvider : AppWidgetProvider() {
                 if (config != null && config.hasSelectedPlugins()) {
                     Logger.i(TAG, Str.get(R.string.time_found_config_pluginid1_config_p, time, config.pluginId1, config.pluginId2, config.pluginId3))
                     
-                    // 按配置添加插件
-                    addPluginById(config.pluginId1, pluginManager, displayPlugins, Str.get(R.string.position_1), time)
-                    addPluginById(config.pluginId2, pluginManager, displayPlugins, Str.get(R.string.position_2), time)
-                    addPluginById(config.pluginId3, pluginManager, displayPlugins, Str.get(R.string.position_3), time)
+                    // o.txt 第 16 条：9 个格子都可能被显式指定 —— 按位置逐个加入。
+                    for (i in 0 until MAX_PLUGINS) {
+                        addPluginById(
+                            config.idAt(i),
+                            pluginManager,
+                            displayPlugins,
+                            Str.get(R.string.widget_plugin_position, i + 1),
+                            time
+                        )
+                    }
                     
                     // 如果配置的插件少于9个，用其他插件填充
                     if (displayPlugins.size < MAX_PLUGINS) {
@@ -280,10 +312,9 @@ class WidgetProvider : AppWidgetProvider() {
                 }
 
                 // ============================================================
-                // 步骤6: 设置标题
+                // 步骤6: 标题栏已移除（q.txt 第 10 条），这里不再写标题
                 // ============================================================
                 Logger.i(TAG, Str.get(R.string.time_step_6_setting_title, time))
-                views.setTextViewText(R.id.widget_title, context.getString(R.string.app_name))
                 Logger.success(TAG, Str.get(R.string.time_title_set_context_getstring_r_s, time, context.getString(R.string.app_name)))
 
                 // ============================================================

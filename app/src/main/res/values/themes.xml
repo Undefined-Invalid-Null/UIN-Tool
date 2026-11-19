@@ -63,10 +63,21 @@
          Markdown 主题
          ============================================================ -->
     <!-- ============================================================
+         启动主题 (Launch)：MainActivity 首帧窗口
+         ============================================================ -->
+    <style name="Theme.UIN.Tool.Launch" parent="Theme.UIN.Tool">
+        <!-- starting window 兜底「底色 + 图标」；onCreate 会换成图标 + 名称 + 版本 -->
+        <item name="android:windowBackground">@drawable/bg_launch</item>
+    </style>
+
+    <!-- ============================================================
          启动主题 (Splash)
          ============================================================ -->
     <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
-        <item name="android:windowBackground">@color/splash_background</item>
+        <!-- starting window 兜底「底色 + 图标」；onCreate 会换成图标 + 名称 + 版本 -->
+        <item name="android:windowBackground">@drawable/bg_splash_window</item>
+        <!-- 启动不要滑入动画：先白后滑会放大「白屏」观感，直接出画面更像秒开 -->
+        <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowTranslucentStatus">true</item>
@@ -79,6 +90,28 @@
     <!-- ============================================================
          弹窗主题
          ============================================================ -->
+    <!-- g7：APK 信息页虽然仍是 Activity（入口不变），但窗口必须**透明** ——
+         这样页面里那层遮罩 + 居中卡片才真的压在上一个界面上，看起来像弹窗；
+         用不透明窗口的话，遮罩下面是本 Activity 自己的背景，还是一张独立页面。 -->
+    <style name="Theme.UIN.Tool.Dialog" parent="Theme.UIN.Tool">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowAnimationStyle">@style/Theme.UIN.Tool.DialogAnimation</item>
+    </style>
+
+    <!-- i.txt 第 6 条：把窗口动画关掉，进出场交给页面里的 Compose 动画 ——
+         原先窗口 fade 与卡片各动各的，展开/收起的节奏与其它 Dialog 对不上。
+         （只有 ApkInfoActivity 用这个主题，改这里不会波及其它页面。） -->
+    <style name="Theme.UIN.Tool.DialogAnimation" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@null</item>
+        <item name="android:windowExitAnimation">@null</item>
+    </style>
     <!-- ============================================================
          Termux 相关主题 (适配 UIN Tool)
          ============================================================ -->

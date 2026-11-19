@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.UIN.Tool.R
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.utils.Str
@@ -42,23 +43,40 @@ import java.util.Locale
 fun ManageTopAppBar(
     titleText: String,
     onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}
+    actions: @Composable RowScope.() -> Unit = {},
+    // k.txt 第 7 条：文件管理页也改用同一套页面顶栏 —— 路径需要可点/长按，
+    // 因此允许调用方替换标题与导航图标，容器色、高度、动作区样式仍与开发/管理页一致。
+    titleContent: (@Composable () -> Unit)? = null,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    // k.txt 第 7 条：文件页嵌在 MainActivity 的 Scaffold 里，那里已经让出了状态栏；
+    // 再让 TopAppBar 加一次状态栏内边距会多出一条大空白。允许调用方显式传入 0 内边距。
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets
 ) {
     val container = AppColors.pageBackground()
     val content = MaterialTheme.colorScheme.onBackground
     TopAppBar(
+        windowInsets = windowInsets,
         title = {
-            Text(titleText, color = content)
+            if (titleContent != null) {
+                CompositionLocalProvider(LocalContentColor provides content) {
+                    titleContent()
+                }
+            } else {
+                Text(titleText, color = content)
+            }
         },
         navigationIcon = {
-            if (onBack != null) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = Str.get(R.string.back),
-                        tint = content
-                    )
+            if (navigationIcon != null) {
+                CompositionLocalProvider(LocalContentColor provides content) {
+                    navigationIcon()
                 }
+            } else if (onBack != null) {
+                UnifiedIconButton(
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    onClick = onBack,
+                    contentDescription = Str.get(R.string.back),
+                    tint = content,
+                )
             }
         },
         actions = {

@@ -6,20 +6,24 @@ buildscript {
         google()
     }
     dependencies {
-        // A-16（列决策，不改版本）：AGP 8.9.1 官方配 Gradle 8.11.1+，项目 wrapper 是 gradle-9.0.0-bin。
-        // 实测本机 9.0.0 能完整跑完 6.0.0→6.1.0 构建（项目 .gradle/9.0.0 状态目录存在），
-        // 任意一侧改版本都要重新下发行版/依赖、有把可用构建改坏的风险，故保持现状，
-        // 待用户拍板：要么 wrapper 回退 8.11.1，要么 AGP 升到支持 Gradle 9 的版本。
-        classpath "com.android.tools.build:gradle:8.9.1"
-        // 6.2.0 批次40：Kotlin 2.1.0 → 2.3.10。
-        // 原因：sora-editor 0.24.5/0.24.6 的 AAR 是用 Kotlin 2.3.x 编译的（metadata 2.3.0），
-        // 而 2.1.0 的编译器只能读到 metadata 2.2.0，于是 0.24.6 一升上来就报
-        // 「Module was compiled with an incompatible version of Kotlin」，35 条 e: 全是这个。
-        // 0.24.5 也是 Kotlin 2.3.10 编的，所以退回 0.24.5 没用 —— 只能升 Kotlin。
-        // 版本刻意与 sora 0.24.6 的编译器（2.3.10）对齐，metadata 版本完全一致，不留向前兼容余量。
-        // 约束核对过：KGP 2.3.x 要求 Gradle 7.6.3+ / AGP 7.1+，本项目是 Gradle 9.0.0 / AGP 8.9.1。
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.10"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.3.10"
+        // ── A-16 收口 + 6.3.0 N1 撞墙，三件套一次升到位（2026-10-31，用户指令「尽量更新，只升不降」）──
+        // 起因：N1 引入的 zstd-jni 是 **AAR**（Maven Central 同时发 .aar/.jar），AAR 元数据带
+        //       `minCompileSdk=37`，:app:checkDebugAarMetadata 直接失败 —— 连 Kotlin 编译都没轮到。
+        // 硬约束（developer.android.com「Minimum versions of tools for Android API level」）：
+        //       compileSdk 37 → 最低 AGP **9.1.1**（且最低 Android Studio Panda 3）
+        //       AGP 9.1     → 最低 Gradle **9.3.1**
+        //       KGP 2.3.x   → 只支持到 AGP **9.0.0**，够不着 9.1.1；2.4.20–2.4.21 支持 AGP 8.5.2–9.3.1
+        // 约束核对：KGP 2.4.21 要求 Gradle 7.6.3–9.7.0 / AGP 8.5.2–9.3.1 —— 三项全在区间内。
+        // 顺带解决 A-16 遗留：AGP 8.9.1（配 Gradle 8.11.1+）与 wrapper 9.0.0 本就不匹配，现在两侧对齐。
+        // 三版本号均已对 maven-metadata / services.gradle.org 逐一核实存在（不是猜的）。
+        // **targetSdk 28 / minSdk 23 不动**（用户指令：除 targetSdk 外只升不降）。
+        classpath "com.android.tools.build:gradle:9.1.1"
+        // 6.2.0 批次40：Kotlin 2.1.0 → 2.3.10 —— sora-editor 0.24.5/0.24.6 的 AAR 是 Kotlin 2.3.x
+        // 编的（metadata 2.3.0），低版本编译器读不到，35 条 e: 全是「incompatible version of Kotlin」。
+        // 本次 2.3.10 → 2.4.21 纯粹是为了配 AGP 9.1.x：**新编译器读旧 metadata 向前兼容**，
+        // sora-editor（metadata 2.3.0）不受影响；而 2.4.21 也不会把语言默认版本抬高到破坏现有源码。
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.21"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.4.21"
     }
 }
 

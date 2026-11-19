@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- s.txt 第 2 条（用户）：快捷方式静态兜底图的**底**。
+     只画一个白色圆角方块，图形一律引用已有的 ic_* drawable（见 ic_shortcut_*.xml），
+     不再在 XML 里手写图形路径。
+     用 vector 而不是 shape：shape 的圆角半径是固定 px，整张图被启动器放大后会变成
+     直角；vector 按比例缩放，任意尺寸下圆角都正确。
+     尺寸与 ThemeShortcuts 的运行时徽章对齐：24dp 画布、四周收进 8%（1.92dp）、
+     圆角 26%（5.24dp）。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7.1616,1.92 H16.8384 A5.2416,5.2416 0 0 1 22.08,7.1616 V16.8384 A5.2416,5.2416 0 0 1 16.8384,22.08 H7.1616 A5.2416,5.2416 0 0 1 1.92,16.8384 V7.1616 A5.2416,5.2416 0 0 1 7.1616,1.92 Z" />
+</vector>

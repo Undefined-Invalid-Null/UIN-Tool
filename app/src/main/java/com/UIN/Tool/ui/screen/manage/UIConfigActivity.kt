@@ -14,7 +14,10 @@ class UIConfigActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         UIConfig.init(this)
-        
+        // u.txt 第 4 条（用户）：切换深浅色 / 语言会重建本 Activity —— 先铺一层
+        // 当前主题背景色，避免重建瞬间露出一块与页面不一致的底色（深色下像黑屏）。
+        com.UIN.Tool.ui.theme.LaunchScreenBackground.applyPlainBackground(this)
+
         setContent {
             UINToolTheme {
                 // 调用 UIConfigScreen 中的 UI

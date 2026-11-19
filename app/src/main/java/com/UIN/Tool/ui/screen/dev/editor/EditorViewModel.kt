@@ -8,10 +8,14 @@ import android.os.Environment
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.UIN.Tool.ui.screen.files.ArchiveEdit
+import com.UIN.Tool.ui.screen.files.ZipWrite
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
+import com.UIN.Tool.utils.AxmlDecoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -48,6 +52,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
         /** 批次54：超此大小的文件一律分页窗口打开（真分页；整读档编辑稳态内存不划算）。 */
         private const val WINDOW_OPEN_BYTES = 16L * 1024 * 1024
+
+        /** m.txt 第 11 条：结果页预览合并发布的最小间隔（毫秒）。 */
+        private const val WHOLE_PREVIEW_PUBLISH_MS = 120L
+
+        /**
+         * m.txt 第 11 条：预览缓存上限。
+         *
+         * w.txt 第 1 条（用户）：筛选已改为在 ViewModel 里按页一趟扫描，**不再需要**
+         * 把整份结果的行内容都补进预览缓存，所以这里恢复正常的淘汰上限 ——
+         * 预览只服务可见范围，滚动很久也不会把内存撑到几十万条。
+         */
+        private const val WHOLE_PREVIEW_CACHE_MAX = 4000
     }
 
     // ==================== 标签页 ====================
@@ -56,6 +72,125 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _activeTabId = MutableStateFlow<String?>(null)
     val activeTabId: StateFlow<String?> = _activeTabId.asStateFlow()
+
+    // ==================== m.txt 第 5 条：文件被其他应用修改的检测 ====================
+
+    /** 待提示的外部修改。 */
+    data class ExternalChangeUi(
+        val tabId: String,
+        val tabName: String,
+        /** 本标签是否还有未保存修改（重新加载会丢弃它们，提示文案要区别对待）。 */
+        val hasLocalEdits: Boolean
+    )
+
+    private val _externalChange = MutableStateFlow<ExternalChangeUi?>(null)
+    val externalChange: StateFlow<ExternalChangeUi?> = _externalChange.asStateFlow()
+
+    /** 每个标签最近一次「自己看到 / 自己写下」的文件指纹（mtime + size）。 */
+    private val fileStamps = ConcurrentHashMap<String, Long>()
+
+    /** 已入队但尚未处理的标签，避免同一次外部修改每轮轮询都重复提示。 */
+    private val reportedExternalChanges = ConcurrentHashMap.newKeySet<String>()
+    private val pendingExternalChanges = ArrayDeque<ExternalChangeUi>()
+
+    private fun fileStamp(file: File): Long = file.lastModified() * 1_000_003L + file.length()
+
+    private fun syncFileStamp(tab: EditorTab) {
+        val file = tab.file ?: return
+        runCatching {
+            fileStamps[tab.id] = if (file.exists()) fileStamp(file) else -1L
+        }
+    }
+
+    /**
+     * 前台轮询入口：真实文件标签被其他应用改动时提示用户。
+     *
+     * 只读 `lastModified` / `length`，不读文件内容 —— 每 2 秒一次也很轻。URI 标签不做
+     *（每次查询都过 Binder，且没有稳定的廉价指纹）；归档条目是缓存副本，也不参与。
+     * 调用方负责只在界面 RESUMED 时调用（后台轮询没有意义）。
+     */
+    fun checkExternalChanges() {
+        val tabs = _tabs.value
+        if (tabs.isEmpty()) return
+        for (tab in tabs) {
+            val file = tab.file ?: continue
+            if (tab.fromArchive) continue
+            // 自己正在写盘：此刻 mtime 变化是预期的。
+            if (tab.id in savingWindows) continue
+            val stamp = runCatching {
+                if (file.exists()) fileStamp(file) else -1L
+            }.getOrDefault(-1L)
+            val known = fileStamps[tab.id]
+            if (known == null) {
+                // 第一次看到这个标签：把当前指纹当基线，不提示。
+                fileStamps[tab.id] = stamp
+                continue
+            }
+            if (stamp == known) continue
+            if (!reportedExternalChanges.add(tab.id)) continue
+            val change = ExternalChangeUi(tab.id, tab.name, tab.isModified)
+            if (_externalChange.value == null) _externalChange.value = change
+            else pendingExternalChanges.addLast(change)
+        }
+    }
+
+    /** 用户选「保留当前内容」：只更新指纹，等下一次外部修改再提示。 */
+    fun keepExternalChange() {
+        val change = _externalChange.value ?: return
+        finishExternalChange(change)
+    }
+
+    /** 用户选「重新加载」：丢弃内存内容，按磁盘重新读取（窗口大文件重开标签）。 */
+    fun reloadExternalChange() {
+        val change = _externalChange.value ?: return
+        val tab = _tabs.value.firstOrNull { it.id == change.tabId }
+        val file = tab?.file
+        if (tab != null && file != null) {
+            if (tab.windowed) {
+                // 分页窗口的页索引/overlay 无法原地重载 —— 关掉重开最稳妥。
+                closeTab(tab.id, force = true)
+                openFile(file)
+            } else {
+                viewModelScope.launch {
+                    val text = withContext(Dispatchers.IO) {
+                        runCatching {
+                            file.readText(java.nio.charset.Charset.forName(tab.writeCharset))
+                        }.getOrNull()
+                    }
+                    if (text == null) {
+                        emit(com.UIN.Tool.utils.Str.get(com.UIN.Tool.R.string.editor_external_change_reload_failed, tab.name))
+                    } else {
+                        _tabs.update { list ->
+                            list.map {
+                                if (it.id == tab.id) it.copy(
+                                    content = text,
+                                    savedContent = text,
+                                    edited = false,
+                                    contentRev = it.contentRev + 1
+                                ) else it
+                            }
+                        }
+                        contentStaleTabs.remove(tab.id)
+                        fileStamps[tab.id] = runCatching { fileStamp(file) }.getOrDefault(-1L)
+                        AppToast.info(
+                            getApplication(),
+                            com.UIN.Tool.utils.Str.get(
+                                com.UIN.Tool.R.string.editor_external_change_reload_ok,
+                                tab.name
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        finishExternalChange(change)
+    }
+
+    private fun finishExternalChange(change: ExternalChangeUi) {
+        reportedExternalChanges.remove(change.tabId)
+        _tabs.value.firstOrNull { it.id == change.tabId }?.let { syncFileStamp(it) }
+        _externalChange.value = pendingExternalChanges.removeFirstOrNull()
+    }
 
     /**
      * 6.2.0 批次46：分页窗口模式的**每标签页簿记**（不在 StateFlow 里 —— UI 信息
@@ -95,6 +230,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 批次46：正在后台建索引的路径 —— 防止连点同一文件开出重复窗口标签（只在主线程增删）。 */
     private val pendingWindowOpens = mutableSetOf<String>()
+    /**
+     * p.txt 第 7 条（用户）：分页文件正在后台建索引时，用户又从外面点开同一个文件 ——
+     * 旧实现 `pendingWindowOpens.add` 失败就 `return`，标签是建起来了，但**没有切到前台**，
+     * 文件树也不会定位过去。这里记下「这次打开要求显示」，等临时签落地时补一次 activate。
+     */
+    private val pendingWindowActivate = ConcurrentHashMap.newKeySet<String>()
+    /** j.txt 第 1 条：AXML 解码在途去重（解码是异步的，连点两下别开两个标签）。 */
+    private val pendingAxmlOpens = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /** 批次46：正在后台写回的标签 —— 防止双击保存起两个写线程抢临时文件。 */
     private val savingWindows: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -142,6 +285,26 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val total: Int = 0
     )
 
+    /**
+     * w.txt 第 1 条（用户）：全量结果页的**二次筛选**状态。
+     *
+     * 旧实现靠「把每条结果的行内容都补进预览缓存，再逐条 contains」来筛 —— 补预览要
+     * 走排队 + 每 120ms 整表复制一次 Map，几万条就把主线程拖死，所以反而比搜索慢。
+     * 现在改成和搜索同一套逻辑：**按页顺序读一次文件，每页只取一次文本**，只对该页
+     * 上有匹配的行做判定，命中结果直接带着原始下标推给列表；预览仍只给可见行懒加载。
+     */
+    data class WholeFilterUi(
+        /** 本次筛选的关键词（空串表示未筛选）。 */
+        val query: String = "",
+        /** 已扫描的匹配条数（进度条分子）。 */
+        val scanned: Int = 0,
+        /** 待扫描的匹配总数（进度条分母）。 */
+        val total: Int = 0,
+        /** 命中的结果（带在 [WholeFullUi.matches] 里的原始下标，供预览/跳转使用）。 */
+        val hits: List<IndexedValue<WholeSearch.WholeMatch>> = emptyList(),
+        val running: Boolean = false
+    )
+
     /** 批次50：窗口渐进式打开的索引进度（tabId → 0..100）—— 底部左下角显示「扫描 N%」。 */
     private val _windowScanProgress = MutableStateFlow<Map<String, Int>>(emptyMap())
     val windowScanProgress: StateFlow<Map<String, Int>> = _windowScanProgress.asStateFlow()
@@ -164,6 +327,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     /** 批次53：全量结果页的行内预览缓存（列表下标 → 预览；可见范围懒加载，溢出整表清一次）。 */
     private val _wholePreviews = MutableStateFlow<Map<Int, String>>(emptyMap())
     val wholePreviews: StateFlow<Map<Int, String>> = _wholePreviews.asStateFlow()
+
+    /** w.txt 第 1 条：结果页二次筛选（按页一趟扫描，独立于预览缓存）。 */
+    private val _wholeFilter = MutableStateFlow<WholeFilterUi?>(null)
+    val wholeFilter: StateFlow<WholeFilterUi?> = _wholeFilter.asStateFlow()
+    private var wholeFilterJob: Job? = null
 
     private var wholeSearchJob: kotlinx.coroutines.Job? = null
     private var wholeReplaceJob: kotlinx.coroutines.Job? = null
@@ -193,6 +361,82 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile private var wholePageLineBase: ((Int) -> Int)? = null
     /** 批次53：按需预览的在途下标（并发集 —— 请求在主线程加、IO 协程 finally 移）。 */
     private val wholePreviewInFlight: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+    /**
+     * j.txt 第 11 条：全量结果页的**页文本缓存**。
+     *
+     * 同一页上往往有几十条匹配，原来每条都调一次供给器 —— 同一页被反复读盘 + 反复解码，
+     * 快速滑动时请求排队，可见行只能停在空白占位上。现在按页归组、一页只取一次，
+     * 并把最近用过的十几页留在内存里：往回滚、或同页的下一条，都不再碰磁盘。
+     * 只在 IO 线程访问，LinkedHashMap 的访问序即 LRU。
+     */
+    private val wholePreviewPageCache = object : LinkedHashMap<Int, String>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, String>?): Boolean =
+            size > 16
+    }
+
+    /**
+     * m.txt 第 11 条：预览发布**节流**。
+     *
+     * 拖动结果页滚动条时，可见范围每帧都在变，预览队列会瞬间塞进几十批。旧实现
+     * 每批都把整张 `_wholePreviews`（上限 4000 条）复制一遍再推给 StateFlow ——
+     * O(4000) × 每秒几十次，正是「拖滚动条卡死」的主因。现在先把结果攒进
+     * [wholePreviewPending]，最多每 [WHOLE_PREVIEW_PUBLISH_MS] 合并发布一次；
+     * 队列安静下来后再补一次强制发布，停手时行内预览仍会补满。
+     */
+    private val wholePreviewLock = Any()
+    private val wholePreviewPending = HashMap<Int, String>()
+    private var lastWholePreviewPublish = 0L
+    private var wholePreviewFlushJob: Job? = null
+
+    private fun publishWholePreviews(force: Boolean) {
+        val now = System.nanoTime() / 1_000_000L
+        var snapshot: Map<Int, String>? = null
+        synchronized(wholePreviewLock) {
+            if (wholePreviewPending.isEmpty()) return
+            if (!force && now - lastWholePreviewPublish < WHOLE_PREVIEW_PUBLISH_MS) {
+                scheduleWholePreviewFlush()
+                return
+            }
+            val merged = LinkedHashMap(_wholePreviews.value)
+            merged.putAll(wholePreviewPending)
+            wholePreviewPending.clear()
+            if (merged.size > WHOLE_PREVIEW_CACHE_MAX) {
+                val it = merged.keys.iterator()
+                while (merged.size > WHOLE_PREVIEW_CACHE_MAX && it.hasNext()) {
+                    it.next()
+                    it.remove()
+                }
+            }
+            lastWholePreviewPublish = now
+            snapshot = merged
+        }
+        _wholePreviews.value = snapshot ?: return
+    }
+
+    private fun scheduleWholePreviewFlush() {
+        if (wholePreviewFlushJob?.isActive == true) return
+        wholePreviewFlushJob = viewModelScope.launch {
+            delay(WHOLE_PREVIEW_PUBLISH_MS)
+            publishWholePreviews(force = true)
+        }
+    }
+
+    /** j.txt 第 11 条：预览请求（代际 + 页号 + 该页待生成的下标/匹配）。 */
+    private class WholePreviewRequest(
+        val gen: Int,
+        val page: Int,
+        val entries: List<Pair<Int, WholeSearch.WholeMatch>>
+    )
+
+    /**
+     * j.txt 第 11 条：预览请求**队列**（单消费者、按到达顺序逐页处理）。
+     *
+     * 原先「新可见范围一到就 cancel 上一批」—— 滚动时每秒来十几次窗口变化，
+     * 每一批都在读页前被下一批掐掉，于是**滚动中始终空白，停手才出字**。
+     * 改成队列后，滚动期间页文本持续出队、持续补进缓存，行内预览边滚边填。
+     */
+    private val wholePreviewQueue = Channel<WholePreviewRequest>(Channel.UNLIMITED)
 
     /**
      * 批次47：统一的页文本供给 —— 内存改动页 → 磁盘 spool → 原盘。
@@ -240,9 +484,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun clearWholeExtras() {
         wholeGen++
+        // j.txt 第 11 条：队列里排着的都是上一代请求 —— 清空并放开在途标记。
+        // 消费者仍活着（单协程常驻），取到空队列就等下一批，无需重建。
+        while (wholePreviewQueue.tryReceive().isSuccess) {
+            // drain：条目本身没有可释放资源，丢掉即可
+        }
         _wholeFull.value = null
         _wholePreviews.value = emptyMap()
+        // w.txt 第 1 条：筛选任务与结果属于上一代结果，一并作废。
+        wholeFilterJob?.cancel()
+        wholeFilterJob = null
+        _wholeFilter.value = null
+        wholePreviewFlushJob?.cancel()
+        wholePreviewFlushJob = null
+        synchronized(wholePreviewLock) { wholePreviewPending.clear() }
         wholePreviewInFlight.clear()
+        synchronized(wholePreviewPageCache) { wholePreviewPageCache.clear() }
     }
 
     /** 批次47：全文搜索 —— 窗口模式走磁盘分页；非窗口大文件走**单页整读**扫描。 */
@@ -361,10 +618,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             it?.copy(running = true, progress = pct, total = found)
                         }
                     },
-                    // 批次57（用户）：一趟**全量**收集紧凑匹配（去掉「加载更多」分批与
-                    // 10 万批次/50 万硬上限）—— 预览留空，结果页按需生成。
+                    // m.txt 第 11 条：结果页**不再截到前 N 条** —— 用户要的是「能看到
+                    // 全部匹配」，而不是 5 千条之后静默消失。扫描时只收紧凑匹配
+                    //（page / line / column / length），行内预览一律按可见范围懒加载：
+                    // 百万级匹配也不会在搜索完成瞬间生成百万个字符串把主线程拖死。
                     fullFrom = 0,
-                    fullLimit = Int.MAX_VALUE
+                    fullLimit = Int.MAX_VALUE,
+                    withFullPreview = false
                 )
                 if (gen != wholeGen) return@launch // 扫描期间已被更新的搜索/取消接管
                 // 复查修「完成态抹掉过期标记」：扫描期间文档若被编辑（updateContent 置
@@ -400,48 +660,184 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * n.txt 第 13 条：**收起搜索面板时停掉仍在跑的扫描，但保留已完成的结果。**
+     *
+     * 批次57② 定下的语义是「顶栏图标 / 返回键只收起面板，结果与高亮原样保留」——
+     * 但原实现只停止显示、不停扫描：GB 级文件那一趟全文检索（最多 4 路 worker +
+     * 全量结果收集）会继续在后台跑。用户紧接着点左上角打开文件列表抽屉、或直接
+     * 退回文件页时，这趟扫描仍在抢 CPU / 堆内存，界面就表现为**卡死**。
+     *
+     * 已完成的结果必须留着（重开面板不重扫）；只有「还在跑」的那一趟要掐掉 ——
+     * 它本来就没有可用的结果，取消不会让用户丢任何东西。
+     */
+    fun stopWholeSearchIfRunning() {
+        if (_wholeSearch.value?.running != true) return
+        wholeSearchJob?.cancel()
+        wholeSearchJob = null
+        wholeSearchTabId = null
+        _wholeSearch.value = null
+        clearWholeExtras()
+    }
+
+    /**
+     * w.txt 第 1 条（用户）：结果页二次筛选 —— **与搜索同一套一趟线性扫描**。
+     *
+     * 预览（[requestWholePreviews]）只为可见的几十行按需补内容；筛选要判定「哪些行命中」，
+     * 必须看完全部结果。旧实现把两件事混在一起：先把全部结果的行内容都塞进预览 Map，
+     * 再逐条 contains —— 而预览发布每 120ms 就把整张 Map（几万到上百万条）复制一次，
+     * 加上每行 lowercase 分配，结果反而比搜索慢得多。
+     *
+     * 这里匹配本来就按页有序，于是按页推进：每页只读一次文本，只对该页上有匹配的行做
+     * 一次 `indexOf(ignoreCase)` 判定（不分配小写副本）；命中与进度按 100ms 节流发布。
+     */
+    fun startWholeFilter(query: String) {
+        wholeFilterJob?.cancel()
+        wholeFilterJob = null
+        val q = query.trim()
+        if (q.isEmpty()) {
+            _wholeFilter.value = null
+            return
+        }
+        val full = _wholeFull.value
+        val provider = wholePageProvider
+        if (full == null || full.matches.isEmpty() || provider == null) {
+            _wholeFilter.value = WholeFilterUi(q, 0, 0, emptyList(), false)
+            return
+        }
+        val gen = wholeGen
+        val matches = full.matches
+        _wholeFilter.value = WholeFilterUi(q, 0, matches.size, emptyList(), true)
+        wholeFilterJob = viewModelScope.launch(Dispatchers.IO) {
+            val hits = ArrayList<IndexedValue<WholeSearch.WholeMatch>>()
+            var i = 0
+            var lastPublish = 0L
+            try {
+                while (i < matches.size) {
+                    ensureActive()
+                    if (gen != wholeGen) return@launch
+                    val page = matches[i].page
+                    var j = i
+                    while (j < matches.size && matches[j].page == page) j++
+                    val text = try {
+                        provider(page - 1)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        AppLog.w(TAG, "filter page read failed: page=$page (${e.message})")
+                        null
+                    }
+                    if (text != null) {
+                        for (k in i until j) {
+                            val m = matches[k]
+                            val line = WholeSearch.lineAt(text, m.lineOffset)
+                            val hit = line.indexOf(q, 0, ignoreCase = true) >= 0 ||
+                                m.absLine.toString().contains(q) ||
+                                "${m.absLine}:${m.column + 1}".contains(q)
+                            if (hit) hits.add(IndexedValue(k, m))
+                        }
+                    }
+                    i = j
+                    val now = System.nanoTime() / 1_000_000L
+                    if (now - lastPublish >= 100L || i >= matches.size) {
+                        lastPublish = now
+                        if (gen != wholeGen) return@launch
+                        _wholeFilter.value = WholeFilterUi(
+                            q, i, matches.size, ArrayList(hits), i < matches.size
+                        )
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLog.e(TAG, "whole filter failed: ${e.message}")
+                if (gen == wholeGen) {
+                    _wholeFilter.value = WholeFilterUi(q, i, matches.size, ArrayList(hits), false)
+                }
+            }
+        }
+    }
+
+    /** 关闭筛选 / 清空条件：取消在途扫描并丢掉结果。 */
+    fun cancelWholeFilter() {
+        wholeFilterJob?.cancel()
+        wholeFilterJob = null
+        _wholeFilter.value = null
+    }
+
+    /**
      * 批次53：全量结果页的**按需预览** —— 对下标 [from, from+count) 内尚未缓存的紧凑项，
      * 取页快照就地生成行内预览（[WholeSearch.previewFor]）。可见范围由列表滚动回调驱动，
      * 百万级结果不预生成预览；供给器线程安全（搜索启动快照），预览与结果同一时点口径。
      */
     fun requestWholePreviews(from: Int, count: Int) {
-        val provider = wholePageProvider ?: return
         val cur = _wholeFull.value ?: return
+        if (wholePageProvider == null) return
         val gen = wholeGen
-        val need = ArrayList<Pair<Int, WholeSearch.WholeMatch>>()
         val start = from.coerceAtLeast(0)
         val end = (from + count).coerceAtMost(cur.matches.size)
+        if (start >= end) return
+
+        // j.txt 第 11 条：按**页**归组 —— 同页几十条匹配只取一次页文本。
+        val byPage = LinkedHashMap<Int, MutableList<Pair<Int, WholeSearch.WholeMatch>>>()
         for (i in start until end) {
+            // l.txt 第 13 条：缓存里存的是**完整行**（供横向滑动与长按复制），
+            // 不再是搜索时生成的截断预览 —— 所以每条都要排一次（按页去重后并不贵）。
             if (!_wholePreviews.value.containsKey(i) && wholePreviewInFlight.add(i)) {
-                need.add(i to cur.matches[i])
+                byPage.getOrPut(cur.matches[i].page) { ArrayList() }.add(i to cur.matches[i])
             }
         }
-        if (need.isEmpty()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val batch = HashMap<Int, String>(need.size * 2)
-                for ((i, m) in need) {
-                    currentCoroutineContext().ensureActive()
-                    val text = try {
-                        provider(m.page - 1)
-                    } catch (e: kotlinx.coroutines.CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        AppLog.w(TAG, "preview page read failed: page=${m.page} (${e.message})")
-                        ""
-                    }
-                    batch[i] = WholeSearch.previewFor(text, m.inPageLine, m.column, m.length)
-                }
-                if (gen != wholeGen) return@launch
-                _wholePreviews.update { old ->
-                    // 缓存溢出整表清一次（只留本批）——来回滚动 GB 级文档也不无界增长。
-                    if (old.size > 3000) batch else old + batch
+        if (byPage.isEmpty()) return
+
+        // 只入队、不取消：消费者顺序取页，滚动期间预览持续补齐（取消会让滚动中永远空白）。
+        // trySend 在 UNLIMITED 队列上不会失败；失败时把标记放回去，避免这些行永不重试。
+        for ((page, entries) in byPage) {
+            val sent = wholePreviewQueue.trySend(WholePreviewRequest(gen, page, entries))
+            if (sent.isFailure) {
+                entries.forEach { wholePreviewInFlight.remove(it.first) }
+            }
+        }
+    }
+
+    /**
+     * j.txt 第 11 条：队列消费者（唯一的预览读取协程）。
+     *
+     * 每取一页先查 LRU 页缓存，未命中才回调供给器读盘；一代请求只发布一次。
+     * 页面读取失败时给「…」占位，行永远不留白。
+     */
+    private suspend fun drainWholePreview(req: WholePreviewRequest) {
+        if (req.gen != wholeGen) {
+            req.entries.forEach { wholePreviewInFlight.remove(it.first) }
+            return
+        }
+        val provider = wholePageProvider
+        if (provider == null) {
+            req.entries.forEach { wholePreviewInFlight.remove(it.first) }
+            return
+        }
+        try {
+            val cached = synchronized(wholePreviewPageCache) { wholePreviewPageCache[req.page] }
+            val text = cached ?: try {
+                provider(req.page - 1).also { loaded ->
+                    synchronized(wholePreviewPageCache) { wholePreviewPageCache[req.page] = loaded }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
-            } finally {
-                need.forEach { wholePreviewInFlight.remove(it.first) }
+            } catch (e: Exception) {
+                AppLog.w(TAG, "preview page read failed: page=${req.page} (${e.message})")
+                null
             }
+            if (req.gen != wholeGen) return
+            val batch = HashMap<Int, String>(req.entries.size)
+            for ((i, m) in req.entries) {
+                batch[i] = if (text == null) "…"
+                else WholeSearch.lineAt(text, m.lineOffset).ifEmpty { "…" }
+            }
+            // m.txt 第 11 条：只攒不发 —— 由 [publishWholePreviews] 按 120ms 节流合并，
+            // 拖动滚动条时不再每来一批就复制整张 4000 条的 Map。
+            synchronized(wholePreviewLock) { wholePreviewPending.putAll(batch) }
+            publishWholePreviews(force = false)
+        } finally {
+            req.entries.forEach { wholePreviewInFlight.remove(it.first) }
         }
     }
 
@@ -701,6 +1097,17 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
      *  否则启动即关全部标签时空快照被指纹跳过，旧会话跨重启复活（复查修）。 */
     @Volatile private var lastSnapshotKey = Int.MIN_VALUE
 
+    /**
+     * q.txt 第 6 条（用户）：「用代码编辑器打开」的文件必须**显示出来**，不能被代码
+     * 编辑器上一会话的文件顶掉。用户显式点开的路径 / URI 记在这里 —— 会话恢复与
+     * 分页索引就绪这类**异步收尾**在挪动活动标签前先看它：钉子还在就一律让路。
+     *
+     * 生命周期：只由「用户显式打开」写入，用户手动切签（[setActive]）或关掉该签时清除；
+     * 恢复流程自己 openFile 不写（否则每个恢复出来的签都会把前一个钉住）。
+     */
+    @Volatile private var explicitFocusPath: String? = null
+    @Volatile private var explicitFocusUri: String? = null
+
     /** 防抖的快照任务：标签 / 内容 / 页码任一变化 → 静默 1.2s 后落盘。 */
     private var sessionSaveJob: Job? = null
 
@@ -735,6 +1142,20 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
         // 批次56：启动恢复（尽力而为 —— 读失败只记日志，绝不能挡住编辑器打开）。
         viewModelScope.launch { restoreSession() }
+        // j.txt 第 11 条：预览队列的单消费者 —— 常驻，逐页读、逐批发布。
+        // 滚动过程中只要有新页入队就继续补预览，不再「松手才加载」。
+        viewModelScope.launch(Dispatchers.IO) {
+            for (req in wholePreviewQueue) {
+                try {
+                    drainWholePreview(req)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    AppLog.w(TAG, "whole preview drain failed: ${e.message}")
+                    req.entries.forEach { wholePreviewInFlight.remove(it.first) }
+                }
+            }
+        }
     }
 
     // ==================== 文件树 ====================
@@ -785,7 +1206,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * 6.2.0：长按「保存」图标触发的系统级「另存为」（ACTION_CREATE_DOCUMENT）。
+     * 长按「保存」图标触发的「另存为」（m.txt 第 7 条起走内置文件选择器）。
      * 与 [saveAsRequest]（写入失败后兜底、只能选目录）并行，用户**主动**另存时走这条，
      * 可以同时指定文件名和位置。Activity 观察到非空后弹文件选择器，回调 [completeSaveAsDoc]。
      */
@@ -829,19 +1250,88 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
 
     // ==================== 打开 ====================
 
-    /** 打开本地真实文件（D2 主路径：直接 IO）。 */
-    fun openFile(file: File, asNew: Boolean = false) {
+    /**
+     * q.txt 第 6 条（用户）：用户**显式**点开文件（Activity 的 file_path intent、编辑器
+     * 抽屉里点文件）时调用 —— 记下焦点钉子并立刻切到它。异步的会话恢复 / 分页索引
+     * 收尾之后都会先问 [pinnedTabId]，不会再把焦点挪回上一会话的文件。
+     */
+    fun openFileExplicit(
+        file: File,
+        originArchive: String? = null,
+        originEntry: String? = null
+    ) {
+        explicitFocusPath = file.absolutePath
+        explicitFocusUri = null
+        openFile(file, originArchive = originArchive, originEntry = originEntry)
+        // 大文件走分页时标签是异步建出来的；已建好就再切一次（幂等），未建好由
+        // addProvisionalWindowTab 的 activate 兜底。打开失败（文件不存在/读不了）
+        // 且没有在途索引 → 钉子当场撤掉，别让它一直压着恢复流程。
+        val pinned = pinnedTabId()
+        if (pinned != null) {
+            activateTab(pinned)
+        } else if (file.absolutePath !in pendingWindowOpens) {
+            explicitFocusPath = null
+            explicitFocusUri = null
+        }
+    }
+
+    /** q.txt 第 6 条：外部 ACTION_VIEW 显式打开 —— 与 [openFileExplicit] 同口径，按 URI 钉焦点。 */
+    fun openUriExplicit(uri: Uri) {
+        explicitFocusUri = uri.toString()
+        explicitFocusPath = null
+        openUri(uri)
+        val pinned = pinnedTabId()
+        if (pinned != null) activateTab(pinned) else {
+            explicitFocusPath = null
+            explicitFocusUri = null
+        }
+    }
+
+    /** 当前焦点钉子的标签 id（标签还没建出来时返回 null）。 */
+    private fun pinnedTabId(): String? {
+        explicitFocusPath?.let { p ->
+            _tabs.value.firstOrNull { it.file?.absolutePath == p }?.let { return it.id }
+        }
+        explicitFocusUri?.let { u ->
+            _tabs.value.firstOrNull { it.uri == u }?.let { return it.id }
+        }
+        return null
+    }
+
+    /** 焦点钉子是否仍有效（用于恢复流程判断「能不能挪活动标签」）。 */
+    private fun hasFocusPin(): Boolean =
+        explicitFocusPath != null || explicitFocusUri != null
+
+    /**
+     * 打开本地真实文件（D2 主路径：直接 IO）。
+     *
+     * [originArchive]/[originEntry]：文件管理器把归档内条目解成临时副本后传入 ——
+     * 非空时保存成功后会额外询问是否写回归档（见 [EditorTab.originArchive]）。
+     */
+    fun openFile(
+        file: File,
+        asNew: Boolean = false,
+        originArchive: String? = null,
+        originEntry: String? = null
+    ) {
         val path = file.absolutePath
         // 批次57③：内部打开路径（目录树点开设备文件等，不经 Intent）非插件文件 →
         // 先退出草稿模式（隐藏的用户签恢复、插件草稿签落盘摘除），再走正常打开。
         maybeExitWizardFor(path)
         // 6.2.0：每个新文档都从「可编辑」开始，杜绝上一个文档的只读标记粘住本次打开。
         _readOnly.value = false
-        _tabs.value.firstOrNull { it.file?.absolutePath == path }?.let {
-            activateTab(it.id) // 批次55：统一走切活入口（切走前回灌脏大文档）
+        _tabs.value.firstOrNull { it.file?.absolutePath == path }?.let { existing ->
+            // l.txt 第 2/14 条：AXML 之前被当成普通文本开出来（旧版本打开 / 会话恢复），
+            // 盘上仍是二进制资源 XML。再打开时**先补解码并切过去** —— 原先这里直接
+            // activateTab 早退，标签永远停在乱码内容上，外部调起时也看不到它被切到前台。
+            if (!existing.axml && AxmlDecoder.isAxml(file)) {
+                openAxmlFile(file)
+                return
+            }
+            activateTab(existing.id) // 批次55：统一走切活入口（切走前回灌脏大文档）
             // 批次57③尾修二（用户：「打开设备文件，目录树显示未打开文件夹」）：重复
             // 打开走此早退分支 —— 若退出向导时根刚被清掉，这里不补建树根就永远空态。
-            ensureTreeRootForFile(it.file)
+            ensureTreeRootForFile(existing.file)
             return
         }
         if (!file.exists()) {
@@ -852,10 +1342,20 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             emit("不是文件: ${file.name}")
             return
         }
-        if (!FileAccess.isTextFile(file.name)) {
-            emit("暂不支持打开非文本文件: ${file.name}")
+        // j.txt 第 1 条：AXML 是二进制资源 XML，不能按普通文本读 —— 交给 ARSCLib
+        // （APKEditor 的底层库）解码成可读 XML，再以**只读**标签打开。解码在 IO 线程，
+        // 首次会载入内置框架资源（android-xx），所以入口本身就是异步的。
+        if (AxmlDecoder.isAxml(file)) {
+            openAxmlFile(file)
             return
         }
+        // e23 → f21：**一律照开，不再按文本/二进制作任何限制**。
+        //
+        // 早先超过 16MB 的已知二进制会被拒开，理由是「窗口模式按行切页，二进制的行
+        // 可以长得等于整个文件」。这条顾虑现在由分页器本体的**字节上限**兜住了：
+        // 分页同时受「行数」与「页字节数」两道约束（先到者断页），超长单行只会被切成
+        // 多页，不会整份读进内存。既然护栏已被下层覆盖，就不该在入口再拦一道 ——
+        // 用户点开就要看到东西，装不下时下面的内存预检会给出明确文案。
         // 6.2.0：原先这里对 >32MB（且省耗开启）的文件强制只读 —— 已移除：
         // 该护栏既被用户点名「大文件不可编辑」，又会粘住后续打开。大文件能否打开
         // 由下方 readText 的内存预检判断（装不下 → TooLarge 明确报「文件过大」）。
@@ -898,7 +1398,9 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 charset = FileAccess.CHARSET_AUTO,
                 effectiveCharset = effective,
                 // 6.2.0 批次39：asNew = 以空基线打开、正文已被写入 → 一打开就是「未保存」。
-                edited = asNew && content.isNotEmpty()
+                edited = asNew && content.isNotEmpty(),
+                originArchive = originArchive,
+                originEntry = originEntry
             )
         )
         // 6.2.0：记下最后打开的文件，供进程被回收后从多任务回来时恢复（见 CodeEditorActivity）。
@@ -907,7 +1409,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 批次57③补：editor_draft 根前缀双保险（模式标志丢失也不记）。
         val draftRoot = File(getApplication<Application>().cacheDir, "editor_draft")
             .absolutePath + File.separator
+        // 归档内条目的临时副本同样不记 —— 记了的话，下次冷启动会把一份
+        // 「某归档解出来的临时文件」当成上次文档复活，而归档本身早就不在那儿了。
+        val stagingRoot = ArchiveEdit.root(getApplication<Application>().cacheDir)
+            .absolutePath + File.separator
         if (!path.startsWith(draftRoot) &&
+            !path.startsWith(stagingRoot) &&
             _wizardDraftPrefix.value?.let { path.startsWith(it) } != true
         ) {
             EditorSettingsStore.rememberLastOpened(getApplication(), path, null)
@@ -915,8 +1422,80 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * 6.2.0 批次46：**分页窗口模式**的异步打开入口。
+     * k.txt 第 10 条：AXML → 可编辑 XML 视图。
      *
+     * 解码仍交给 ARSCLib；保存时 [saveTab] 检测 [EditorTab.axml] 并把文本重新编码回
+     * 二进制，绝不把解码后的文本直接写进文件。失败时提示原因，不留下半截文件。
+     */
+    private fun openAxmlFile(file: File) {
+        val path = file.absolutePath
+        if (!pendingAxmlOpens.add(path)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            AppLog.d(TAG, "axml decode start: $path")
+            val decoded = AxmlDecoder.decode(file)
+            withContext(Dispatchers.Main) {
+                pendingAxmlOpens.remove(path)
+                if (decoded == null) {
+                    val msg = com.UIN.Tool.utils.Str.get(
+                        com.UIN.Tool.R.string.editor_axml_decode_failed,
+                        file.name
+                    )
+                    _lastOpenError.value = msg
+                    emit(msg)
+                    return@withContext
+                }
+                _readOnly.value = false
+                // 同一文件可能已被另一条入口（冷启动自动恢复 / 会话恢复）开出标签：
+                // 只补 axml 标记与解码文本，不再多开一份缓冲。
+                val existing = _tabs.value.firstOrNull { t ->
+                    t.file?.absolutePath == path
+                }
+                if (existing != null) {
+                    _tabs.update { tabs -> tabs.map { t ->
+                        if (t.id != existing.id) t
+                        else {
+                            // l.txt 第 2 条：升级旧标签时**必须换内容并 bump contentRev** ——
+                            // 编辑器只在 id / rev 变化时重设文本，不 bump 就还是一屏乱码。
+                            // 用户已在这份签上改过字（edited）则保留改动，只补标记与基线。
+                            val needContent = !t.edited && t.content != decoded
+                            if (t.axml && !needContent) t
+                            else t.copy(
+                                axml = true,
+                                savedContent = decoded,
+                                content = if (t.edited) t.content else decoded,
+                                contentRev = t.contentRev + 1
+                            )
+                        }
+                    } }
+                    // l.txt 第 14 条：外部调起时编辑器里还有别的文件 —— 解码完成后
+                    // 必须把这份 AXML 切到前台，不能只默默更新后台标签。
+                    activateTab(existing.id)
+                    return@withContext
+                }
+                addTab(
+                    EditorTab(
+                        id = newId(),
+                        name = file.name,
+                        file = file,
+                        savedContent = decoded,
+                        content = decoded,
+                        charset = "UTF-8",
+                        effectiveCharset = "UTF-8",
+                        edited = false,
+                        axml = true
+                    )
+                )
+                emit(
+                    com.UIN.Tool.utils.Str.get(
+                        com.UIN.Tool.R.string.editor_axml_decoded,
+                        file.name
+                    )
+                )
+            }
+        }
+    }
+
+    /**
      * 整文件装不下堆（内存预检失败 / 整读 OOM）时走这里。批次50 改为**渐进式**：
      *  1. 先快读文件头（≤4MB，[FileAccess.readHeadPage]）解出首页文本，**立刻开标签显示** ——
      *     不再让用户盯空页面等 GB 级索引（此前 2GB 文件要数分钟无反馈）；
@@ -929,9 +1508,16 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val path = file.absolutePath
         _tabs.value.firstOrNull { it.file?.absolutePath == path }?.let {
             activateTab(it.id) // 批次55：统一走切活入口（切走前回灌脏大文档）
+            ensureTreeRootForFile(it.file)
             return
         }
-        if (!pendingWindowOpens.add(path)) return  // 已有一次建索引在途
+        // p.txt 第 7 条：已有一次建索引在途 —— 这次打开不能静默丢掉「显示该文件」的诉求。
+        if (!pendingWindowOpens.add(path)) {
+            pendingWindowActivate.add(path)
+            ensureTreeRootForFile(file)
+            return
+        }
+        pendingWindowActivate.remove(path)
         viewModelScope.launch(Dispatchers.IO) {
             AppLog.d(TAG, "windowed open start: $path")
             // 批次50（用户反馈）：大文件**本来**就以分页窗口模式打开，不再说「内存不足，改用…」。
@@ -954,7 +1540,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             }
             val tabId = withContext(Dispatchers.Main) {
                 pendingWindowOpens.remove(path)
-                addProvisionalWindowTab(file, head)
+                addProvisionalWindowTab(
+                    file,
+                    head,
+                    activate = pendingWindowActivate.remove(path)
+                )
             }
             // 批次50：后台建索引（进度经 _windowScanProgress 供底部状态栏显示）。
             val doc = WindowedDocument.build(
@@ -968,7 +1558,11 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** 批次50：以头部快读结果先开标签（窗口元信息的总行/总页 = 0，索引完成后校正）。 */
-    private fun addProvisionalWindowTab(file: File, head: FileAccess.HeadPage): String {
+    private fun addProvisionalWindowTab(
+        file: File,
+        head: FileAccess.HeadPage,
+        activate: Boolean = false
+    ): String {
         val tab = EditorTab(
             id = newId(),
             name = file.name,
@@ -983,7 +1577,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 否则头读慢于 restoreSession 收尾校正会把活动标签顶成错误值并被补拍固化。
         // 复查四修：`!in` 对具体 CHM 会命中继承的 contains=containsValue（K2 下编译错误
         // KT-18053）—— 必须显式 containsKey。
-        addTab(tab, activate = !pendingRestores.containsKey(file.absolutePath))
+        // p.txt 第 7 条：用户明确点开的（activate=true）优先，恢复目标照旧不抢焦点。
+        addTab(tab, activate = activate || !pendingRestores.containsKey(file.absolutePath))
         EditorSettingsStore.rememberLastOpened(getApplication(), file.absolutePath, null)
         return tab.id
     }
@@ -1029,6 +1624,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 } else t
             }
         }
+        // p.txt 第 7 条：索引就绪后再定位一次 —— 用户点开分页文件时，文件树要停在它上面。
+        ensureTreeRootForFile(file)
         // 批次56：会话恢复 —— 索引刚就绪，消费待恢复项（补挂改动页 + 跳回原页）。
         pendingRestores.remove(file.absolutePath)?.let { p ->
             viewModelScope.launch(Dispatchers.Main) {
@@ -1038,7 +1635,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 // 批次57②：向导草稿模式下 entry.active 只可能是被隐藏的用户签 —— 这是
                 // 晚于收尾校正的**异步**兑付，抢了焦点会把编辑器顶进「未打开文件」空态，
                 // 向导期间一律不兑付（下次正常打开会话时再兑付）。
-                if (p.entry.active && _wizardDraftPrefix.value == null) activateTab(tabId)
+                // q.txt 第 6 条（用户）：用户显式点开的文件还钉着焦点时，本项同样不能
+                // 抢 —— 分页索引可能比会话恢复慢很多，旧签一兑付就把新文件顶下去了。
+                if (p.entry.active && _wizardDraftPrefix.value == null) {
+                    val pin = pinnedTabId()
+                    if (pin == null && !hasFocusPin()) activateTab(tabId) else if (pin != null) activateTab(pin)
+                }
             }
         }
         AppLog.d(TAG, "windowed open ok: ${file.absolutePath} pages=${doc.totalPages}")
@@ -1103,6 +1705,29 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     openFile(f)
                     return
                 }
+            }
+        }
+        // k.txt 第 10 条：外部应用通过 content:// 发来的 AXML 不能按文本整读（只会得到
+        // 乱码）。先看文件头，确认是二进制 XML 就解码成可编辑文本，保存时再编码回去。
+        if (FileAccess.isAxmlUri(getApplication(), uri)) {
+            val bytes = FileAccess.readUriBytes(getApplication(), uri)
+            val decoded = bytes?.let { AxmlDecoder.decode(it) }
+            if (decoded != null) {
+                _lastOpenError.value = null
+                addTab(
+                    EditorTab(
+                        id = newId(),
+                        name = displayNameOf(uri),
+                        uri = identity,
+                        savedContent = decoded,
+                        content = decoded,
+                        charset = "UTF-8",
+                        effectiveCharset = "UTF-8",
+                        axml = true
+                    )
+                )
+                EditorSettingsStore.rememberLastOpened(getApplication(), null, identity)
+                return
             }
         }
         val uriRead = FileAccess.readUri(getApplication(), uri)
@@ -1267,40 +1892,53 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         // 一次读取同时拿到「按所选解出的文本」和「实际采用的编码」。
-        val decoded: String
-        val effective: String
-        if (f != null) {
-            val r = FileAccess.readText(f, name)
-            if (r !is FileAccess.ReadResult.Ok) {
-                emit("无法按 ${charsetLabel(name)} 重新读取 ${tab.name}")
-                return
-            }
-            decoded = r.text
-            effective = r.charset
-        } else {
-            val r = FileAccess.readUri(getApplication(), Uri.parse(uri), name)
-            if (r == null) {
-                emit("无法按 ${charsetLabel(name)} 重新读取 ${tab.name}")
-                return
-            }
-            decoded = r.text
-            effective = r.charset
+        //
+        // f15「重加载有问题」：这一步原先**在调用线程（UI）上直接读盘解码** —— 几 MB 的
+        // 文件选完编码，界面要僵住好几秒，看着像「点了没反应 / 重加载坏了」。
+        // 窗口档早就是后台重建（见上面那段），整读档却没跟上；现在两边同一套口径：
+        // 后台读盘解码，回主线程只落状态。重建期间与窗口档共用同一枚互斥标记。
+        val tabId = id
+        if (tabId in _rebuildingCharset.value) {
+            emit("正在重新载入编码…请稍候")
+            return
         }
-        _tabs.value = _tabs.value.map {
-            if (it.id == id) {
-                it.copy(
-                    charset = name,
-                    effectiveCharset = effective,
-                    savedContent = decoded,
-                    content = decoded,
-                    edited = false
-                )
-            } else it
+        _rebuildingCharset.update { it + tabId }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 成败都收敛成「文本 + 实际编码」一对，主线程只负责落状态
+                val loaded: Pair<String, String>? = if (f != null) {
+                    (FileAccess.readText(f, name) as? FileAccess.ReadResult.Ok)
+                        ?.let { it.text to it.charset }
+                } else {
+                    FileAccess.readUri(getApplication(), Uri.parse(uri), name)
+                        ?.let { it.text to it.charset }
+                }
+                withContext(Dispatchers.Main) {
+                    if (loaded == null) {
+                        emit("无法按 ${charsetLabel(name)} 重新读取 ${tab.name}")
+                        return@withContext
+                    }
+                    _tabs.value = _tabs.value.map {
+                        if (it.id == tabId) {
+                            it.copy(
+                                charset = name,
+                                effectiveCharset = loaded.second,
+                                savedContent = loaded.first,
+                                content = loaded.first,
+                                edited = false
+                            )
+                        } else it
+                    }
+                    // 复查修「换编码不清检索结果」：重解后文本与行位全变，旧结果立即作废
+                    //（窗口路径在重建完成回调里取消，覆盖重建期间新发起的搜索）。
+                    cancelWholeSearch()
+                    emit("编码: ${charsetLabel(name)}（已重新载入 ${tab.name}）")
+                }
+            } finally {
+                // 所有退出路径（含异常/取消）都必须释放互斥标记，否则本标签会永远读作「重建中」
+                _rebuildingCharset.update { it - tabId }
+            }
         }
-        // 复查修「换编码不清检索结果」：重解后文本与行位全变，旧结果立即作废
-        //（窗口路径在重建完成回调里取消，覆盖重建期间新发起的搜索）。
-        cancelWholeSearch()
-        emit("编码: ${charsetLabel(name)}（已重新载入 ${tab.name}）")
     }
 
     /** 选择器/提示里显示的名字（自动档显示本地化文案，编码名本身语言无关）。 */
@@ -1634,6 +2272,10 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     // ==================== 编辑 / 保存 ====================
 
     fun setActive(id: String) {
+        // q.txt 第 6 条：用户**手动**切签 = 显式打开的那份文件不再是「必须显示」的目标，
+        // 焦点钉子就地失效，后续恢复收尾不再压制（否则用户切回去还会被抢走）。
+        explicitFocusPath = null
+        explicitFocusUri = null
         if (_activeTabId.value != id && _tabs.value.any { it.id == id }) {
             // 批次53 复查修「替换中途切标签被静默取消」：**搜索**结果绑定旧标签的页供给
             // —— 换标签一律作废；**替换**是自带簿记的写操作（逐页落 spool / 内存整写，
@@ -1902,6 +2544,14 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
             var activeId: String? = null
+            // 用户反馈㉗：**起跑前**的活动标签 —— Intent带 file_path 时，Activity 的
+            // handleIntent 先于本恢复同步开了文件并把它置为活动标签；恢复随后逐个
+            // addTab/openFile 会把焦点一路挪走，收尾再校正回「上一会话的活动标签」，
+            // 刚选的文件就被顶下去了（表现为编辑器里是以前的文件、新文件只在标签栏里
+            // 躺着，得手动点一下）。修法：恢复只补标签不抢焦点 —— 起跑时已有活动标签
+            // 就以它为准，一个都没有才回落到会话里的 activeId（冷启动走不到这里，
+            // 那条路径由 Activity 的 restoreLastOpenedIfAny 先行，两者等价）。
+            val preActiveId = _activeTabId.value
             kept.forEach { l ->
                 val e = l.entry
                 if (e.windowed) {
@@ -1932,6 +2582,61 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 } else {
                     val f = File(e.file)
+                    val draft = l.draft
+                    // k.txt 第 10 条：AXML 不能按文本整读 —— 会话恢复若把它当普通文本，
+                    // 恢复出来的标签就没有 `axml` 标记，下一次保存会把可读 XML 直接覆盖
+                    // 回二进制文件（文件损坏）。这里与 openFile 同一条链路：先解码再开签。
+                    val isAxml = if (f.isFile) {
+                        withContext(Dispatchers.IO) { AxmlDecoder.isAxml(f) }
+                    } else false
+                    if (isAxml) {
+                        val decoded = withContext(Dispatchers.IO) { AxmlDecoder.decode(f) }
+                        if (decoded == null) return@forEach
+                        // 冷启动时 Activity 的自动恢复可能已异步开出同一文件 —— 并入，
+                        // 不再 addTab（否则同一文件两份缓冲）。
+                        _tabs.value.firstOrNull { it.file?.absolutePath == f.absolutePath }?.let { ex ->
+                            if (draft != null && draft != ex.content && ex.window == null) {
+                                _tabs.update { tabs -> tabs.map { t ->
+                                    if (t.id == ex.id) t.copy(
+                                        content = draft,
+                                        edited = true,
+                                        axml = true,
+                                        contentRev = t.contentRev + 1
+                                    ) else t
+                                } }
+                            } else if (!ex.axml || (!ex.edited && ex.content != decoded)) {
+                                // l.txt 第 2 条：恢复出来的旧标签若没带 axml 标记（旧会话），
+                                // 光补标记不够 —— 内容仍是当初按文本读出的乱码。这里把
+                                // 解码文本与 savedContent 一并换上，并 bump contentRev，
+                                // 编辑器才会真正重设文本；有未保存改动的标签保留改动。
+                                _tabs.update { tabs -> tabs.map { t ->
+                                    if (t.id == ex.id) t.copy(
+                                        axml = true,
+                                        savedContent = decoded,
+                                        content = if (t.edited) t.content else decoded,
+                                        contentRev = t.contentRev + 1
+                                    ) else t
+                                } }
+                            }
+                            if (e.active) activeId = ex.id
+                            return@forEach
+                        }
+                        val content = draft ?: decoded
+                        val axmlTab = EditorTab(
+                            id = newId(),
+                            name = f.name,
+                            file = f,
+                            savedContent = decoded,
+                            content = content,
+                            charset = "UTF-8",
+                            effectiveCharset = "UTF-8",
+                            edited = draft != null,
+                            axml = true
+                        )
+                        addTab(axmlTab)
+                        if (e.active) activeId = axmlTab.id
+                        return@forEach
+                    }
                     var detected = "UTF-8"
                     val disk = if (f.isFile) {
                         withContext(Dispatchers.IO) {
@@ -1944,7 +2649,6 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             }.getOrNull()
                         }
                     } else null
-                    val draft = l.draft
                     // 文件没了但草稿还在 → 仍按内存档恢复（保存时重建该文件）。
                     if (disk == null && draft == null) return@forEach
                     // 批次56 复查修「冷启动双标签」：Activity 的 restoreLastOpenedIfAny 在本
@@ -1990,10 +2694,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
             // 批次57②：向导草稿模式下「原焦点」是被隐藏的用户签 —— 不能抢回去（内容区
             // 会空态、草稿签亮在栏里没人看），落到首枚**可见**草稿签上。
             val wiz = _wizardDraftPrefix.value
-            val target = activeId?.takeIf { id ->
-                wiz == null || _tabs.value.firstOrNull { it.id == id }
+            // 可见性过滤（向导草稿模式下只认草稿签）—— 同一条规则套在两个候选上
+            fun visibleId(id: String?): String? = id?.takeIf { i ->
+                wiz == null || _tabs.value.firstOrNull { it.id == i }
                     ?.file?.absolutePath?.startsWith(wiz) == true
-            } ?: _tabs.value.firstOrNull {
+            }
+            val target = pinnedTabId() ?: visibleId(preActiveId) ?: visibleId(activeId) ?: _tabs.value.firstOrNull {
                 wiz == null || it.file?.absolutePath?.startsWith(wiz) == true
             }?.id
             if (target != null) activateTab(target)
@@ -2327,6 +3033,24 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * 归档写回待决（文件管理「编辑归档内文本」）：非空 = 某个标签刚把归档内的条目
+     * **成功保存到临时副本**，正等用户决定要不要顺带写回归档。
+     *
+     * 关键：**保存本身已经成功了**（副本是真的、改动没丢），这不是「失败待补救」，
+     * 而是「要不要再走一步」。所以不能让 `saveTab` 返回失败 —— 那会让调用方
+     * 以为没存上、去走另存为那套。独立状态 + 一个对话框才是对的形态。
+     */
+    data class ArchiveWriteBack(
+        val tabId: String,
+        val archivePath: String,
+        val entryPath: String,
+        val tabName: String
+    )
+
+    private val _archiveWriteBack = MutableStateFlow<ArchiveWriteBack?>(null)
+    val archiveWriteBack: StateFlow<ArchiveWriteBack?> = _archiveWriteBack.asStateFlow()
+
     fun saveTab(tab: EditorTab): Boolean {
         // 批次55：Ctrl+S / 退出保存等入口绕过 UI 只读置灰直达这里 —— 只读锁必须在入口拦：
         // 索引重建失败后 windowState 还是废偏移，再存一次就会把文件切碎。
@@ -2339,21 +3063,45 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         val fresh = _tabs.value.firstOrNull { it.id == tab.id } ?: tab
         if (fresh.windowed) return saveWindowed(fresh)
         val content = fresh.content
+        // k.txt 第 10 条：AXML 必须先重新编码成二进制再落盘。编码失败就**不要碰**
+        // 原文件（writeBytes 的临时文件 + 原子改名也保证写一半不会截断原文件）。
+        val axmlBytes = if (fresh.axml) AxmlDecoder.encodeToBytes(content) else null
+        if (fresh.axml && axmlBytes == null) {
+            emit("二进制 XML 编码失败，原文件未修改")
+            return false
+        }
         when {
             tab.file != null -> {
                 // 6.2.0 批次21：写入失败（含无存储权限）时不再直接报错，改为引导「另存为」。
                 // 6.2.0：按 tab.writeCharset 写回 —— 自动档保持原编码，不让保存悄悄改文件编码。
-                if (readOnly.value || !FileAccess.writeText(tab.file, content, tab.writeCharset)) {
+                val written = if (axmlBytes != null) {
+                    FileAccess.writeBytes(
+                        tab.file, axmlBytes,
+                        backup = com.UIN.Tool.ui.screen.files.FilePrefs.archiveBackup()
+                    )
+                } else {
+                    FileAccess.writeText(
+                        tab.file, content, tab.writeCharset,
+                        backup = com.UIN.Tool.ui.screen.files.FilePrefs.archiveBackup()
+                    )
+                }
+                if (readOnly.value || !written) {
                     requestSaveAs(tab)
                     emit("无法写入原文件，请选择另存目录")
                     return false
                 }
             }
             tab.uri != null -> {
-                if (!FileAccess.writeUri(
+                val written = if (axmlBytes != null) {
+                    FileAccess.writeUriBytes(
+                        getApplication(), Uri.parse(tab.uri), axmlBytes
+                    )
+                } else {
+                    FileAccess.writeUri(
                         getApplication(), Uri.parse(tab.uri), content, tab.writeCharset
                     )
-                ) {
+                }
+                if (!written) {
                     requestSaveAs(tab)
                     emit("无法写入原位置，请选择另存目录")
                     return false
@@ -2367,8 +3115,93 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         _tabs.value = _tabs.value.map { t ->
             if (t.id == tab.id) t.copy(savedContent = content, edited = false) else t
         }
+        // m.txt 第 5 条：刚刚由本应用写入 —— 立刻把指纹对齐，别把自己的保存当成外部修改。
+        _tabs.value.firstOrNull { it.id == tab.id }?.let { syncFileStamp(it) }
         emit("已保存 ${tab.name}")
+        // 归档内条目：副本已落盘，额外问一次要不要写回归档。
+        // 用 fresh 而不是入参 tab —— 入参可能是刚进 saveTab 时的旧快照，origin 两字段
+        // 虽不会变，但统一取最新副本能避免以后有人改了 copy 链路后这里悄悄失效。
+        if (fresh.fromArchive) {
+            _archiveWriteBack.value = ArchiveWriteBack(
+                tabId = fresh.id,
+                archivePath = fresh.originArchive ?: return true,
+                entryPath = fresh.originEntry ?: return true,
+                tabName = fresh.name
+            )
+        }
         return true
+    }
+
+    /**
+     * 用户选「写回归档」。
+     *
+     * 数据源是**磁盘上的临时副本**而不是内存里的 content —— 这样整档窗口模式
+     * （内容根本不在内存）也能一视同仁地写回，不用再分一条流式分支。
+     *
+     * 失败（归档被删 / 条目被别人删掉 / 归档损坏）**不静默**：走已有的「另存为」
+     * 引导，让用户至少能把改动落到某个真实位置 —— 改动此刻还在副本里，不会丢。
+     */
+    fun confirmArchiveWriteBack() {
+        val p = _archiveWriteBack.value ?: return
+        _archiveWriteBack.value = null
+        val tab = _tabs.value.firstOrNull { it.id == p.tabId } ?: return
+        val src = tab.file
+        val archive = java.io.File(p.archivePath)
+        val app = getApplication<Application>()
+        if (src == null || !src.isFile) {
+            emit("临时副本已不在，无法写回归档")
+            requestSaveAs(tab)
+            return
+        }
+        viewModelScope.launch {
+            // e15 **P1-6**「写回归档跳过未改动内容」：先确认真有改动才动包。
+            // 没变就一动不动 —— replaceEntry 是**整包复制 + 原子换回**，
+            // 为一个没变的字节搬几百 MB 纯属白费，还多一次断电窗口。
+            val unchanged = withContext(Dispatchers.IO) {
+                try {
+                    ZipWrite.entryEquals(archive, p.entryPath, src)
+                } catch (_: Exception) {
+                    // 比不了就当作有改动、照常写回：这层是优化，不该拦住一次能成功的写回
+                    false
+                }
+            }
+            val ok = !unchanged && withContext(Dispatchers.IO) {
+                try {
+                    // 覆盖的是**内容**，时间戳给当前时刻（条目本来的时间已被用户改动取代）。
+                    src.inputStream().use { ins ->
+                        ZipWrite.replaceEntry(archive, p.entryPath, ins, System.currentTimeMillis())
+                    }
+                    true
+                } catch (e: Exception) {
+                    AppLog.w(TAG, "archive write-back failed: ${e.message}")
+                    false
+                }
+            }
+            if (unchanged) {
+                val msg = app.getString(
+                    com.UIN.Tool.R.string.files_archive_writeback_unchanged
+                )
+                emit(msg)
+                AppToast.info(app, msg)
+            } else if (ok) {
+                emit("已写回归档 ${p.entryPath}")
+                AppToast.success(
+                    app, app.getString(com.UIN.Tool.R.string.files_archive_written_back, p.tabName)
+                )
+            } else {
+                // 改动还在副本里，没丢 —— 但归档侧确实没写成，必须让用户知道并给退路。
+                emit("写回归档失败，改动仍在临时副本中")
+                AppToast.warning(
+                    app, app.getString(com.UIN.Tool.R.string.files_archive_writeback_failed)
+                )
+                requestSaveAs(tab)
+            }
+        }
+    }
+
+    /** 用户选「不写回」/ 关掉对话框：什么都不做，改动保留在临时副本里。 */
+    fun dismissArchiveWriteBack() {
+        _archiveWriteBack.value = null
     }
 
     /**
@@ -2444,6 +3277,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                             if (t.id == tabId) t.copy(savedContent = snapContent, edited = false) else t
                         }
                     }
+                    _tabs.value.firstOrNull { it.id == tabId }?.let { syncFileStamp(it) }
                     closeIfPendingAfterSave(tabId, success = true)
                     AppToast.info(getApplication(), "已保存 ${tab.name}")
                     return@Thread
@@ -2453,6 +3287,8 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                 // 批次51：onProgress 0..100 → 底部状态栏「保存中 N%」（写盘段映射到 0..79）。
                 // 批次53：返回值改为簿记 WriteResult（null = 失败）。
                 val wr = doc.writeWithOverlays(
+                    // f18：写回前留 .bak（与归档写回同一个开关，见设置页）
+                    backup = com.UIN.Tool.ui.screen.files.FilePrefs.archiveBackup(),
                     overlayFor = { p ->
                         overlays[p]
                             ?: if (p in spoolPages && spoolDir != null) {
@@ -2519,6 +3355,7 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         }
                         savingWindows.remove(tabId)
                         _windowSaveProgress.update { it - tabId }
+                        _tabs.value.firstOrNull { it.id == tabId }?.let { syncFileStamp(it) }
                         closeIfPendingAfterSave(tabId, success = true) // 文件已完整写入，兑现关闭
                     }
                     // 复查三修：本分支不动 _tabs，同样主动补拍（改动已落盘，拍下「干净」态）。
@@ -2600,10 +3437,13 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
                         // 复查五修：保存锁 + 进度条撤于 WS 换装之后（本块原子，锁窗闭合）。
                         savingWindows.remove(tabId)
                         _windowSaveProgress.update { it - tabId }
+                        _tabs.value.firstOrNull { it.id == tabId }?.let { syncFileStamp(it) }
                         // 批次53：全文结果还开着则把页供给器指向重建后的文档 —— 保存后 overlay/
                         // spool 已清空，新文件就是唯一真源，按需预览读到的是保存后的文本。
                         if (wholeSearchTabId == tabId && _wholeFull.value != null) {
                             wholePageProvider = { p -> rebuilt.readPage(p) }
+                            // j.txt 第 11 条：供给器换源后旧页缓存作废（缓存里是保存前的文本）。
+                            synchronized(wholePreviewPageCache) { wholePreviewPageCache.clear() }
                             // 复查：重建索引后总页数可能变化 —— 供给与页数必须成对更新，否则
                             //「加载更多」按旧页数越界扫描，异常后才进 error（走重试也要再撞）。
                             wholePageCount = rebuilt.totalPages
@@ -2661,9 +3501,17 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 选择期间的编辑既写不进新文件、脏标记还会被抹成「已保存」（静默丢改动）。
         refreshStaleContent(requested.id)
         val tab = _tabs.value.firstOrNull { it.id == requested.id } ?: requested
-        val newUri = FileAccess.saveAsToTree(
-            getApplication(), treeUri, tab.name, tab.content
-        )
+        val axmlBytes = if (tab.axml) AxmlDecoder.encodeToBytes(tab.content) else null
+        if (tab.axml && axmlBytes == null) {
+            closeIfPendingAfterSave(tab.id, success = false)
+            emit("二进制 XML 编码失败，未另存")
+            return
+        }
+        val newUri = if (axmlBytes != null) {
+            FileAccess.saveAsToTree(getApplication(), treeUri, tab.name, axmlBytes)
+        } else {
+            FileAccess.saveAsToTree(getApplication(), treeUri, tab.name, tab.content)
+        }
         if (newUri != null) {
             _tabs.update { tabs ->
                 tabs.map { t ->
@@ -2702,7 +3550,18 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         // 批次55：大文档脏内容先回灌再取当前文本（否则写出的是编辑前快照）。
         refreshStaleContent(requested.id)
         val current = _tabs.value.firstOrNull { it.id == requested.id } ?: requested
-        if (!FileAccess.writeUri(getApplication(), uri, current.content, current.writeCharset)) {
+        val axmlBytes = if (current.axml) AxmlDecoder.encodeToBytes(current.content) else null
+        if (current.axml && axmlBytes == null) {
+            closeIfPendingAfterSave(current.id, success = false)
+            emit("二进制 XML 编码失败，未另存")
+            return
+        }
+        val written = if (axmlBytes != null) {
+            FileAccess.writeUriBytes(getApplication(), uri, axmlBytes)
+        } else {
+            FileAccess.writeUri(getApplication(), uri, current.content, current.writeCharset)
+        }
+        if (!written) {
             closeIfPendingAfterSave(current.id, success = false)
             emit("另存失败")
             return
@@ -2739,6 +3598,12 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
     private fun activateTab(id: String?) {
         _activeTabId.value.let { old -> if (old != null && old != id) refreshStaleContent(old) }
         _activeTabId.value = id
+        // j.txt 第 1 条（k.txt 第 10 条更新）：只读状态**跟着标签走**。重建失败等
+        // 只读签切走后必须解除上一个签留下的只读，否则会把整个编辑器误锁；
+        // AXML 解码签不再计入只读（保存时重新编码为二进制）。
+        // 分页保存失败被标成死页的签同样保持只读（保存路径另有 layoutDeadTabs 硬拦截）。
+        val tab = id?.let { tid -> _tabs.value.firstOrNull { it.id == tid } }
+        _readOnly.value = tab != null && (tab.readOnly || tab.id in layoutDeadTabs)
     }
 
     fun closeTab(id: String, force: Boolean = false): Boolean {
@@ -2749,9 +3614,22 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         pendingCloseAfterSave.remove(id)
         contentStaleTabs.remove(id)
         layoutDeadTabs.remove(id) // 复查五修：死页标记随签消亡，防集合慢性膨胀
+        // m.txt 第 5 条：外部修改簿记随关签清理，防集合慢性膨胀与「关签后仍弹提示」。
+        fileStamps.remove(id)
+        reportedExternalChanges.remove(id)
+        if (_externalChange.value?.tabId == id) {
+            _externalChange.value = pendingExternalChanges.removeFirstOrNull()
+        }
         val idx = _tabs.value.indexOfFirst { it.id == id }
         val remaining = _tabs.value.filterNot { it.id == id }
         _tabs.value = remaining
+        // q.txt 第 6 条：用户显式点开、正被钉住的那份文件被关掉 → 钉子就地失效。
+        if ((explicitFocusPath != null && explicitFocusPath == tab.file?.absolutePath) ||
+            (explicitFocusUri != null && explicitFocusUri == tab.uri)
+        ) {
+            explicitFocusPath = null
+            explicitFocusUri = null
+        }
         // 批次46：窗口簿记随标签清理（后台保存线程持有自己的快照，不受影响）。
         // 批次47：磁盘 spool 一并删除；保存进行中则留给保存线程完成后清（它正读着这些文件）。
         windowState.remove(id)?.let { st ->
@@ -2765,6 +3643,27 @@ class EditorViewModel(app: Application) : AndroidViewModel(app) {
         if (_activeTabId.value == id) {
             activateTab(remaining.getOrNull(idx)?.id ?: remaining.lastOrNull()?.id)
         }
+        // p.txt 第 10 条（用户）：**关闭即清除记录**，下次不要打开它 ——
+        // 即便编辑器里一个文件都不剩，也不能把刚关掉的文件当成「上次打开」复活。
+        // 两个持久层都要清：session.json（标签集合）与 lastOpened（冷启动兜底）。
+        val closedPath = tab.file?.absolutePath
+        val (lastFile, lastUri) = EditorSettingsStore.lastOpened(getApplication())
+        val next = _activeTabId.value?.let { tid -> remaining.firstOrNull { it.id == tid } }
+        if (closedPath != null && (lastFile == closedPath || lastUri == tab.uri)) {
+            EditorSettingsStore.rememberLastOpened(
+                getApplication(),
+                next?.file?.absolutePath,
+                next?.uri
+            )
+        }
+        if (remaining.isEmpty()) {
+            EditorSettingsStore.rememberLastOpened(getApplication(), null, null)
+        }
+        // 立即落一次会话快照 —— 否则进程在下一轮防抖前被杀，关掉的签会从旧快照里回来。
+        // p.txt 第 10 条：先**立刻**写一版（不等 1.2s 防抖），再排一次防抖兜底 ——
+        // 「关掉就再也别打开」不能被一次进程回收破功。
+        snapshotSession()
+        scheduleSessionSnapshot()
         return true
     }
 

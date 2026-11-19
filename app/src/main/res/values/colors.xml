@@ -28,6 +28,8 @@
     <color name="background_card">#FFFFFFFF</color>
     <color name="background_dark">#FFE8E8E8</color>
     <color name="splash_background">#FFFFFFFF</color>
+    <!-- starting window 里那枚静态图标的颜色：取 UIConfig 默认 primary（深青） -->
+    <color name="splash_icon">#FF1A3A4A</color>
     
     <!-- ==================== 表面色 ==================== -->
     <color name="surface">#FFFFFFFF</color>

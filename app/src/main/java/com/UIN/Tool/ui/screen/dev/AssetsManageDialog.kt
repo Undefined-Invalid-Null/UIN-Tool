@@ -36,12 +36,16 @@ import com.UIN.Tool.R
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.screen.dev.editor.EditorAssetsStore
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Str
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 
 /**
  * 6.2.0 批次66追加：**语法 / 主题文件管理**（用户要求「提供语法/主题文件管理入口，
@@ -60,8 +64,17 @@ fun AssetsManageDialog(onDismiss: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
     var refresh by remember { mutableIntStateOf(0) }
 
-    val themes = remember(refresh) { EditorAssetsStore.listThemes(context) }
-    val grammars = remember(refresh) { EditorAssetsStore.listGrammars(context) }
+    // 读 assets（多层 list + 每个用户主题 readText/JSON 解析）是 IO，且 refresh 每次
+    // 导入/删除都会重算 —— 原来写在 remember 里，组合期在主线程跑（d20 横向排查）。
+    var themes by remember { mutableStateOf(emptyList<EditorAssetsStore.ThemeEntry>()) }
+    var grammars by remember { mutableStateOf(emptyList<EditorAssetsStore.GrammarEntry>()) }
+    LaunchedEffect(refresh) {
+        val (t, g) = withContext(Dispatchers.IO) {
+            EditorAssetsStore.listThemes(context) to EditorAssetsStore.listGrammars(context)
+        }
+        themes = t
+        grammars = g
+    }
 
     var pendingDelete by remember { mutableStateOf<(() -> Unit)?>(null) }
     var pendingDeleteName by remember { mutableStateOf("") }
@@ -69,7 +82,7 @@ fun AssetsManageDialog(onDismiss: () -> Unit) {
 
     // SAF 多选：mime 用 */*，扩展名与内容校验在存储层做（.tmLanguage 等常无标准 mime）
     val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments()
+        InAppFilePicker.OpenDocuments()
     ) { uris ->
         if (!uris.isNullOrEmpty()) {
             scope.launch {
@@ -98,7 +111,7 @@ fun AssetsManageDialog(onDismiss: () -> Unit) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 420.dp)
+                    .heightIn(max = 320.dp)
             ) {
                 if (tab == 0) {
                     items(themes.size) { i ->
@@ -266,13 +279,12 @@ private fun AssetRow(
                 modifier = Modifier.padding(start = AppDimens.spacingSmall)
             )
         } else {
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = Str.get(R.string.delete),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
+            UnifiedIconButton(
+                icon = Icons.Default.Delete,
+                onClick = onDelete,
+                contentDescription = Str.get(R.string.delete),
+                tint = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

@@ -1,15 +1,15 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-6.2.0-blue)
-![Build](https://img.shields.io/badge/build-26-green)
+![Version](https://img.shields.io/badge/version-7.0.0-blue)
+![Build](https://img.shields.io/badge/build-27-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-purple)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.08.00-blue)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-purple)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.09.00-blue)
 
 ## App Introduction
 
-UIN Tool is an Android plugin framework application rebuilt with Kotlin + Jetpack Compose, allowing users to dynamically load and run third-party plugins. Whether it's native Java plugins or Web technology stack (HTML/CSS/JS) plugins, they can run seamlessly in UIN Tool. It provides a complete plugin ecosystem, including plugin development, management, runtime, permission control, and **PRoot container backend**.
+UIN Tool is an Android plugin framework application rebuilt with Kotlin + Jetpack Compose, allowing users to dynamically load and run third-party plugins. Whether it is native Java plugins or Web technology stack (HTML/CSS/JS) plugins, they can run seamlessly in UIN Tool. It provides a complete plugin ecosystem, including plugin development, management, runtime, permission control, **PRoot container backend**, and a built-in **dual-pane file manager**.
 
 ### Core Philosophy
 
@@ -18,10 +18,11 @@ UIN Tool is an Android plugin framework application rebuilt with Kotlin + Jetpac
 - **Efficient**: Native performance, Web plugins support hot updates without recompilation
 - **Easy to use**: Visual development wizard, create plugins without complex configuration
 - **Flexible**: Supports grid/list view switching, supports category management
-- **Modern**: Built on Jetpack Compose, Material 3 design language, supports neumorphism style
-- **Internationalized**: Supports in-app language switching without changing system language
+- **Modern**: Built on Jetpack Compose, Material 3 design language
 - **Powerful**: Built-in PRoot Linux environment, supports Python/Node.js/PHP backends
 - **Persistent**: Plugin data independently stored, user data automatically preserved on updates
+- **Full file management**: dual-pane browsing, in-place archive extract and pack, image viewer, APK info, bookmarks and history, recursive search, deep links, side-by-side compare, type-coloured file icons
+- **Unified Open With**: one default opener per suffix; four candidate categories — built-in / plugins / suggested / all — with the plugins category using the top search box
 
 ---
 
@@ -33,65 +34,89 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 | Feature | Description |
 |---------|-------------|
-| **Shell Support** | bash, zsh, fish, and other mainstream shells |
-| **Package Manager** | APT (Debian/Ubuntu software sources) |
+| **Linux Distributions** | Debian (default), Ubuntu, Arch Linux, Alpine |
+| **Package Managers** | APT, pacman, apk |
 | **Development Tools** | gcc, clang, make, git, etc. |
 | **Script Languages** | Python, Node.js, Ruby, Perl, etc. |
 | **Text Editors** | vim, nano, emacs, etc. |
 | **Network Tools** | curl, wget, openssh, etc. |
 | **Multi-Session** | Multiple terminal sessions running simultaneously |
-| **Multi-Window** | Android 7.0+ multi-window support |
-| **Custom Shortcuts** | Configurable hardware/software keyboard shortcuts |
-| **Terminal Color Schemes** | Customizable themes and color schemes |
+
+### Architecture
+
+UIN Tool supports two backend modes:
+
+1. **Built-in PRoot mode (default)**: uses the proot binary + rootfs directly, no external app required
+2. **Real Termux mode**: compatible with an external Termux app for a more complete environment
 
 ### Terminal Use Cases
 
-- **Development & Debugging**: Write and debug code directly on Android devices
-- **Server Management**: Manage remote servers via SSH
-- **Learning Linux**: Experience a complete Linux environment without root
-- **Automation Scripts**: Write Shell/Python scripts for automated tasks
+- **Development and debugging**: write and debug code directly on the Android device
+- **Server management**: manage remote servers over SSH
+- **Learning Linux**: experience a complete Linux environment without root
+- **Automation scripts**: write Shell/Python scripts for automated tasks
 
 ### Termux Acknowledgments
 
-> The terminal feature uses PRoot for user-space Linux environments. The `terminal-emulator` and `terminal-view` modules are adapted from the [Termux](https://github.com/termux/termux-app) project. Thanks to the Termux team for their open-source contribution!
+> The terminal uses PRoot to provide a user-space Linux environment. The `terminal-emulator` and `terminal-view` modules are adapted from the [Termux](https://github.com/termux/termux-app) project. Thanks to the Termux team for their open-source contribution.
+
+---
+
+## File Manager (Dual Pane)
+
+The Files entry in the bottom bar is a built-in file manager: two panes browse independently, with copy and move flowing between them.
+
+| Capability | Description |
+|------------|-------------|
+| **Dual pane** | Each pane keeps its own browsing stack; the pane ratio can be dragged, locked, or reset on entry in settings |
+| **Selection and actions** | Long-press to enter selection mode; copy / move / rename / compress / extract / share / hide / add bookmark / properties / delete |
+| **Archives** | Browse zip / 7z / tar and gzip, bzip2, xz, zstd outer layers in place; writable archives support write-back and read-only ones are marked; zip AES-256 passwords and split volumes supported |
+| **Search** | Recursive search, regex, content matching, size filters; results expand to a full page with "Search in results" |
+| **Open With** | Four categories — built-in / plugins / suggested / all; built-in capabilities are a collapsible grid; one default opener per suffix; the plugins category uses the top search box and can hand a local file straight to a plugin |
+| **Viewers** | Image viewer (zoom, paging, GIF), APK info page (permissions, signature, install, share) |
+| **Compare** | Select two files or two folders to see differences side by side |
+| **Navigation** | Bookmarks and history, frequent-locations sidebar, `uin://files` deep links |
+
+File icons are coloured by type (images, video, audio, documents, code, archives and more each have their own colour) instead of a wall of grey icons.
 
 ---
 
 ## Version Information
 
-### Current Version: v6.2.0 (Build 26)
+### Current Version: v7.0.0 (Build 28)
 
 | Item | Info |
 |------|------|
-| Version Number | 6.2.0 |
-| Version Code | 26 |
-| Update Date | October 31, 2026 |
-| Minimum Android Version | 6.0 (API 23) |
-| Target Android Version | 9 (API 28) |
-| Compile SDK Version | 36 (Android 16) |
+| Version Name | 7.0.0 |
+| Version Code | 27 |
+| Update Date | November 18, 2026 |
+| Minimum Android | 6.0 (API 23) |
+| Target Android | 9 (API 28) |
+| Compile SDK | 37 |
 | Architecture | arm64-v8a |
 
 ### Version History
 
 | Version | Build | Date | Highlights |
 |---------|-------|------|------------|
-| v6.2.0 | 26 | 2026-10-31 | Code editor specialization (file tree / multi-tab / direct disk I/O / ACTION_VIEW entry, Unified UI polish, four rounds of syntax-highlight root-cause fixes, sora 0.24.6 + Kotlin 2.3.10) |
-| v6.1.0 | 25 | 2026-10-07 | Full defect-fix pass (startup/permissions/main-thread jank/dark theme/plugin host security/backup rollback/error visibility/build cleanup) |
-| v6.0.0 | 24 | 2026-09-26 | Remove Termux dependency, PRoot container system, container management UI, rootfs export compression level |
-| v5.7.0 | 23 | 2026-08-31 | Multi-source repo aggregation, plugin icon caching, incremental CI build, UI refinements |
-| v5.6.0 | 22 | 2026-08-28 | Neumorphism style, multilingual switching, translucent effect control |
-| v5.5.0 | 21 | 2026-08-22 | Crash fixes, clipboard pseudo-permissions, development wizard completion, real Termux shared supervisor |
+| v7.0.0 | 27 | 2026-11-18 | Dual-pane file manager (in-place archive browse and write, image viewer, APK info, compress/extract, bookmarks/history/search, deep links, side-by-side compare), Open With merged into a single entry; full-text search reworked with nine new syntaxes; plugin permissions moved to a two-level page; per-style configuration isolation; toolchain raised to AGP 9.1.1 / Kotlin 2.4.21 / Gradle 9.3.1 / compileSdk 37 / Compose BOM 2026.09.00 / Coil 3.6.3 |
+| v6.2.0 | 26 | 2026-10-31 | Code editor focus (file tree / tabs / direct disk access / ACTION_VIEW external entry, Unified UI, four rounds of syntax-highlighting root-cause fixes, sora 0.24.6 + Kotlin 2.3.10) |
+| v6.1.0 | 25 | 2026-10-07 | Full defect sweep (startup / permissions / main-thread jank / dark theme / plugin host security / backup rollback / error visibility / build deduplication) |
+| v6.0.0 | 24 | 2026-09-26 | Removed the Termux dependency, PRoot container system, container management UI, rootfs export compression level |
+| v5.7.0 | 23 | 2026-08-31 | Multi-source repository aggregation, plugin icon cache, incremental CI builds, UI polish |
+| v5.6.0 | 22 | 2026-08-28 | Neumorphism style, language switching, translucency controls |
+| v5.5.0 | 21 | 2026-08-22 | Crash fixes, clipboard pseudo-permissions, wizard completion, real-Termux shared supervisor |
 | v5.4.0 | 20 | 2026-08-10 | Plugin openWith relay, plugin multi-instance |
-| v5.3.0 | 19 | 2026-07-31 | Unified UI components, color picker, category management, Shizuku/Dhizuku |
-| v5.2.0 | 18 | 2026-07-24 | Packaging refinement, update logic, Alpine speedup |
-| v5.1.0 | 17 | 2026-07-17 | Backend runtime refactoring, CUI terminal optimization |
-| v5.0.0 | 16 | 2026-07-10 | Full i18n, dynamic theme engine, bottom nav refactoring |
-| v4.5.0 | 15 | 2026-07-03 | Proot container runtime, custom backend, pre-start command |
+| v5.3.0 | 19 | 2026-07-31 | Unified UI components, colour picker, category management, Shizuku/Dhizuku |
+| v5.2.0 | 18 | 2026-07-24 | Packaging fixes, update logic, Alpine acceleration |
+| v5.1.0 | 17 | 2026-07-17 | Backend runtime refactor, CUI terminal improvements |
+| v5.0.0 | 16 | 2026-07-10 | Full internationalization, dynamic theme engine, bottom navigation refactor |
+| v4.5.0 | 15 | 2026-07-03 | Proot container runtime, custom backends, pre-start commands |
 | v4.4.0 | 13 | 2026-06-24 | Plugin data persistence, permission system, code editor upgrade |
-| v4.2.0 | 11 | 2026-06-17 | Termux backend integration, plugin notice |
+| v4.2.0 | 11 | 2026-06-17 | Termux backend integration, plugin notices |
 | v4.0.0 | 9 | 2026-06-10 | Kotlin migration, Compose UI, MVVM architecture |
 
-> For detailed changelogs, see [CHANGELOG](changelog.md).
+> For the full changelog see [CHANGELOG](CHANGELOG.md).
 
 ---
 
@@ -99,121 +124,128 @@ UIN Tool **includes a complete Linux environment**, powered by [PRoot](https://g
 
 ### Implemented Features
 
-| Module | Feature | Status | Description |
-|--------|---------|--------|-------------|
-| Launch Experience | SplashActivity | Implemented | App splash screen, permission check |
-| Launch Experience | Onboarding System | Implemented | First launch onboarding |
-| Launch Experience | App Icon Shortcuts | Implemented | Long-press icon shortcut menu |
-| Launch Experience | Permission Request Dialog | Implemented | Storage permission description |
-| App Update | Auto Update Check | Implemented | Auto-check on startup |
-| App Update | Force Update Mechanism | Implemented | Supports force update |
-| App Update | Version Ignore | Implemented | Can ignore versions |
-| App Update | In-App Download | Implemented | Shows download progress |
-| GitHub Acceleration | Mirror Site Management | Implemented | Standalone management page |
-| GitHub Acceleration | Built-in Mirror Sites | Implemented | 4 default mirrors |
-| GitHub Acceleration | Custom Mirrors | Implemented | Manual mirror addition |
-| GitHub Acceleration | Import/Export | Implemented | TXT format |
-| GitHub Acceleration | CDN Acceleration | Implemented | Toggleable |
-| Terminal | Terminal Emulator | Implemented | Based on PRoot |
-| Terminal | Linux Environment | Implemented | APT package management |
-| Terminal | Multi-Session Support | Implemented | Multiple sessions simultaneously |
-| Terminal | Multi-Window Support | Implemented | Android 7.0+ |
-| Terminal | Terminal Settings | Implemented | Font/color/shortcuts |
-| Backend Integration | Python Backend | Implemented | Auto-starts Python |
-| Backend Integration | Node.js Backend | Implemented | Auto-starts Node.js |
-| Backend Integration | PHP Backend | Implemented | Auto-starts PHP |
-| Backend Integration | Binary Backend | Implemented | Select executable files |
-| Backend Integration | Health Check | Implemented | /health endpoint |
-| Backend Integration | Process Management | Implemented | Auto-start/stop |
-| Plugin Engine | Dynamic DEX Loading | Implemented | DexClassLoader |
-| Plugin Engine | Resource Isolation | Implemented | Independent Context |
-| Plugin Engine | Lifecycle Management | Implemented | Complete lifecycle |
-| Plugin Engine | WebView Support | Implemented | HTML/CSS/JS |
-| Plugin Engine | JS Bridge API | Implemented | 170+ APIs |
-| Plugin Engine | Network Request API | Implemented | HTTP GET/POST/PUT/DELETE |
-| Plugin Engine | File System API | Implemented | Read/write/delete/copy/move |
-| Plugin Engine | Storage API | Implemented | KV + JSON + batch operations |
-| Plugin Engine | Data Persistence | Implemented | Independent data/ directory |
-| Plugin Management | Import Plugins | Implemented | TPK file import |
-| Plugin Management | Export Plugins | Implemented | ZIP package export |
-| Plugin Management | Batch Import | Implemented | Multiple TPK files |
-| Plugin Management | Plugin Set Import | Implemented | ZIP batch import |
-| Plugin Management | Category Management | Implemented | Add/delete/change category (individual/batch) |
-| Plugin Management | Signature Verification | Implemented | SHA-256 verification |
-| Plugin Management | Plugin Notice | Implemented | notice field display |
-| Plugin Repository | GitHub Integration | Implemented | Official repository |
-| Plugin Permissions | Permission Declaration | Implemented | plugin.json declaration |
-| Plugin Permissions | Permission Check | Implemented | Pre-start check |
-| Plugin Permissions | Permission Request | Implemented | Grouped requests |
-| Plugin Permissions | Permission Status | Implemented | Visual status |
-| Plugin Permissions | Permanent Authorization | Implemented | State persistence |
-| Plugin Permissions | Material 3 Popup | Implemented | Unified style |
-| Plugin Permissions | Shizuku/Dhizuku Support | Implemented | Official API (`Shizuku`/`Dhizuku` detection + authorization, results real-time refresh) |
-| Documentation System | Documentation Center | Implemented | Centralized document management |
-| Development Tools | Native Plugin Wizard | Implemented | Kotlin/Java plugins |
-| Development Tools | Web Plugin Wizard | Implemented | Web plugin creation |
-| Development Tools | Code Editor | Implemented | Sora Editor engine |
-| Development Tools | Syntax Highlighting | Implemented | 30+ languages |
-| Development Tools | Editor Themes | Implemented | 28+ themes |
-| Development Tools | Template Export | Implemented | Export template docs |
-| UI Personalization | Color Configuration | Implemented | 38+ colors adjustable |
-| UI Personalization | Color Picker | Implemented | Visual color picker (hue bar + saturation/brightness panel) + RGB/Alpha |
-| UI Personalization | Gradient Background | Implemented | Single/multi-color gradient + direction settings, toggleable, default light blue |
-| UI Personalization | Corner Radius Configuration | Implemented | 7 corner radius options |
-| UI Personalization | Size Configuration | Implemented | Button/spacing/icon |
-| UI Personalization | Font Configuration | Implemented | Font size/boldness |
-| UI Personalization | Import/Export | Implemented | Configuration backup |
-| Desktop Widgets | 3x3 Widget | Implemented | Shows 9 plugins |
-| Desktop Widgets | 1x1 Shortcut | Implemented | Single plugin shortcut |
+| Module | Feature | Status | Notes |
+|--------|---------|--------|-------|
+| Startup | SplashActivity | Done | Splash screen, permission check |
+| Startup | Onboarding | Done | First-launch guide |
+| Startup | App icon shortcuts | Done | Long-press menu, icons follow the theme colour |
+| Startup | Permission dialog | Done | Storage permission explanation |
+| Updates | Automatic update check | Done | Checked on startup |
+| Updates | Force update | Done | Enforced when the third tag segment is 1 |
+| Updates | Version ignore | Done | Ignore normal versions |
+| Updates | In-app download | Done | Foreground service with progress |
+| GitHub acceleration | Mirror management | Done | Dedicated page |
+| GitHub acceleration | Built-in mirrors | Done | 4 defaults |
+| GitHub acceleration | Custom mirrors | Done | Add manually |
+| GitHub acceleration | Import/export | Done | TXT format |
+| GitHub acceleration | CDN acceleration | Done | Toggleable |
+| Terminal | Terminal emulator | Done | Based on PRoot |
+| Terminal | Linux environment | Done | APT / pacman / apk |
+| Terminal | Multi-session | Done | Several sessions at once |
+| Backend | Python backend | Done | Starts Python automatically |
+| Backend | Node.js backend | Done | Starts Node.js automatically |
+| Backend | PHP backend | Done | Starts PHP automatically |
+| Backend | Binary backend | Done | Choose an executable |
+| Backend | Health check | Done | /health endpoint |
+| Backend | Process management | Done | Automatic start/stop |
+| Plugin engine | Dynamic DEX loading | Done | DexClassLoader |
+| Plugin engine | Resource isolation | Done | Independent Context |
+| Plugin engine | Lifecycle management | Done | Full lifecycle |
+| Plugin engine | WebView support | Done | HTML/CSS/JS |
+| Plugin engine | JS Bridge API | Done | 170+ APIs |
+| Plugin engine | Network API | Done | HTTP GET/POST/PUT/DELETE |
+| Plugin engine | File system API | Done | Read/write/delete/copy/move |
+| Plugin engine | Storage API | Done | KV + JSON + batch operations |
+| Plugin engine | Data persistence | Done | Independent data/ directory |
+| Plugin management | Import plugins | Done | TPK import |
+| Plugin management | Export plugins | Done | ZIP export |
+| Plugin management | Batch import | Done | Multiple TPK files |
+| Plugin management | Plugin set import | Done | ZIP batch import |
+| Plugin management | Category management | Done | Add/edit/delete categories (single/batch) |
+| Plugin management | Signature verification | Done | SHA-256 TOFU |
+| Plugin management | Plugin notice | Done | notice field |
+| Repository | GitHub integration | Done | Official and third-party sources |
+| Plugin permissions | Permission declaration | Done | plugin.json |
+| Plugin permissions | Permission check | Done | Checked before launch |
+| Plugin permissions | Permission request | Done | Grouped requests |
+| Plugin permissions | Permission state | Done | Visual state |
+| Plugin permissions | Persisted grants | Done | State persistence |
+| Plugin permissions | Material 3 dialog | Done | Unified style |
+| Plugin permissions | Shizuku/Dhizuku | Done | Official APIs |
+| Documentation | Documentation center | Done | Central document management |
+| Dev tools | Native plugin wizard | Done | Kotlin/Java plugins |
+| Dev tools | Web plugin wizard | Done | Web plugin creation |
+| Dev tools | CUI terminal wizard | Done | CUI plugin creation |
+| Dev tools | Code editor | Done | Sora Editor engine |
+| Dev tools | Syntax highlighting | Done | 30+ languages |
+| Dev tools | Editor themes | Done | 28+ themes |
+| Dev tools | Template export | Done | Export template docs |
+| File manager | Dual-pane browsing | Done | Independent stacks, adjustable ratio |
+| File manager | In-place archive browsing | Done | zip / 7z / tar and outer layers |
+| File manager | Compress and extract | Done | zip AES-256, split volumes |
+| File manager | Recursive search | Done | Regex, content match, size filters |
+| File manager | Image viewer | Done | Zoom, paging, GIF |
+| File manager | APK info | Done | Permissions, signature, install, share |
+| File manager | Side-by-side compare | Done | Two files or two folders |
+| File manager | Open With | Done | Built-in / plugins / suggested / all, per-suffix default |
+| File manager | Bookmarks and history | Done | Sheet and sidebar |
+| File manager | Deep links | Done | `uin://files` |
+| UI personalization | Colour configuration | Done | 38+ adjustable colours |
+| UI personalization | Colour picker | Done | Visual picker + RGB/Alpha |
+| UI personalization | Gradient background | Done | Single/multi-colour gradients + direction |
+| UI personalization | Corner radius | Done | 7 options |
+| UI personalization | Size configuration | Done | Buttons/spacing/icons |
+| UI personalization | Font configuration | Done | Size/weight |
+| UI personalization | Import/export | Done | Configuration backup |
+| Desktop widgets | 3x3 widget | Done | Shows 9 plugins |
+| Desktop widgets | 1x1 shortcut | Done | Single plugin shortcut |
 
 ---
 
 ## Technology Stack Details
 
 | Technology | Version | Purpose |
-|-----------|---------|---------|
-| Kotlin | 2.3.10 | Primary development language |
-| Jetpack Compose | 2025.08.00 | Declarative UI framework (BOM) |
-| Compose Material 3 | 1.3.0 | Material 3 components |
-| Compose Navigation | 2.7.7 | Page navigation |
-| Android SDK | API 35 | Android framework |
-| Kotlin Coroutines | 1.7.3 | Asynchronous programming |
+|------------|---------|---------|
+| Kotlin | 2.4.21 | Main development language |
+| Jetpack Compose | BOM 2026.09.00 | Declarative UI (foundation / ui / animation 1.12.1) |
+| Compose Material 3 | 1.4.0 | Material 3 components |
+| Android SDK | API 37 | Android framework |
 | OkHttp | 4.12.0 | HTTP client |
-| Retrofit | 2.11.0 | REST API |
-| Gson | 2.11.0 | JSON parsing |
-| CommonMark | 0.22.0 | Markdown rendering |
-| Sora Editor | 0.24.6 | Code editor |
-| Sora Editor TextMate | 0.24.6 | Syntax highlighting |
-| MultiDex | Native platform | minSdk 23+ ships Multi-DEX natively; the standalone dependency was removed |
-| NDK | 29.0.14033849 | C/C++ native support |
+| Sora Editor | 0.24.7 | Code editor |
+| Coil | 3.6.3 | Image loading (image viewer, plugin icons) |
+| Apache Commons Compress | 1.28.0 | Main archive engine (zip / 7z / tar and outer compression formats) |
+| zip4j | 2.11.6 | zip encryption, Zip64, split volumes |
+| xz | 1.10 | xz / lzma / 7z-LZMA backend |
+| zstd-jni | 1.5.7-21 | zstd decompression backend |
+| brotli dec | 0.1.2 | brotli decompression backend |
 
 ---
 
 ## Quick Start
 
-### Install App
+### Install the App
 
 1. Download the latest APK from Releases
 2. Enable "Install unknown apps" on the device
-3. Install APK
+3. Install the APK
 
 ### First Launch
 
-1. App shows storage permission description dialog on startup
-2. Click "Go to Authorize" to grant storage permissions
-3. Onboarding page displays on first launch
-4. Click "Start Experiencing" after reading the onboarding content
+1. A storage permission dialog appears on startup
+2. Tap "Grant" to allow storage access
+3. The onboarding guide appears on first launch
+4. Read it and tap "Get Started"
 
-### Use Terminal
+### Use the Terminal
 
-1. Click the "Dev" tab at the bottom
-2. Click "Open Terminal" to launch terminal
-3. The bundled rootfs is unpacked offline on first launch (no network involved)
+1. Tap the "Dev" tab at the bottom
+2. Tap "Open Terminal"
+3. On first use the built-in rootfs is unpacked offline (bundled with the app, no network needed)
 
 Common terminal commands:
 
 ```bash
-# Update package sources (Debian repository)
+# Update package sources
 apt update
 
 # Install Python
@@ -226,43 +258,46 @@ apt install git
 apt install nodejs
 ```
 
+### Use the File Manager
+
+1. Tap the "Files" tab at the bottom
+2. Browse with the two panes; drag the divider to adjust the ratio
+3. Long-press an item for selection mode, or use the long-press menu for copy / move / compress / open with and more
+4. Long-press a file → "Open with" to choose a built-in capability, a system app, or an installed plugin
+
 ### Install Plugins
 
-Method 1: Install from repository
+Option 1: install from the repository
 
-1. Click the "Repo" tab at the bottom
+1. Tap the "Repo" tab at the bottom
 2. Browse available plugins
-3. Click the "Install" button
+3. Tap "Install"
 
-Method 2: Local import
+Option 2: import locally
 
-1. Transfer .tpk file to phone
-2. Click "Manage" > "Plugin Management" at the bottom
-3. Click "Import" and select file
+1. Copy the .tpk file to the phone
+2. Go to "Manage" → "Plugin Management"
+3. Tap "Import" and choose the file
 
-### Create Plugin
+### Create a Plugin
 
-1. Click the "Dev" tab at the bottom
-2. Click "Create Plugin"
-3. Select frontend type (Native UI / Pure WebView / WebView + Backend)
-4. If selecting WebView + Backend, select backend language (Python/Node.js/PHP/binary)
-5. Fill in plugin information according to the wizard
-6. Click "Finish" to generate project files
+1. Tap the "Dev" tab at the bottom
+2. Tap "Create Plugin"
+3. Choose the frontend type (native UI / pure WebView / WebView + backend / CUI terminal)
+4. Fill in the plugin information in the wizard
+5. Tap "Finish" to generate the project files
 
-### Use Code Editor
+### Use the Code Editor
 
-1. Enter code editor in the plugin creation wizard
-2. Left sidebar shows project file list
-3. Click file to edit
-4. Supports syntax highlighting for 30+ programming languages
-5. Click palette icon to switch editor theme
-6. Supports undo/redo functionality
-7. Supports add/delete files
-8. Click "Finish" to save all changes
+1. Open the code editor from the plugin creation wizard, or through "Open with" in the file manager
+2. The left sidebar shows the project files
+3. Tap a file to edit it
+4. Syntax highlighting for 30+ languages
+5. Undo/redo, find and replace, code formatting
 
 ### Plugin Data Storage
 
-Web Plugin (JavaScript):
+Web plugins (JavaScript):
 
 ```javascript
 // Store data
@@ -279,13 +314,13 @@ const config = JSON.parse(UINPlugin.getStorageJSON('config'));
 UINPlugin.writeFile('notes.txt', 'Hello World');
 const content = UINPlugin.readFile('notes.txt');
 
-// View storage statistics
+// Storage statistics
 const stats = JSON.parse(UINPlugin.getStorageStats());
 console.log('KV count:', stats.kvCount);
 console.log('File count:', stats.fileCount);
 ```
 
-Native Plugin (Kotlin):
+Native plugins (Kotlin):
 
 ```kotlin
 val pctx = PluginContext(context, pluginDir)
@@ -298,65 +333,81 @@ pctx.writeFile("data.txt", "content")
 
 ## FAQ
 
-Q: How to install plugins?
-A: Three methods: install directly from the "Repository" page, import .tpk files, batch import or plugin set import.
+Q: How do I install plugins?
+A: Three ways: install directly from the "Repo" page, import a .tpk file, or use batch import / plugin set import.
 
-Q: What is the difference between Web plugins and native plugins?
-A: Web plugins use HTML/CSS/JS development, no compilation needed, changes take effect immediately; native plugins use Java development, better performance, but require compilation.
+Q: What is the difference between Web and native plugins?
+A: Web plugins use HTML/CSS/JS, need no compilation and take effect immediately after editing; native plugins use Java, perform better, but need compilation.
 
-Q: How to develop your own plugin?
-A: Click "Dev" > "Create Plugin" at the bottom, select the type and follow the wizard.
+Q: How do I develop my own plugin?
+A: Tap "Dev" → "Create Plugin" at the bottom and follow the wizard.
 
-Q: How to customize UI colors and corner radius?
-A: In "Manage" > "UI Personalization", you can customize 38+ colors and 7 corner radius sizes.
+Q: How do I customize UI colours and corner radius?
+A: Go to "Manage" → "UI Personalization" to adjust 38+ colours and 7 corner radius options.
+
+Q: How do I hand a file from the file manager to a plugin?
+A: Long-press the file → "Open with" → search and pick the plugin in the plugin section. The file is not copied into `.incoming/`; the plugin reads the original through `openData.filePath`.
+
+Q: Why is a plugin missing from "Open with"?
+A: Only installed plugins that declare `openWith` in `plugin.json` and accept the current file type (MIME / file) are listed.
 
 Q: Where is plugin data stored?
-A: Each plugin's data is stored in /storage/emulated/0/UIN_Tool/plugins/{pluginId}/data/ directory, KV data is stored in SharedPreferences.
+A: Each plugin's data lives in /storage/emulated/0/UIN_Tool/plugins/{pluginId}/data/, with KV data in SharedPreferences.
 
 Q: Will updating a plugin lose data?
-A: No. The data/ directory is automatically preserved when updating plugins, user data is not lost.
+A: No. The data/ directory is preserved automatically on update.
 
-Q: Will permission status be persisted?
-A: Yes. After authorization, permission status is permanently saved; no duplicate popups on next opening.
+Q: Are permission states persisted?
+A: Yes. Granted/blocked states are persisted per plugin; the "Do not ask again" choice is persisted per plugin too.
 
-Q: What APIs do Web plugins support?
-A: Supports 170+ APIs, covering device info, sensors, location, network, file system, storage, permissions, UI, clipboard, vibration, notifications, events, system operations, etc.
+Q: Which APIs do Web plugins support?
+A: 170+ APIs covering device info, sensors, location, network, file system, storage, permissions, UI, clipboard, vibration, notifications, events, system actions and more.
 
-Q: What languages does the code editor support?
-A: Supports 30+ programming languages including Java, Kotlin, Python, JavaScript, TypeScript, HTML, CSS, JSON, XML, Markdown, Shell, SQL, Go, Rust, PHP, Ruby, Swift, Dart, Lua, Scala, Perl, Haskell, Elixir, Erlang, Clojure, Groovy, Dockerfile, Makefile, INI, Properties, TOML, YAML, etc.
+Q: Which languages does the code editor support?
+A: 30+ languages including Java, Kotlin, Python, JavaScript, TypeScript, HTML, CSS, JSON, XML, Markdown, Shell, SQL, Go, Rust, PHP, Ruby, Swift, Dart, Lua, Scala, Perl, Haskell, Elixir, Erlang, Clojure, Groovy, Dockerfile, Makefile, INI, Properties, TOML, YAML and more.
 
-Q: How to export plugin data?
-A: Web plugins can use UINPlugin.exportData() to export all data as JSON format.
+Q: How do I export plugin data?
+A: Web plugins can use UINPlugin.exportData() to export all data as JSON.
 
-Q: How to use the terminal feature?
-A: Click "Dev" > "Open Terminal" at the bottom. The rootfs ships inside the app and is unpacked offline on first use — no download required.
+Q: How do I use the terminal?
+A: Tap "Dev" → "Open Terminal" at the bottom. The rootfs is bundled with the app and unpacked offline on first use; no network download is needed.
 
 ---
 
 ## Open Source License
 
-This project uses the MIT License.
+This project is licensed under the MIT License.
+
+### Third-party Components
+
+- **zip4j** (`net.lingala.zip4j`) — Apache-2.0.
+- **7-Zip-JBinding-4Android** (`com.sorrowblue.sevenzipjbinding`, containing the 7-Zip 16.02 engine) —
+  the engine is **LGPL-2.1+** (with the unRAR additional terms), the binding layer is Apache-2.0.
+  Source: the sources package for Maven Central coordinate `com.sorrowblue.sevenzipjbinding:7-Zip-JBinding-4Android:16.02-2.03.1`;
+  upstream <https://github.com/borisbrodski/sevenzipjbinding>, <https://www.7-zip.org/>.
+  This project does not modify the library; the `.so` ships as a separate file in the APK and can be replaced.
+- Other Apache-2.0 / MIT components (commons-compress, junrar, Coil, apksig, etc.) are listed in the dependency comments in `app/build.gradle`.
 
 ---
 
 ## Contributors
 
 | Contributor | Role | Contribution |
-|------------|------|--------------|
-| UIN Team | Core Development | Architecture design, core features |
-| Yi Zhi Dian Bi | Feature Development | 1x1 desktop widget functionality |
-| Termux Team | Upstream Project | Terminal emulator core engine |
+|-------------|------|--------------|
+| UIN Team | Core development | Architecture and core features |
+| Yi Zhi Dian Bi | Feature development | 1x1 desktop widget |
+| Termux Team | Upstream project | Terminal emulator core |
 
 ---
 
-## Contact Information
+## Contact
 
-| Channel | Contact Info |
-|---------|-------------|
+| Channel | Address |
+|---------|---------|
 | GitHub | https://github.com/Undefined-Invalid-Null/UIN-Tool |
 | Email | undefinedinvalidnull@outlook.com |
-| Plugin Repository | https://github.com/UIN-Tool-Plugins |
-| QQ Group | 511875883 |
+| Plugin repository | https://github.com/UIN-Tool-Plugins |
+| QQ group | 511875883 |
 
 ---
 

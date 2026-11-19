@@ -3,6 +3,8 @@ package com.UIN.Tool.ui.screen.help
 
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.*
@@ -35,7 +37,8 @@ fun HelpScreen() {
         // G-10：与 DocViewerScreen 共用 DocLoader（语言判定/回退只此一份），
         // A-01 的路径问题由 fileNameFor("help") → docs/<lang>/Help.md 解决
         try {
-            content = DocLoader.load(DocLoader.fileNameFor("help"))
+            // assets 全量读是 IO，原样在主线程跑（d20 横向排查）——挪到 IO
+            content = withContext(Dispatchers.IO) { DocLoader.load(DocLoader.fileNameFor("help")) }
         } catch (e: Exception) {
             AppLog.e("HelpScreen", Str.get(R.string.failed_to_load_help_document), e)
             content = DocLoader.errorText(e)
@@ -66,10 +69,24 @@ fun HelpScreen() {
                             settings.javaScriptEnabled = true
                             settings.builtInZoomControls = true
                             settings.displayZoomControls = false
-                            webViewClient = WebViewClient()
+                            // 与文档查看器一致：滑条常驻不淡出（用户反馈 d11）
+                            isScrollbarFadingEnabled = false
+                            webViewClient = object : WebViewClient() {
+                                // x.txt 第 1 条：Help 里的 .md 链接同样转给内置阅读页。
+                                @Suppress("DEPRECATION")
+                                override fun shouldOverrideUrlLoading(
+                                    view: WebView?,
+                                    url: String?
+                                ): Boolean = DocLoader.openLinkedDoc(ctx, url)
+                            }
 
                             val html = MarkdownRenderer.toHtml(content)
-                            loadDataWithBaseURL("file:///android_asset/", html, "text/html", "UTF-8", null)
+                            // x.txt 第 1 条：base 必须指到文档真正所在目录，否则相对链接
+                            // 会落到 assets 根下报 ERR_FILE_NOT_FOUND。
+                            loadDataWithBaseURL(
+                                DocLoader.baseUrl(DocLoader.fileNameFor("help")),
+                                html, "text/html", "UTF-8", null
+                            )
                         }
                     },
                     // 退出页面时释放 WebView，避免实例泄漏（与 ReleaseChangelog 一致）

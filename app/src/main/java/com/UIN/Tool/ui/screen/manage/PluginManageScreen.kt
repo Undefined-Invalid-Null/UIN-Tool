@@ -59,6 +59,7 @@ import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
 import com.UIN.Tool.ui.theme.gradientBackgroundBrush
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 
 
 private const val TAG = "PluginManageScreen"
@@ -485,13 +486,13 @@ fun PluginManageScreen(
     }
 
     val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         uri?.let { importSinglePlugin(it) }
     }
 
     val batchImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments()
+        InAppFilePicker.OpenDocuments()
     ) { uris: List<Uri>? ->
         if (!uris.isNullOrEmpty()) {
             batchImportPlugins(uris)
@@ -499,7 +500,7 @@ fun PluginManageScreen(
     }
 
     val importZipLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         uri?.let { importPluginSet(it) }
     }
@@ -1049,7 +1050,9 @@ fun PermissionManagementDialog(
     ) {
         UnifiedCard(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                // e22：先封顶再铺比例（顺序反了上限就白设），与其它弹窗同一宽度口径
+                .widthIn(max = AppDimens.dialogMaxWidth)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .wrapContentHeight()
                 .heightIn(max = 450.dp),
             containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.surface,
@@ -1176,7 +1179,7 @@ fun PermissionManagementDialog(
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
                 ) {
                     if (permissions.isNotEmpty() && !allGranted) {
                         UnifiedButton(
@@ -1644,28 +1647,35 @@ fun PluginDetailDialog(
     val context = LocalContext.current
     val pluginDir = pluginManager.getPluginDirFile(plugin.pluginId)
 
-    // plugin.json 原文（格式化）
-    val rawJson = remember(plugin.pluginId) {
-        val jsonFile = File(pluginDir, Constants.PLUGIN_CONFIG_FILE)
-        if (jsonFile.exists()) {
-            try {
-                JSONObject(jsonFile.readText()).toString(2)
-            } catch (e: Exception) {
-                jsonFile.readText()
+    // 读 plugin.json + 三趟目录遍历都是 IO，且每次开详情都重跑 —— 原来写在 remember
+    // 里，组合期在主线程跑，插件目录一大打开就卡（d20 横向排查）。整段挪到 IO。
+    var rawJson by remember { mutableStateOf("") }
+    var dirSize by remember { mutableStateOf(0L) }
+    var fileCount by remember { mutableStateOf(0) }
+    var fileTree by remember { mutableStateOf("") }
+    LaunchedEffect(plugin.pluginId) {
+        withContext(Dispatchers.IO) {
+            val jsonFile = File(pluginDir, Constants.PLUGIN_CONFIG_FILE)
+            rawJson = if (jsonFile.exists()) {
+                try {
+                    JSONObject(jsonFile.readText()).toString(2)
+                } catch (e: Exception) {
+                    jsonFile.readText()
+                }
+            } else {
+                try {
+                    JSONObject(plugin.toJson()).toString(2)
+                } catch (e: Exception) {
+                    plugin.toJson()
+                }
             }
-        } else {
-            try {
-                JSONObject(plugin.toJson()).toString(2)
-            } catch (e: Exception) {
-                plugin.toJson()
-            }
+            // 大小与文件数一次遍历拿全（原来是两趟 walkTopDown，白走一遍）
+            val (size, count) = dirStats(pluginDir)
+            dirSize = size
+            fileCount = count
+            fileTree = buildFileTree(pluginDir)
         }
     }
-
-    // 插件目录统计
-    val dirSize = remember(plugin.pluginId) { calculateDirSize(pluginDir) }
-    val fileCount = remember(plugin.pluginId) { countDirFiles(pluginDir) }
-    val fileTree = remember(plugin.pluginId) { buildFileTree(pluginDir) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -1676,8 +1686,10 @@ fun PluginDetailDialog(
     ) {
         UnifiedCard(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .heightIn(max = 620.dp)
+                // e22：先封顶再铺比例（顺序反了上限就白设），与其它弹窗同一宽度口径
+                .widthIn(max = AppDimens.dialogMaxWidth)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
+                .heightIn(max = 480.dp)
                 .dialogBackgroundOf(RoundedCornerShape(AppDimens.dialogCornerRadius)),
             containerColor = Color.Transparent,
             shape = RoundedCornerShape(AppDimens.dialogCornerRadius)
@@ -1717,7 +1729,7 @@ fun PluginDetailDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
                 ) {
                     item {
                         SectionHeader(
@@ -1947,7 +1959,7 @@ fun CategoryChangeDialog(
         content = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
             ) {
                 Text(
                     text = Str.get(R.string.select_category),
@@ -1958,7 +1970,7 @@ fun CategoryChangeDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 200.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
                 ) {
                     items(existingCategories) { itemCategory ->
                         UnifiedChip(
@@ -2056,14 +2068,13 @@ private fun DetailKeyValue(
 
 // ==================== 插件目录统计辅助函数 ====================
 
-private fun calculateDirSize(dir: File?): Long {
-    if (dir == null || !dir.exists()) return 0
-    return dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-}
-
-private fun countDirFiles(dir: File?): Int {
-    if (dir == null || !dir.exists()) return 0
-    return dir.walkTopDown().filter { it.isFile }.count()
+/** 一次遍历同时算大小与文件数 —— 原来是 `calculateDirSize`/`countDirFiles` 两趟走。 */
+private fun dirStats(dir: File?): Pair<Long, Int> {
+    if (dir == null || !dir.exists()) return 0L to 0
+    var size = 0L
+    var count = 0
+    dir.walkTopDown().filter { it.isFile }.forEach { size += it.length(); count++ }
+    return size to count
 }
 
 private fun buildFileTree(dir: File?): String {

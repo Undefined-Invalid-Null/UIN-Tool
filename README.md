@@ -1,15 +1,15 @@
 # UIN Tool
 
-![Version](https://img.shields.io/badge/version-6.2.0-blue)
-![Build](https://img.shields.io/badge/build-26-green)
+![Version](https://img.shields.io/badge/version-7.0.0-blue)
+![Build](https://img.shields.io/badge/build-27-green)
 ![Android](https://img.shields.io/badge/Android-6.0%2B-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-purple)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.08.00-blue)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-purple)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.09.00-blue)
 
 ## 应用简介
 
-UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框架应用，允许用户动态加载和运行第三方插件。无论是原生 Java 插件还是 Web 技术栈（HTML/CSS/JS）的插件，都能在 UIN Tool 中无缝运行。它提供了一个完整的插件生态系统，包括插件开发、管理、运行、权限控制以及 **PRoot 容器后端**等功能。
+UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框架应用，允许用户动态加载和运行第三方插件。无论是原生 Java 插件还是 Web 技术栈（HTML/CSS/JS）的插件，都能在 UIN Tool 中无缝运行。它提供了一个完整的插件生态系统，包括插件开发、管理、运行、权限控制、**PRoot 容器后端**以及内置的**双窗格文件管理器**等功能。
 
 ### 核心理念
 
@@ -21,6 +21,8 @@ UIN Tool 是一个基于 Kotlin + Jetpack Compose 重构的 Android 插件化框
 - **现代化**：基于 Jetpack Compose 构建，Material 3 设计语言
 - **强大**：内置 PRoot Linux 环境，支持 Python/Node.js/PHP 后端
 - **持久化**：插件数据独立存储，更新时自动保留用户数据
+- **全能文件管理**：双窗格浏览、归档就地解压与打包、图片查看器、APK 信息页、书签与历史、递归搜索、深链定位、并排对比、按类型着色的文件图标
+- **统一打开方式**：每个后缀可设默认打开器；内置能力（可收拢网格）/ 系统应用 / 已安装插件三档候选，插件区支持搜索
 
 ---
 
@@ -39,7 +41,6 @@ UIN Tool **内置完整的 Linux 环境**，使用 [PRoot](https://github.com/pr
 | **文本编辑器** | vim、nano、emacs 等 |
 | **网络工具** | curl、wget、openssh 等 |
 | **多会话** | 支持多个终端会话同时运行 |
-| **多窗口** | Android 7.0+ 多窗口支持 |
 
 ### 架构说明
 
@@ -50,18 +51,37 @@ UIN Tool 支持两种后端模式：
 
 ---
 
+## 文件管理（双窗格）
+
+底栏「文件」是内置文件管理器：左右两个窗格各自独立浏览，复制与移动在两窗之间流转。
+
+| 能力 | 说明 |
+|------|------|
+| **双窗格** | 每个窗格有自己的浏览栈；窗格比例可拖动，也可在设置里锁定或每次恢复默认 |
+| **选择与操作** | 长按进入选择模式；复制 / 移动 / 重命名 / 压缩 / 解压 / 分享 / 隐藏 / 添加书签 / 属性 / 删除 |
+| **归档** | zip / 7z / tar 及 gzip、bzip2、xz、zstd 外层包就地浏览；可写归档支持写回，只读归档会标注；支持 zip AES-256 密码与分卷 |
+| **搜索** | 递归搜索、正则、内容匹配、体积过滤；结果可整页展开并「在结果中搜索」 |
+| **打开方式** | 内置能力（可收拢网格）/ 系统建议 / 全部三档；每个后缀可设默认打开器；插件区带独立搜索，可把本地文件直接交给插件 |
+| **查看器** | 图片查看器（缩放、翻页、GIF）、APK 信息页（权限、签名、安装、分享） |
+| **对比** | 选中两个文件或两个文件夹，并排查看差异 |
+| **导航** | 书签与历史、常用位置侧栏、`uin://files` 深链定位 |
+
+文件图标按类型着色（图片、视频、音频、文档、代码、归档等各有一套颜色），不再是一排灰色图标。
+
+---
+
 ## 版本信息
 
-### 当前版本：v6.2.0 (Build 26)
+### 当前版本：v7.0.0 (Build 28)
 
 | 项目 | 信息 |
 |------|------|
-| 版本号 | 6.2.0 |
-| 版本代码 | 26 |
-| 更新日期 | 2026年10月31日 |
+| 版本号 | 7.0.0 |
+| 版本代码 | 27 |
+| 更新日期 | 2026年11月18日 |
 | 最低 Android 版本 | 6.0 (API 23) |
 | 目标 Android 版本 | 9 (API 28) |
-| 编译 SDK 版本 | 36 (Android 16) |
+| 编译 SDK 版本 | 37 |
 | 架构 | arm64-v8a |
 
 > 详细更新日志请查看 [CHANGELOG](app/src/main/assets/docs/zh-cn/CHANGELOG.md)。
@@ -72,12 +92,18 @@ UIN Tool 支持两种后端模式：
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Kotlin | 2.1.0 | 主要开发语言 |
-| Jetpack Compose | 2024.09.00 | 声明式 UI 框架 |
-| Compose Material 3 | 1.3.0 | Material 3 组件 |
-| Android SDK | API 36 | Android 框架 |
+| Kotlin | 2.4.21 | 主要开发语言 |
+| Jetpack Compose | BOM 2026.09.00 | 声明式 UI 框架（foundation / ui / animation 1.12.1） |
+| Compose Material 3 | 1.4.0 | Material 3 组件 |
+| Android SDK | API 37 | Android 框架 |
 | OkHttp | 4.12.0 | HTTP 客户端 |
-| Sora Editor | 0.24.4 | 代码编辑器 |
+| Sora Editor | 0.24.7 | 代码编辑器 |
+| Coil | 3.6.3 | 图片加载（图片查看器、插件图标） |
+| Apache Commons Compress | 1.28.0 | 归档读写主引擎（zip / 7z / tar 及各外层压缩格式） |
+| zip4j | 2.11.6 | zip 加密读写、Zip64、分卷 |
+| xz | 1.10 | xz / lzma / 7z-LZMA 后端 |
+| zstd-jni | 1.5.7-21 | zstd 解压后端 |
+| brotli dec | 0.1.2 | brotli 解压后端 |
 
 ---
 
@@ -132,6 +158,12 @@ A: 点击底部「开发」→「创建插件」，选择类型后按照向导�
 
 Q: 终端功能如何使用？
 A: 点击底部「开发」→「打开终端」。rootfs 随应用内置、首次使用离线解压就绪，无需联网下载。
+
+Q: 文件管理里怎么把文件交给插件打开？
+A: 长按文件 →「打开方式」→ 在插件区搜索并点选目标插件。文件不会复制到 `.incoming/`，插件通过 `openData.filePath` 直接读取原文件。
+
+Q: 为什么「打开方式」里没有某个插件？
+A: 只有已安装、在 `plugin.json` 中声明了 `openWith`、且接受当前文件类型（MIME / 文件）的插件才会出现。可先在「插件管理」确认插件已安装并声明了 `openWith`。
 
 Q: 插件数据存储在哪里？
 A: 每个插件的数据存储在 /storage/emulated/0/UIN_Tool/plugins/{pluginId}/data/ 目录下。

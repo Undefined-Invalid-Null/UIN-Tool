@@ -10,6 +10,7 @@ import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.UIN.Tool.ui.screen.files.FileTypeRegistry
 import com.UIN.Tool.utils.AppLog
 import java.io.File
 import java.io.FileOutputStream
@@ -32,24 +33,6 @@ object FileAccess {
      */
     private const val COLUMN_DATA = "_data"
 
-    /**
-     * 文本类扩展名白名单 —— 供语言识别等场景参考。
-     * 批次53 起**打开判定**不再依赖它（改走 [BINARY_EXTENSIONS] 黑名单否决制，见 [isTextFile]）。
-     */
-    val TEXT_EXTENSIONS: Set<String> = setOf(
-        "txt", "text", "log", "md", "markdown", "rst", "adoc",
-        "java", "kt", "kts", "scala", "groovy", "gradle",
-        "xml", "html", "htm", "xhtml", "css", "scss", "less", "svg",
-        "js", "mjs", "cjs", "jsx", "ts", "tsx", "json", "json5", "jsonc",
-        "py", "pyw", "rb", "php", "pl", "pm", "lua", "r", "dart",
-        "go", "rs", "c", "cc", "cpp", "cxx", "h", "hpp", "hh", "m", "mm",
-        "cs", "swift", "sh", "bash", "zsh", "fish", "ps1", "bat", "cmd",
-        "sql", "yaml", "yml", "toml", "ini", "cfg", "conf", "properties",
-        "gitignore", "gitattributes", "editorconfig", "dockerfile", "makefile",
-        "csv", "tsv", "env", "pro", "mk", "cmake", "patch", "diff",
-        "clj", "cljs", "ex", "exs", "erl", "hs", "fs", "fsx", "vb", "asm",
-        "hlsl", "glsl", "shader", "pug", "jade", "ejs", "hbs", "twig", "vue"
-    )
 
     /**
      * 6.2.0 大文件省耗的**判定下限**：内容超过该字符数即视为「大文件」，
@@ -75,48 +58,21 @@ object FileAccess {
         object Unreadable : ReadResult
     }
 
-    /**
-     * 6.2.0 批次53：**已知二进制**扩展名黑名单 —— 明确不该按文本打开的类型
-     * （图片/音视频/压缩与安装包/Office 与 PDF/字体/数据库/库文件/证书容器）。
-     *
-     * 与 [isTextFile] 的「黑名单否决制」配套：白名单外的**未知后缀、无后缀文件、
-     * 点开头隐藏文件（.bashrc 等）一律按 txt 打开** —— 用户拍板「未知文件后缀
-     * 不论什么时候都要支持」（文件树 / 恢复上次打开 / 向导收集 / 外部 ACTION_VIEW 同源）。
-     * 故名单只收「无歧义的二进制」，不收 .dat 这类含义模糊的后缀（宁可按 txt 打开）。
-     */
-    private val BINARY_EXTENSIONS = setOf(
-        // 图片
-        "png", "jpg", "jpeg", "gif", "bmp", "webp", "ico", "tif", "tiff", "heic", "avif",
-        // 音频 / 视频
-        "mp3", "mp4", "m4a", "m4v", "aac", "ogg", "oga", "wav", "flac", "opus",
-        "mkv", "avi", "mov", "wmv", "flv", "webm", "3gp", "amr", "mid", "midi",
-        // 压缩包 / 安装包 / 库
-        "zip", "tar", "gz", "tgz", "bz2", "xz", "lz4", "zst", "7z", "rar", "svgz",
-        "apk", "aab", "xapk", "jar", "war", "dex", "so", "oat", "vdex",
-        "exe", "dll", "dylib", "o", "a", "lib", "bin",
-        // 文档（非纯文本存储）
-        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp",
-        "epub", "mobi", "pages", "numbers", "key",
-        // 字体 / 数据库 / 磁盘镜像 / 字节码 / 证书容器
-        "ttf", "otf", "woff", "woff2", "eot",
-        "db", "sqlite", "sqlite3", "iso", "img", "dmg", "wim",
-        "pyc", "pyo", "class",
-        "keystore", "jks", "bks", "p12", "pfx"
-    )
 
     /**
-     * 能否按文本打开 —— 批次53 起改为**黑名单否决制**：
-     *  [BINARY_EXTENSIONS] 命中 → 拒开（真二进制，按 txt 打开只有乱码）；
-     *  其余（含 [TEXT_EXTENSIONS] 白名单、未知后缀、无后缀文件）→ 一律放行按 txt 打开。
+     * 能否按文本打开 —— **黑名单否决制**，名单唯一来源是 `file_types.json` 顶层
+     * `binaryExtensions`（见 [FileTypeRegistry.isBinaryExtension]）。
      *
-     * 旧实现是白名单制（名单外全拒），用户点名「未知文件后缀以 txt 方式打开，
-     * 不论什么时候都要支持」—— 四条打开入口（文件树、恢复上次、向导收集、外部 VIEW）
-     * 全部经此函数，改一处即全部生效。
+     * 命中 → 拒开（真二进制，按 txt 打开只有乱码）；其余（未知后缀、无后缀文件、
+     * 点开头隐藏文件）→ 一律放行按 txt 打开 —— 用户拍板「未知文件后缀不论什么时候
+     * 都要支持」。四条打开入口（文件树、恢复上次、向导收集、外部 VIEW）全经此函数。
+     *
+     * q.txt 第 4 条：这里**不再维护任何后缀字面量** —— 后缀、图标、颜色、文本/二进制
+     * 判定全部集中在 `file_types.json`，新增格式只改那一个文件。
      */
     fun isTextFile(fileName: String): Boolean {
-        val lower = fileName.lowercase()
-        val ext = lower.substringAfterLast('.', "")
-        return ext !in BINARY_EXTENSIONS
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return !FileTypeRegistry.isBinaryExtension(ext)
     }
 
     /**
@@ -346,17 +302,74 @@ object FileAccess {
     /**
      * @param charsetName 写出编码（[CHARSET_AUTO] 时按 UTF-8 写，与新建文件一致）。
      */
-    fun writeText(file: File, content: String, charsetName: String = CHARSET_AUTO): Boolean {
+    fun writeText(
+        file: File,
+        content: String,
+        charsetName: String = CHARSET_AUTO,
+        /** f18：覆盖原文件前把它留成 `<原名>.bak`。 */
+        backup: Boolean = false
+    ): Boolean {
+        return try {
+            // 先编码再动文件：编码阶段 OOM / 抛错时原文件必须还在原地
+            val bytes = content.toByteArray(charsetFor(charsetName))
+            writeBytes(file, bytes, backup)
+        } catch (e: OutOfMemoryError) {
+            AppLog.e(TAG, "writeText OOM: ${file.absolutePath}")
+            false
+        } catch (e: Exception) {
+            AppLog.e(TAG, "writeText encode failed: ${file.absolutePath}", e)
+            false
+        }
+    }
+
+    /**
+     * k.txt 第 10 条：以**原始字节**原子写回（AXML 重新编码后的二进制）。
+     *
+     * 与 [writeText] 共用同一条「同目录临时文件 → 原子改名」路径：写满/写到一半
+     * 失败时目标文件从未被截断，原文件或 `.bak` 完好。
+     */
+    fun writeBytes(
+        file: File,
+        bytes: ByteArray,
+        /** f18：覆盖原文件前把它留成 `<原名>.bak`。 */
+        backup: Boolean = false
+    ): Boolean {
         return try {
             val parent = file.parentFile
             if (parent != null && !parent.exists()) parent.mkdirs()
-            FileOutputStream(file).use { it.write(content.toByteArray(charsetFor(charsetName))) }
+            // f18：走改名而不是拷贝 —— 保存路径上多拷一份大文件等于把保存翻倍，
+            // 而改名不花时间。写失败要把原文件放回去，绝不留下「文件没了只剩 .bak」。
+            val bak = if (backup && file.isFile) {
+                val b = File(file.parentFile, "${file.name}.bak")
+                runCatching { b.delete() }
+                if (runCatching { file.renameTo(b) }.getOrDefault(false)) b else null
+            } else null
+            // 存储写满 / 写到一半失败时，直接 FileOutputStream(file) 已经把**原文件
+            // 截断**了 —— 下面 catch 里那句 `!file.exists()` 永远不成立，.bak 也不会
+            // 换回来，用户只剩一个半截文件。改成「先写同目录临时文件，再原子改名」：
+            // 失败时目标路径根本没人碰过，原文件（或 .bak）完好。
+            val dir = file.absoluteFile.parentFile
+            val tmp = dir?.let { File(it, ".${file.name}.uinsave") }
+            try {
+                if (tmp == null) throw IOException("no parent dir: ${file.path}")
+                runCatching { tmp.delete() }
+                FileOutputStream(tmp).use { out ->
+                    out.write(bytes)
+                    out.fd.sync()
+                }
+                if (!tmp.renameTo(file)) throw IOException("rename failed: ${file.path}")
+            } catch (t: Throwable) {
+                if (tmp != null) runCatching { tmp.delete() }
+                // 只有「旧文件已改名成 .bak」时才需要换回来；没改名时目标从未被触碰。
+                if (bak != null && bak.exists()) runCatching { bak.renameTo(file) }
+                throw t
+            }
             true
         } catch (e: IOException) {
-            AppLog.e(TAG, "writeText failed: ${file.absolutePath}", e)
+            AppLog.e(TAG, "writeBytes failed: ${file.absolutePath}", e)
             false
         } catch (e: OutOfMemoryError) {
-            AppLog.e(TAG, "writeText OOM: ${file.absolutePath}")
+            AppLog.e(TAG, "writeBytes OOM: ${file.absolutePath}")
             false
         }
     }
@@ -446,7 +459,7 @@ object FileAccess {
      *
      * 6.2.0 新增。原先**无条件**返回 UTF-8，GBK 老文件读出来是 `锟斤拷` 之类乱码，
      * 且没有任何地方能手动改正。现按以下优先级判定：
-     *  1. **BOM**（UTF-8 / UTF-16LE / UTF-16BE）——最可靠；
+     *  1. **BOM**（UTF-8 / UTF-16LE / UTF-16BE）——最可靠；1.5) 无 BOM 的 UTF-16（看 NUL 分布）；
      *  2. **严格 UTF-8 校验**：能整段按 UTF-8 解出即 UTF-8（纯 ASCII 也走这里）；
      *  3. **GBK/GB18030 疑似**：高位字节都能按 GBK 双字节对吃掉，且不是稀疏的
      *     欧洲语言重音字符（见 [looksGbk]）——满足则按 GB18030（GBK 超集，Android 内置）；
@@ -464,6 +477,9 @@ object FileAccess {
             return java.nio.charset.Charset.forName("UTF-16LE")
         if (bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte())
             return java.nio.charset.Charset.forName("UTF-16BE")
+        // 1.5) 无 BOM 的 UTF-16（见 detectUtf16NoBom）：必须在「严格 UTF-8」之前 ——
+        //      NUL 是合法 UTF-8 字节，先走 UTF-8 就永远轮不到它，整屏断字。
+        detectUtf16NoBom(bytes)?.let { return it }
         // 2) 严格 UTF-8
         if (isValidUtf8(bytes)) return Charsets.UTF_8
         // 3) GBK / GB18030
@@ -512,7 +528,8 @@ object FileAccess {
 
     /**
      * 疑似 GBK/GB18030 判据（只扫前 64KB 以免大文件白扫）：
-     *  - 高位字节（>=0x80）**成对**且**每对**都落在 GBK 单区范围内（paired == high）；
+     *  - 高位字节（>=0x80）**成对**且几乎每对都落在 GBK 单区范围内（允许 1 个落单，
+     *    兼容被截断的日志尾巴）；GB18030 四字节序列也认；
      *  - 字节里至少有 2 个汉字的量（high >= 4）；
      *  - 不是「高位字节又少又稀」的欧洲语言文本：高位 >= 16 却只占 8% 以下时
      *    视为 ISO-8859-1（法语/德语的 é/è/à 每个占 1 字节，本判据会误判成 GBK）。
@@ -523,24 +540,72 @@ object FileAccess {
     private fun looksGbk(bytes: ByteArray): Boolean {
         val scan = minOf(bytes.size, 65536)
         var i = 0
-        var high = 0
+        var high = 0        // 高位**序列**数（2 字节汉字记 1，4 字节序列也记 1）
+        var highBytes = 0   // 高位**字节**数 —— 密度判断必须用它
         var paired = 0
         while (i < scan) {
             val b = bytes[i].toInt() and 0xFF
             if (b < 0x80) { i++; continue }
             high++
-            if (b in 0x81..0xFE && i + 1 < scan) {
+            highBytes++
+            // f15：配对要看**整份字节**而不是看 64KB 扫描窗口 —— 原先写 `i + 1 < scan`，
+            // 汉字刚好跨在 64KB 分界上时后半个字节被当成「落单的高位字节」，
+            // 于是 much 常见的 GBK 大文件被误判成 ISO-8859-1（满屏乱码）。
+            // 分界只在文件真的到此结束时才算数。
+            if (b in 0x81..0xFE && i + 1 < bytes.size) {
                 val t = bytes[i + 1].toInt() and 0xFF
                 if (t in 0x40..0x7E || t in 0x80..0xFE) {
                     paired++
+                    highBytes++   // 尾字节也是高位字节
                     i += 2
+                    continue
+                }
+                // GB18030 四字节序列（第二字节是数字）：罕见汉字/emoji 走这条，
+                // 原先一律算「落单」→ 含这类字符的文件整份判错编码。整体仍只记一次配对。
+                if (t in 0x30..0x39 && i + 3 < bytes.size &&
+                    (bytes[i + 2].toInt() and 0xFF) in 0x81..0xFE &&
+                    (bytes[i + 3].toInt() and 0xFF) in 0x30..0x39
+                ) {
+                    paired++
+                    highBytes++   // 第三字节也是高位（第二、四字节是数字）
+                    i += 4
                     continue
                 }
             }
             i++
         }
-        if (high < 4 || paired != high) return false
-        return !(high >= 16 && high * 100 < scan * 8)
+        if (high < 4 || paired < high - 1) return false
+        // g14：密度用**高位字节数**。原先用 `high`（序列数）—— 一个汉字 2 字节却只记 1，
+        // 比例凭空砍半；中文 CSV 这类「汉字只占 5~6% 字符、但字节占比其实超过 8%」的
+        // 文件会因此被判成欧洲语言，落进 ISO-8859-1 兜底，整屏乱码。
+        return !(highBytes >= 16 && highBytes * 100 < scan * 8)
+    }
+
+    /**
+     * 无 BOM 的 UTF-16 判定。
+     *
+     * f15：UTF-16 的文件头不一定带 BOM（Windows 上不少工具导出时不写），
+     * 这类文件原先会被 `isValidUtf8` 当成 UTF-8（NUL 是合法字节），
+     * 解码出来整屏 `\u0000` 与断字 —— 看着就是「编码检测坏了」。
+     * 判据很稳：ASCII 为主的 UTF-16 文本，**固定一侧的字节几乎全是 0**，
+     * 而 UTF-8/GBK 文本极少出现 NUL。
+     */
+    private fun detectUtf16NoBom(bytes: ByteArray): java.nio.charset.Charset? {
+        val n = minOf(bytes.size, 4096) and 0xFFFE // 取偶数
+        if (n < 32) return null
+        var zeroEven = 0
+        var zeroOdd = 0
+        var i = 0
+        while (i < n) {
+            if (bytes[i].toInt() == 0) zeroEven++
+            if (bytes[i + 1].toInt() == 0) zeroOdd++
+            i += 2
+        }
+        val pairs = n / 2
+        // 七成以上的一侧是 NUL，另一侧基本不是 —— 就是 UTF-16 的字节序特征
+        if (zeroEven * 10 >= pairs * 7 && zeroOdd * 10 < pairs * 3) return Charsets.UTF_16BE
+        if (zeroOdd * 10 >= pairs * 7 && zeroEven * 10 < pairs * 3) return Charsets.UTF_16LE
+        return null
     }
 
     /**
@@ -691,16 +756,95 @@ object FileAccess {
     }
 
     /**
+     * k.txt 第 10 条：AXML 的 `content://` 写回 —— 编辑器保存的是文本，落盘前先
+     * 重新编码成二进制，因此不能走 [writeUri] 的字符串路径。
+     */
+    fun writeUriBytes(context: Context, uri: Uri, bytes: ByteArray): Boolean {
+        return try {
+            context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
+                out.write(bytes)
+                true
+            } ?: false
+        } catch (e: Exception) {
+            AppLog.e(TAG, "writeUriBytes failed: $uri", e)
+            false
+        }
+    }
+
+    /** 读取 content:// 的全部字节（AXML 体积通常很小；仍走堆预检）。 */
+    fun readUriBytes(context: Context, uri: Uri): ByteArray? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val bytes = input.readBytes()
+                if (!fitsHeap(bytes.size.toLong(), "readUriBytes")) null else bytes
+            }
+        } catch (e: Exception) {
+            AppLog.e(TAG, "readUriBytes failed: $uri", e)
+            null
+        } catch (e: OutOfMemoryError) {
+            AppLog.e(TAG, "readUriBytes OOM: $uri")
+            null
+        }
+    }
+
+    /** content:// 的前 4 字节是否 AXML 文件头（外部应用用 UIN Tool 打开 AXML 的入口）。 */
+    fun isAxmlUri(context: Context, uri: Uri): Boolean {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val head = ByteArray(4)
+                input.read(head) == 4 &&
+                    (head[0].toInt() and 0xFF) == 0x03 &&
+                    (head[1].toInt() and 0xFF) == 0x00 &&
+                    (head[2].toInt() and 0xFF) == 0x08 &&
+                    (head[3].toInt() and 0xFF) == 0x00
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
      * 6.2.0 批次21：另存为 —— 在用户经 SAF 选择的目录（treeUri）下新建同名文档并写入。
      * 走 DocumentsContract + ContentResolver，**无需存储权限**（SAF 授予了该目录的访问权）。
      * 成功返回新文档 Uri；失败（含同名冲突等）返回 null。
      */
     fun saveAsToTree(context: Context, treeUri: Uri, fileName: String, content: String): Uri? {
+        return saveAsToTree(
+            context, treeUri, fileName,
+            content.toByteArray(charsetFor(CHARSET_AUTO)),
+            "text/plain"
+        )
+    }
+
+    /** 字节版另存为（k.txt 第 10 条：AXML 另存必须继续保持二进制）。 */
+    fun saveAsToTree(
+        context: Context,
+        treeUri: Uri,
+        fileName: String,
+        bytes: ByteArray,
+        mime: String = "application/octet-stream"
+    ): Uri? {
+        // m.txt 第 7 条：内置选择器选的目录返回 `file://`，不是 SAF tree URI ——
+        // DocumentsContract 接不住它（会抛 IllegalArgumentException），直接按真实目录写。
+        // 返回同一套 file:// URI：后续保存走 ContentResolver 的 file scheme 分支（支持写），
+        // resolveRealPath 也能立刻还原成路径。
+        if (treeUri.scheme == "file") {
+            val dir = treeUri.path?.let(::File) ?: return null
+            if (!dir.isDirectory) return null
+            return try {
+                val target = File(dir, fileName)
+                target.outputStream().use { it.write(bytes) }
+                Uri.fromFile(target)
+            } catch (e: Exception) {
+                AppLog.e(TAG, "saveAsToLocalDir failed: $treeUri", e)
+                null
+            }
+        }
         return try {
             val doc = DocumentsContract.createDocument(
-                context.contentResolver, treeUri, "text/plain", fileName
+                context.contentResolver, treeUri, mime, fileName
             ) ?: return null
-            if (writeUri(context, doc, content)) {
+            if (writeUriBytes(context, doc, bytes)) {
                 doc
             } else {
                 try { DocumentsContract.deleteDocument(context.contentResolver, doc) } catch (_: Exception) {}
@@ -719,7 +863,12 @@ object FileAccess {
     fun resolveRealPath(context: Context, uri: Uri): String? {
         when (uri.scheme) {
             "file" -> return uri.path
-            "content" -> Unit
+            // m.txt 第 7 条：内置选择器返回的 content://<包名>.inapppicker/f/<绝对路径>/<文件名>，
+            // 路径就写在 URI 里 —— 不必再走 DocumentsContract/_data 列那两条查表路。
+            "content" -> if (uri.authority?.endsWith(".inapppicker") == true) {
+                val segs = uri.pathSegments
+                if (segs.size >= 2 && segs[0] == "f") return segs[1]
+            }
             else -> return uri.path
         }
 

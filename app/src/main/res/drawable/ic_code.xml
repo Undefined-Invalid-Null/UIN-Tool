@@ -5,8 +5,8 @@
     android:viewportHeight="24">
     <!-- 批次61（用户「这个代码编辑器图标要删掉，换成其他的」）：快捷方式图标由
          ic_developer_mode（机器人脸）换成 Material「code」的 </> 代码括号。
-         颜色统一为 #FF000000 —— 与其余三个快捷方式图标（ic_document /
-         ic_settings 纯黑、ic_terminal_prompt #FF212121 近黑）保持同色，
+         颜色统一为 #FF000000 —— 与其余三个快捷方式图标（ic_folder /
+         ic_app_info / ic_terminal_prompt）保持同色（t.txt 第 2 条：四枚一律纯黑），
          原 #FF37474F 蓝灰在启动器里明显偏色。 -->
     <path
         android:fillColor="#FF000000"

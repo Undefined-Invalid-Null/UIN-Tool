@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.gradientBackgroundBrush
@@ -45,12 +46,15 @@ private data class TreeNode(
     val children: List<TreeNode> = emptyList()
 )
 
+/** 这个节点（含子孙）是否包含指定分区 —— 用来把「当前分区」所在的父节点自动展开。 */
+private fun TreeNode.containsSection(section: String): Boolean =
+    id == section || children.any { it.containsSection(section) }
+
 private val treeRoot = listOf(
-    TreeNode("style", "风格", R.string.sidebar_style, listOf(
-        TreeNode("style_default", "默认", R.string.sidebar_style),
-        TreeNode("style_neumorphism", "新拟态", R.string.style_neumorphism_title)
-    )),
+    // u.txt 第 3 条（用户）：风格不再单独开一个顶级分类 —— 它属于「外观属性」。
+    // 「新拟态」只是风格里的一种选项（内容页里两张卡片并排选），不再占侧栏一格。
     TreeNode("appearance", "外观属性", R.string.sidebar_appearance, listOf(
+        TreeNode("appearance_style", "风格", R.string.sidebar_style),
         TreeNode("appearance_colors", "色彩", R.string.sidebar_colors),
         TreeNode("appearance_shapes", "形状", R.string.sidebar_shapes, listOf(
             TreeNode("appearance_shapes_corner", "圆角", R.string.sidebar_corner_radius),
@@ -82,7 +86,11 @@ private val treeRoot = listOf(
     )),
     TreeNode("layout", "布局属性", R.string.sidebar_layout, listOf(
         TreeNode("layout_margin", "外边距", R.string.sidebar_margin),
-        TreeNode("layout_position", "排版占位", R.string.sidebar_position)
+        TreeNode("layout_position", "排版占位", R.string.sidebar_position),
+        // n.txt 第 7 条：导航属于「布局」而不是单独一个顶级节点 —— 默认启动页与
+        // 底部导航顺序都在决定页面怎么摆，分散在两处只会让人找不到。
+        TreeNode("nav_default", "默认启动页", R.string.sidebar_nav_default),
+        TreeNode("nav_order", "导航顺序", R.string.sidebar_nav_order)
     ))
 )
 
@@ -122,6 +130,19 @@ fun UIConfigSidebar(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .padding(horizontal = 8.dp)
+                                .then(
+                                    if (UIConfig.isNeumorphismEnabled()) {
+                                        Modifier.neuRaised(
+                                            RoundedCornerShape(12.dp),
+                                            UIConfig.shouldUseDarkTheme(),
+                                            NeuDefaults.Intensity.LIGHT,
+                                            cornerRadius = 12.dp,
+                                            backgroundColor = Color.Transparent,
+                                            offset = 3f
+                                        )
+                                    } else Modifier
+                                )
                                 .background(if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background)
                                 .padding(32.dp)
                         ) {
@@ -189,13 +210,15 @@ fun UIConfigSidebar(
                 CenterAlignedTopAppBar(
                     title = { Text(Str.get(R.string.ui_personalization), fontSize = 18.sp) },
                     navigationIcon = {
-                        IconButton(onClick = {
+                        UnifiedIconButton(
+                            icon = Icons.Default.Menu,
+                            onClick = {
                             drawerScope.launch {
                                 if (drawerState.isClosed) drawerState.open() else drawerState.close()
                             }
-                        }) {
-                            Icon(Icons.Default.Menu, Str.get(R.string.menu))
-                        }
+                        },
+                            contentDescription = Str.get(R.string.menu),
+                        )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = if (AppColors.glassEnabled()) AppColors.glassBackground() else MaterialTheme.colorScheme.background,
@@ -220,8 +243,13 @@ private fun TreeGroup(
     primaryLight: Color,
     depth: Int
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val hasChildren = node.children.isNotEmpty()
+    // u.txt 第 3 条：风格挪进「外观属性」后，当前分区默认在折叠组里 ——
+    // 打开侧栏时应自动展开它所在的父节点，否则看起来像「什么都没选中」。
+    var expanded by remember { mutableStateOf(node.containsSection(selectedSection)) }
+    LaunchedEffect(selectedSection) {
+        if (hasChildren && node.containsSection(selectedSection)) expanded = true
+    }
     val isSelected = node.id == selectedSection
 
     val bgColor by animateColorAsState(
@@ -236,10 +264,19 @@ private fun TreeGroup(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 8.dp)
             .then(
-                if (neu && isSelected) {
-                    Modifier.neuRaised(RoundedCornerShape(8.dp), isDark, NeuDefaults.Intensity.LIGHT, cornerRadius = 8.dp, backgroundColor = Color.Transparent)
+                if (neu) {
+                    // v.txt 第 8 条（用户）：侧栏每一项都支持新拟态，而不是只有
+                    // 「选中」那一行才浮起来 —— 选中态额外铺一层淡色底，
+                    // 未选中也保留凸起轮廓，整个侧栏与内容页处在同一套光影里。
+                    Modifier.neuRaised(
+                        RoundedCornerShape(8.dp), isDark, NeuDefaults.Intensity.LIGHT,
+                        cornerRadius = 8.dp, backgroundColor = Color.Transparent, offset = 3f
+                    )
                         .background(bgColor, RoundedCornerShape(8.dp))
+                        // h5：选中态是圆角底，涟漪必须跟着裁，别在四角溢出。
+                        .clip(RoundedCornerShape(8.dp))
                 } else {
                     Modifier.background(bgColor)
                 }

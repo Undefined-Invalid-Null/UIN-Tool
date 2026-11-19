@@ -64,6 +64,12 @@ object AppConstants {
     val CACHE_DIR = File(WORK_DIR, "cache").absolutePath
     val TPK_DIR = File(WORK_DIR, "tpk").absolutePath
 
+    /**
+     * 覆盖前的旧文件暂存处（反馈 e15 **P0-1**）。
+     * 与 logs/backups 同属共享工作目录 —— 用户用任意文件管理器就能进去翻，不需要专门的界面。
+     */
+    val TRASH_DIR = File(WORK_DIR, "trash").absolutePath
+
     // ==================== 偏好设置文件名 ====================
     const val PREF_MAIN = "uin_tool_prefs"
     const val PREF_CRASH = "crash_prefs"
@@ -128,20 +134,17 @@ object AppConstants {
     )
 
     // ==================== 默认源 ====================
-    val DEFAULT_SOURCES_JSON = """
-        [
-            {
-                "sourceId": "official",
-                "name": "Official Source",
-                "owner": "UIN-Tool-Plugins",
-                "repo": "Official",
-                "branch": "dist",
-                "description": "UIN Tool official plugin repository",
-                "trustLevel": "official",
-                "addedAt": "2026-08-30T14:07:27+08:00"
-            }
-        ]
-    """.trimIndent()
+    /**
+     * v.txt 第 7 条（用户）：默认插件源属于**配置信息**，不再硬编码在 Kotlin 里，
+     * 统一放在 `assets/config/default_sources.json`；改默认源只需改这个文件。
+     */
+    fun loadDefaultSourcesJson(): String = try {
+        val context = com.UIN.Tool.UinApplication.getAppContext()
+        context.assets.open("config/default_sources.json").bufferedReader().use { it.readText() }
+    } catch (e: Exception) {
+        // 资产缺失时给一个空列表：仓库页会显示「没有源」，而不是崩溃。
+        "[]"
+    }
 
     // ==================== 日志配置 ====================
     const val LOG_MAX_SIZE = 2 * 1024 * 1024L

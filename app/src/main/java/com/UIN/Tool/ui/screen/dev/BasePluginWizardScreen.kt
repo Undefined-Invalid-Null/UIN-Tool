@@ -39,6 +39,7 @@ import java.io.File
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import kotlinx.coroutines.Dispatchers
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 
 private const val TAG = "BasePluginWizardScreen"
 
@@ -89,7 +90,7 @@ fun BasePluginWizardScreen(
     }
 
     val binaryFilePickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         if (uri != null) {
             handleBinaryFileSelection(context, uri) { filePath ->
@@ -100,7 +101,7 @@ fun BasePluginWizardScreen(
     }
 
     val webImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         if (uri != null) {
             handleWebProjectImport(context, uri) { files, contents ->
@@ -755,7 +756,9 @@ fun BasePluginWizardScreen(
                         onValueChange = { jsonDraft = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(420.dp),
+                            .height(420.dp)
+                            // j.txt 第 4 条：打开 JSON 编辑框即聚焦并弹键盘。
+                            .dialogAutoFocus(),
                         visualTransformation = highlighter,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = MaterialTheme.colorScheme.background,

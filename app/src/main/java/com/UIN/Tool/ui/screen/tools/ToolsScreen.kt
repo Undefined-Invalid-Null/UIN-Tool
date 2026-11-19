@@ -36,6 +36,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
@@ -112,6 +115,16 @@ fun ToolsScreen() {
 
     var searchText by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
+    // j.txt 第 4 条：点搜索图标展开输入框时自动聚焦并弹键盘（页面搜索，不是弹窗）。
+    val searchFocus = remember { FocusRequester() }
+    val searchKeyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(isSearching) {
+        if (isSearching) {
+            kotlinx.coroutines.delay(120)
+            runCatching { searchFocus.requestFocus() }
+            searchKeyboard?.show()
+        }
+    }
     var selectedCategory by remember { mutableStateOf(Str.get(R.string.all)) }
     var isGridView by remember { mutableStateOf(false) }
     var showDetailDialog by remember { mutableStateOf<PluginInfo?>(null) }
@@ -277,7 +290,10 @@ fun ToolsScreen() {
                     value = searchText,
                     onValueChange = { searchText = it },
                     placeholder = Str.get(R.string.search_plugins),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 14.dp)
+                        .focusRequester(searchFocus),
                     leadingIcon = Icons.Default.Search
                 )
             }
@@ -311,8 +327,8 @@ fun ToolsScreen() {
                         LazyVerticalGrid(
                             state = gridState,
                             columns = GridCells.Fixed(2),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing),
+                            verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing),
                             contentPadding = PaddingValues(top = 12.dp, bottom = 84.dp)
                         ) {
                             itemsIndexed(filteredPlugins) { index, plugin ->
@@ -330,7 +346,7 @@ fun ToolsScreen() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
                             state = listState,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing),
                             contentPadding = PaddingValues(top = 12.dp, bottom = 84.dp),
                             modifier = Modifier.fillMaxSize().elasticOverscroll(listState)
                         ) {

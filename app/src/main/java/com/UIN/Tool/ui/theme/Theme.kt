@@ -369,6 +369,14 @@ private class NoRippleNode : Modifier.Node(), DrawModifierNode {
 fun UINToolTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     fillBackground: Boolean = true,
+    /**
+     * 是否把窗口底色 / 状态栏 / 导航栏刷成主题色。
+     *
+     * 透明窗口（如 g7 的 APK 信息弹窗 `Theme.UIN.Tool.Dialog`）必须传 false：
+     * 默认那条 `decorView.setBackgroundColor(...)` 会把窗口重新刷成不透明，
+     * 遮罩下面就不是上一个界面了。
+     */
+    syncWindowBars: Boolean = true,
     content: @Composable () -> Unit
 ) {
     // 观察配置版本号：订阅触发本组合重组（快照计算很廉价）
@@ -401,21 +409,27 @@ fun UINToolTheme(
 
     val view = LocalView.current
     val window = (view.context as? Activity)?.window
-    SideEffect {
-        window?.let {
-            val barColor = colorScheme.background.toArgb()
-            val statusColor = if (UIConfig.isInitialized()) {
-                UIConfig.getInstance().getColorForMode("status_bar", resolvedDark)
-            } else barColor
-            val navColor = if (UIConfig.isInitialized()) {
-                UIConfig.getInstance().getColorForMode("navigation_bar", resolvedDark)
-            } else barColor
-            it.statusBarColor = statusColor
-            it.navigationBarColor = navColor
-            it.decorView.setBackgroundColor(barColor)
-            WindowCompat.getInsetsController(it, view).apply {
-                isAppearanceLightStatusBars = !resolvedDark
-                isAppearanceLightNavigationBars = !resolvedDark
+    // g7：半透明对话框页（APK 信息）必须**整套**关掉窗口涂色 ——
+    // `fillBackground = false` 只挡住根 Box 的背景，这里还会给 decorView 刷一层
+    // 不透明 barColor，结果圆角卡片外面仍是一整块底色，看起来还是「独立页面」。
+    // 所以两个开关一起给：fillBackground 管 Compose 根，syncWindowBars 管系统窗口。
+    if (syncWindowBars) {
+        SideEffect {
+            window?.let {
+                val barColor = colorScheme.background.toArgb()
+                val statusColor = if (UIConfig.isInitialized()) {
+                    UIConfig.getInstance().getColorForMode("status_bar", resolvedDark)
+                } else barColor
+                val navColor = if (UIConfig.isInitialized()) {
+                    UIConfig.getInstance().getColorForMode("navigation_bar", resolvedDark)
+                } else barColor
+                it.statusBarColor = statusColor
+                it.navigationBarColor = navColor
+                it.decorView.setBackgroundColor(barColor)
+                WindowCompat.getInsetsController(it, view).apply {
+                    isAppearanceLightStatusBars = !resolvedDark
+                    isAppearanceLightNavigationBars = !resolvedDark
+                }
             }
         }
     }
@@ -485,13 +499,8 @@ fun UINToolTheme(
                                 .navigationBarsPadding()
                                 .padding(start = 12.dp, end = 12.dp, bottom = 64.dp)
                         ) { data ->
-                            Snackbar(
-                                snackbarData = data,
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                                actionColor = MaterialTheme.colorScheme.primary,
-                                dismissActionContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            // n.txt 第 8 条：与弹窗宿主共用同一个外观，两处不会再漂移。
+                            com.UIN.Tool.ui.components.unified.AppToastSnackbar(data)
                         }
                     }
                     } // key(isDark)

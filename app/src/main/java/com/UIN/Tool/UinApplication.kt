@@ -2,6 +2,7 @@ package com.UIN.Tool
 
 import com.UIN.Tool.utils.Str
 import android.content.Context
+import android.content.Intent
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.UIN.Tool.core.di.ServiceLocator
@@ -34,6 +35,14 @@ class UinApplication : Application() {
 
     companion object {
         private const val TAG = "UinApplication"
+
+        /**
+         * g3：`cache/` 下纯再生数据的保留时长。
+         *
+         * 7 天是「够用且不至于无声堆积」的折中：`files/` 是分享/打开方式中转过来的副本，
+         * 用户可能隔两天回来找；okhttp 响应缓存也常被隔天复用。再久就只是占盘了。
+         */
+        private const val CACHE_KEEP_MS = 7L * 24 * 60 * 60 * 1000
 
         @JvmStatic
         private lateinit var instance: UinApplication
@@ -253,6 +262,11 @@ class UinApplication : Application() {
         StartupTask("serviceLocatorInit") {
             ServiceLocator.init(this)
             Logger.i(TAG, Str.get(R.string.servicelocator_initialized))
+        },
+        // o.txt 第 15 条：长按快捷方式的图标跟主题色走 —— 静态 XML 里的 drawable 是固定色，
+        // 启动后按当前主题色重新发布一遍动态快捷方式（内部按「颜色变了/缺条目」去重）。
+        StartupTask("themeShortcuts") {
+            com.UIN.Tool.utils.ThemeShortcuts.sync(this)
         }
     )
 
@@ -271,6 +285,17 @@ class UinApplication : Application() {
             com.UIN.Tool.cache.DiskCache.cleanup("icons")
             Logger.i(TAG, "Disk cache cleanup completed")
         },
+        // g3「cache 里的东西没人清，尤其是 okhttp」：`UIN_Tool/cache/` 下有两类
+        // **纯再生数据**不归任何模块的 TTL 管 ——
+        //   · files/：分享 /「用其他应用打开」中转进来的副本（§4.16），建完就没人回头删；
+        //   · okhttp_cache/：插件桥的响应缓存。OkHttp 自带 50MB LRU，但长期不用时会一直
+        //     躺着（实测 10 月的 380KB 一直没动），看起来就像「清缓存没生效」。
+        // 启动时按修改时间清 7 天前的条目。图标 / disk_cache 各有 TTL 与容量上限，不动。
+        StartupTask("workCacheSweep") { sweepWorkCache() },
+        // f2「UIN_Tool 下的 temp 从不清理」：临时区是**一次性中转**，没人回头删 ——
+        // 实测里面有 8 月的 repo_*.tpk、3.7MB 的 apkshare/*.apk。放图标清理后面，
+        // 与它同属「启动时顺手扫一遍」，都在 IO 上跑、不占启动主线程。
+        StartupTask("tempCleanup") { cleanupTempDir() },
         StartupTask("cleanupOnVersionUpgrade") { cleanupOnVersionUpgrade() },
         StartupTask("clearOldDynamicShortcuts") { clearOldDynamicShortcuts() },
         // B-02：TextMate 语法/主题加载（遍历 assets，最贵的一段）改后台；
@@ -282,6 +307,13 @@ class UinApplication : Application() {
         // B-01：killStaleProcesses 含 Runtime.exec + waitFor，保持
         // 「先清理残留进程 → 再检查安装环境」的先后顺序
         StartupTask("killStaleProcesses") { SharedSupervisor.killStaleProcesses() },
+        // 用户反馈 d15-②：保活开关仍开着时，重启应用要把常驻通知补回来 ——
+        // 否则一重启就「看不见保活」，看起来像功能失效了。
+        StartupTask("keepAliveNotification") {
+            if (com.UIN.Tool.plugin.BackendConfig.isKeepAliveEnabled(this)) {
+                com.UIN.Tool.core.keepalive.KeepAliveService.start(this)
+            }
+        },
         // B-80：编排与 Toast 全部在 EnvironmentBootstrap，Application 只发起
         StartupTask("environmentAutoInstall") {
             com.UIN.Tool.bootstrap.EnvironmentBootstrap.autoInstall(appScope, this@UinApplication)
@@ -289,6 +321,16 @@ class UinApplication : Application() {
         // G-28：小部件周期刷新调度（读 UIConfig 开关，幂等 KEEP/cancel；WorkManager 自动初始化）
         StartupTask("widgetRefreshSchedule") {
             com.UIN.Tool.widget.WidgetRefreshScheduler.apply(this)
+        },
+        // e5：两处「第一次打开特别慢」都在启动后台先跑掉 ——
+        // ①「提取安装包」的装机清单（getInstalledPackages + 两百次 loadLabel）；
+        // ②「选择打开方式」的候选（queryIntentActivities ×2 + 逐个 loadLabel/loadIcon）。
+        // 放在**最后**：前面都是启动刚需，这两项只是把用户下一步要等的活提前干了。
+        StartupTask("warmInstalledApps") {
+            com.UIN.Tool.ui.screen.files.warmInstalledApps(this)
+        },
+        StartupTask("warmOpenWithChoices") {
+            com.UIN.Tool.ui.screen.files.warmOpenWithChoices(this)
         }
     )
 
@@ -311,8 +353,9 @@ class UinApplication : Application() {
 
     /**
      * 全局未捕获异常处理：把任何线程（含原生插件后台线程）的崩溃写入日志目录，
-     * 避免「闪退到桌面但日志里没有任何记录」。仅主线程崩溃交给系统默认处理（进程终止），
-     * 非主线程崩溃仅记录，不让单个插件后台线程把整个宿主进程带走。
+     * 避免「闪退到桌面但日志里没有任何记录」。主线程崩溃记完**立刻自己拉回来**落到日志页
+     * （用户反馈 d15-①），不再交回系统默认处理器 —— 那条路会直接终止进程并弹「应用持续停止」
+     * 系统框，用户看到的就是一次纯闪退。非主线程崩溃仅记录，不让单个插件后台线程把整个宿主进程带走。
      */
     private fun installGlobalCrashHandler() {
         try {
@@ -321,11 +364,53 @@ class UinApplication : Application() {
                 try {
                     val isMain = thread === android.os.Looper.getMainLooper().thread
                     if (isMain) {
-                        // 主线程崩溃：进程随即终止。标记「下次启动直达日志页」（commit 同步落盘），
-                        // 再交给系统默认处理走闪退流程。
+                        // 用户反馈 d15-①：不要「直接闪退、下次手动打开才见日志」。
+                        // 记完立刻自己拉回来 —— MainActivity 认得这个标记，起来后自动落进日志页。
                         CrashLogUtils.logExceptionAndNavigate(this, throwable, "Uncaught-${thread.name}")
-                        previous?.uncaughtException(thread, throwable)
-                            ?: android.os.Process.killProcess(android.os.Process.myPid())
+                        // 先把启动请求交给 AMS 再杀进程：请求已被受理，系统会为这个 Activity
+                        // 起一个新进程，旧进程此刻死掉不影响它。
+                        // 静默吞错的代价我们刚吃过一次：主路径没起来却毫无痕迹，
+                        // 隔了 90 秒才从日志里看出那次重启压根没发生。失败必须留证据。
+                        // f9「崩溃后没进日志页」：两条都要，谁被系统留下都算数 ——
+                        // ① 先点名 MainActivity：保住任务结构（栈根还在，退出日志页能回到主界面）；
+                        // ② 再把日志页顶上去：崩溃时栈顶若是别的 Activity（如十六进制编辑器），
+                        //    系统重启的只会是那个栈顶，MainActivity 的 onCreate 压根不跑，
+                        //    它那条「等 500ms 再转手」的链就断了。日志页自己读标记、自己显示
+                        //    「发生异常」，顶在最上面意味着进程死后系统恢复的也是它。
+                        // 两次 startActivity 都在 killProcess **之前**发出，请求已交 AMS。
+                        runCatching {
+                            startActivity(
+                                Intent(this, com.UIN.Tool.MainActivity::class.java)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }.onFailure {
+                            Logger.e(TAG, "auto restart (main) after crash failed", it)
+                        }
+                        runCatching {
+                            startActivity(
+                                Intent(this, com.UIN.Tool.ui.screen.log.LogViewerActivity::class.java)
+                                    .addFlags(
+                                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    )
+                                    .putExtra("auto_open", true)
+                            )
+                            // Logger 的写线程来不及在 kill 前 flush，只有同步追加进崩溃报告
+                            // 才留得下来 —— 下次这份报告末尾有这行，就说明请求确实交出去了
+                            CrashLogUtils.appendNote("auto nav: log page requested (before kill)")
+                        }.onFailure {
+                            Logger.e(TAG, "auto restart (log page) after crash failed", it)
+                            CrashLogUtils.appendNote(
+                                "auto nav: log page FAILED - ${it.message ?: it.javaClass.simpleName}"
+                            )
+                        }
+                        // 进程随即便会被死，上面那次 startActivity 有可能被系统丢掉。
+                        // AlarmManager 持有的 PendingIntent **不随本进程死** —— 交给它
+                        // 到点复查标记再补拉一次（日志页若已开、标记已清，它就自动变哑）。
+                        runCatching { CrashLogUtils.scheduleLogPageFallback(this) }
+                        // 不再交回 previous：它会立刻终止进程并弹「应用持续停止」系统框 ——
+                        // 那正是用户看到的闪退。这里自己收尾。
+                        android.os.Process.killProcess(android.os.Process.myPid())
                     } else {
                         CrashLogUtils.logException(this, throwable, "Uncaught-${thread.name}")
                         Logger.e(TAG, "background thread crash recorded (process kept): ${thread.name} - ${throwable.message}")
@@ -393,6 +478,11 @@ class UinApplication : Application() {
             config.setLocales(android.os.LocaleList(locale))
             @Suppress("DEPRECATION")
             resources.updateConfiguration(config, resources.displayMetrics)
+
+            // v.txt 第 4 条（用户）：Activity 现在声明了 locale 的 configChanges，
+            // 切语言不再重建（不黑屏/不跳页）—— 但 Compose 不会自动重读 Str.get，
+            // 这里显式通知一次，让所有文案所在组合重组。
+            com.UIN.Tool.utils.Str.notifyLocaleChanged()
         } catch (e: Exception) {
             Logger.e(TAG, "applyLocale failed", e)
         }
@@ -991,6 +1081,84 @@ class UinApplication : Application() {
             if (registerUserTheme(f.name.removeSuffix(".json"), f)) count++
         }
         return count
+    }
+
+    /**
+     * f2：清 `UIN_Tool/temp` 里**超过 24 小时**的中转件。
+     *
+     * 谁在往里放：`repo_*.tpk`（仓库下载待安装）、`apkshare` 下分享用的 .apk、
+     * `backup_stage_*` / `restore_*`（备份与还原的暂存）、`extract_*` / `binary_*` /
+     * `plugin_install_*` / `data_backup_*`（解包与装插件的中间件）——全是一次性件，
+     * 用完没人删，实测从 8 月一路攒到现在。
+     *
+     * 按**修改时间**清而不是按名字白名单：名字会长，「正在用的临时件一定很新」不会变 ——
+     * 备份、安装、分享都是秒级到分钟级的事，24 小时的余量足够。因此也不会误删进行中的任务。
+     * 只动 `temp/`：`plugins/ apk/ backups/ downloads/ tpk/ templates/ logs/` 都是用户数据
+     * 或已有各自淘汰（图标 TTL、日志 LOG_RETENTION_DAYS、`cache/files` 与 okhttp 缓存
+     * 由 [sweepWorkCache] 按 7 天清），一概不碰。
+     */
+    private fun cleanupTempDir() {
+        try {
+            val tempDir = File(Constants.TEMP_DIR)
+            if (!tempDir.isDirectory) return
+            val cutoff = System.currentTimeMillis() - 24L * 60 * 60 * 1000
+            var removed = 0
+            var freed = 0L
+            tempDir.listFiles()?.forEach { f ->
+                if (f.lastModified() >= cutoff) return@forEach
+                val size = f.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+                if (f.deleteRecursively()) {
+                    removed++
+                    freed += size
+                }
+            }
+            if (removed > 0) {
+                Logger.i(TAG, "temp cleanup: removed $removed entries, freed ${freed / 1024} KB")
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "temp cleanup failed", e)
+        }
+    }
+
+    /**
+     * g3：清 `UIN_Tool/cache/` 下没人管的再生数据（任务注释见 [backgroundStartupTasks]）。
+     *
+     * 只删**文件**、不删目录：`files/` 的目录常驻，省得下次中转再 mkdirs。
+     * okhttp 的 `journal` / `journal.tmp` / `journal.bkp` 一律不碰 —— 那是索引不是缓存
+     * 条目；只删条目数据文件后，DiskLruCache 下次取到缺失项会自己当作未命中处理。
+     * 删 `journal` 反而逼它重建索引，属于没必要的风险。
+     *
+     * 单条删除失败（被占用 / 权限）只跳过，不中断扫描，也不抛。
+     */
+    private fun sweepWorkCache() {
+        try {
+            val root = File(Constants.CACHE_DIR)
+            if (!root.isDirectory) return
+            val cutoff = System.currentTimeMillis() - CACHE_KEEP_MS
+            var removed = 0
+            var freed = 0L
+            // 只处理这两类；icons / disk_cache 有自己的 TTL 和容量上限
+            listOf(File(root, "files"), File(root, "okhttp_cache")).forEach { dir ->
+                if (!dir.isDirectory) return@forEach
+                dir.listFiles()?.forEach inner@{ f ->
+                    if (!f.isFile) return@inner
+                    if (f.name == "journal" || f.name == "journal.tmp" || f.name == "journal.bkp") {
+                        return@inner
+                    }
+                    if (f.lastModified() >= cutoff) return@inner
+                    val size = f.length()
+                    if (runCatching { f.delete() }.getOrDefault(false)) {
+                        removed++
+                        freed += size
+                    }
+                }
+            }
+            if (removed > 0) {
+                Logger.i(TAG, "cache sweep: removed $removed files, freed ${freed / 1024} KB")
+            }
+        } catch (e: Exception) {
+            Logger.e(TAG, "cache sweep failed", e)
+        }
     }
 
     private fun cleanupOnVersionUpgrade() {

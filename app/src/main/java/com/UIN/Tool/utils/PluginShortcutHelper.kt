@@ -13,7 +13,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.os.Build
-import android.widget.Toast
 import com.UIN.Tool.MainActivity
 import com.UIN.Tool.R
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -23,6 +22,7 @@ import com.UIN.Tool.plugin.PluginManager
 import com.UIN.Tool.widget.Widget1x1Provider
 import com.UIN.Tool.widget.WidgetPinnedReceiver
 import java.io.File
+import com.UIN.Tool.utils.AppToast
 
 object PluginShortcutHelper {
 
@@ -45,7 +45,7 @@ object PluginShortcutHelper {
             Logger.w(TAG, "widget pin unavailable, falling back to requestPinShortcut")
             if (!isShortcutSupported(context)) {
                 Logger.w(TAG, Str.get(R.string.this_device_does_not_support_shortcuts))
-                Toast.makeText(context, Str.get(R.string.this_device_does_not_support_shortcuts), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.this_device_does_not_support_shortcuts))
                 return
             }
             val created = createShortcutForOreoAndAbove(context, plugin)
@@ -80,11 +80,7 @@ object PluginShortcutHelper {
             appWidgetManager.requestPinAppWidget(
                 ComponentName(context, Widget1x1Provider::class.java), null, successCallback
             )
-            Toast.makeText(
-                context,
-                Str.get(R.string.place_the_shortcut_on_your_home_screen),
-                Toast.LENGTH_LONG
-            ).show()
+            AppToast.showLong(context, Str.get(R.string.place_the_shortcut_on_your_home_screen))
             Logger.success(TAG, "pin 1x1 shortcut requested: ${plugin.pluginId}")
             true
         } catch (e: Exception) {
@@ -110,7 +106,7 @@ object PluginShortcutHelper {
         for (info in existingShortcuts) {
             if (info.id == "plugin_${plugin.pluginId}") {
                 Logger.i(TAG, "shortcut already exists: ${plugin.pluginId}")
-                Toast.makeText(context, Str.get(R.string.shortcut_already_exists), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.shortcut_already_exists))
                 return true
             }
         }
@@ -139,7 +135,7 @@ object PluginShortcutHelper {
             val success = shortcutManager.requestPinShortcut(shortcut, null)
             Logger.i(TAG, "requestPinShortcut returned: $success plugin=${plugin.pluginId}")
             if (success) {
-                Toast.makeText(context, Str.get(R.string.shortcut_created), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.shortcut_created))
             }
             success
         } catch (e: Exception) {
@@ -176,7 +172,7 @@ object PluginShortcutHelper {
 
         context.sendBroadcast(addIntent)
         Logger.i(TAG, Str.get(R.string.creating_legacy_shortcut_plugin_name, plugin.name))
-        Toast.makeText(context, Str.get(R.string.shortcut_created), Toast.LENGTH_SHORT).show()
+        AppToast.show(context, Str.get(R.string.shortcut_created))
     }
 
     /** E-21①：按屏幕密度把图标缩放到 72dp 等效像素（上限 256px），高密度屏不再发虚 */
@@ -224,7 +220,7 @@ object PluginShortcutHelper {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val shortcutManager = context.getSystemService(ShortcutManager::class.java)
                 shortcutManager?.removeDynamicShortcuts(listOf("plugin_${plugin.pluginId}"))
-                Toast.makeText(context, Str.get(R.string.shortcut_removed), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.shortcut_removed))
             } else {
                 val removeIntent = Intent().apply {
                     putExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent(context, MainActivity::class.java))
@@ -232,11 +228,11 @@ object PluginShortcutHelper {
                     action = "com.android.launcher.action.UNINSTALL_SHORTCUT"
                 }
                 context.sendBroadcast(removeIntent)
-                Toast.makeText(context, Str.get(R.string.shortcut_removed), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.shortcut_removed))
             }
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.failed_to_remove_shortcut), e)
-            Toast.makeText(context, Str.get(R.string.failed_to_remove_shortcut), Toast.LENGTH_SHORT).show()
+            AppToast.show(context, Str.get(R.string.failed_to_remove_shortcut))
         }
     }
 

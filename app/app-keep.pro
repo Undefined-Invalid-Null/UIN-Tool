@@ -69,6 +69,20 @@
 -keepattributes EnclosingMethod
 
 # ============================================================
+# 7-Zip JBinding（native/JNI 边界，必须整包保留）
+# ============================================================
+# 原因不是「怕混淆名字」那么简单：JNI 侧按**字段**读写模型对象
+# （ArchiveFormat.codecIndex、OutItem 的 dataSize/attributes 等），也直接调
+# private setter（SevenZipException.setCause…）。只 keep native 方法名不够，
+# 字段被改名/裁剪后 native 侧会静默读错值或直接崩。
+-keep class net.sf.sevenzipjbinding.** { *; }
+-keepclassmembers class net.sf.sevenzipjbinding.** {
+    <fields>;
+    <init>(...);
+}
+-dontwarn net.sf.sevenzipjbinding.**
+
+# ============================================================
 # 防止 R8 优化移除
 # ============================================================
 -dontwarn com.google.common.**

@@ -11,8 +11,9 @@ import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.EditorMotionEvent
 import io.github.rosemoe.sora.event.SubscriptionReceipt
 import io.github.rosemoe.sora.lang.styling.HighlightTextContainer
+import io.github.rosemoe.sora.lang.styling.HighlightTextProvider
 import io.github.rosemoe.sora.lang.styling.color.ConstColor
-import io.github.rosemoe.sora.lang.styling.color.EditorColor
+import io.github.rosemoe.sora.text.Content
 import io.github.rosemoe.sora.widget.CodeEditor
 import java.lang.ref.WeakReference
 
@@ -22,10 +23,13 @@ import java.lang.ref.WeakReference
  * 扫描文本里的 `#RGB` / `#RRGGBB` / `#RRGGBBAA`，把**色值文本本身所在的区间**涂成对应颜色
  * （前景文字仍保留语法高亮色），而不是在旁边插入色块。
  *
- * 实现完全基于 sora 0.24.4 自带能力，不自定义控件：
+ * 实现完全基于 sora 自带能力，不自定义控件：
  *  - 绘制：用 [HighlightTextContainer] / [HighlightTextContainer.HighlightText]，sora 会把该区间
  *    画成一个填充 + 描边的背景矩形（`computeHighlightPositions` → `highlight.getColor()`），
  *    无需注册任何渲染器（区别于 inlay hint 的 ColorInlayHintRenderer）。
+ *  - 供数：0.24.7 起用 [HighlightTextProvider] 注册式通道（旧的 `setHighlightTexts` 已删除）。
+ *    本类维护一份**只含十六进制色块**的镜像容器，provider 每次把它复制进 sora 的合并容器；
+ *    搜索高亮由 [MatchHighlights] 另注册一个 provider，两来源天然独立、互不覆盖。
  *  - 刷新：订阅 [ContentChangeEvent]，文本变化后延迟重扫（合并连续输入，避免逐键全量扫描）。
  *  - 交互：订阅 [ClickEvent]，点中色值即**复制到剪贴板并选中该区间**（6.2.0 批次40，
  *    SE 审计 T2-A）——此前只是画了背景，点上去毫无反应，是「看得见点不着」。
@@ -52,6 +56,32 @@ class HexColorHints(editor: CodeEditor) {
     /** 6.2.0 批次40：点击色值复制。与背景扫描同样受 [detach] 管控，不遗留回调。 */
     private var clickReceipt: SubscriptionReceipt<ClickEvent>? = null
 
+    // ---- 6.3.0：0.24.7 注册式高亮通道 ----
+    /** 本类**独有**的镜像容器（只装十六进制色块，不含搜索高亮）。主线程读写。 */
+    private val highlights = HighlightTextContainer()
+
+    /**
+     * 供数回调：把镜像逐条**复制**进 sora 的合并容器。必须复制 —— sora 会在插入/删除时
+     * 原地改写合并容器里的条目对象，若共用引用，本镜像会被重复平移，且整段删除时对象
+     * 从合并容器里摘掉、镜像却仍保留，重扫前会画出幽灵高亮。
+     */
+    private val provider = HighlightTextProvider { target ->
+        for (h in highlights.asList()) {
+            target.add(
+                HighlightTextContainer.HighlightText(
+                    h.startLine, h.startColumn, h.endLine, h.endColumn, h.color, h.borderColor
+                )
+            )
+        }
+    }
+
+    /**
+     * 上次扫描所对应的文档对象。切标签/窗口翻页会整体换 [Content]，此时镜像里的行/列
+     * 立刻失效，必须先清空再重扫 —— 否则 [MatchHighlights.reapply] 触发的 merge 会
+     * 把旧文档的位置画到新正文上（最长持续到 150ms 后的重扫完成）。
+     */
+    private var lastContent: Content? = null
+
     // ---- 6.2.0 批次39（SE 审计 T3-20）：并发扫描控制 ----
     /** 是否正有扫描在跑（工作线程完成时复位）。 */
     private val scanning = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -66,27 +96,46 @@ class HexColorHints(editor: CodeEditor) {
      */
     @Volatile var maxLines: Int = MAX_LINES
 
-    /** 挂载：订阅内容变化 + 对已有内容产出首屏背景。 */
+    /** 挂载：注册供数回调 + 订阅内容变化 + 对已有内容产出首屏背景。 */
     fun attach() {
         cancelled = false
         val editor = editorRef.get() ?: return
-        // 内容增删（含 setText 换标签）后延迟重扫；不区分 action，任何变化都重扫。
+        editor.registerHighlightTextProvider(provider)
+        // 内容增删（含 setText 换标签）后先原地平移镜像，再延迟重扫。
         receipt?.unsubscribe()
-        receipt = editor.subscribeEvent(ContentChangeEvent::class.java) { _, _ -> scheduleRescan() }
+        receipt = editor.subscribeEvent(ContentChangeEvent::class.java) { event, _ ->
+            when (event.action) {
+                ContentChangeEvent.ACTION_INSERT -> {
+                    val s = event.changeStart
+                    val e = event.changeEnd
+                    highlights.updateOnInsertion(s.line, s.column, e.line, e.column)
+                }
+                ContentChangeEvent.ACTION_DELETE -> {
+                    val s = event.changeStart
+                    val e = event.changeEnd
+                    highlights.updateOnDeletion(s.line, s.column, e.line, e.column)
+                }
+            }
+            scheduleRescan()
+        }
         clickReceipt?.unsubscribe()
         clickReceipt = editor.subscribeEvent(ClickEvent::class.java) { event, _ -> handleTap(event) }
         // 首屏：attach 在 setText 之后调用，对当前内容产出背景（现在是后台线程，异步落地）。
         refresh()
     }
 
-    /** 解绑订阅并取消挂起的重扫；随 [CodeEditor.release] 一起调用。6.2.0 批次41：同时中止在跑的扫描线程。 */
+    /** 解绑订阅、注销 provider 并取消挂起的重扫；随 [CodeEditor.release] 一起调用。 */
     fun detach() {
         cancelled = true
-        editorRef.get()?.removeCallbacks(rescanRunnable)
+        val editor = editorRef.get()
+        editor?.removeCallbacks(rescanRunnable)
+        if (editor != null && !editor.isReleased) editor.unregisterHighlightTextProvider(provider)
         receipt?.unsubscribe()
         receipt = null
         clickReceipt?.unsubscribe()
         clickReceipt = null
+        highlights.clear()
+        lastContent = null
     }
 
     /**
@@ -145,15 +194,17 @@ class HexColorHints(editor: CodeEditor) {
     }
 
     /**
-     * 重新扫描并产出背景。必须由调用方在 **setEditorLanguage 之后**再调一次：
-     * sora 的 `setEditorLanguage` 内部会 `setHighlightTexts(null)` 清掉背景，而它不派发
-     * ContentChangeEvent，故语法就绪补设/手动切语法等场景不会自动恢复，需显式重建。
+     * 重新扫描并产出背景。以下场景需显式调用：
+     *  - [attach] 首屏；
+     *  - 大文件省耗开关变化（[maxLines] 改写）；
+     *  - **setEditorLanguage 之后** —— 0.24.7 的 `setEditorLanguage` 会
+     *    `internalSetHighlightTexts(null)` 清空合并容器，但不派发 ContentChangeEvent，
+     *    故语法就绪补设/手动切语法等场景需由调用方显式恢复。
      *
      * 6.2.0 批次39（SE 审计 T3-20）：**修 UI 卡顿** —— 此前整段正则扫描在**主线程**同步跑完
-     * 才 `setHighlightTexts`，且是在 ContentChange 后 150ms 触发，大文件上表现为
-     * 「打完一行字就顿一下」。现在整段扫描放到后台线程，跑完经
-     * [CodeEditor.postInLifecycle] 回主线程写入，并比对 `documentVersion`：
-     * 扫描期间文档变过就丢弃结果、重排一次扫描，避免把过期位置写进编辑器。
+     * 才写容器，且是在 ContentChange 后 150ms 触发，大文件上表现为「打完一行字就顿一下」。
+     * 现在整段扫描放到后台线程，跑完经 [CodeEditor.postInLifecycle] 回主线程写入，并比对
+     * `documentVersion`：扫描期间文档变过就丢弃结果、重排一次扫描，避免把过期位置写进编辑器。
      */
     fun refresh() {
         if (cancelled) return
@@ -161,19 +212,24 @@ class HexColorHints(editor: CodeEditor) {
         if (editor.isReleased) return
         val text = editor.text
         if (text == null) {
-            editor.setHighlightTexts(HighlightTextContainer())
+            highlights.clear()
+            lastContent = null
+            editor.invalidateHighlightTexts()
             return
         }
+        // 换了文档对象（切标签/窗口翻页）：旧镜像的行列整体失效，先清空再重扫，
+        // 避免 MatchHighlights.reapply 触发的合并把旧位置画到新正文上。
+        if (text !== lastContent) {
+            lastContent = text
+            highlights.clear()
+            editor.invalidateHighlightTexts()
+        }
         val lineCount = text.lineCount
-        // 超上限文件不产出 hex 背景（防扫描压满线程），但**搜索高亮照带** ——
-        // 它是 O(结果数) 的、与内容行数无关，大文件正是最需要看到命中的地方。
-        // 判归属：搜索条目恒 EditorColor、hex 恒 ConstColor（见 MatchHighlights KDoc）。
+        // 超上限文件不产出 hex 背景（防扫描压满线程）；搜索高亮由独立 provider 维护，
+        // 与内容行数无关，大文件正是最需要看到命中的地方，不受这里影响。
         if (lineCount > maxLines) {
-            val searchCarry =
-                editor.highlightTexts?.asList()?.filter { it.color is EditorColor }.orEmpty()
-            val carry = HighlightTextContainer()
-            carry.addAll(MatchHighlights.mergeSorted(emptyList(), searchCarry))
-            editor.setHighlightTexts(carry)
+            highlights.clear()
+            editor.invalidateHighlightTexts()
             return
         }
         // 重入保护：上一次扫描还在跑时只记一笔，扫完后再补一次，避免连开线程。
@@ -194,7 +250,7 @@ class HexColorHints(editor: CodeEditor) {
             // Kotlin 不会在 lambda 体内把 e 智能转换成非空（它无法据此推断 e 已非空）。
             if (e != null) {
                 e.postInLifecycle {
-                    if (e.isReleased) return@postInLifecycle
+                    if (e.isReleased || cancelled) return@postInLifecycle
                     // 过期判定放在**写入前**的主线程上，比在工作线程上判断更准确：
                     //  - current !== text：切标签会整体换掉 Content 对象（换了一个之后
                     //    旧对象的版本号就不会再变，只比版本号根本判断不出来）；
@@ -207,14 +263,11 @@ class HexColorHints(editor: CodeEditor) {
                         e.removeCallbacks(rescanRunnable)
                         e.postDelayedInLifecycle(rescanRunnable, RESCAN_DELAY_MS)
                     } else {
-                        // 批次57：与搜索高亮共用通道 —— 把旧容器里搜索方的条目（EditorColor）
-                        // 归并进新容器一并写回，双方互不覆盖（判归属见 MatchHighlights KDoc）。
-                        // 归并保序：container.add 是二分插入，中段插入会退化成 O(n²) 搬移。
-                        val searchCarry =
-                            e.highlightTexts?.asList()?.filter { it.color is EditorColor }.orEmpty()
-                        val merged = HighlightTextContainer()
-                        merged.addAll(MatchHighlights.mergeSorted(container.asList(), searchCarry))
-                        e.setHighlightTexts(merged)
+                        // 扫描完成：整体替换镜像，再让 sora 重新合并两个 provider
+                        // （搜索高亮由 MatchHighlights 的 provider 独立提供，互不覆盖）。
+                        highlights.clear()
+                        highlights.addAll(container.asList())
+                        e.invalidateHighlightTexts()
                     }
                     if (rerunRequested) {
                         rerunRequested = false

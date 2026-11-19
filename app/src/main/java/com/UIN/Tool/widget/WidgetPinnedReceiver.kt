@@ -7,9 +7,9 @@ import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.utils.PluginShortcutHelper
+import com.UIN.Tool.utils.AppToast
 
 class WidgetPinnedReceiver : BroadcastReceiver() {
     
@@ -24,7 +24,7 @@ class WidgetPinnedReceiver : BroadcastReceiver() {
         when (intent.action) {
             "com.UIN.Tool.WIDGET_PINNED" -> {
                 // 3x3 小部件固定成功
-                Toast.makeText(context, Str.get(R.string.widget_3x3_widget_added_successfully), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.widget_3x3_widget_added_successfully))
                 Logger.success(TAG, Str.get(R.string.widget_3x3_widget_pinned_successfully))
                 
                 // 刷新所有小部件
@@ -43,7 +43,7 @@ class WidgetPinnedReceiver : BroadcastReceiver() {
                 } else {
                     Logger.w(TAG, "1x1 widget pinned but plugin info missing: widgetId=$widgetId pluginId=$pluginId")
                 }
-                Toast.makeText(context, Str.get(R.string.shortcut_added_successfully), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.shortcut_added_successfully))
                 Logger.success(TAG, Str.get(R.string.widget_1x1_shortcut_pinned_successfully))
                 
                 // 刷新所有1x1小部件

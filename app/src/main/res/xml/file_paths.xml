@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- 仅暴露应用自身可控的目录，禁止 root-path 全文件系统与 external 全存储 -->
+    <!--
+      N13 拍板（2026-10-31）：FileProvider 白名单放宽到「/storage/ 下所有存储卷」。
+
+      · 为什么需要放宽：文件页要用「用其他应用打开 / 分享 / 导出」，这些路径必须经 FileProvider
+        签发 content:// URI；旧白名单只有 5 个 UIN_Tool 子目录，DCIM/、Download/、UIN_Tool/cache/
+        （4.16 的复制落点）、SD 卡/OTG 全都签不出来 → 直接失败。
+      · 为什么是 storage/ 而不是 /（重要）：FileProvider 打开文件用的是本应用 UID，能签出去的只有
+        「我们本来就读得到的东西」。`root-path path="/"`（真根）会把 /data/data/<本应用>/shared_prefs、
+        databases、no_backup 一起纳入可签发域；而插件 API / Web callHost 传入的 file_path、
+        N8 深链 uin://files?path=&file= 都是外部可控路径，一旦被直接签发，泄漏上限就从
+        「某个用户文件」变成「本应用全部配置与插件凭据」。storage/ 天然够不着 /data、/system、/proc。
+      · 应用自有目录（cache-path / files-path）继续保留：它们在 /data 下，storage/ 覆盖不到。
+      · 出口侧约束不变：provider exported=false，只有本应用主动把 URI 放进 Intent 才签发，
+        且只读、单文件、不带 PERSISTABLE（用完即失效）。
+    -->
     <cache-path name="cache" path="." />
     <files-path name="files" path="." />
+    <root-path name="storage" path="storage/" />
+    <!--
+      下面 5 条被上面的 storage/ 完全覆盖（storage/ 同时盖住主存储、SD 卡、OTG），
+      保留只为可读性：让「应用自己写入的目录」一眼可见，删掉也不影响功能。
+    -->
     <external-path name="downloads" path="UIN_Tool/downloads/" />
     <external-path name="backups" path="UIN_Tool/backups/" />
     <external-path name="plugins" path="UIN_Tool/plugins/" />

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MainActivity 的 starting window 兜底：**底色 + 居中的主题色图标**。
+
+  只是系统预览窗口用的；MainActivity.onCreate 里会立刻换成
+  `LaunchScreenBackground`（图标 + 应用名 + 版本号），与开屏完全一致，
+  所以主界面 Compose 首帧之前看到的是启动画面，不是白屏。
+
+  windowBackground 画不了文字，故这里只有图标。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/background" />
+    <item
+        android:drawable="@drawable/ic_splash_window"
+        android:gravity="center"
+        android:width="120dp"
+        android:height="120dp" />
+</layer-list>

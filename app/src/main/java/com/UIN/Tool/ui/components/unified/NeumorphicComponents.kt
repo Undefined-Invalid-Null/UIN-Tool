@@ -3,6 +3,7 @@ package com.UIN.Tool.ui.components.unified
 import androidx.compose.animation.core.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -145,7 +146,12 @@ fun NeuButton(
                 scaleY = scale
             }
             .then(
-                if (primary) Modifier.background(bgBrush!!, shape)
+                // k.txt 第 3 条：主按钮不再铺渐变底色，改为同色渐变描边 + 主色文字。
+                if (primary) Modifier.border(
+                    width = 1.5.dp,
+                    brush = bgBrush!!,
+                    shape = shape
+                )
                 else if (isPressed) Modifier.neuInset(shape, isDark, intensity)
                     .background(AppColors.cardBackground(), shape)
                 else Modifier.neuRaised(shape, isDark, intensity)
@@ -162,7 +168,7 @@ fun NeuButton(
     ) {
         Text(
             text = text,
-            color = if (primary) Color.White else MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = AppDimens.bodyTextSize.sp,
             fontWeight = FontWeight.Medium
         )
@@ -339,20 +345,23 @@ fun NeuChip(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .then(
-                if (selected) Modifier.background(
-                    Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)),
-                    shape
-                )
+                if (selected) Modifier
+                    // k.txt 第 3 条：选中态不再铺渐变底 —— 与全局口径一致，
+                    // 主色描边 + 主色文字，不再出现白字压色块。
+                    .border(1.5.dp, MaterialTheme.colorScheme.primary, shape)
+                    .background(AppColors.cardBackground(), shape)
                 else Modifier.shadow(3.dp, shape, ambientColor = NeuColors.shadowDark(), spotColor = NeuColors.shadowDark())
                     .background(AppColors.cardBackground(), shape)
             )
+            // h.txt 第 5 条：胶囊按钮的涟漪按 shape 裁切
+            .clip(shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
         )
@@ -625,6 +634,8 @@ fun NeuAccordion(
         modifier = modifier
             .shadow(2.dp, shape, ambientColor = NeuColors.shadowDark(), spotColor = NeuColors.shadowDark())
             .background(AppColors.cardBackground(), shape)
+            // h5：卡片是圆角，标题行的点击涟漪在父级裁剪内才不外溢。
+            .clip(shape)
     ) {
         Row(
             modifier = Modifier
@@ -662,6 +673,8 @@ fun NeuPagination(
                     .size(36.dp)
                     .shadow(2.dp, shape, ambientColor = NeuColors.shadowDark(), spotColor = NeuColors.shadowDark())
                     .background(AppColors.cardBackground(), shape)
+                    // h5：涟漪裁进圆角。
+                    .clip(shape)
                     .clickable { onPageChange(currentPage - 1) },
                 contentAlignment = Alignment.Center
             ) { Text("‹", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary) }
@@ -679,6 +692,8 @@ fun NeuPagination(
                             else Modifier.shadow(2.dp, shape, ambientColor = NeuColors.shadowDark(), spotColor = NeuColors.shadowDark())
                                 .background(AppColors.cardBackground(), shape)
                         )
+                        // h5：圆角/渐变圆角底，涟漪裁进去。
+                        .clip(shape)
                         .clickable { onPageChange(i) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -699,6 +714,8 @@ fun NeuPagination(
                     .size(36.dp)
                     .shadow(2.dp, shape, ambientColor = NeuColors.shadowDark(), spotColor = NeuColors.shadowDark())
                     .background(AppColors.cardBackground(), shape)
+                    // h5：涟漪裁进圆角。
+                    .clip(shape)
                     .clickable { onPageChange(currentPage + 1) },
                 contentAlignment = Alignment.Center
             ) { Text("›", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary) }

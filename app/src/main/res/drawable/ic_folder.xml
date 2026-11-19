@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- t.txt 第 2 条（用户）：快捷方式图标颜色统一。四枚快捷方式图形一律纯黑，
+     与 ic_code / ic_terminal_prompt / ic_app_info 同色；应用内用到本图的地方
+     都通过 Icon(tint=...) 重新着色，不受这里影响。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M10,4H4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V8c0,-1.1 -0.9,-2 -2,-2h-8l-2,-2z" />
+</vector>

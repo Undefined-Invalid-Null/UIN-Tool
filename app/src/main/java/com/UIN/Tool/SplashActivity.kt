@@ -12,16 +12,16 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.widget.Toast
-import android.graphics.drawable.ColorDrawable
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -29,11 +29,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,12 +48,13 @@ import com.UIN.Tool.data.local.PreferenceManager
 import com.UIN.Tool.domain.model.ReleaseInfo
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.UpdateDialog
+import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.screen.onboarding.OnboardingActivity
+import com.UIN.Tool.ui.theme.LaunchScreenBackground
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.UIConfig
 import com.UIN.Tool.constants.AppConstants as Constants
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -64,12 +63,12 @@ import java.io.File
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
 import com.UIN.Tool.ui.theme.pageGradientBrush
+import com.UIN.Tool.utils.AppToast
 
-private const val SPLASH_DELAY = 700L
 private const val UPDATE_CHECK_TIMEOUT = 5000L
 
-/** B-33：日常启动的更新检查只允许等这么久，超时直接进主界面（开屏不能被网络拖住） */
-private const val UPDATE_CHECK_TIMEOUT_FAST = 1500L
+/** 非首启的开屏（版本变更等）更新检查只等这么久；超时直接进主界面（主界面每日静默检查兜底） */
+private const val UPDATE_CHECK_TIMEOUT_FAST = 500L
 
 class SplashActivity : AppCompatActivity() {
 
@@ -121,24 +120,33 @@ class SplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 开屏窗口背景跟随应用主题模式（而非系统），避免首帧白屏/灰屏闪一下
-        if (UIConfig.isInitialized()) {
-            val uiConfig = UIConfig.getInstance()
-            val dark = uiConfig.shouldUseDarkTheme()
-            try {
-                val colorString = if (dark) {
-                    uiConfig.getColorStringDark("background")
-                } else {
-                    uiConfig.getColorString("background")
-                }
-                window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.parseColor(colorString)))
-            } catch (e: Exception) {
-                AppLog.e(TAG, "set splash window background failed", e)
-            }
-        }
-
         preferenceManager = ServiceLocator.getPreferenceManager()
         isFirstLaunch = preferenceManager.isFirstLaunch()
+
+        // 直接进主界面：只有「首启 / 装了新版本 / 还没有存储权限」这三种情况才需要
+        // 开屏页 —— 分别要摆引导、更新说明、权限说明。其余启动一律立刻跳走，
+        // 连 300ms 的空等也不留。
+        // 工作目录 / 日志由 UinApplication 的启动任务兜着，MainActivity 也会自愈；
+        // 更新提示交给 MainActivity 的每日静默检查，不会因为跳过开屏而漏掉。
+        val holdSplash = isFirstLaunch ||
+            preferenceManager.getLastVersion() != Constants.APP_VERSION ||
+            !hasStoragePermission()
+
+        // 窗口背景：静态启动画面（底色 + 主题色图标 + 应用名 + 版本号）。
+        // 不再有放大动画，也不再区分「停留 / 跳过」——两边看到的是同一张最终画面；
+        // 停留时 Compose 画的也是同一份内容，交接不跳。
+        LaunchScreenBackground.apply(this)
+
+        if (!holdSplash) {
+            AppLog.d(TAG, "skip splash: direct to main")
+            // 目录 / Logger 在 UinApplication 的启动任务里已经兜底；这里再把开屏原本
+            // 负责的那份（TPK/BACKUP 等子目录 + 一次性的私有目录回迁）异步补上，
+            // 幂等且不阻塞导航。
+            createWorkDirectory()
+            navigateToNext()
+            return
+        }
+
         // 在 setContent 前根据实际权限状态初始化，避免权限弹窗首帧闪现
         showPermissionExplain = !hasStoragePermission()
 
@@ -158,7 +166,7 @@ class SplashActivity : AppCompatActivity() {
                             startActivity(intent)
                         } catch (e: Exception) {
                             AppLog.e(TAG, Str.get(R.string.failed_to_open_browser), e)
-                            Toast.makeText(this, Str.get(R.string.unable_to_open_link), Toast.LENGTH_SHORT).show()
+                            AppToast.show(this, Str.get(R.string.unable_to_open_link))
                         }
                     },
                     onStartDownload = { releaseInfo ->
@@ -249,10 +257,12 @@ class SplashActivity : AppCompatActivity() {
 
     private fun createWorkDirectory() {
         // B-35：批量 mkdirs + Logger.init 是首启最慢路径，移出主线程；
-        // workDirectoryReady/inProgress 两道闸避免重复进入（onResume 可能连触）
+        // workDirectoryReady/inProgress 两道闸避免重复进入（onResume 可能连触）。
+        // 用应用级 appScope 而不是 lifecycleScope：日常启动会立刻 finish 本页，
+        // lifecycleScope 随 onDestroy 取消，目录/回迁可能只做了一半。
         if (workDirectoryReady || workDirectoryInProgress) return
         workDirectoryInProgress = true
-        lifecycleScope.launch(Dispatchers.IO) {
+        UinApplication.appScope.launch(Dispatchers.IO) {
             try {
                 val dirs = listOf(
                     Constants.WORK_DIR,
@@ -312,7 +322,7 @@ class SplashActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 AppLog.e(TAG, Str.get(R.string.failed_to_create_work_directory), e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@SplashActivity, Str.get(R.string.failed_to_create_directory_e_message, e.message), Toast.LENGTH_LONG).show()
+                    AppToast.showLong(this@SplashActivity, Str.get(R.string.failed_to_create_directory_e_message, e.message))
                 }
             } finally {
                 workDirectoryInProgress = false
@@ -325,7 +335,7 @@ class SplashActivity : AppCompatActivity() {
 
         if (releaseInfo.downloadUrl.isNullOrEmpty()) {
             AppLog.e(TAG, Str.get(R.string.download_link_is_empty))
-            Toast.makeText(this, Str.get(R.string.invalid_download_link_please_try_again), Toast.LENGTH_SHORT).show()
+            AppToast.show(this, Str.get(R.string.invalid_download_link_please_try_again))
             return
         }
 
@@ -380,6 +390,11 @@ class SplashActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
 
+            // 开屏 → 主界面不做滑入动画：两个窗口都是「底色 + 同一枚图标」，
+            // 滑动交接会同时露出两张图，看起来像闪了一下；直接切换更像秒开。
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
+
             AppLog.exit(TAG, "navigateToNext", System.currentTimeMillis())
         } catch (e: Exception) {
             AppLog.e(TAG, Str.get(R.string.navigation_failed), e)
@@ -430,12 +445,11 @@ fun SplashScreenWithUpdate(
 
     LaunchedEffect(hasStoragePermission, isFirstLaunch) {
         if (hasStoragePermission) {
-            delay(SPLASH_DELAY)
-
             // B-33：原实现只在 isFirstLaunch 检查更新 —— 首次安装时根本不存在新版本，
             // 「开屏更新弹窗」几乎必然形同虚设；改为每次开屏都查，但等待窗口区分：
-            // 首启/进引导页可多等（5s），日常启动最多 1.5s，超时直接进主界面
-            // （MainActivity 的每日静默检查会兜底，不会因此漏掉更新提示）。
+            // 首启/进引导页可多等（5s），其余开屏场景（如版本变更）最多 0.5s，
+            // 超时直接进主界面（MainActivity 的每日静默检查会兜底，不会因此漏掉更新提示）。
+            // 日常启动不会走到这里：onCreate 已直接 navigateToNext() 跳过开屏。
             val updateChecker = ServiceLocator.getUpdateChecker()
             var isCompleted = false
             val timeout = if (isFirstLaunch) UPDATE_CHECK_TIMEOUT else UPDATE_CHECK_TIMEOUT_FAST
@@ -528,13 +542,8 @@ fun SplashScreenWithUpdate(
     }
 
     // ==================== 启动画面（适配深色模式，深色用深灰色背景） ====================
-    val iconAlpha = remember { Animatable(0f) }
-    val iconScale = remember { Animatable(0.7f) }
-    LaunchedEffect(Unit) {
-        launch { iconScale.animateTo(1f, tween(durationMillis = 450)) }
-        iconAlpha.animateTo(1f, tween(durationMillis = 450))
-    }
-
+    // 窗口背景已经是同一张静态画面（LaunchScreenBackground：图标 + 名称 + 版本）。
+    // 这里不再做放大/淡入动画，直接画最终结果，和窗口背景完全一致，交接不跳。
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -548,17 +557,14 @@ fun SplashScreenWithUpdate(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // 开屏图标：`ic_splash_foreground` 是**透明底**的 Logo（桌面图标那份
+            // `ic_launcher_foreground` 是 512dp 的白色方块 + 扫描线描边，缩到 120dp
+            // 会发虚、还带一块白底）。单色 tint 成主题色后轮廓干净。
             Image(
                 painter = painterResource(id = R.drawable.ic_splash_foreground),
                 contentDescription = Str.get(R.string.app_icon_desc),
                 colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
-                modifier = Modifier
-                    .size(120.dp)
-                    .graphicsLayer {
-                        alpha = iconAlpha.value
-                        scaleX = iconScale.value
-                        scaleY = iconScale.value
-                    }
+                modifier = Modifier.size(120.dp)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -643,7 +649,17 @@ fun PermissionExplainDialog(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                // e22：统一到内容型弹窗的宽度口径（0.92 + 上限），三个权限/下载框不再各宽一档
+                // e30：这张框**整卡写死**（四条权限 + 两段说明 + 按钮），横屏或小屏上会整体
+                // 顶出屏幕、按钮看不见 —— 高度一并封顶，超了正文自己滚（下面那层 verticalScroll）。
+                .widthIn(max = AppDimens.dialogMaxWidth)
+                .heightIn(
+                    max = (
+                        LocalConfiguration.current.screenHeightDp.dp -
+                            AppDimens.dialogVerticalMargin * 2
+                        ).coerceAtLeast(240.dp)
+                )
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .wrapContentHeight()
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
             shape = RoundedCornerShape(AppDimens.cardCornerRadius),
@@ -656,6 +672,7 @@ fun PermissionExplainDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -741,19 +758,16 @@ fun PermissionExplainDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Button(
+                    // e30 补 e29：弹窗里的按钮**只给文字上色、不铺底**。这三处是直接写
+                    // material3 Button 的，走不到 UnifiedButton 的自动降级，得逐个换掉。
+                    UnifiedDialogTextButton(
                         onClick = {
                             // B-34：同上，改 finishAffinity
                             (context as? android.app.Activity)?.finishAffinity()
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.surfaceVariant,
-                            contentColor = colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                            .height(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
@@ -764,16 +778,13 @@ fun PermissionExplainDialog(
                         Text(Str.get(R.string.exit), fontSize = 15.sp)
                     }
 
-                    Button(
+                    UnifiedDialogTextButton(
                         onClick = onRequest,
                         modifier = Modifier
                             .weight(2f)
                             .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.primary,
-                            contentColor = colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                        // 主色那颗降级后就拿原本要铺的主色写字
+                        contentColor = colorScheme.primary
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
@@ -808,7 +819,15 @@ fun PermissionDeniedDialog(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                // e22：宽度口径同上；e30：高度一并封顶，超了正文自己滚，按钮不被顶出屏幕
+                .widthIn(max = AppDimens.dialogMaxWidth)
+                .heightIn(
+                    max = (
+                        LocalConfiguration.current.screenHeightDp.dp -
+                            AppDimens.dialogVerticalMargin * 2
+                        ).coerceAtLeast(240.dp)
+                )
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .wrapContentHeight()
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
             shape = RoundedCornerShape(AppDimens.cardCornerRadius),
@@ -821,6 +840,7 @@ fun PermissionDeniedDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -908,16 +928,12 @@ fun PermissionDeniedDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Button(
+                    // e30 补 e29：同上，弹窗按钮只着色文字、不铺底
+                    UnifiedDialogTextButton(
                         onClick = onExit,
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.surfaceVariant,
-                            contentColor = colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                            .height(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
@@ -928,16 +944,12 @@ fun PermissionDeniedDialog(
                         Text(Str.get(R.string.exit), fontSize = 15.sp)
                     }
 
-                    Button(
+                    UnifiedDialogTextButton(
                         onClick = onGoSettings,
                         modifier = Modifier
                             .weight(2f)
                             .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.primary,
-                            contentColor = colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                        contentColor = colorScheme.primary
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,
@@ -997,7 +1009,8 @@ fun DownloadProgressDialog(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.85f)
+                .widthIn(max = AppDimens.dialogMaxWidth)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .wrapContentHeight()
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
             shape = RoundedCornerShape(AppDimens.cardCornerRadius),
@@ -1054,16 +1067,12 @@ fun DownloadProgressDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
+                // e30 补 e29：弹窗按钮只着色文字、不铺底
+                UnifiedDialogTextButton(
                     onClick = onCancel,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(40.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.surfaceVariant,
-                        contentColor = colorScheme.onSurfaceVariant
-                    ),
-                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                        .height(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Close,

@@ -136,9 +136,14 @@ class WindowedDocument(
      */
     fun writeWithOverlays(
         overlayFor: (Int) -> String?,
-        onProgress: ((Int) -> Unit)? = null
+        onProgress: ((Int) -> Unit)? = null,
+        /** f18：写回前把原文件留成 `<原名>.bak`（与归档写回共用一个开关）。 */
+        backup: Boolean = false
     ): WriteResult? {
         val tmp = File(file.parentFile, ".${file.name}.uin_tmp")
+        val bak = File(file.parentFile, "${file.name}.bak")
+        // 原文件是否已经被挪去当 .bak 了 —— 失败路径要据此把它放回来
+        var movedToBak = false
         val changedPages = ArrayList<Int>()
         val deltas = ArrayList<Long>()
         var midValid = true
@@ -193,6 +198,14 @@ class WindowedDocument(
                     }
                 }
             }
+            // f18「编辑文件后原文件改为 .bak」：新内容此刻已完整落在 tmp 上，
+            // 正式覆盖之前把原文件**改名**留档 —— 改名是 O(1)，拷贝一份 GB 级文件
+            // 等于把保存时间翻倍。先删旧 .bak（只留最近一份，免得把磁盘吃光），
+            // 改名失败就跳过备份：原文件一个字节还没动，少一层保险比拦住保存强。
+            if (backup && file.isFile) {
+                runCatching { bak.delete() }
+                movedToBak = runCatching { file.renameTo(bak) }.getOrDefault(false)
+            }
             if (!tmp.renameTo(file)) {
                 // 极少数文件系统不支持覆盖式改名：回退为拷贝覆盖（仍先有完整临时文件）。
                 tmp.inputStream().use { input ->
@@ -210,10 +223,13 @@ class WindowedDocument(
         } catch (e: Exception) {
             AppLog.e(TAG, "writeWithOverlays failed: ${file.absolutePath}", e)
             tmp.delete()
+            // 备份已经挪走、新文件又没落成 → 必须放回去，不能留下「文件没了只剩 .bak」
+            if (movedToBak && !file.exists() && bak.exists()) runCatching { bak.renameTo(file) }
             return null
         } catch (e: OutOfMemoryError) {
             AppLog.e(TAG, "writeWithOverlays OOM: ${file.absolutePath}")
             tmp.delete()
+            if (movedToBak && !file.exists() && bak.exists()) runCatching { bak.renameTo(file) }
             return null
         }
     }

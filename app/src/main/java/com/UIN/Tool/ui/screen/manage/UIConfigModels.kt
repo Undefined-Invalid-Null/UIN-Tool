@@ -235,7 +235,36 @@ fun saveConfigToUIConfig(config: ConfigState) {
     AppLog.i(TAG, "Saving UI config...")
 
     val uiConfig = UIConfig.getInstance()
-    val saveWasDark = uiConfig.shouldUseDarkTheme()
+    val full = buildUiConfigJson(
+        config,
+        uiConfig.getConfig(),
+        uiConfig.shouldUseDarkTheme()
+    )
+    uiConfig.setThemeMode(config.themeMode)
+    uiConfig.applyJson(full)
+
+    AppLog.success(TAG, "UI config saved")
+}
+
+/**
+ * ConfigState → 整份 UI 配置 JSON。
+ *
+ * 抽出来是为了让「切风格」也能复用同一套序列化（w.txt 第 5 条）：
+ * 切出时要把当前风格（含未保存的编辑）整份写回它自己的槽位，首次进入某风格时
+ * 要用该风格自己的预设铺底 —— 两处都必须与「保存」写出完全一致的字段。
+ *
+ * @param existingTop 当前那份配置，只用来保留本函数不编辑的顶级区块（nav/widget…）
+ *   以及**另一模式**的渐变槽位；调用方必须传「这个风格自己的」配置。
+ * @param saveWasDark 保存瞬间的深浅模式，决定渐变写进浅槽还是深槽。
+ * @param seedGradientBothModes w.txt 第 5 条：首次进入某风格时两个模式槽都写
+ *   该风格自己的预设渐变 —— 不继承另一个风格的槽值，两个风格系统互不干扰。
+ */
+fun buildUiConfigJson(
+    config: ConfigState,
+    existingTop: JSONObject,
+    saveWasDark: Boolean,
+    seedGradientBothModes: Boolean = false
+): JSONObject {
     val full = JSONObject()
 
     val theme = JSONObject()
@@ -337,7 +366,7 @@ fun saveConfigToUIConfig(config: ConfigState) {
 
     val gradient = JSONObject()
     gradient.put("enabled", config.enableGradientBackground)
-    val existingGradient = uiConfig.getConfig().optJSONObject("gradient")
+    val existingGradient = existingTop.optJSONObject("gradient")
 
     if (saveWasDark) {
         gradient.put("color_dark", config.gradientColor)
@@ -367,12 +396,35 @@ fun saveConfigToUIConfig(config: ConfigState) {
         gradient.put("to", config.gradientTo)
         gradient.put("to_dark", existingGradient?.optString("to_dark", UIConfig.GRADIENT_DIR_TOP_LEFT) ?: UIConfig.GRADIENT_DIR_TOP_LEFT)
     }
+    // w.txt 第 5 条：首次进入某风格 —— 预设只有一组渐变，两个模式槽都写它。
+    if (seedGradientBothModes) {
+        val both = org.json.JSONArray()
+        config.gradientColors.forEach { both.put(it) }
+        gradient.put("color", config.gradientColor)
+        gradient.put("color_dark", config.gradientColor)
+        gradient.put("mode", config.gradientMode)
+        gradient.put("mode_dark", config.gradientMode)
+        gradient.put("colors", both)
+        gradient.put("colors_dark", org.json.JSONArray(both.toString()))
+        gradient.put("from", config.gradientFrom)
+        gradient.put("from_dark", config.gradientFrom)
+        gradient.put("to", config.gradientTo)
+        gradient.put("to_dark", config.gradientTo)
+    }
     full.put("gradient", gradient)
 
-    uiConfig.setThemeMode(config.themeMode)
-    uiConfig.applyJson(full)
+    // m.txt 第 4 条：整份保存必须原样带上当前配置里「本界面不编辑」的顶级区块（典型是
+    // nav：默认启动页 + 底部导航顺序）。否则 applyJson 用缺 nav 的配置整份覆盖后，
+    // ensureDefaultSections 会补回默认值——表现就是「点了保存又变回插件/原顺序」。
+    val existingKeys = existingTop.keys()
+    while (existingKeys.hasNext()) {
+        val key = existingKeys.next()
+        if (!full.has(key)) {
+            full.put(key, existingTop.get(key))
+        }
+    }
 
-    AppLog.success(TAG, "UI config saved")
+    return full
 }
 
 fun ConfigState.paletteColorValue(key: String): String {

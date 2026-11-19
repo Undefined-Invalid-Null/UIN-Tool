@@ -19,10 +19,24 @@ object UIConfig {
     private const val KEY_CURRENT_THEME = "current_theme"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_CURRENT_STYLE = "current_style"
+    // v.txt 第 1 条（用户）：每个风格系统各自记录自己的整份配置。
+    // 旧实现只有一份全局 config —— 切风格时把预设写进同一份配置，新拟态里改的
+    // 渐变/颜色会覆盖默认风格，反过来也一样。现在按风格名分开存：切出时把当前
+    // 配置写回旧风格，切入时载入目标风格自己那份（没有则留空，由调用方用预设）。
+    private const val KEY_STYLE_CONFIGS = "style_configs"
+
+    // v.txt 第 7 条（用户）：出厂默认 UI 配置的数据源（资产目录，不再写死在代码里）。
+    private const val DEFAULT_CONFIG_ASSET = "config/uiconfig.json"
     
     const val THEME_MODE_SYSTEM = "system"
     const val THEME_MODE_LIGHT = "light"
     const val THEME_MODE_DARK = "dark"
+
+    // 6.3.0 M1.5（决策 2）：底部导航的合法 tab id 全集。顺序由 nav.tabOrder 决定，
+    // 这里只是"有哪些页"——用于校验外部写入（导入配置/深链）避免停在不存在的页上。
+    val NAV_TAB_IDS = listOf("dev", "tools", "files", "repo", "manage")
+    // 默认启动页：按决策 2「默认 tab 保持插件」
+    const val NAV_DEFAULT_TAB = "tools"
     
     private lateinit var context: Context
     internal var config: JSONObject = JSONObject()
@@ -30,6 +44,10 @@ object UIConfig {
     private var currentTheme: String = "default"
     private var themeMode: String = THEME_MODE_SYSTEM
     private var currentStyle: String = "default"
+    /** 风格名 → 该风格自己的整份配置（含浅/深两套渐变槽）。 */
+    private var styleConfigs: JSONObject = JSONObject()
+    /** `assets/config/uiconfig.json` 的原始解析结果（只读缓存，对外一律返回深拷贝）。 */
+    private var defaultConfigCache: JSONObject? = null
     private var isInitialized = false
     
     // 配置版本号：每次保存自增，供 Compose 主题观察以触发重组
@@ -75,6 +93,17 @@ object UIConfig {
         currentTheme = prefs.getString(KEY_CURRENT_THEME, "default") ?: "default"
         themeMode = prefs.getString(KEY_THEME_MODE, THEME_MODE_SYSTEM) ?: THEME_MODE_SYSTEM
         currentStyle = prefs.getString(KEY_CURRENT_STYLE, "default") ?: "default"
+        styleConfigs = try {
+            JSONObject(prefs.getString(KEY_STYLE_CONFIGS, "{}") ?: "{}")
+        } catch (e: Exception) {
+            Logger.w(TAG, "parse style_configs failed: ${e.message}")
+            JSONObject()
+        }
+        // 旧版本没有 style_configs：把当前这份全局配置认作「当前风格」的记录，
+        // 这样第一次切走时旧风格的自定义不会丢。
+        if (!styleConfigs.has(currentStyle)) {
+            styleConfigs.put(currentStyle, JSONObject(config.toString()))
+        }
     }
 
     /**
@@ -82,7 +111,8 @@ object UIConfig {
      */
     private fun ensureDefaultSections(target: JSONObject = config) {
         val def = getDefaultConfig()
-        val sections = listOf("theme", "theme_dark", "shape", "size", "font", "experimental", "gradient")
+        // 6.3.0 M1.5：新增「nav」段（默认启动页 + 底部导航顺序），旧配置升级时自动补齐
+        val sections = listOf("theme", "theme_dark", "shape", "size", "font", "experimental", "gradient", "nav")
         for (section in sections) {
             val current = target.optJSONObject(section)
             val defaultSection = def.optJSONObject(section) ?: continue
@@ -114,8 +144,55 @@ object UIConfig {
                 themeDark.put("primary_dark", newDefault)
             }
             migrateLegacyGradientDefault()
+            migrateNeutralNeumorphismPalette()
         } catch (e: Exception) {
             Logger.w(TAG, "migrateLegacyDefaults failed: ${e.message}")
+        }
+    }
+
+    /**
+     * o.txt 第 3 条：新拟态整体偏绿。旧预设的 primary/accent 是青绿系、底色 #E8ECF1 又带
+     * 蓝绿，叠起来整页发绿。预设已换成中性石板灰（见 StylePresets.NEUMORPHISM），但**已保存**
+     * 的配置不会自动跟着变 —— 这里只在「当前风格就是新拟态、且该项仍是旧默认值」时替换，
+     * 用户自己调过的颜色一律不动。
+     */
+    private fun migrateNeutralNeumorphismPalette() {
+        try {
+            val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+            if (prefs.getString(KEY_CURRENT_STYLE, "default") != "neumorphism") return
+            val light = mapOf(
+                "primary" to ("#FF1A3A4A" to "#FF4A5568"),
+                "primary_dark" to ("#FF0F2838" to "#FF374151"),
+                "primary_light" to ("#FF2D5A70" to "#FF6B7280"),
+                "accent" to ("#FF4A8A9E" to "#FF6B7280"),
+                "background" to ("#FFE8ECF1" to "#FFECECEC"),
+                "surface" to ("#FFE8ECF1" to "#FFECECEC"),
+                "surface_variant" to ("#FFDDE3EA" to "#FFE2E2E2"),
+                "divider" to ("#FFE0E4E8" to "#FFDCDCDC"),
+                "nav_selected" to ("#FF1A3A4A" to "#FF4A5568"),
+                "nav_unselected" to ("#FF9AA6B2" to "#FF9A9A9A"),
+                "status_bar" to ("#FF0F2838" to "#FF374151")
+            )
+            val dark = mapOf(
+                "primary" to ("#FF7A8490" to "#FF9AA5B1"),
+                "accent" to ("#FF6A9AAE" to "#FF9AA5B1"),
+                "background" to ("#FF2A2E34" to "#FF2B2B2B"),
+                "surface" to ("#FF2A2E34" to "#FF2B2B2B"),
+                "surface_variant" to ("#FF252930" to "#FF353535")
+            )
+            var changed = false
+            for ((section, table) in listOf("theme" to light, "theme_dark" to dark)) {
+                val obj = config.optJSONObject(section) ?: continue
+                for ((key, pair) in table) {
+                    if (obj.optString(key, "") == pair.first) {
+                        obj.put(key, pair.second)
+                        changed = true
+                    }
+                }
+            }
+            if (changed) Logger.i(TAG, "migrated neumorphism palette to neutral gray")
+        } catch (e: Exception) {
+            Logger.w(TAG, "migrateNeutralNeumorphismPalette failed: ${e.message}")
         }
     }
 
@@ -168,9 +245,13 @@ object UIConfig {
     }
 
     fun saveConfig() {
+        // v.txt 第 1 条：任何一次保存都先镜像进「当前风格」的槽位，
+        // 这样即使调用方只改了全局配置，切风格时也不会把这次修改丢掉。
+        styleConfigs.put(currentStyle, JSONObject(config.toString()))
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         prefs.edit().apply {
             putString(KEY_CONFIG, config.toString())
+            putString(KEY_STYLE_CONFIGS, styleConfigs.toString())
             putBoolean(KEY_USE_ICON_TINT, useIconTint)
             putString(KEY_CURRENT_THEME, currentTheme)
             putString(KEY_THEME_MODE, themeMode)
@@ -203,123 +284,39 @@ object UIConfig {
     
     fun getConfig(): JSONObject = config
     
+    /**
+     * v.txt 第 7 条（用户）：出厂默认配置不再硬编码在 Kotlin 里，改为
+     * `assets/config/uiconfig.json`（颜色 / 圆角 / 尺寸 / 字体 / 实验特性 / 渐变 / 导航）。
+     *
+     * 资产只解析一次并缓存原始对象；每次调用返回**深拷贝** —— 调用方
+     * （[ensureDefaultSections]、[resetToDefault]）会把它并进用户配置甚至直接改键，
+     * 共享同一实例会让「默认值」被用户配置污染。
+     */
     private fun getDefaultConfig(): JSONObject {
+        val cached = defaultConfigCache ?: loadDefaultConfigFromAssets()?.also {
+            defaultConfigCache = it
+        }
+        return if (cached != null) JSONObject(cached.toString()) else JSONObject()
+    }
+
+    /** 读取并清洗 `assets/config/uiconfig.json`；失败返回 null（随后退回空配置并打日志）。 */
+    private fun loadDefaultConfigFromAssets(): JSONObject? {
+        if (!::context.isInitialized) return null
         return try {
-            JSONObject().apply {
-                put("theme", JSONObject().apply {
-                    put("primary", "#FF1A3A4A")
-                    put("primary_dark", "#FF0F2838")
-                    put("primary_light", "#FF2D5A70")
-                    put("accent", "#FF4A8A9E")
-                    put("success", "#FF4CAF50")
-                    put("warning", "#FFFF9800")
-                    put("error", "#FFF44336")
-                    put("info", "#FF2196F3")
-                    put("text_primary", "#FF212121")
-                    put("text_secondary", "#FF757575")
-                    put("text_hint", "#FFBDBDBD")
-                    put("text_primary_inverse", "#FFFFFFFF")
-                    put("background", "#FFF5F7FA")
-                    put("surface", "#FFFFFFFF")
-                    put("surface_variant", "#FFF5F7FA")
-                    put("divider", "#FFE0E4E8")
-                    put("glass_background", "#B3FFFFFF")
-                    put("disabled", "#FFBDBDBD")
-                    put("status_bar", "#FF0F2838")
-                    put("navigation_bar", "#FFFFFFFF")
-                    put("nav_selected", "#FF1A3A4A")
-                    put("nav_unselected", "#FF9AA6B2")
-                })
-                put("theme_dark", JSONObject().apply {
-                    put("primary", "#FF8B949E")
-                    put("primary_dark", "#FFD0D0D0")
-                    put("primary_light", "#FFE6E6E6")
-                    put("accent", "#FF8B949E")
-                    put("success", "#FF66BB6A")
-                    put("warning", "#FFFFB74D")
-                    put("error", "#FFFF6E6E")
-                    put("info", "#FF26C6DA")
-                    put("text_primary", "#FFE8E8E8")
-                    put("text_secondary", "#FFA8A8A8")
-                    put("text_hint", "#FF6E6E6E")
-                    put("text_primary_inverse", "#FF1A1A1A")
-                    put("background", "#FF2A2A2A")
-                    put("surface", "#FF363636")
-                    put("surface_variant", "#FF3F3F3F")
-                    put("divider", "#FF484848")
-                    put("glass_background", "#B32A2A2A")
-                    put("disabled", "#FF666666")
-                    put("status_bar", "#FF1F1F1F")
-                    put("navigation_bar", "#FF2A2A2A")
-                    put("nav_selected", "#FF8B949E")
-                    put("nav_unselected", "#FF7A7A7A")
-                })
-                put("shape", JSONObject().apply {
-                    put("cornerRadiusSmall", 8)
-                    put("cornerRadiusMedium", 12)
-                    put("cornerRadiusLarge", 16)
-                    put("cornerRadiusExtraLarge", 24)
-                    put("buttonCornerRadius", 12)
-                    put("cardCornerRadius", 16)
-                    put("dialogCornerRadius", 20)
-                    put("inputCornerRadius", 8)
-                })
-                put("size", JSONObject().apply {
-                    put("buttonHeight", 44)
-                    put("buttonMinWidth", 80)
-                    put("buttonElevation", 2)
-                    put("cardElevation", 4)
-                    put("cardPadding", 16)
-                    put("spacingSmall", 4)
-                    put("spacingMedium", 8)
-                    put("spacingLarge", 16)
-                    put("iconSizeSmall", 16)
-                    put("iconSizeMedium", 20)
-                    put("iconSizeLarge", 24)
-                    put("progressHeight", 4)
-                    put("titleTextSize", 20)
-                    put("bodyTextSize", 14)
-                    put("captionTextSize", 12)
-                    put("sectionTitleTextSize", 18)
-                })
-                put("font", JSONObject().apply {
-                    put("fontFamily", "sans-serif")
-                    put("enableBold", true)
-                })
-                put("experimental", JSONObject().apply {
-                    put("enableGlassEffect", true)
-                    put("enableRipple", true)
-                    put("enableNeumorphism", false)
-                    put("enableNeumorphismInset", true)
-                    put("enableNeumorphismGlow", true)
-                    put("neumorphismIntensity", "light")
-                    put("animationSpeed", "medium")
-                })
-                put("gradient", JSONObject().apply {
-                    put("enabled", true)
-                    put("mode", GRADIENT_MODE_SINGLE)
-                    put("mode_dark", GRADIENT_MODE_SINGLE)
-                    // 批次58（用户）：默认/新拟态两风格浅色渐变底色统一为 #FFF9F9F9。
-                    put("color", "#FFF9F9F9")
-                    put("color_dark", "#FF4C4F51")
-                    put("from", GRADIENT_DIR_BOTTOM_RIGHT)
-                    put("from_dark", GRADIENT_DIR_BOTTOM_RIGHT)
-                    put("to", GRADIENT_DIR_TOP_LEFT)
-                    put("to_dark", GRADIENT_DIR_TOP_LEFT)
-                    put("colors", org.json.JSONArray().apply {
-                        put("#FFC4D6DF")
-                        put("#FFD6E8F2")
-                        put("#FFEAF4FA")
-                    })
-                    put("colors_dark", org.json.JSONArray().apply {
-                        put("#FF4C4F51")
-                        put("#FF5A5E62")
-                        put("#FF6B6F73")
-                    })
-                })
+            val text = context.assets.open(DEFAULT_CONFIG_ASSET).bufferedReader().use { it.readText() }
+            val json = JSONObject(text)
+            // 下划线开头的键只是给维护者看的注释，不进入运行时配置。
+            val keys = json.keys()
+            val commentKeys = ArrayList<String>()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (key.startsWith("_")) commentKeys.add(key)
             }
+            commentKeys.forEach { json.remove(it) }
+            if (json.length() == 0) null else json
         } catch (e: Exception) {
-            JSONObject()
+            Logger.e(TAG, "load $DEFAULT_CONFIG_ASSET failed: ${e.message}")
+            null
         }
     }
     
@@ -461,6 +458,56 @@ object UIConfig {
         }
     }
     
+    // ==================== 导航（6.3.0 M1.5，决策 2） ====================
+
+    /** 默认启动页；非法值一律回落到插件页，保证不会停在不存在的 tab 上 */
+    fun getDefaultTab(): String {
+        val v = config.optJSONObject("nav")?.optString("defaultTab", NAV_DEFAULT_TAB) ?: NAV_DEFAULT_TAB
+        return if (NAV_TAB_IDS.contains(v)) v else NAV_DEFAULT_TAB
+    }
+
+    fun setDefaultTab(id: String) {
+        if (!NAV_TAB_IDS.contains(id)) {
+            Logger.w(TAG, "setDefaultTab ignored, unknown id: $id")
+            return
+        }
+        try {
+            val nav = config.optJSONObject("nav") ?: JSONObject().also { config.put("nav", it) }
+            nav.put("defaultTab", id)
+            saveConfig()
+        } catch (e: Exception) {
+            Logger.e(TAG, "setDefaultTab failed: ${e.message}")
+        }
+    }
+
+    /**
+     * 底部导航顺序——**只排序、不隐藏**（决策 2）。
+     * 调用方按下标渲染，所以返回值必须恒为 5 个 id 的完整排列；
+     * 三重容错：去重 → 丢非法 id → 缺的补到末尾（导入的旧/坏配置也不会让导航缺页）。
+     */
+    fun getTabOrder(): List<String> {
+        val arr = config.optJSONObject("nav")?.optJSONArray("tabOrder")
+        val raw = if (arr == null) emptyList() else (0 until arr.length()).map { arr.optString(it, "") }
+        return normalizeTabOrder(raw)
+    }
+
+    fun setTabOrder(order: List<String>) {
+        try {
+            val nav = config.optJSONObject("nav") ?: JSONObject().also { config.put("nav", it) }
+            nav.put("tabOrder", org.json.JSONArray().apply {
+                normalizeTabOrder(order).forEach { put(it) }
+            })
+            saveConfig()
+        } catch (e: Exception) {
+            Logger.e(TAG, "setTabOrder failed: ${e.message}")
+        }
+    }
+
+    private fun normalizeTabOrder(order: List<String>): List<String> {
+        val valid = order.filter { NAV_TAB_IDS.contains(it) }.distinct()
+        return valid + NAV_TAB_IDS.filterNot { valid.contains(it) }
+    }
+
     fun resetToDefault() {
         val savedStyle = currentStyle
         config = getDefaultConfig()
@@ -468,6 +515,9 @@ object UIConfig {
         currentTheme = "default"
         themeMode = THEME_MODE_SYSTEM
         currentStyle = savedStyle
+        // v.txt 第 1 条：重置是「所有风格一起重置」，否则切回另一个风格会把它
+        // 以前的自定义整份带回来，看起来像重置没生效。
+        styleConfigs = JSONObject()
         try {
             com.UIN.Tool.ui.common.StyleManager.clearCache()
         } catch (_: Exception) {}
@@ -502,9 +552,77 @@ object UIConfig {
     
     fun getCurrentStyle(): String = currentStyle
 
+    /**
+     * v.txt 第 1 条：按风格隔离的配置槽。
+     *
+     * - [hasStyleConfig] / [getStyleConfig] 供 StyleManager 判断「这个风格以前有没有存过」；
+     * - [setCurrentStyle] 切出时把当前配置写回旧风格，切入时载入目标风格那份。
+     *
+     * 深浅色模式（themeMode）仍是全局设置：它属于「系统级」而不是某个风格，
+     * 切风格只换配色/渐变/形状，不改变用户选的浅色/深色/跟随系统。
+     */
+    fun hasStyleConfig(style: String): Boolean = styleConfigs.optJSONObject(style) != null
+
+    fun getStyleConfig(style: String): JSONObject? =
+        styleConfigs.optJSONObject(style)?.let { JSONObject(it.toString()) }
+
     fun setCurrentStyle(style: String) {
+        if (style == currentStyle) {
+            saveConfig()
+            return
+        }
+        // 1) 先把旧风格的当前状态落进它自己的槽位。
+        styleConfigs.put(currentStyle, JSONObject(config.toString()))
         currentStyle = style
+        // 2) 目标风格有历史配置就整份载入。
+        val saved = styleConfigs.optJSONObject(style)
+        if (saved != null) {
+            val next = JSONObject(saved.toString())
+            carryGlobalSections(next)
+            config = next
+            ensureDefaultSections()
+            saveConfig()
+        }
+        // w.txt 第 5 条（用户）：目标风格**没有**历史配置时这里不能再 saveConfig()。
+        // 旧实现会顺手把「上一个风格」的整份 config（含它的浅/深渐变槽）复制进
+        // 新风格的槽位 —— 于是切一次风格、换一次深浅色，渐变就跑到另一个风格系统里。
+        // 现在留空，由 [com.UIN.Tool.ui.common.StyleManager.switchStyle] 用该风格
+        // 自己的预设调 [seedStyleConfig] 铺底。
+    }
+
+    /**
+     * w.txt 第 5 条（用户）：首次进入某个风格时，用它**自己**的配置铺底。
+     *
+     * 语言 / 导航 / 小部件仍从当前配置带过来（全局设置，不属于任何风格），
+     * 其余配色、渐变、形状全部来自 [seed] —— 绝不继承另一个风格的槽值。
+     */
+    fun seedStyleConfig(style: String, seed: JSONObject) {
+        val next = JSONObject(seed.toString())
+        carryGlobalSections(next)
+        ensureDefaultSections(next)
+        config = next
+        currentStyle = style
+        styleConfigs.put(style, JSONObject(next.toString()))
         saveConfig()
+    }
+
+    /**
+     * 语言 / 导航 / 小部件属于**全局**设置，不属于任何风格系统 ——
+     * 切风格载入另一份配置时要把它们带过去，否则切一次风格就换一次语言。
+     */
+    private fun carryGlobalSections(target: JSONObject) {
+        try {
+            val font = config.optJSONObject("font")
+            val targetFont = target.optJSONObject("font") ?: JSONObject().also { target.put("font", it) }
+            if (font != null && font.has("language")) {
+                targetFont.put("language", font.get("language"))
+            }
+            for (section in listOf("nav", "widget")) {
+                config.optJSONObject(section)?.let { target.put(section, JSONObject(it.toString())) }
+            }
+        } catch (e: Exception) {
+            Logger.w(TAG, "carryGlobalSections failed: ${e.message}")
+        }
     }
 
     fun isSystemDark(): Boolean {

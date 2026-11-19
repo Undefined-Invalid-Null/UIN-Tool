@@ -5,6 +5,7 @@ import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.content.Intent
 // ui/screen/dev/DevScreen.kt - 添加缺失的 import
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.UIN.Tool.log.Logger
 import com.UIN.Tool.ui.components.unified.*
 import com.UIN.Tool.ui.screen.docs.DocBrowserActivity
+import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -211,102 +213,120 @@ fun DevScreen() {
                 )
             },
             text = {
-                Text(
-                    Str.get(R.string.choose_the_plugin_frontend_ui_type),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            confirmButton = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    Text(
+                        text = Str.get(R.string.choose_the_plugin_frontend_ui_type),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
                     // 原生 UI
-                    UnifiedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            selectedUiType = "native"
-                            showCreatePluginDialog = false
-                            navigateToWizard(context, "native", "")
-                        }
+                    FrontendTypeTile(
+                        icon = Icons.Default.Android,
+                        title = Str.get(R.string.native_ui_android_view)
                     ) {
-                        Text(
-                            text = Str.get(R.string.native_ui_android_view),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                        selectedUiType = "native"
+                        showCreatePluginDialog = false
+                        navigateToWizard(context, "native", "")
                     }
-
-                    // ✅ 纯 WebView（无后端）
-                    UnifiedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            selectedUiType = "web"
-                            isWebViewOnly = true
-                            showCreatePluginDialog = false
-                            navigateToWizard(context, "web", "")
-                        }
+                    // 纯 WebView（无后端）
+                    FrontendTypeTile(
+                        icon = Icons.Default.Language,
+                        title = Str.get(R.string.web_ui_frontend_only_no_backend)
                     ) {
-                        Text(
-                            text = Str.get(R.string.web_ui_frontend_only_no_backend),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                        selectedUiType = "web"
+                        isWebViewOnly = true
+                        showCreatePluginDialog = false
+                        navigateToWizard(context, "web", "")
                     }
-
                     // WebView + 后端
-                    UnifiedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            selectedUiType = "web"
-                            isWebViewOnly = false
-                            showCreatePluginDialog = false
-                            navigateToWizard(context, "web", "other")
-                        }
+                    FrontendTypeTile(
+                        icon = Icons.Default.Cloud,
+                        title = Str.get(R.string.web_ui_backend)
                     ) {
-                        Text(
-                            text = Str.get(R.string.web_ui_backend),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                        selectedUiType = "web"
+                        isWebViewOnly = false
+                        showCreatePluginDialog = false
+                        navigateToWizard(context, "web", "other")
                     }
-
-                    // ✅ CUI 终端
-                    UnifiedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = {
-                            selectedUiType = "cui"
-                            isWebViewOnly = false
-                            showCreatePluginDialog = false
-                            navigateToWizard(context, "cui", "")
-                        }
+                    // CUI 终端
+                    FrontendTypeTile(
+                        icon = Icons.Default.Terminal,
+                        title = Str.get(R.string.cui_terminal_command_line)
                     ) {
-                        Text(
-                            text = Str.get(R.string.cui_terminal_command_line),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                        selectedUiType = "cui"
+                        isWebViewOnly = false
+                        showCreatePluginDialog = false
+                        navigateToWizard(context, "cui", "")
                     }
-
-                    UnifiedDialogTextButton(
-                        onClick = { showCreatePluginDialog = false },
-                        modifier = Modifier.fillMaxWidth(),
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ) {
-                        Text(Str.get(R.string.cancel))
-                    }
+                }
+            },
+            confirmButton = {
+                UnifiedDialogTextButton(
+                    onClick = { showCreatePluginDialog = false },
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Text(Str.get(R.string.cancel))
                 }
             },
             dismissButton = null
         )
+    }
+}
+
+/**
+ * 前端类型选项（l.txt 第 7 条）。
+ *
+ * 原先是一列「只有一行居中小字、没有边界」的卡片 —— 在弹窗里看着像四段说明，
+ * 不像四个能点的选项；而且卡片高度完全由一行文字撑开，描边/文字贴在一起时
+ * 文字下半截会被圆角轮廓吃掉。这里改成统一的一行选项：左侧图标、中间标题、
+ * 右侧箭头，明确的最小高度 + 四周留白，描边画在内容外侧，文字永远完整可见。
+ */
+@Composable
+private fun FrontendTypeTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(AppDimens.cardCornerRadius)
+    UnifiedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                shape = shape
+            ),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 

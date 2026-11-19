@@ -27,6 +27,9 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
@@ -106,6 +110,80 @@ enum class IconPosition {
 
 // ==================== 统一按钮 ====================
 
+/**
+ * 「当前是否在弹窗里」—— 由 `UnifiedDialog` 的按钮槽位注入。
+ *
+ * 用户反馈 e29：**弹窗里的按钮一律不铺底色，最多给文字上色**（原话「不要加背景
+ * （主题色背景或者红色背景），最多只能给文字着色。整个软件都改一下」）。
+ *
+ * 全软件有几十处调用点，逐个改必然漏；所以由对话框统一打标记、按钮自己降级 ——
+ * 一处生效，以后新增的弹窗也自动合规。**只在按钮槽位里为 true**，
+ * 页面正文里的 `UnifiedButton`（底栏、卡片、工具条）不受影响。
+ */
+val LocalInDialog = staticCompositionLocalOf { false }
+
+/**
+ * 弹窗内「第一个输入框自动聚焦」的认领令牌（i.txt 第 4 条）。
+ *
+ * 由 [com.UIN.Tool.ui.components.unified.UnifiedDialog] / `UnifiedAlertDialog` 在正文外
+ * 提供一份；输入框组合时**先到先得** —— 弹窗里通常从上到下排字段，最上面的那个就是
+ * 用户要输入的第一个。认领后自动 requestFocus 并弹键盘，其余字段不再抢。
+ */
+class DialogAutoFocus {
+    internal var claimed = false
+}
+
+val LocalDialogAutoFocus = staticCompositionLocalOf<DialogAutoFocus?> { null }
+
+/**
+ * 给当前输入框申请「弹窗首个字段」的自动聚焦；不是首个/不在弹窗里 → 返回 null，调用方
+ * 什么都不用做。`enabled = false` 的字段不认领（例如压缩框「加入已有包」时名字框禁用，
+ * 该轮到密码框）。
+ */
+@Composable
+fun rememberDialogAutoFocus(enabled: Boolean = true): FocusRequester? {
+    val state = LocalDialogAutoFocus.current ?: return null
+    val mine = remember { enabled && !state.claimed }
+    if (mine) state.claimed = true
+    val requester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        if (!mine) return@LaunchedEffect
+        // 等一帧让字段挂上焦点节点；直接 requestFocus 在首次组合里可能找不到节点。
+        kotlinx.coroutines.delay(80)
+        runCatching { requester.requestFocus() }
+        keyboard?.show()
+    }
+    return if (mine) requester else null
+}
+
+/** 任意输入框的 modifier 版自动聚焦（M3 原生 `OutlinedTextField` 也能用）。 */
+@Composable
+fun Modifier.dialogAutoFocus(enabled: Boolean = true): Modifier {
+    val requester = rememberDialogAutoFocus(enabled) ?: return this
+    return focusRequester(requester)
+}
+
+/**
+ * o.txt 第 3 条：新拟态下**所有带影子的控件共用的那一层不透明表面**。
+ *
+ * 新拟态的凸起是「先画一整块影子，再在上面盖表面」。表面若透明，影子底板就整片露出来 ——
+ * 用户看到的就是「一块灰蒙蒙的阴影」，而不是浮起的按钮。文字按钮与图标按钮必须用同一层
+ * 表面，否则同一排控件里一个白、一个灰。
+ *
+ *  - 玻璃模式：跟玻璃底（透出页面渐变）；
+ *  - 深色：跟 surface（白色蒙层会把暗色主题洗灰）；
+ *  - 浅色：纯白 —— 这是「白色覆盖层」的直译，也让浮起的控件与同色的页面材质区分开。
+ */
+@Composable
+internal fun neuSurfaceFill(): Color = when {
+    AppColors.glassEnabled() -> AppColors.glassBackground()
+    // p.txt 第 2 条（用户）：新拟态按钮的覆盖层**不能硬编码纯白** —— 浅色主题下
+    // 那块 #FFFFFF 与页面卡片底色对不上，按钮像贴了一张白纸。这里直接取卡片底色
+    // （AppColors.cardBackground() 就是主题 surface），深浅色都跟着背景走。
+    else -> AppColors.cardBackground()
+}
+
 @Composable
 fun UnifiedButton(
     text: String,
@@ -120,6 +198,31 @@ fun UnifiedButton(
     containerColor: Color? = null,
     contentColor: Color? = null
 ) {
+    // 用户反馈 e29：**弹窗里的按钮一律不铺底色，最多给文字上色**（「不要加背景
+    // （主题色背景或者红色背景），最多只能给文字着色」）。标记由 UnifiedDialog 注入
+    // （[LocalInDialog]），这里把填充型降级成文字型 —— 几十处调用点一处生效；
+    // 页面正文里的按钮（标记为 false）完全不受影响。
+    val inDialog = LocalInDialog.current
+    val isFilledVariant = variant == ButtonVariant.Primary || variant == ButtonVariant.Secondary ||
+        variant == ButtonVariant.Destructive || variant == ButtonVariant.Success ||
+        variant == ButtonVariant.Warning
+    // k.txt 第 3 条（用户）：**全软件不再使用底色填充按钮** —— 所有填充型统一降级成
+    // 「文字 + 同色描边」。弹窗内原本就已是文字型（e29），这里把**页面正文**的填充型
+    // 也一并降级：41 个场地、上百个调用点只改这一处，不会再冒出白字压在色块上的按钮。
+    // 语义色（红删除 / 绿成功 / 主题色主操作）保留在文字与描边上，识别度不降。
+    val effectiveVariant = when {
+        isFilledVariant -> ButtonVariant.Outlined
+        else -> variant
+    }
+    // 降级后文字/描边用哪个色：**就用它原本要铺的那块底色**（危险→红、成功→绿、主色→蓝…）。
+    val fallbackTextColor = when {
+        containerColor != null -> containerColor
+        variant == ButtonVariant.Destructive -> MaterialTheme.colorScheme.error
+        variant == ButtonVariant.Secondary -> MaterialTheme.colorScheme.secondary
+        variant == ButtonVariant.Success -> Color(0xFF4CAF50)
+        variant == ButtonVariant.Warning -> Color(0xFFFF9800)
+        else -> MaterialTheme.colorScheme.primary
+    }
     val (resolvedContainerColor, resolvedContentColor) = when {
         containerColor != null && contentColor != null -> containerColor to contentColor
         containerColor != null -> containerColor to MaterialTheme.colorScheme.onSurface
@@ -142,20 +245,69 @@ fun UnifiedButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    // n.txt 第 4 条：**文字按钮也要有一层像图标按钮那样的表面**。
+    // 原先 Text 变体是全透明的，新拟态要么没影（一块悬空的字），要么一加影就变成
+    // 「整片字块 + 外圈灰影」。这里与 [UnifiedIconButtonShell] 同口径：给一层
+    // 贴合的 surface 底，阴影只沿着按钮自己的轮廓走，按下切内凹。
+    // o.txt 第 3 条：文字按钮的「表面」必须是不透明白色覆盖层 —— 只给柔影时，
+    // 整块按钮区域会透出 #FFFFFF/#D9D9D9 的阴影底板，看起来就是一片灰蒙蒙的色块。
+    // 深色模式沿用 surface，避免白色蒙层把暗色主题洗灰；玻璃模式跟玻璃底。
+    val neuSurfaceColor = neuSurfaceFill()
+
     val neuModifier = if (neu) {
-        when (variant) {
-            ButtonVariant.Outlined, ButtonVariant.Text -> {
-                Modifier
+        val currentOffset = if (isPressed) 0f else 5f
+        val neuInset = UIConfig.isNeumorphismInsetEnabled()
+        when (effectiveVariant) {
+            // m.txt 第 1 条：k.txt 起所有填充型按钮都降级成 Outlined —— 可这里原先
+            // 只给“真正填充”的分支加新拟态，降级后等于**全软件按钮都丢了浮起感**。
+            // 现在 Outlined（也就是降级后的主/次/危险/成功/警告）同样给 neuRaised，
+            // 按下时按开关切 neuInset，按钮重新与卡片、输入框处在同一套光影里。
+            ButtonVariant.Outlined -> {
+                // 不进 backgroundColor：Button 的容器是透明的，阴影直接落在页面底上，
+                // 正是新拟态的“从同一块材质里浮出来”效果。
+                if (neuInset && isPressed) {
+                    Modifier.neuInset(
+                        shape, isDark, NeuDefaults.Intensity.MEDIUM,
+                        cornerRadius = size.effectiveCornerRadius,
+                        backgroundColor = neuSurfaceColor,
+                        offset = currentOffset
+                    )
+                } else {
+                    Modifier.neuRaised(
+                        shape, isDark, NeuDefaults.Intensity.MEDIUM,
+                        cornerRadius = size.effectiveCornerRadius,
+                        backgroundColor = neuSurfaceColor,
+                        offset = currentOffset
+                    )
+                }
+            }
+            // n.txt 第 4 条：文字按钮不再「保持无阴影」。给和图标按钮一样的凸起轮廓，
+            // 底由下面 colors 里的 containerColor 铺（见 textButtonColors）。
+            ButtonVariant.Text -> {
+                if (neuInset && isPressed) {
+                    Modifier.neuInset(
+                        shape, isDark, NeuDefaults.Intensity.LIGHT,
+                        cornerRadius = size.effectiveCornerRadius,
+                        backgroundColor = neuSurfaceColor,
+                        offset = currentOffset
+                    )
+                } else {
+                    Modifier.neuRaised(
+                        shape, isDark, NeuDefaults.Intensity.LIGHT,
+                        cornerRadius = size.effectiveCornerRadius,
+                        backgroundColor = neuSurfaceColor,
+                        offset = currentOffset
+                    )
+                }
             }
             else -> {
-                val neuInset = UIConfig.isNeumorphismInsetEnabled()
-                val currentOffset = if (isPressed) 0f else 5f
+                val currentOffset2 = currentOffset
                 // 不给 neu* 传 backgroundColor：Button 自身的 containerColor 已经铺底
                 // （批次60 起 neuRaised/neuInset 会真按该参数铺色，再铺一层是重复叠加）。
                 if (neuInset && isPressed) {
-                    Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.effectiveCornerRadius, offset = currentOffset)
+                    Modifier.neuInset(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.effectiveCornerRadius, offset = currentOffset2)
                 } else {
-                    Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.effectiveCornerRadius, offset = currentOffset)
+                    Modifier.neuRaised(shape, isDark, NeuDefaults.Intensity.MEDIUM, cornerRadius = size.effectiveCornerRadius, offset = currentOffset2)
                 }
             }
         }
@@ -169,17 +321,44 @@ fun UnifiedButton(
             .defaultMinSize(minHeight = size.height, minWidth = size.minWidth),
         shape = shape,
         interactionSource = interactionSource,
-        border = if (variant == ButtonVariant.Outlined) {
-            BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-        } else {
-            null
+        border = when {
+            effectiveVariant == ButtonVariant.Outlined ->
+                BorderStroke(
+                    1.dp,
+                    if (isFilledVariant) fallbackTextColor.copy(alpha = 0.7f)
+                    else MaterialTheme.colorScheme.outline
+                )
+            // i.txt 第 2 条：弹窗里由填充型降级来的文字按钮要有一圈描边 ——
+            // 否则深色弹窗底上只剩几个彩色词，边界看不出来。用原本底色（或其对应
+            // 字色）的半透明描边，语义仍由颜色区分。
+            inDialog && isFilledVariant ->
+                BorderStroke(1.dp, fallbackTextColor.copy(alpha = 0.45f))
+            else -> null
         },
-        colors = when (variant) {
+        colors = when (effectiveVariant) {
+            // o.txt 第 3 条：Outlined 在新拟态下也要有白色表面盖住柔影底板，
+            // 否则整块按钮就是一片阴影（文字按钮同理，见下）。
             ButtonVariant.Outlined -> ButtonDefaults.outlinedButtonColors(
-                contentColor = if (contentColor != null) resolvedContentColor else MaterialTheme.colorScheme.primary
+                containerColor = if (neu) neuSurfaceColor else Color.Transparent,
+                contentColor = when {
+                    isFilledVariant -> fallbackTextColor
+                    contentColor != null -> resolvedContentColor
+                    else -> MaterialTheme.colorScheme.primary
+                }
             )
             ButtonVariant.Text -> ButtonDefaults.textButtonColors(
-                contentColor = if (contentColor != null) resolvedContentColor else MaterialTheme.colorScheme.primary
+                // n.txt 第 4 条：新拟态下文字按钮铺一层与页面同色的表面，
+                // 阴影才会贴着按钮轮廓；关闭新拟态时仍保持全透明（旧观感不变）。
+                containerColor = if (neu) neuSurfaceColor else Color.Transparent,
+                // 弹窗里降级来的按钮：用它**原本要铺的那块底色**当字色（危险→红、主色→蓝），
+                // 而不是 Text 默认的主色 —— 否则「删除」会从红字变成蓝字，语义就丢了。
+                contentColor = when {
+                    contentColor != null -> resolvedContentColor
+                    isFilledVariant -> fallbackTextColor
+                    else -> MaterialTheme.colorScheme.primary
+                },
+                disabledContainerColor = Color.Transparent,
+                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             )
             else -> ButtonDefaults.buttonColors(
                 containerColor = resolvedContainerColor,
@@ -193,13 +372,18 @@ fun UnifiedButton(
             pressedElevation = 0.dp,
             hoveredElevation = 0.dp,
             focusedElevation = 0.dp
-        )
+        ),
+        // m.txt 第 8 条：**不要再给纵向内边距**。很多调用点用 `Modifier.height(28/32dp)`
+        // 把按钮钉成固定高度，纵向 padding 会直接吃掉文字行高，底部被裁得更明显。
+        // 纵向留白统一交给 size.height / defaultMinSize 与 Row 的居中对齐完成。
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
     ) {
         if (loading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = when (variant) {
-                    ButtonVariant.Outlined, ButtonVariant.Text -> MaterialTheme.colorScheme.primary
+                color = when (effectiveVariant) {
+                    ButtonVariant.Outlined, ButtonVariant.Text ->
+                        if (isFilledVariant) fallbackTextColor else MaterialTheme.colorScheme.primary
                     else -> resolvedContentColor
                 },
                 strokeWidth = 2.dp
@@ -216,6 +400,12 @@ fun UnifiedButton(
                 Text(
                     text = text,
                     fontSize = size.fontSize.sp,
+                    // m.txt 第 8 条：行高跟着字号走，别再继承 LocalTextStyle 的固定
+                    // 行高（labelLarge 是 20sp）。很多调用点用 `Modifier.height(28/32dp)`
+                    // 钉住按钮高度，12sp 的字却占着 20sp 的行盒，系统字体放大后行盒还会
+                    // 继续变大 —— 超出的部分被按钮边界裁掉，看着就是「字底被切了」。
+                    // 1.3 倍既能容纳中英文的下伸部，又比固定行高省出高度。
+                    lineHeight = (size.fontSize * 1.3f).sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = Int.MAX_VALUE,
                     softWrap = true,
@@ -228,6 +418,57 @@ fun UnifiedButton(
             }
         }
     }
+}
+
+// ==================== 统一下拉菜单 ====================
+
+/**
+ * n.txt 第 4 条：**下拉框也要新拟态**。
+ *
+ * 全软件 18 处 `DropdownMenu` 原先都是 Material 默认的「高阴影浮层」——与页面上
+ * 新拟态的卡片/按钮放在一起，像从另一个主题里抠出来的。这里统一收口：
+ *  - 开新拟态：菜单本体有一层与页面同色的表面 + 贴合的柔影（[Modifier.neuRaised]），
+ *    外面留 8dp 给阴影，避免阴影被弹窗窗口边界裁成一条硬边；
+ *  - 关新拟态：原样交给 Material，观感与旧版逐像素一致。
+ *
+ * 定位/滚动/键盘关闭仍由 Material 的 [DropdownMenu] 负责 —— 自己用 `Popup` 重写
+ * 位置计算反而会把「贴着锚点、超出屏幕自动翻转」这套成熟逻辑丢掉。
+ */
+@Composable
+fun UnifiedDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    offset: DpOffset = DpOffset(0.dp, 0.dp),
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val neu = UIConfig.isNeumorphismEnabled()
+    val menuModifier = if (neu) {
+        val isDark = UIConfig.shouldUseDarkTheme()
+        val surfaceColor = if (AppColors.glassEnabled()) {
+            MaterialTheme.colorScheme.surface.copy(alpha = AppColors.translucentAlpha())
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+        modifier
+            .padding(8.dp)
+            .neuRaised(
+                RoundedCornerShape(AppDimens.cardCornerRadius),
+                isDark,
+                NeuDefaults.Intensity.LIGHT,
+                cornerRadius = AppDimens.cardCornerRadius,
+                backgroundColor = surfaceColor
+            )
+    } else {
+        modifier
+    }
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        modifier = menuModifier,
+        offset = offset,
+        content = content
+    )
 }
 
 // ==================== 统一卡片 ====================
@@ -259,7 +500,14 @@ fun UnifiedCard(
         .then(
             if (neu) {
                 val surfaceColor = containerColor ?: MaterialTheme.colorScheme.surface
-                val bgColor = if (glass) surfaceColor.copy(alpha = AppColors.translucentAlpha()) else surfaceColor
+                // w.txt 第 3 条（用户）：显式传入 containerColor（弹窗底、强调卡）必须**不透明** ——
+                // 弹窗是独立窗口，背后只有半透明遮罩，再叠一层玻璃 alpha 会直接透出下层内容。
+                // 只有「跟随主题、未显式指定」的普通卡片才参与玻璃半透明。
+                val bgColor = if (glass && containerColor == null) {
+                    surfaceColor.copy(alpha = AppColors.translucentAlpha())
+                } else {
+                    surfaceColor
+                }
                 val neuInset = UIConfig.isNeumorphismInsetEnabled()
                 Modifier.then(
                         if (neuInset && isPressed) {
@@ -392,13 +640,19 @@ fun UnifiedTextField(
     containerColor: Color? = null,
     // 批次45：透传键盘行为（数字键盘/回车跳页等）—— 缺省与原先完全一致。
     keyboardOptions: KeyboardOptions? = null,
-    keyboardActions: KeyboardActions? = null
+    keyboardActions: KeyboardActions? = null,
+    // m.txt 第 6 条：并非每个输入框都该抢弹窗焦点（如文件属性里的「粘贴校验」，
+    // 查看属性的人极少用它，弹键盘只会挡住内容）。传 false 可让该字段不认领自动聚焦。
+    autoFocus: Boolean = true
 ) {
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
     var passwordVisible by remember { mutableStateOf(!isPassword) }
 
     val inputShape = RoundedCornerShape(AppDimens.inputCornerRadius)
+    // i.txt 第 4 条：弹窗里最上面的可编辑输入框自动拿焦点并弹键盘。
+    val autoFocusRequester = rememberDialogAutoFocus(enabled && autoFocus)
+    val focused = if (autoFocusRequester != null) Modifier.focusRequester(autoFocusRequester) else Modifier
 
     if (neu) {
         val surfaceColor = containerColor ?: MaterialTheme.colorScheme.background
@@ -422,7 +676,7 @@ fun UnifiedTextField(
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).then(focused),
                     // E-01：原先固定 0xFF333333，深色模式下深灰字压深底几乎不可读
                     textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = 15.sp),
                     singleLine = singleLine,
@@ -487,7 +741,7 @@ fun UnifiedTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = modifier,
+            modifier = modifier.then(focused),
             label = label?.let { { Text(it) } },
             placeholder = placeholder?.let { { Text(it) } },
             leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null) } },
@@ -768,6 +1022,39 @@ fun UnifiedChip(
     }
 }
 
+// ==================== 统一状态标签 ====================
+/**
+ * 描边式小状态标签（j.txt 第 3/7 条）。
+ *
+ * 与 [UnifiedChip] 的区别：**不填背景**，只画一圈同色描边 + 同色文字。用于「只读」
+ * 「归档内」这类状态提示 —— 整条横幅会空出大片背景，既占高度又像一块色块；
+ * 收进一行文字里既省空间，也符合「文字 + 描边着色」的统一口径。
+ */
+@Composable
+fun UnifiedStatusChip(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontSize: Float = 10f
+) {
+    val shape = RoundedCornerShape(6.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .border(1.dp, color.copy(alpha = 0.55f), shape)
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = color,
+            fontSize = fontSize.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
+        )
+    }
+}
+
 // ==================== 统一滑块 ====================
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -934,7 +1221,69 @@ fun UnifiedIconButton(
     modifier: Modifier = Modifier,
     tint: Color? = null,
     contentDescription: String? = null,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
+    /**
+     * m.txt 第 1 条：图标按钮也补上禁用态。
+     *
+     * 原生 `IconButton` 有 `enabled`，而统一图标按钮之前没有 —— 结果是那些
+     * 「不可用时置灰」的图标（上一处/下一处差异、目录空时的目录键…）只能继续
+     * 用原生 `IconButton`，新拟态外壳就漏了一排。禁用时点击不响应、图标按
+     * Material 规范的 38% 透明度压暗，视觉与原生一致。
+     */
+    enabled: Boolean = true,
+    /** 图标边长；默认 24dp。原生化的小图标（18/20dp）按原尺寸传。 */
+    iconSize: Dp = 24.dp
+) {
+    val iconTint = (tint ?: LocalContentColor.current).let {
+        if (enabled) it else it.copy(alpha = 0.38f)
+    }
+    UnifiedIconButtonShell(
+        onClick = onClick,
+        modifier = modifier,
+        onLongClick = onLongClick,
+        enabled = enabled
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(iconSize),
+            tint = iconTint
+        )
+    }
+}
+
+/**
+ * 统一图标按钮的「自定义内容」重载（m.txt 第 1 条纳管原生画布图标）。
+ *
+ * 少数图标不是 `ImageVector`，而是用 `Canvas` 现画的（如图片查看器的明暗切换）。
+ * 这些地方原先把原生 `IconButton` 当外壳，新拟态下就成了一块没有底板的贴纸。
+ * 这里复用同一套外壳，图标本身由调用方按自己的配色绘制。
+ */
+@Composable
+fun UnifiedIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    UnifiedIconButtonShell(
+        onClick = onClick,
+        modifier = modifier,
+        onLongClick = onLongClick,
+        enabled = enabled,
+        content = content
+    )
+}
+
+/** 图标按钮的统一外壳：新拟态凸起圆底 + 点按/长按/禁用态。 */
+@Composable
+private fun UnifiedIconButtonShell(
+    onClick: () -> Unit,
+    modifier: Modifier,
+    onLongClick: (() -> Unit)?,
+    enabled: Boolean,
+    content: @Composable () -> Unit
 ) {
     val neu = UIConfig.isNeumorphismEnabled()
     val isDark = UIConfig.shouldUseDarkTheme()
@@ -945,6 +1294,7 @@ fun UnifiedIconButton(
         Modifier.combinedClickable(
             interactionSource = interactionSource,
             indication = LocalIndication.current,
+            enabled = enabled,
             role = Role.Button,
             onClick = onClick,
             onLongClick = onLongClick
@@ -953,24 +1303,26 @@ fun UnifiedIconButton(
         Modifier.clickable(
             interactionSource = interactionSource,
             indication = LocalIndication.current,
+            enabled = enabled,
             role = Role.Button,
             onClick = onClick
         )
     }
 
     if (neu) {
-        val glass = AppColors.glassEnabled()
-        val surfaceColor = if (glass) MaterialTheme.colorScheme.surface.copy(alpha = AppColors.translucentAlpha()) else MaterialTheme.colorScheme.surface
+        // o.txt 第 3 条：与文字按钮共用同一层表面（见 [neuSurfaceFill]），
+        // 同一排控件里不会一个白一个灰。
+        val surfaceColor = neuSurfaceFill()
         Box(
             modifier = modifier
                 .neuRaised(CircleShape, isDark, NeuDefaults.Intensity.LIGHT, cornerRadius = 20.dp, backgroundColor = Color.Transparent)
                 .clip(CircleShape)
-                .background(surfaceColor, CircleShape)
+                .background(if (enabled) surfaceColor else surfaceColor.copy(alpha = 0.6f), CircleShape)
                 .then(pressMod)
                 .padding(8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription, modifier = Modifier.size(24.dp), tint = tint ?: LocalContentColor.current)
+            content()
         }
     } else if (onLongClick != null) {
         // material3.IconButton 不支持长按；仅在需要长按时换成 Box + combinedClickable，
@@ -982,24 +1334,15 @@ fun UnifiedIconButton(
                 .then(pressMod),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = tint ?: LocalContentColor.current,
-                modifier = Modifier.size(24.dp)
-            )
+            content()
         }
     } else {
         androidx.compose.material3.IconButton(
             onClick = onClick,
-            modifier = modifier
+            modifier = modifier,
+            enabled = enabled
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = tint ?: LocalContentColor.current,
-                modifier = Modifier.size(24.dp)
-            )
+            content()
         }
     }
 }

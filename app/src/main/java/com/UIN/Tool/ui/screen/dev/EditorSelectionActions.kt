@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -447,7 +449,7 @@ private fun TranslateProviderDialog(
         content = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 420.dp)
+                    .heightIn(max = 320.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 if (channels.isEmpty()) {
@@ -553,7 +555,7 @@ private fun OnlineTranslateDialog(
         content = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 460.dp)
+                    .heightIn(max = 340.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
@@ -605,9 +607,12 @@ private fun OnlineTranslateDialog(
                             text = Str.get(R.string.retry),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
+                            // 这是错误态下**唯一**的操作入口，4dp 上下 padding 只有 28×24dp
+                            // —— 手指点不中（d20 横向排查）。补到 48dp 触达高度。
                             modifier = Modifier
                                 .clickable { retryTick++ }
-                                .padding(vertical = AppDimens.spacingSmall)
+                                .padding(horizontal = AppDimens.spacingSmall)
+                                .minimumInteractiveComponentSize()
                         )
                     }
                     result != null -> SelectionContainer {
@@ -641,6 +646,8 @@ private fun ProviderRow(title: String, subtitle: String? = null, onClick: () -> 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // k.txt 第 6 条：整行涟漪按 8dp 圆角裁切。
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(vertical = AppDimens.spacingSmall),
         verticalAlignment = Alignment.CenterVertically
@@ -672,14 +679,19 @@ private fun ProviderRow(title: String, subtitle: String? = null, onClick: () -> 
 private fun LangChip(name: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(percent = 50),
-        color = if (selected) MaterialTheme.colorScheme.primary
+        // k.txt 第 3 条：选中态不再铺实心主色 —— 用淡主色底 + 主色文字，
+        // 不再出现反白的白字。
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
         else MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier
+            // k.txt 第 6 条：胶囊 chip 的涟漪同样按胶囊形状裁切。
+            .clip(RoundedCornerShape(percent = 50))
+            .clickable(onClick = onClick)
     ) {
         Text(
             text = name,
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary
+            color = if (selected) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(
                 horizontal = AppDimens.spacingMedium,

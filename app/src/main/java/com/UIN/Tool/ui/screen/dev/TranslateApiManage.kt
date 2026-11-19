@@ -37,6 +37,7 @@ import com.UIN.Tool.data.remote.MyMemoryTranslate
 import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
+import com.UIN.Tool.ui.components.unified.UnifiedIconButton
 import com.UIN.Tool.ui.components.unified.UnifiedTextField
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
@@ -164,7 +165,7 @@ fun TranslateApiManageDialog(onDismiss: () -> Unit) {
         content = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 460.dp)
+                    .heightIn(max = 340.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 SectionLabel(Str.get(R.string.editor_translate_api_builtin))
@@ -252,13 +253,12 @@ fun TranslateApiManageDialog(onDismiss: () -> Unit) {
                                     }
                                 }
                             }) { Text(Str.get(R.string.test)) }
-                            IconButton(onClick = { pendingDelete = api }) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = Str.get(R.string.delete),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
+                            UnifiedIconButton(
+                                icon = Icons.Default.Delete,
+                                onClick = { pendingDelete = api },
+                                contentDescription = Str.get(R.string.delete),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
                         }
                     }
                 }
@@ -335,7 +335,7 @@ private fun AddCustomApiDialog(onSaved: () -> Unit, onDismiss: () -> Unit) {
         content = {
             Column(
                 modifier = Modifier
-                    .heightIn(max = 420.dp)
+                    .heightIn(max = 320.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 UnifiedTextField(

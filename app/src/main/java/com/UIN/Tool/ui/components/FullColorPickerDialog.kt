@@ -19,17 +19,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
@@ -111,10 +116,33 @@ fun FullColorPickerDialog(
         blue = (rgb.blue * 255).roundToInt()
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    val maxDialogHeight = (
+        LocalConfiguration.current.screenHeightDp.dp - AppDimens.dialogVerticalMargin * 2
+        ).coerceAtLeast(240.dp)
+    // j.txt 第 4 条：取色器不是 UnifiedDialog，自动聚焦要自己接 —— 打开即聚焦十六进制框。
+    val hexFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(120)
+        runCatching { hexFocus.requestFocus() }
+        keyboard?.show()
+    }
+    Dialog(
+        onDismissRequest = onDismiss,
+        // 用户反馈 e6：这个框自带十六进制输入框，得让键盘能把它顶起来 ——
+        // 与 UnifiedDialog 同一套前提（decorFitsSystemWindows=false，IME 的 inset 才到得了这里）
+        properties = DialogProperties(decorFitsSystemWindows = false)
+    ) {
         Surface(
+            // 同 e6：`imePadding` 放最外层，免得背景一路铺到键盘底下
             modifier = Modifier
-                .fillMaxWidth()
+                .imePadding()
+                // e22：取色器原先**满宽贴边**、也没有高度上限（正文是自带滚动的，
+                // 但没有上限就滚不出屏幕）—— 统一到内容型弹窗的口径：宽封顶、高封顶，
+                // 高的那条交给下面已有的 verticalScroll 兜住。
+                .widthIn(max = AppDimens.dialogMaxWidth)
+                .heightIn(max = maxDialogHeight)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .padding(16.dp)
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.radiusXXLarge))),
             color = Color.Transparent,
@@ -157,7 +185,7 @@ fun FullColorPickerDialog(
                             parseHex(hexInput)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(hexFocus),
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(
                         fontFamily = FontFamily.Monospace,
@@ -256,6 +284,8 @@ fun FullColorPickerDialog(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(32.dp)
+                                    // h5：色块是圆角，涟漪裁进去。
+                                    .clip(swatchShape)
                                     .clickable {
                                         red = (color.red * 255).roundToInt()
                                         green = (color.green * 255).roundToInt()
@@ -281,12 +311,14 @@ fun FullColorPickerDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
+                // e30 补 e29：弹窗里的主按钮也只着色文字、不铺底（取消那颗上一轮已换）
+                UnifiedDialogTextButton(
                     onClick = {
                         onColorSelected(currentColor)
                         onDismiss()
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Text(Str.get(R.string.ok_2))
                 }

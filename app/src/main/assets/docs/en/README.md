@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 6.2.0 |
-| Corresponding App Version | v6.2.0 (Build 26) |
-| Last Updated | October 31, 2026 |
+| Document Version | 7.0.0 |
+| Corresponding App Version | v7.0.0 (Build 28) |
+| Last Updated | November 16, 2026 |
 
 ---
 
@@ -35,11 +35,11 @@
 - [4.2 plugin.json Configuration](#42-pluginjson-configuration)
 - [4.3 HTML Template Example](#43-html-template-example)
 - [4.4 JavaScript Example](#44-javascript-example)
-- [4.5 Host Theme Sync (CSS Variables)](#45-host-theme-sync-css-variables)
+- [4.5 Host Theme Sync (CSS Variables)](#45-host-theme-sync-css-variables---uin)
 
 ### V. Web Plugin Development (With Backend)
 - [5.1 Overview](#51-overview)
-- [5.2 Backend Runtime Settings (Global)](#52-backend-runtime-settingsglobal)
+- [5.2 Backend Runtime Settings (Global)](#52-backend-runtime-settings-global)
   - [5.2.1 Backend Implementation](#521-backend-implementation)
   - [5.2.2 Backend Environment (Real Termux Only)](#522-backend-environment-real-termux-only)
   - [5.2.3 Idle Auto Reclamation](#523-idle-auto-reclamation)
@@ -54,7 +54,7 @@
 ### VI. CUI Terminal Plugin Development (New in v4.5.0)
 - [6.1 What is a CUI Plugin](#61-what-is-a-cui-plugin)
 - [6.2 Directory Structure and plugin.json](#62-directory-structure-and-pluginjson)
-- [6.3 Create CUI Plugin (Wizard)](#63-create-cui-pluginwizard)
+- [6.3 Create CUI Plugin (Wizard)](#63-create-cui-plugin-wizard)
 - [6.4 Terminal Script Development](#64-terminal-script-development)
 - [6.5 Runtime Flow and Lifecycle](#65-runtime-flow-and-lifecycle)
 - [6.6 CUI and Backend/Proot Relationship](#66-cui-and-backendproot-relationship)
@@ -82,7 +82,7 @@
 ### X. PluginInterface Detailed Reference
 - [10.1 Method Description](#101-method-description)
 - [10.2 Complete Implementation Example](#102-complete-implementation-example)
-- [10.3 Plugin Multi-Instance (New in v5.4.0)](#103-plugin-multi-instancev540-new)
+- [10.3 Plugin Multi-Instance (New in v5.4.0)](#103-plugin-multi-instance-new-in-v540)
 
 ### XI. JavaScript API Complete Reference (v4.5.0)
 - [11.1 Basic API](#111-basic-api)
@@ -95,13 +95,13 @@
 - [11.8 Permission API](#118-permission-api)
 - [11.9 Backend Communication API](#119-backend-communication-api)
 - [11.10 Data Statistics API](#1110-data-statistics-api)
-- [11.11 Location & Event API](#1111-location-event-api)
+- [11.11 Location & Event API](#1111-location--event-api)
 
 ### XII. Packaging and Importing
 - [12.1 Packaging Methods](#121-packaging-methods)
 - [12.2 File Structure](#122-file-structure)
 - [12.3 plugin.json Complete Fields](#123-pluginjson-complete-fields)
-  - [12.3.4 External Content Reception (openWith, New in v5.4.0)](#1234-external-content-receptionopenwithv540-new)
+  - [12.3.4 External Content Reception (openWith, New in v5.4.0)](#1234-external-content-reception-openwith-new-in-v540)
 
 ### XIII. Publishing to Plugin Repository
 - [13.1 Repository Requirements](#131-repository-requirements)
@@ -116,8 +116,8 @@
 - [15.1 Color System](#151-color-system)
 - [15.2 Color Configuration Items](#152-color-configuration-items)
 - [15.3 Shape Configuration](#153-shape-configuration)
-- [15.4 Effects Configuration (Updated in v5.6.0)](#154-effects-configurationv560-updated)
-- [15.5 Multilingual Support (New in v5.6.0)](#155-multilingual-supportv560-new)
+- [15.4 Effects Configuration (Updated in v5.6.0)](#154-effects-configuration-updated-in-v560)
+- [15.5 Multilingual Support (New in v5.6.0)](#155-multilingual-support-new-in-v560)
 
 ### XVI. Debugging Tips
 - [16.1 Log Output](#161-log-output)
@@ -125,7 +125,7 @@
 - [16.3 WebView Remote Debugging](#163-webview-remote-debugging)
 
 ### XVII. FAQ
-- [17.1 Q1-Q15](#xviifaq)
+- [17.1 Q1-Q15](#171-q1-q15)
 
 ### XVIII. Best Practices
 - [18.1 Naming Conventions](#181-naming-conventions)
@@ -134,8 +134,20 @@
 - [18.4 Security](#184-security)
 - [18.5 Version Management](#185-version-management)
 
-### XIX. Technical Support
-- [19.1 Contact Information](#191-contact-information)
+### XIX. File Manager
+- [19.1 Layout and Navigation](#191-layout-and-navigation)
+- [19.2 Browsing, Sorting, and Filtering](#192-browsing-sorting-and-filtering)
+- [19.3 File Operations](#193-file-operations)
+- [19.4 Recycle Bin](#194-recycle-bin)
+- [19.5 Archives and Extraction](#195-archives-and-extraction)
+- [19.6 Remote Management](#196-remote-management)
+- [19.7 Task Center](#197-task-center)
+- [19.8 File Comparison](#198-file-comparison)
+- [19.9 Built-in Viewers and Open With](#199-built-in-viewers-and-open-with)
+- [19.10 Settings](#1910-settings)
+
+### XX. Technical Support
+- [20.1 Contact Information](#201-contact-information)
 
 ---
 
@@ -161,7 +173,7 @@ The wizard "Basic Information" page can configure the following fields (all corr
 | Field | Description | Example | Required |
 |------|-------------|---------|----------|
 | Plugin ID | Unique identifier, reverse domain name format | com.example.myplugin | Yes |
-| Plugin Name | Display name in the list | My Plugin | No |
+| Plugin Name | Display name in the list | My Plugin | Yes |
 | Author | Developer name | John Doe | No |
 | Description | Plugin functionality description | This is a sample plugin | No |
 | Plugin Notice | Notice shown on first open (notice) | Welcome! | No |
@@ -192,8 +204,8 @@ Based on the selected plugin type, write the corresponding code. See each sectio
 ### 1.4 Compile and Package
 
 **Native Plugins (Current Status)**
-- In-app compilation is temporarily unavailable: the `plugin.dex` generated by the wizard is placeholder text and cannot be loaded
-- It is recommended to use Web plugins, or compile a real `plugin.dex` on PC and place it in the plugin directory
+- In-app compilation is unavailable: the wizard reports an error and deletes stale output, **no TPK is produced**
+- For native plugins, compile a real `plugin.dex` on PC and package it manually as described in 12.1, Method 2
 
 **Web Plugins (Recommended)**
 - No compilation needed: changes to HTML/CSS/JS take effect immediately
@@ -699,12 +711,15 @@ When selecting Real Termux, the settings page displays an "**Initialization Comm
 
 ```sh
 mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.properties 2>/dev/null || echo 'allow-external-apps=true' >> ~/.termux/termux.properties; termux-setup-storage; termux-reload-settings 2>/dev/null || true
+# Appended only when the runtime is Real Termux + Proot container:
+proot-distro install <container>
 ```
 
 This command completes the following in order:
 1. Writes `allow-external-apps=true` in `~/.termux/termux.properties` (allows external apps to launch Termux via `RUN_COMMAND`)
 2. Executes `termux-setup-storage` to authorize storage access
 3. `termux-reload-settings` reloads configuration
+4. (Proot only) run `proot-distro install <container>` to install the container
 
 > If startup fails, the host will automatically detect missing items and provide corresponding guidance (`allow-external-apps`, `termux-setup-storage`, `proot-distro install`, `RUN_COMMAND` permission).
 
@@ -712,7 +727,7 @@ This command completes the following in order:
 
 Real Termux (proot or native mode) uses a **single resident shared supervisor**: the container/session is only initialized once, and all plugin backends run as supervisor child processes. Subsequent plugin startup saves proot initialization overhead (cold startup about 5s). Built-in Debian container (about 2s) remains unchanged (each plugin has its own proot).
 
-- Communication protocol (control directory `<plugins_root>/.uin/`): `cmd/<key>.cmd` (startup command), `pid/<key>` (backend PID), `stop/<key>` (stop request), `idle/<key>` (idle minutes), `idle/<key>.start` (startup timestamp), `alive` (supervisor alive marker), `host_alive` (host heartbeat, touch every 30s, supervisor auto-exits on 300s timeout), `shutdown` (exit marker), `keep_alive` (background keep-alive marker)
+- Communication protocol (control directory `<plugins_root>/.uin/`): `cmd/<key>.cmd` (startup command), `pid/<key>` (backend PID), `stop/<key>` (stop request), `rc/<key>.rc` (exit code / stop reason), `done/` (archive of handled commands), `idle/<key>` (idle minutes), `idle/<key>.start` (startup timestamp), `alive` (supervisor alive marker), `host_alive` (host heartbeat, touch every 30s, supervisor auto-exits on 300s timeout), `shutdown` (exit marker), `keep_alive` (background keep-alive marker)
 - proot startup: `proot-distro login <container> --bind '<plugins_root>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`
 - Native startup: `sh '<plugins_root>/.uin/supervisor.sh' '<plugins_root>'`
 - Idle reclamation: supervisor independently times out and recursively kills process trees per plugin based on `idle/<key>.start` startup timestamps; `kill -0 $pid` detects process liveness
@@ -725,9 +740,9 @@ Real Termux (proot or native mode) uses a **single resident shared supervisor**:
 
 After a plugin is opened, the host selects the execution path based on global settings:
 
-- **Built-in Debian container**: `proot --link2symlink -0 -r <rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`, plugin directory is bind-mounted read-only into the container
+- **Built-in Debian container**: `proot -L --kill-on-exit --sysvipc --change-id=0:0 -r <rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`, plugin directory is bind-mounted **read-write** into the container
 - **Real Termux + Termux Native**: `/bin/bash -lc "<startup command>"` (working directory = plugin directory)
-- **Real Termux + Proot Container**: `proot-distro login <containerName> --bind <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`
+- **Real Termux + Proot Container**: executed by the shared supervisor inside the container; the container starts with `proot-distro login <containerName> --bind <pluginsRoot>:/plugins -- sh -lc "sh /plugins/.uin/supervisor.sh /plugins"`, and each backend command runs with `/plugins/<id>` as its working directory
 
 All three paths inject `$PORT`, `$PLUGIN_ID`, `$PLUGIN_DIR`, `$WORK_DIR` environment variables via `sh -lc`, plugins do not need to be aware of the runtime environment.
 
@@ -778,6 +793,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("PORT", "8000"))
 PLUGIN_ID = os.environ.get("PLUGIN_ID", "")
+# Stop token injected by the host; empty keeps backward compatibility
+UIN_TOKEN = os.environ.get("UIN_TOKEN", "")
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -792,12 +809,18 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0) or 0)
         body = self.rfile.read(length).decode("utf-8", "ignore") if length else ""
         return self._json({"path": self.path, "method": "POST", "body": body})
+    def _authorized(self):
+        if not UIN_TOKEN:
+            return True
+        return self.headers.get("X-UIN-Token", "") == UIN_TOKEN
     def _stop(self):
+        if not self._authorized():
+            return self._json({"status": "forbidden", "error": "bad_token"}, code=403)
         self._json({"status": "stopping"})
         threading.Thread(target=self.server.shutdown, daemon=True).start()
-    def _json(self, data):
+    def _json(self, data, code=200):
         payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        self.send_response(200)
+        self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
@@ -903,17 +926,18 @@ The host communicates with the backend via HTTP; the backend must follow these c
 | `PLUGIN_DIR` | Backend directory: native is the plugin directory, inside proot container is `/plugins/{pluginId}` |
 | `WORK_DIR` | Same as `PLUGIN_DIR` (host injects with `WORK_DIR=$baseDir`); built-in process-level default is `/storage/emulated/0/UIN_Tool`, but will be overridden by inline `export` in container/command |
 | `PYTHONUNBUFFERED` | `1` (Python output flushes immediately) |
+| `UIN_TOKEN` | Stop token; `/stop` requests must carry the `X-UIN-Token` header. Empty when not injected (legacy startup compatibility) |
 
 **Environment Variable Injection Method (By Runtime Environment)**
 
-- **Built-in Debian container (proot)**: Host injects via `ProcessBuilder` process environment (including `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR` and Termux-specific variables), then enters the container with `proot --link2symlink -0 -r <rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "..."`; container inherits process environment. Backend actually runs inside the container, `PLUGIN_DIR`/`WORK_DIR` are `/plugins/{pluginId}`.
+- **Built-in Debian container (proot)**: Host injects via `ProcessBuilder` process environment (including `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR` and Termux-specific variables), then enters the container with `proot -L --kill-on-exit --sysvipc --change-id=0:0 -r <rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "..."`; container inherits process environment. Backend actually runs inside the container, `PLUGIN_DIR`/`WORK_DIR` are `/plugins/{pluginId}`.
 - **Real Termux Native**: Host launches `com.termux.RUN_COMMAND`, since the intent has **no environment variable channel**, the host inlines environment variables into the `sh -lc` command string (`export PORT=...; export PLUGIN_ID=...; cd <pluginDir> && <startup command>`).
-- **Real Termux proot container**: Same as above, inlined into `sh -lc` then enters the container via `proot-distro login <container> --bind <pluginDir>:/plugins/<id> -- sh -lc "..."`.
+- **Real Termux proot container**: Same as above, inlined into `sh -lc` then the shared supervisor runs the command inside the container (the container binds `<pluginsRoot>:/plugins` and backend commands run under `/plugins/<id>`).
 
 **Runtime Environment Constraints (Real Termux)**
 
 - Needs `allow-external-apps=true` set in real Termux (`.termux/termux.properties`), `termux-setup-storage` executed to grant storage permission, and `com.termux.permission.RUN_COMMAND` granted. Plugins are on shared storage (`/storage/emulated/0/UIN_Tool/plugins/`), Termux needs to be able to read this directory.
-- Real Termux processes **cannot be terminated by the host across apps**; stopping the backend can only rely on the backend responding to the `/stop` endpoint — therefore real Termux backends **must implement `/stop`** (built-in Debian container additionally uses `SIGKILL` by process group as fallback beyond `/stop`).
+- Real Termux processes **cannot be terminated directly by the host across apps**. The host first asks the backend to respond to `/stop`; if it does not, the shared supervisor recursively kills the process tree by PID (`SharedSupervisor.requestStop`). Implementing `/stop` is therefore recommended but no longer the only way to stop a backend (the built-in Debian container also falls back to `SIGKILL` by process group).
 - Real Termux backend cold startup is slower (especially proot containers), ready timeout has been relaxed to `max(backendTimeout, 60/120)`, the host will prompt when timeout occurs but **will not automatically kill already-started processes** (built-in container cleans up if the process has already exited).
 
 **Backend Lifecycle**
@@ -979,12 +1003,12 @@ plugin.tpk
 | `entry` | CUI plugins have no page entry, leave empty |
 | `backendPreCommand` | **Startup command**: executed each time the plugin opens in the plugin directory with `bash -lc "<this command>"`. Must use `export PLUGIN_ID=... PLUGIN_DIR=$(pwd)` to inject environment variables, because terminal sessions do not auto-inject them |
 | `backend` | Optional. Fill `""` for pure terminal; can also be combined with backend fields to simultaneously start an HTTP backend |
-| `backendRuntime` | `"termux"` (default) or `"proot"` (execute in Debian container) |
+| `backendRuntime` | Reserved field; the host does not consume it. The actual runtime is chosen by the global settings in Manage > Backend Runtime Settings |
 
 ### 6.3 Create CUI Plugin (Wizard)
 
 1. "Dev" > "Create Plugin" > Select "**CUI Terminal (Command-Line Interface)**"
-2. Wizard has 4 steps: Basic Info > **Edit Terminal Script** > Generate Project Files > Done
+2. Wizard has 4 steps: Basic Info > Plugin Icon > **Edit Terminal Script** > Generate Project Files
 3. In the "Edit Terminal Script" step, you can click "Open Code Editor" to modify `scripts/script.py`
 4. Basic Info step provides "**Startup Command**" input box:
    - Label: Startup Command (executed in terminal when plugin opens)
@@ -1049,21 +1073,20 @@ ls -la
 python3 scripts/tool.py
 ```
 
-The terminal session automatically closes after the script ends (if the script does not end, the terminal remains open).
+The session stays in the terminal page after the script ends and closes when Enter is pressed (if the script does not end, the terminal remains open).
 
 ### 6.5 Runtime Flow and Lifecycle
 
 1. User opens CUI plugin → `PluginHostActivity` displays placeholder view: "Opening full-screen terminal to execute command..."
-2. Host selects execution environment based on global "Backend Runtime Settings": built-in Debian container uses environment pipeline (Debian ready → proot ready, if `backendRuntime: "proot"` is configured); real Termux directly calls `RUN_COMMAND`
+2. Host selects execution environment based on global "Backend Runtime Settings": built-in Debian container uses the environment pipeline (once Debian is ready it enters the container); real Termux directly calls `RUN_COMMAND`
 3. Starts a **full-screen terminal session** in the plugin directory with `sh -lc "<startup command>"` (`backendPreCommand`): the built-in environment launches `SimpleTerminalActivity` (PRoot container), real Termux goes through its `RUN_COMMAND` intent (no longer depends on overlay permission); when startup command is empty, opens an interactive login Shell
-4. Terminal session survives independently of the plugin page: closes when script/Shell exits; closing the plugin page **does not** force-kill the terminal (the session is owned by the built-in terminal page itself; `TermuxService` was removed in 6.0.0 and no longer exists in the app)
+4. Terminal session survives independently of the plugin page: it stays open after the script/Shell exits and closes when Enter is pressed; closing the plugin page **does not** force-kill the terminal (the session is owned by the built-in terminal page itself; `TermuxService` was removed in 6.0.0 and no longer exists in the app)
 
 ### 6.6 CUI and Backend/Proot Relationship
 
 - **Pure CUI**: `backend` left empty, only terminal, no HTTP backend
 - **CUI + Backend**: `backend: "other"` + `backendStartCommand` + `backendAutoStart: true`, host starts backend in background while launching terminal
-- **CUI + Proot**: `backendRuntime: "proot"`, startup command executes inside Debian container, suitable for scenarios needing isolated environment
-- **CUI + other**: `backend: "other"` means host does not auto-start backend, startup command is typically a resident service launched by the terminal itself
+- **CUI + Proot**: set the global backend runtime to Real Termux + Proot container or the built-in Debian container, and the startup command executes inside that container; suitable for scenarios needing an isolated environment
 
 Note: CUI's `backendPreCommand` is a "startup command executed each time the plugin opens", semantically different from Web plugin backend's `backendStartCommand` (host executes in background with `sh -lc`, used to start HTTP service).
 
@@ -1268,7 +1291,7 @@ pctx.markDataMigrated()       // Mark as migrated
 - When opening the plugin, the host **first pops up a permission prompt dialog then opens the plugin** (dialog uses **host unified style** rendering): lists **ungranted** permissions, provides three options "OK" / "Don't Prompt Again" / "Manage Permissions" — "Manage Permissions" jumps directly to that plugin's permission management page.
 
 **Native plugins** (`uiType: "native"`):
-- Native plugins are in-process Android code that can directly call system APIs; **permissions are enforced by the host** (throws `SecurityException` when not granted), the host cannot fine-grain intercept or block at the application layer.
+- Native plugins are in-process Android code that can directly call system APIs; **permissions are enforced by the system** (a `SecurityException` is thrown when not granted), the host cannot fine-grain intercept or block at the application layer.
 - Each time the plugin is opened, the host **first pops up a permission prompt dialog then opens the plugin** (dialog uses **host unified style** rendering): lists the plugin's declared (required) permissions, provides two options "OK" / "Don't Show Again".
 - The permission management page **does not list** native plugins (native permissions are managed by the system, not controllable at the application layer).
 
@@ -1372,7 +1395,7 @@ New feature in v4.2.0: plugins can declare a notice field in plugin.json, and th
 
 | Button | Behavior |
 |--------|----------|
-| Got it | Close dialog, do not show again for current session |
+| Got it | Close dialog and **permanently ignore** this plugin's notice (same as Don't prompt again) |
 | Don't prompt again | Permanently close this plugin's notice |
 | Remind later | Close dialog, show again next time the plugin is opened |
 
@@ -1604,7 +1627,7 @@ if (openData.kind === 'url') {
 }
 ```
 
-Field structure (including `kind` / `type` / `when` / `mime` / `url` / `text` / `uri` / `name` / `filePath` / `files` / `streamCount` and "text vs link" discrimination, `.incoming/` naming rules), host receiving Action/MIME lists, and third-party apps **skipping relay page to directly invoke plugin** (`plugin_id` / `instance_id` / `open_data` extras) complete description, see this document **12.3.4 External Content Reception (openWith)**.
+Field structure (including `kind` / `type` / `when` / `mime` / `url` / `text` / `uri` / `name` / `filePath` / `files` / `streamCount` and "text vs link" discrimination, `.incoming/` naming rules), host receiving Action/MIME lists, and the entry points external apps use to deliver content are described in **12.3.4 External Content Reception (openWith)**.
 
 **Outbound Intents (Since v4.5.0)**
 
@@ -1963,6 +1986,8 @@ Method 2: Manual packaging
 3. Compress to ZIP format
 4. Rename with .tpk extension
 
+> Native plugin exception: there is no usable DEX compiler in the app, so the wizard fails at the packaging step and deletes stale output. It does not generate a placeholder `plugin.dex` or a TPK. Use Method 2 for native plugins and place a real `plugin.dex` yourself.
+
 ### 12.2 File Structure
 
 Native plugin
@@ -1971,12 +1996,12 @@ Native plugin
 plugin.tpk
 ├── plugin.json      # Required
 ├── icon.png         # Optional
-├── plugin.dex       # Required (host requires; current wizard packages placeholder file, need to place real DEX yourself)
+├── plugin.dex       # Required (must be a real DEX; the app no longer generates a placeholder)
 ├── src/             # Optional
 └── res/             # Optional
 ```
 
-> ⚠️ Current in-app compilation is disabled: the `plugin.dex` generated by the wizard in native plugin TPK is a placeholder text (`// Native plugin compilation temporarily disabled`), not a real DEX, and cannot be loaded after installation. Please compile a real `plugin.dex` on PC and replace it.
+> ⚠️ In-app compilation is unavailable: the wizard fails and deletes stale output for native plugins, so no TPK is produced. Compile a real `plugin.dex` on PC and package it manually as described in 12.1, Method 2.
 
 Web plugin (without backend)
 
@@ -2016,7 +2041,7 @@ plugin.tpk
     └── script.py    # Terminal startup script
 ```
 
-> Packaging rules (`packageTpk`, since v5.2.0): Recursively packages the entire project directory — explicitly adds `plugin.json`, `icon.png`, `README.md`, native placeholder/real `plugin.dex` (prioritizes recognizing real DEX's `dex\n` magic), then recursively includes `web/`, `scripts/`, `res/`, `src/`, etc. all directories; skips hidden files and `.tpk` output to avoid duplicate entries. Web plugins without `web/index.html` auto-generate a default page as fallback.
+> Packaging rules (`packageTpk`, since v5.2.0): Recursively packages the entire project directory — explicitly adds `plugin.json`, `icon.png`, `README.md`, real `plugin.dex` (validated by the `dex\n` magic; packaging aborts when no real DEX exists), then recursively includes `web/`, `scripts/`, `res/`, `src/`, etc. all directories; skips hidden files and `.tpk` output to avoid duplicate entries. Web plugins without `web/index.html` auto-generate a default page as fallback.
 
 ### 12.3 plugin.json Complete Fields
 
@@ -2073,18 +2098,18 @@ A complete example of a Web plugin with Python backend + Proot container:
 | `name` | string | `""` | Yes | Plugin display name, appears in plugin list, terminal title, shortcuts, etc. |
 | `author` | string | `""` | No | Plugin author. |
 | `description` | string | `""` | No | Plugin functionality description, displayed on the plugin management page. |
-| `notice` | string | `""` | No | Plugin notice. Automatically shown in a popup on first plugin open (options: "Don't prompt again", "Remind later"). |
+| `notice` | string | `""` | No | Plugin notice. Automatically shown in a popup on first plugin open; "Got it" or "Don't prompt again" suppresses it permanently, while "Remind later" shows it again on the next open. |
 | `icon` | string | `icon.png` | No | Icon filename, relative to plugin root (recommended 128x128 PNG). |
 | `mainClass` | string | `""` | Native Yes | **Native plugin entry class full class name** (e.g., `com.example.MainPlugin`). Host loads via `DexClassLoader` then instantiates with `loadClass(mainClass).newInstance() as PluginInterface`. Leave empty for Web/CUI plugins. |
-| `updateUrl` | string | `""` | No | Plugin update check URL (GitHub Release page), used for in-app update checks. |
-| `apiLevel` | int | `21` | No | Plugin required host API level (minimum 21). |
+| `updateUrl` | string | `""` | No | Plugin update page URL, displayed as metadata only; the host does not check for updates with it. |
+| `apiLevel` | int | `21` | No | Minimum device Android API level (compared with `Build.VERSION.SDK_INT`; lower values are rejected at install). |
 | `category` | string | `uncategorized` | No | Plugin category name, used for category display on the plugin management page (the default key is `uncategorized`, rendered as "Uncategorized" per language). |
 | `sourceId` | string | `""` | No | Written by the host: the **source ID** this plugin was installed from (pairs with source management to record which repo/mirror it came from); empty for manually imported plugins. Generally maintained by the host, do not write manually. |
 | `signature` | string | `""` | No | **Removed from the model/parser in 6.2.0**: writing this field is ignored, the host no longer reads or writes it. Tamper detection now relies on the **SHA-256 file fingerprint (TOFU)** — recorded on first install, an update within the same version must match (a mismatch is rejected), a version upgrade records a new fingerprint. |
 | `uiType` | string | `native` | Yes | Frontend type: `native` (native View), `web` (WebView), `cui` (full-screen terminal). Determines the host's loading branch. |
 | `entry` | string | `web/index.html` | Web Yes | Web plugin entry page (relative to plugin root, host loads with `file://<pluginDir>/<entry>`). Leave empty for CUI. Must point to an HTML page; correctly generated since v5.1.0 wizard, older plugins with `entry` pointing to script path need manual correction. |
 | `permissions` | string | `""` | No | Required permissions list. **Both formats acceptable**: comma-separated string (e.g., `android.permission.INTERNET,android.permission.VIBRATE`) or JSON array. Since v5.5.0, `parseStringList()` is compatible with both formats; old versions only recognized comma-separated strings. Includes pseudo-permissions (`READ_CLIPBOARD`/`WRITE_CLIPBOARD`). Generated via wizard "Permissions" popup multi-select. |
-| `dependencies` | string | `""` | No | Dependency plugin ID list. **Both formats acceptable** (comma-separated string or JSON array). Host checks dependency existence before startup. |
+| `dependencies` | string | `""` | No | Dependency plugin ID list. **Both formats acceptable** (comma-separated string or JSON array). The host only logs missing items during install; it does not block install or startup. |
 | `frontendConfig` | object | `{}`` | No | **Reserved field**. Read and written as JSON normally (parsing and serialization are both implemented), but the host has **no consumers** — filling it produces no behavior; not recommended for now. |
 
 #### 12.3.3 Backend Configuration Fields
@@ -2130,7 +2155,7 @@ A complete example of a Web plugin with Python backend + Proot container:
 | `acceptUrl` | boolean | `true` | No | Whether to accept URLs/links (auto-identifies `http(s)`, `magnet:`, or `Patterns.WEB_URL`). |
 | `acceptFile` | boolean | `true` | No | Whether to accept files (`content://` / `file://`, including `SEND_MULTIPLE` multi-select). |
 
-**Matching rules**: The relay page first filters by "content type" (`file` / `text` / `url`) checking `enabled` and `accept*` toggles, then by MIME exact/wildcard matching (rule `*/*` always matches; `xxx/*` matches by category prefix, case-insensitive; otherwise exact match; passing empty MIME, empty rule list, or containing `*/*` means accepting any). When only 1 plugin matches, **auto-opens**; when no matches, the relay page shows "No installed plugins can receive this content"; when multiple matches, displays a candidate list with **real-time search** (filtering by `label` / `pluginId` / `description`), user clicks to open.
+**Matching rules**: The relay page first filters by "content type" (`file` / `text` / `url`) checking `enabled` and `accept*` toggles, then by MIME exact/wildcard matching (rule `*/*` always matches; `xxx/*` matches by category prefix, case-insensitive; otherwise exact match; passing empty MIME, empty rule list, or containing `*/*` means accepting any). The candidate list is always shown, even when only 1 plugin matches; when no matches, the relay page shows "No installed plugins can receive this content"; when multiple matches, displays a candidate list with **real-time search** (filtering by `label` / `pluginId` / `description`), user clicks to open.
 
 **File landing**: After the user selects a plugin, the host copies the shared files into the plugin directory's `.incoming/`, and writes `filePath` (absolute local path **after copying**), `incomingName` (filename after copying), and `containerPath` (proot container mount path `/plugins/<id>/.incoming/<filename>`) into the openData JSON; the plugin backend can mount and read directly.
 - **Naming rule**: `<timestamp>_<sanitized original filename>`; illegal characters `\ / : * ? " < > |` and whitespace are uniformly replaced with `_`, max 120 characters retained, preventing same-name/path-character files from overwriting each other.
@@ -2166,34 +2191,11 @@ A complete example of a Web plugin with Python backend + Proot container:
 | `ACTION_SEND` | `text/*` | Share plain text / link |
 | `ACTION_SEND` | `*/*` | Share any single file |
 | `ACTION_SEND_MULTIPLE` | `*/*` | Share multiple files |
-| `ACTION_VIEW` | `application/*`, `audio/*`, `image/*`, `message/*`, `multipart/*`, `text/*`, `video/*` | "Open with other apps" file |
+| `ACTION_VIEW` | `*/*` (plus a second filter with bare `content` / `file` schemes and no MIME) | "Open with other apps" for any file |
 
-> ⚠️ The `ACTION_VIEW` branch **does not have** `*/*` wildcard, and does not include `font/*`, `model/*`, etc. categories; unknown type files not in the above list can only be dispatched to UIN Tool via "Share" (`ACTION_SEND`) or external explicit intents (see below).
+**External apps directly invoking a plugin (not supported)**
 
-**External apps directly invoking plugin (skipping relay page)**
-
-`PluginHostActivity` is declared as `exported="true"`, any app can send an explicit intent to it to directly open a plugin and deliver data; the result is equivalent to opening after openWith relay completion:
-
-| Extra | Type | Description |
-|-------|------|-------------|
-| `plugin_id` | String | **Required**, plugin ID to open (`PluginHostActivity.EXTRA_PLUGIN_ID`) |
-| `instance_id` | String | Optional, instance ID (specifies target instance for multi-instance; auto-generated if omitted) |
-| `open_data` | String | Optional, openData JSON string (structure see table above), plugin side reads with `getOpenData()` / `onHostEvent("host.open")` |
-
-```kotlin
-// Third-party app example: no relay page needed, directly delivers text to a plugin supporting openWith
-val intent = Intent(Intent.ACTION_VIEW).apply {
-    setClassName("com.UIN.Tool", "com.UIN.Tool.plugin.PluginHostActivity")
-    putExtra("plugin_id", "com.example.editor")
-    putExtra("open_data",
-        """{"kind":"text","type":"text","when":1700000000000,"text":"Content from third-party app"}"""
-    )
-    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-}
-context.startActivity(intent)
-```
-
-> Third-party apps can also directly send `ACTION_SEND` + `text/*` / `*/*` (or `SEND_MULTIPLE`) to `PluginOpenDispatchActivity`, letting users select a plugin from the relay page; effect is consistent with the system share panel.
+`PluginHostActivity` is declared as `exported="false"`, so third-party apps cannot send an explicit intent to it. External apps dispatch content through `PluginOpenDispatchActivity` (`ACTION_SEND` / `ACTION_SEND_MULTIPLE` / `ACTION_VIEW`), and the relay page lets the user pick a plugin. The `plugin_id` / `instance_id` / `open_data` extras are for in-app use only.
 
 #### 12.3.5 Resource Limit Fields
 
@@ -2289,21 +2291,23 @@ Click "**Export Template**" on the "Dev" page; the app copies built-in packaged 
 
 | Requirement | Description |
 |-------------|-------------|
-| Repository name | Must be the plugin ID (e.g., `com.example.myplugin`) |
-| Repository description | Must be the plugin name |
-| Release Tag | Format: `{version code}-{version name}` (host splits at first `-`, e.g., `1-1.0.0`) |
-| Release assets | Must contain `.tpk` file (host takes first .tpk asset, no integrity check) |
+| Repository name | Recommended to be the plugin ID (e.g., `com.example.myplugin`) |
+| Repository description | Recommended to be the plugin name |
+| Index file | `source.json` at the repository root (the host fetches it using the source owner/repo/branch, cached for about 5 minutes) |
+| Plugin entries | A `plugins` array with at least `pluginId`, `name`, `version`, `versionName`, and `tpkPath` |
+| TPK location | `tpkPath` is relative to the repository root; the download URL is the source base URL plus `tpkPath` |
 | Repository visibility | Must be public |
 
 > Note: the host **no longer pages through repositories one by one** — plugin lists come from **source indexes** (each source maintains its own `source.json`, which the host pulls and aggregates via `SourceIndexFetcher`, ~5-minute cache, entries carry official / community trust levels); only the app’s own update check calls the GitHub Releases API (`per_page=30`).
 
 ### 13.2 Publishing Steps
 
-1. Create GitHub repository (in UIN-Tool-Plugins organization), repository name = plugin ID
-2. Upload plugin files
-3. Create Release (Tag: 1-1.0.0)
-4. Upload .tpk file to Assets
-5. Force update: Tag format `{version code}-{version name}-1` (e.g., `2-1.0.1-1`; note the host splits at first `-`, so version name will be parsed as `1.0.1-1`)
+1. Create a public GitHub repository (it can live in the UIN-Tool-Plugins organization); the repository name is recommended to be the plugin ID
+2. Upload the `.tpk` (for example `plugins/<pluginId>/<version>.tpk`)
+3. Maintain the `plugins` array in `source.json` at the repository root with `pluginId`, `name`, `version`, `versionName`, `tpkPath`, `iconPath`, and related fields
+4. Add the repository as a source in Manage > Plugin Sources (or submit it to the official or community source)
+5. For a new release, increment `version` and update `tpkPath`; the host compares `version` to detect updates
+6. GitHub Release tags and assets are used only for the **app's own** update check and do not participate in plugin distribution
 
 ---
 
@@ -2323,8 +2327,6 @@ UIN Tool includes a complete terminal environment; core engine is based on the b
 | Script Languages | Python, Node.js, Ruby, etc. (install with `apt install`) |
 | Network Tools | curl, wget, openssh |
 | Multi-Session | Multiple terminal sessions running simultaneously |
-| Multi-Window | Android 7.0+ multi-window support (new window button) |
-| Safe Mode | New sessions can enable safe mode |
 
 Terminal environment variables (built-in PRoot container, see `ProotRuntime`): `HOME=/root`, `PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`, etc.; the rootfs is mounted inside the app private directory, and the session is owned by `SimpleTerminalActivity`, so page destruction/recreation does not interrupt it. **Note**: `HOME=/data/data/com.UIN.Tool/files/home`, `PREFIX=.../files/usr`, `PATH=$PREFIX/bin` are legacy variables of the **external Termux** backend and are not used by the built-in terminal.
 
@@ -2376,6 +2378,7 @@ uiConfig.saveConfig()
 | Text Colors | text_primary, text_secondary, text_hint, text_primary_inverse |
 | Background Colors | background, surface, surface_variant |
 | Border Colors | divider, glass_background, disabled |
+| System bars / navigation | status_bar, navigation_bar, nav_selected, nav_unselected |
 
 ### 15.3 Shape Configuration
 
@@ -2448,6 +2451,8 @@ print("Debug info")
 
 ## XVII. FAQ
 
+### 17.1 Q1-Q15
+
 Q1: Plugin import fails?
 
 Possible reasons: file is not a valid .tpk format, missing plugin.json, JSON format error, signature verification failed.
@@ -2466,7 +2471,7 @@ Grant required permissions to the plugin in "Manage" > "Permission Management" >
 
 Q5: How to debug plugins?
 
-Use Logger to output logs, view in "Manage" > "Development Tools". Web plugins can be debugged with Chrome DevTools.
+Use Logger to output logs and view them in "Manage" > "Runtime Logs" (including the logcat source). This app does not enable WebView remote debugging, so chrome://inspect cannot discover plugin pages.
 
 Q6: Where is plugin data stored?
 
@@ -2478,7 +2483,7 @@ No. The data/ directory is automatically preserved when updating plugins, user d
 
 Q8: Will permission status be persisted?
 
-Yes. After authorization, permission status is permanently saved; no duplicate popups on next opening.
+Yes. Permission status is permanently saved. Web plugins prompt only for permissions that are not yet granted, so granted ones do not pop up again; native plugins still list their declared permissions on every open unless the user chooses "Don't Show Again".
 
 Q9: What APIs do Web plugins support?
 
@@ -2543,14 +2548,100 @@ This issue existed in older versions, fixed in v4.5.0: export now runs on a back
 ### 18.5 Version Management
 
 · Use semantic versioning
-· Use correct Release Tag format when publishing
-· Use -1 suffix for force updates
+· Maintain the correct `version` and `tpkPath` in `source.json`
 
 ---
 
-## XIX. Technical Support
+## XIX. File Manager
 
-### 19.1 Contact Information
+The file manager is a built-in file page opened from the File entry in the sidebar. It supports dual panes, browsing inside archives, a recycle bin, remote FTP and HTTP, background tasks, and several built-in viewers. This chapter describes actual behavior; plugin APIs are covered in earlier chapters.
+
+### 19.1 Layout and Navigation
+
+- **Top bar**: the menu button opens the sidebar. The title shows the full path of the active pane; tap it to jump to a path, long-press to copy the path.
+- **Top-right menu**: refresh, search, filter, sort by, add or remove bookmark, set as home, swap panes, settings, exit the file manager.
+- **Bottom bar**: back, forward, new, sync (sync the current pane to the other pane), up one level. In multi-select mode it switches to select all, invert selection, exit selection, and select same type.
+- **Sidebar**: three sections — Storage (an internal storage card with used and total), Open (editor, terminal, extract installed packages), and Manage (background tasks, recycle bin, settings, remote management).
+- **Dual panes**: the default layout can be single or dual pane. The divider ratio can be fixed, variable (remembered after dragging), or default (reset on every entry).
+- **Single pane**: the back key can go up one level first or exit directly, and the last directory can be remembered.
+
+### 19.2 Browsing, Sorting, and Filtering
+
+- **Sorting**: by name, size, date, or type, with ascending or descending order and directories first. Sorting can apply to the current folder only.
+- **Filter bar**: filters the current pane only and applies as you type, without recursion. Plain text matches by name, `/pattern/` uses a regular expression, and a leading `!` inverts the match.
+- **Search**: optional subfolder recursion, case sensitivity, regular expressions, file content matching, and minimum or maximum byte size. The result count can be capped or unlimited. The result panel offers Search in results, which filters by **name only**.
+- **Hidden entries**: system hidden entries (dot-prefixed) and manually hidden entries (from the long-press menu) are controlled separately.
+- **Bookmarks and history**: the menu adds or removes a bookmark for the current folder; bookmarks and visit history live in the sheet opened by swiping up from the bottom bar, grouped together.
+
+### 19.3 File Operations
+
+- **Action menu**: long-press a file or folder to open it. Actions include copy, move, delete, rename, properties, select, share, open with, compare, hide, and bookmark, plus compress, extract, and add to archive when the file type allows.
+- **Copy and move**: pick up the selection, navigate to the target folder, then paste. A paste button appears at the bottom right. Single and dual panes use the same flow.
+- **Batch rename**: use a template (`#p` stem, `#e` extension, `#n` number, `#z` padded number, `#f` full name, `##` literal hash) or find and replace (with regular expressions and `$1` capture groups), and optionally change case. A preview runs first; empty names, slashes, duplicates, and existing names are rejected.
+- **Properties**: name, parent folder, type, size, modified time, and MIME. Long-press any row to copy that value. Text files also show line and character counts.
+- **Overwrite backup**: when enabled, a file that would be overwritten is copied to the recycle bin first, keeping the latest 200 copies.
+
+### 19.4 Recycle Bin
+
+- Enabled by default. Deleted files go to `/sdcard/UIN_Tool/trash/deleted/<id>/` instead of disappearing.
+- The limit is **500 items / 4 GB**; the oldest items are removed first when the limit is exceeded.
+- Supports restore (under a new name if the original path is taken), permanent delete, and emptying the bin, including overwrite backups.
+- When the recycle bin is disabled, delete becomes permanent by default; items already in the bin can still be restored.
+
+### 19.5 Archives and Extraction
+
+- **Writable formats**: zip (password, splitting, and appending entries to an existing archive) and 7z (password and encrypted file names; new archives only, existing 7z archives cannot be modified).
+- **Read-only formats**: rar and the tar family (`.tar`, `.gz`, `.bz2`, `.xz`, `.zst`).
+- Opening an archive enters **in-archive browsing**. Text entries can be opened in the built-in editor and written back to the original archive, optionally keeping a `.bak` copy first. Encrypted archives require a password.
+- **Extraction target**: the other pane, a new folder, or a custom directory. Timestamps can be preserved, and the source archive can be deleted after extraction.
+- Nested archives cannot be entered directly; extract the outer archive first.
+
+### 19.6 Remote Management
+
+- Two independent services, FTP and HTTP. Each can be started and stopped, with its own port, shared directory, account, and password. An empty shared directory follows the file manager root.
+- Without an account, anyone on the same network can access the shared directory; the UI shows a clear warning.
+- **HTTP**: browse folders, download files (with `Range` support, so video seeking works), select items and download them as a zip, create folders, and upload through a web form.
+- **FTP**: connect with an FTP client on a computer.
+- A persistent notification appears while a service runs, and the connection log is always available.
+
+### 19.7 Task Center
+
+- Long-running copy, move, compress, and extract operations can be sent to the background.
+- The background tasks list in the sidebar shows running operations with progress and a cancel action.
+- Completion and failure are reported; name conflicts are asked one by one.
+
+### 19.8 File Comparison
+
+- Compare two files, two folders, or two archives.
+- **Modes**: FAST (size and time), NORMAL (block checksums), EXACT (byte by byte or hash). Very large files are protected by a budget and produce a warning.
+- **Text view**: differences only, ignore case, ignore whitespace, and jump to the previous or next difference.
+- **Folder comparison**: lists identical, differing, left-only, and right-only files.
+- **Archive comparison**: compares entry content hashes; encrypted archives must be opened with a password first.
+
+### 19.9 Built-in Viewers and Open With
+
+- **Markdown**: rendered in the built-in reader; a `.md` file on disk opens directly.
+- **Images**: pinch zoom, double-tap zoom, left and right paging within the folder, EXIF orientation, and GIF or animated playback.
+- **Fonts**: preview family and style, browse glyphs by code point, and jump to a code point.
+- **Keystore**: view JKS, PKCS12, and BKS, and convert between formats.
+- **Hex**: page through and edit binary content.
+- **APK**: package name, version, SDK levels, permissions, signing certificate, and verification result. Extract installed packages from the sidebar.
+- **Open with**: long-press and choose Open with to use a built-in viewer, the built-in editor, locate in the file manager, or hand the file to a plugin. Open-with management adjusts candidates and defaults.
+
+### 19.10 Settings
+
+| Group | Items |
+|-------|-------|
+| Browse | Default start directory, default layout (single or dual pane), pane ratio, default sort and order, row density, search result limit, show system hidden entries, show manually hidden entries, multi-line file names, recycle bin, overwrite backup |
+| Back | Back key behavior (go up first or exit directly), remember last directory |
+| Misc | Root scope (internal storage or root `/`), read-only archive hint, `.bak` backup before writing, clear cache |
+| Extraction | Speed level, keep timestamps, extraction target, delete source archive after extraction (set in the extraction dialog) |
+
+---
+
+## XX. Technical Support
+
+### 20.1 Contact Information
 
 | Channel | Contact Info |
 |---------|-------------|
@@ -2565,9 +2656,9 @@ Document Information
 
 | Item | Info |
 |------|------|
-| Document Version | 6.2.0 |
-| Corresponding App Version | v6.2.0 (Build 26) |
-| Last Updated | October 31, 2026 |
+| Document Version | 7.0.0 |
+| Corresponding App Version | v7.0.0 (Build 28) |
+| Last Updated | November 16, 2026 |
 
 ---
 

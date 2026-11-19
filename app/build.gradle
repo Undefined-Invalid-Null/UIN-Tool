@@ -2,7 +2,9 @@ plugins {
     id "com.android.application"
     id "org.jetbrains.kotlin.android"
     // Compose 编译器插件版本必须与 Kotlin 完全一致（见根 build.gradle 的升级说明）
-    id "org.jetbrains.kotlin.plugin.compose" version "2.3.10"
+    // 2026-10-31：KGP 2.3.10 → 2.4.21 配 AGP 9.1.1，这里必须同步，否则
+    // 「Compose compiler plugin 2.3.10 was built with Kotlin 2.3.10」直接终止构建。
+    id "org.jetbrains.kotlin.plugin.compose" version "2.4.21"
 }
 
 // ===== A-04：签名口令不再以明文写在 build.gradle 里 =====
@@ -37,7 +39,10 @@ def signingKeyPassword = loadSigningSecret("UIN_KEY_PASSWORD", "keyPassword")
 
 android {
     namespace "com.UIN.Tool"
-    compileSdk 36
+    // 2026-10-31：36 → 37。N1 的 zstd-jni AAR 带 minCompileSdk=37，checkDebugAarMetadata 卡死。
+    // 与之配套的 AGP 9.1.1 / Gradle 9.3.1 / KGP 2.4.21 见根 build.gradle 注释。
+    // targetSdk 28 / minSdk 23 不动（用户指令：除 targetSdk 外只升不降）。
+    compileSdk 37
 
     ndkVersion = "29.0.14033849"
 
@@ -45,8 +50,8 @@ android {
         applicationId "com.UIN.Tool"
         minSdk 23
         targetSdk 28
-        versionCode 26
-        versionName "6.2.0"
+        versionCode 27
+        versionName "7.0.0"
 
         manifestPlaceholders.UIN_PACKAGE_NAME = "com.UIN.Tool"
         manifestPlaceholders.UIN_APP_NAME = "UIN Tool"
@@ -126,6 +131,13 @@ android {
             excludes += "/META-INF/*.kotlin_module"
             excludes += "**/*.proto"
             excludes += "**/*.kotlin_builtins"
+            // o.txt 第 11 条：BouncyCastle 的 jdk18on 三件（bcprov / bcpkix / bcutil）都是
+            // multi-release jar，各自带 META-INF/versions/9/module-info.class（以及 OSGI
+            // MANIFEST / LICENSE），三份同名资源合并时会报 "2 files found with path"。
+            // Android 运行时用不到 multi-release 内容，直接整段排除。
+            excludes += "META-INF/versions/**"
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/NOTICE*"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -143,14 +155,24 @@ android {
         }
     }
 
-    applicationVariants.all { variant ->
-        variant.outputs.all { output ->
-            if (variant.buildType.name == "debug") {
-                def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("uin-tool_" + (abi ? abi : "universal") + "_debug.apk")
-            } else if (variant.buildType.name == "release") {
-                def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("uin-tool_" + (abi ? abi : "universal") + "_release.apk")
+    // ── APK 输出改名（2026-10-31 随 AGP 9.1.1 迁移）──
+    // 旧写法 applicationVariants.all + variant.outputs + outputFileName 是**旧 Variant API**，
+    // AGP 9.0 起默认禁用（release notes：「the legacy variant API, such as
+    // android.applicationVariants is no longer accessible」），AGP 10 彻底移除。
+    // 迁到 androidComponents.onVariants —— 新 API 的 VariantOutput 同样有
+    // outputFileName: Property<String>，语义一致。
+    // 注：原代码里那段 output.getFilter(OutputFile.ABI) 是死分支 —— 项目只配了
+    // ndk.abiFilters（决定单个 APK 里带哪些 .so），**没有 splits {}**，永远不会拆出多输出，
+    // ABI filter 恒为 null，文件名恒为 universal。迁移后不再保留这段假分支。
+    // 产出的文件名与升级前**逐字节相同**：uin-tool_universal_debug.apk / uin-tool_universal_release.apk
+    androidComponents {
+        onVariants(selector().all()) { variant ->
+            def bt = variant.buildType
+            if (bt == "debug" || bt == "release") {
+                def apkName = "uin-tool_universal_${bt}.apk"
+                variant.outputs.each { output ->
+                    output.outputFileName.set(apkName)
+                }
             }
         }
     }
@@ -166,8 +188,8 @@ configurations.all {
     resolutionStrategy {
         force "org.commonmark:commonmark:0.22.0"
         // 随 Kotlin 升级同步上调，避免 stdlib 版本被钉在旧版导致
-        // 「编译器 2.3.10 + stdlib 2.1.0」这种混搭。
-        force "org.jetbrains.kotlin:kotlin-stdlib:2.3.10"
+        // 「编译器 2.4.21 + stdlib 2.3.10」这种混搭（2026-10-31 随 N15 KGP 升 2.4.21 一起调）。
+        force "org.jetbrains.kotlin:kotlin-stdlib:2.4.21"
         force "com.squareup.okhttp3:okhttp:4.12.0"
     }
 }
@@ -194,7 +216,19 @@ dependencies {
 
     // ==================== UIN Tool 依赖 ====================
     // Compose
-    implementation platform("androidx.compose:compose-bom:2025.08.00")
+    // BOM：2025.08.00 → **2026.09.00**（2026-11-01）。foundation/ui/animation 1.9.0 → 1.12.1、
+    // material3 1.3.2 → 1.4.0、material-icons 仍 1.7.8。升级前把约束**逐项核实**过，没有阻塞：
+    //   · minSdk —— foundation-android 1.12.1 的 Manifest 写死 minSdkVersion=23（正好等于我们），
+    //     material3-android 1.4.0 是 21。
+    //   · compileSdk —— foundation 1.12.1 的 aar-metadata 要求 minCompileSdk=37，我们**已经是**
+    //     （此前为 zstd-jni 被迫升的 37；现在 Compose 也要求它，两件事自洽了）。
+    //   · AGP —— aar-metadata 要求 minAndroidGradlePluginVersion=9.1.0，我们是 9.1.1。
+    //   · Kotlin —— class 的 kotlin.Metadata 是 mv=[2,1,0]（Kotlin 2.1 编的），编译器 2.4.21 可读；
+    //     且 Compose 编译器内建在 Kotlin 里（android.builtInKotlin=false），编译器与 BOM 本就解耦。
+    //   · API 面 —— 本项目实际用到的 51 个 material3/foundation 符号，逐个到新 artifact 的
+    //     class 常量池里核对过，全部存在（注意 foundation.layout 已拆成 foundation-layout 独立件）。
+    //     这步不是走过场：先前只凭印象，一度误判成「升不动」。
+    implementation platform("androidx.compose:compose-bom:2026.09.00")
     implementation "androidx.compose.ui:ui"
     implementation "androidx.compose.ui:ui-graphics"
     implementation "androidx.compose.ui:ui-tooling-preview"
@@ -202,6 +236,11 @@ dependencies {
     implementation "androidx.compose.material3:material3-window-size-class"
     implementation "androidx.compose.runtime:runtime-livedata"
     implementation "androidx.compose.material:material-icons-extended"
+    // p.txt 第 5 条（用户）：文件图标改用现成图标库，不再手绘。
+    // Octicons 是 GitHub primer/octicons 的 Compose 移植（MIT），自带
+    // Markdown16 / FileCode / FileBinary / FileZip / FileDiff 等文件类型图标。
+    // 只引入这一个图标包，R8 会按引用裁剪。
+    implementation "br.com.devsrsouza.compose.icons:octicons:1.1.1"
     implementation "androidx.navigation:navigation-compose:2.7.7"
     implementation 'io.github.sridhar-sp:neumorphic:0.0.6'
     
@@ -218,7 +257,9 @@ dependencies {
 
     // ==================== Shizuku / Dhizuku ====================
     // 注意：版本受限——Shizuku api 13.x 需 minSdk 24（项目为 23），故用 12.2.0（minSdk 23）；
-    // Dhizuku-API 2.6.0 需 compileSdk 37（项目 compileSdk 36 / AGP 8.9.1），故用 2.5.3（compileSdk 无限制）
+    // Dhizuku-API 2.6.0 需 compileSdk 37 —— 2026-10-31 起项目已升到 compileSdk 37 / AGP 9.1.1，
+    // 这个限制**已解除**（当时正是这条逼着 2.5.3 钉住），但 2.6.0 未升：无功能需求，
+    // 而跨次版本的 API 变动只能靠真机构建验证，不为「升而升」引入无谓回归。留给 M6 一并议。
     implementation "dev.rikka.shizuku:api:12.2.0"
     implementation "dev.rikka.shizuku:provider:12.2.0"
     implementation("io.github.iamr0s:Dhizuku-API:2.5.3") {
@@ -232,6 +273,9 @@ dependencies {
     implementation "com.squareup.retrofit2:converter-gson:2.11.0"
 
     // Markdown
+    // GFM 表格扩展：文档里 1944 行表格靠它（core 只认 CommonMark，表格会退化成普通段落）。
+    // 与 core 同版本 0.22.0，仓库已配 mavenCentral + 阿里云/华为/腾讯镜像。
+    implementation "org.commonmark:commonmark-ext-gfm-tables:0.22.0"
     implementation "org.commonmark:commonmark:0.22.0"
 
     // 其他
@@ -249,8 +293,14 @@ dependencies {
     // 0.24.5 起改为「需要下划线才取扩展 span」。
     // 升级前逐个比对过 0.24.4→0.24.6 的 public API：仅删了 EditorSearcher.replaceThis
     // 与 DirectAccessProps.stickyScrollIterationLimit，本工程均零引用。
-    implementation platform("io.github.rosemoe:editor-bom:0.24.6")
-    // A-09：brotli 全仓零引用已删；asm 系列全仓也零引用，但 libs/host-sdk.jar
+    // 6.3.0（用户 h16「空白占位字符盖住正文」）：0.24.7 修了 TextRow 画功能字符时
+    // lastEnd 少加 1 导致控制字符被重复画到下一个字符位置的问题；该版本仅把
+    // setDiagnostics/setInlayHints/setHighlightTexts 换成 *Provider 注册式 API，
+    // 本工程用到的其余类（Spans/TextStyle/DirectAccessProps/EditorColorScheme 等）未变。
+    implementation platform("io.github.rosemoe:editor-bom:0.24.7")
+    // A-09：brotli 曾因全仓零引用被删；6.3.0 为 commons-compress 的 `.br` 解压需要，
+    // 重新引入 `org.brotli:dec`（见下方「压缩」块，纯 Java / MIT，不是 native 那套）。
+    // asm 系列全仓也零引用，但 libs/host-sdk.jar
     // （compileOnly，编译器走反射加载）可能在运行期用到字节码 API，故暂留
     implementation 'org.ow2.asm:asm:9.6'
     implementation 'org.ow2.asm:asm-commons:9.6'
@@ -262,26 +312,119 @@ dependencies {
     
     // TextMate 语言支持（语法高亮）
     implementation "io.github.rosemoe:language-textmate"
+
+    // APK / AXML / resources.arsc 解析（新增 6.3.0 j.txt 第 1 条）：
+    // REAndroid 的 ARSCLib 是 APKEditor 的底层库，纯 Java、Apache-2.0、可在 Android 运行时使用；
+    // 自带 android-23…36 框架资源包，离线解析 AXML 的属性名/命名空间/注释/CDATA，
+    // 也能读写 resources.arsc 与重新编码 XML。能力清单见项目根目录 apk_editor.md。
+    // 选它而不是自己写 AXML 解析：二进制 XML 的字符串池/资源映射/复杂值编码都由库覆盖。
+    implementation "io.github.reandroid:ARSCLib:1.4.0"
+
+    // o.txt 第 11 条：密钥库（.jks / .bks / .p12）读取。
+    // Android 的 KeyStore 没有 JKS provider，`KeyStore.getInstance("JKS")` 在真机上恒定失败，
+    // 无论口令对错都只能报「不支持」。BouncyCastle 提供 JKS 私钥所需的
+    // PBEWithSHA1And3-KeyTripleDES-CBC、ASN.1 解析，以及 BKS / PKCS12 的完整 KeyStore 实现；
+    // JKS 的 FEEDFEED 容器本身没有任何主流库提供 KeyStoreSpi，由 core/crypto/JksKeyStore.kt
+    // 基于 BC 的算法层实现（读写都支持）。
+    // bcprov / bcpkix 均为 MIT 风格的 Bouncy Castle License，字节码 Java 8（major 52），
+    // 可被 D8 直接处理；provider 只在局部以实例方式使用，不注册进全局 Security，避免与系统 BC 冲突。
+    implementation "org.bouncycastle:bcprov-jdk18on:1.78.1"
+    implementation "org.bouncycastle:bcpkix-jdk18on:1.78.1"
     
     // 编译器
     compileOnly files("libs/host-sdk.jar")
 
-    // 压缩
-    implementation "org.apache.commons:commons-compress:1.26.2"
-    implementation "org.tukaani:xz:1.9"
-    implementation("com.github.luben:zstd-jni:1.5.6-9@aar")
+    // 压缩（6.3.0：换最新库 + commons-compress 能力全吃下，矩阵见 MT.md §4.7、依赖说明 §5.6）
+    // commons-compress 1.26.2 → 1.28.0（最新，2025-07-26，maven.compiler.source=1.8 → Android 直接兼容）。
+    // 会传递带入 commons-codec 1.19.0 / commons-io 2.20.0 / commons-lang3 3.18.0（均 Apache-2.0），
+    // 上机后用 dependencyInsight 确认没被别处的老版本压回去。
+    implementation "org.apache.commons:commons-compress:1.28.0"
+    // 1.9 → 1.10：与 commons-compress 1.28.0 官方指定的可选依赖版本对齐（xz/lzma/7z-LZMA 后端）
+    implementation "org.tukaani:xz:1.10"
+    // zstd（.zst / .tar.zst）后端：commons-compress 里标 optional，必须显式声明；
+    // @aar 是官方 README 给的 Android 形态（Android 5.0+），1.5.7-21 = 当前最新且 .aar 存在
+    implementation("com.github.luben:zstd-jni:1.5.7-21@aar")
+    // brotli（.br 只读解压）后端：同样是 optional，不声明就用不了（纯 Java / MIT，无 native）
+    implementation "org.brotli:dec:0.1.2"
+    // zip 专用引擎（N1 拍板）：加密读+写（AES-256 默认 + ZipCrypto）、Zip64、
+    // ProgressMonitor 自带当前文件/百分比/取消，直接喂 UnifiedProgressDialog
+    implementation "net.lingala.zip4j:zip4j:2.11.6"
+
+    // 7z **写侧**（用户拍板「7z 做了吧，不修 bug，将就」）。原 commons-compress
+    // `SevenZOutputFile` 只写得出一条默认 LZMA2、无密码、无级别；换 7-Zip 16.02 官方
+    // 引擎才能给出级别 / 密码 / 加密文件名 / 固实块。
+    //
+    // 坐标必须是这个 Android 移植版（com.sorrowblue 的 7-Zip-JBinding-4Android）：
+    // 官方 borisbrodski 23.01-2.2 只有桌面 jar，没有 AAR；这个 AAR 自带 arm64 .so，
+    // 且通过 `java.vendor == "The Android Project"` 自动 `System.loadLibrary`，
+    // 不需要我们放 assets、也不需要 init 临时目录。
+    //
+    // 版本钉死 **16.02-2.03.1**：Maven Central 的 `<release>` 还停在更老的 2.4；
+    // 2.03.1 = 2.4 + 十六进制哈希填充修复 + NDK r28c 重建 + 16KB page 对齐的 LOAD 段
+    // （Play 的 16KB 页面要求）。传输依赖会把 appcompat 从 1.7.0 抬到 1.7.1，
+    // 属同分支补丁版，已验证无 API 差异。
+    //
+    // 许可：7-Zip 引擎 LGPL-2.1+（含 unRAR 限制条款），JBinding 绑定层 Apache-2.0；
+    // 发行说明里必须带源坐标。已知缺陷（上游 issue #77，用户拍板**不修**）：
+    // `SetProperties` 会重置已设的属性，级别 / 加密文件名 / 线程数只能有一个生效；
+    // 我们的界面因此按「加密文件名优先，级别回落默认」呈现。
+    implementation "com.sorrowblue.sevenzipjbinding:7-Zip-JBinding-4Android:16.02-2.03.1"
+
+    // RAR 解压（e16「rar 不解」）。**只读** —— RAR 是 RARLAB 的专有格式，
+    // 开源侧只有解压没有打包，commons-compress 连读都不做。
+    //
+    // 8.1.2 是最新版，也是**唯一**带 RAR5 读取的版本：7.x 及更早只有 RAR4，
+    // 而 WinRAR 5（2017）起默认就出 RAR5 —— 停在 7.x 等于「能解的都是十年前的包」。
+    //
+    // 代价：8.x 把 FileHeader 的时间换成了 java.nio.file.FileTime（API 26 才有原生类）。
+    // 本工程已开 coreLibraryDesugaring（desugar_jdk_libs 2.1.5，实测内含 java/nio/file
+    // 全套 101 个类，与 desugar_jdk_libs_nio 字节相同），所以 minSdk 23 也照跑。
+    //
+    // 许可：junrar 用 RARLAB 的 **UnRAR License**（宽松；唯一限制是「不得用于开发 RAR
+    // 兼容的压缩器」—— 我们只解不压，不受限），传递依赖 slf4j-api 为 MIT。
+    implementation "com.github.junrar:junrar:8.1.2"
+
+    // APK 签名**校验**（用户答复 12）：PackageManager 只把证书读出来、从不验对错，
+    // apksig 才真拿公钥比对 APK 的内容摘要，并给出验过的是 v1/v2/v3 哪几套。
+    // 取 9.1.1 = 与本项目 AGP 同版；实测字节码 major 52（Java 8）、无 sun./jdk. 引用，
+    // D8 直接吃，minify 下走的是直调 API、不需要 keep 规则
+    implementation "com.android.tools.build:apksig:9.1.1"
+
+    // 图片查看器（6.3.0 / N5 拍板用 Coil 3）：只解**本地文件**，不引网络后端 ——
+    // §4.6 明确「不做网络图」，所以只要 coil-compose-core（不含 okhttp/ktor）。
+    // 用 **3.6.3（当前最新）** 而不是保守版本：它要求 foundation 1.12.0，而上面的 BOM
+    // 已升到 2026.09.00 给 1.12.1 —— 正好覆盖。（早先 BOM 还停在 2025.08.00/foundation 1.9.0
+    // 时曾考虑退到 3.4.0，但那属于「为迁就旧 BOM 而降级」；升 BOM 才是对的方向。）
+    // Apache-2.0。注意同 material-icons 一样，Coil 是 KMP 库，真类在 *-android variant 里。
+    implementation "io.coil-kt.coil3:coil-compose-core:3.6.3"
+    // GIF 动图解码：Coil 3 把 GIF 拆成独立可选件，不加就只显示第一帧（§4.6 点名要 GIF）
+    implementation "io.coil-kt.coil3:coil-gif:3.6.3"
 
     // 测试
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.robolectric:robolectric:4.10"
     androidTestImplementation "androidx.test.ext:junit:1.1.5"
     androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
-    androidTestImplementation platform("androidx.compose:compose-bom:2025.08.00")
+    androidTestImplementation platform("androidx.compose:compose-bom:2026.09.00")
     androidTestImplementation "androidx.compose.ui:ui-test-junit4"
     debugImplementation "androidx.compose.ui:ui-tooling"
     debugImplementation "androidx.compose.ui:ui-test-manifest"
 
-    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
+    // 核心库脱糖（2026-11-01 随 N15 升到 2.1.5）。
+    // 原为 2.0.4（2021 年），与 AGP 9.1.1 自带的 R8 9.1.31 不合拍 —— 升级后首次构建
+    // 卡在 D8BackportedMethodsGenerator：
+    //   Failed to transform ... {artifactType=_internal-d8-desugar-methods,
+    //                            enable-core-library-desugaring=true, lint-min-sdk=23}
+    //   Caused by: java.lang.Error: Missing class from Android Android U:
+    //              java.util.concurrent.TimeUnit
+    // 2.1.5 是 dl.google.com 上的最新版（与 desugar_jdk_libs_nio 同步发版）。
+    //
+    // 注意：本工程 RootfsManager.kt 用了 java.nio.file（Files/LinkOption/BasicFileAttributes），
+    // 而 java.nio.file 的脱糖是 2.1.0 才加入的 —— 2.0.4 时代那一段在 API < 26 上其实是
+    // 没被脱糖的（属先有的一处隐患）。若后续要在低版本设备上跑那条路径，
+    // 需另加 implementation "com.android.tools:desugar_jdk_libs_nio:2.1.5"（它与主件内容完全相同，
+    // 作用是把 desugar 运行时类打进 APK）。本轮先只动主件，避免一次改动多个变量。
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.5"
 }
 
 task versionName {

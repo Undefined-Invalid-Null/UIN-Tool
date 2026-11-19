@@ -51,12 +51,14 @@ object NeuLightSource {
 
 object NeuDefaults {
     val LightShadowLight = Color(0xFFFFFFFF)
-    val LightShadowDark = Color(0xFFD9D9D9)
+    val LightShadowDark = Color(0xFFD6D6D6)
     val DarkShadowLight = Color(0xFF2C2C2C)
     val DarkShadowDark = Color(0xFF111111)
-    val LightBackground = Color(0xFFECF0F3)
-    val DarkBackground = Color(0xFF303234)
-    val GlowColor = Color(0xFF1A3A4A)
+    // o.txt 第 3 条：原来的 #ECF0F3 / #1A3A4A 带青绿色相，整页看起来发绿；
+    // 改成中性灰（浅色）与中性深灰（深色），新拟态只剩明暗关系，不再染色。
+    val LightBackground = Color(0xFFECECEC)
+    val DarkBackground = Color(0xFF303030)
+    val GlowColor = Color(0xFF3A3A3A)
 
     enum class Intensity(val factor: Float) {
         LIGHT(0.6f),
@@ -232,9 +234,10 @@ fun Modifier.neuRaised(
 
 /**
  * 新拟态**内凹**：先按 [backgroundColor] 在内容之下铺一层底，画完内容后再在**内容之上**
- * 画双侧描边（描边被 [cornerRadius] 的路径裁在内侧，形成内凹阴影）。
+ * 画双侧描边（描边外沿与组件边界重合、不再向内缩，按光源方向分亮/暗环，形成内凹阴影）。
+ * 亮暗过渡只沿**竖直方向**渐变，左右两侧取同一套颜色（x.txt 第 7 条）。
  *
- * 参数语义与 [neuRaised] 一致：[cornerRadius] 决定阴影几何、[shape] 决定 [backgroundColor]
+ * 参数语义与 [neuRaised] 一致：[cornerRadius] 决定描边圆角、[shape] 决定 [backgroundColor]
  * 的铺底形状；默认透明 = 不铺底（与历史渲染一致 —— neuInset 只描边、本就不画底板）。
  * 调用方同样要把本修饰符放在滚动容器/clip 外层。
  */
@@ -278,20 +281,41 @@ fun Modifier.neuInset(
             }
         }
 
-        val darkOffset = when (lightSource) {
-            NeuLightSource.LEFT_TOP -> Offset(effectiveOffset, effectiveOffset)
-            NeuLightSource.LEFT_BOTTOM -> Offset(effectiveOffset, -effectiveOffset)
-            NeuLightSource.RIGHT_TOP -> Offset(-effectiveOffset, effectiveOffset)
-            NeuLightSource.RIGHT_BOTTOM -> Offset(-effectiveOffset, -effectiveOffset)
-            else -> Offset(0f, 0f)
+        // v.txt 第 9 条：描边不再按偏移平移（那会把线推进边框内侧）。
+        //
+        // w.txt 第 7 条（用户）：输入框右半侧有一道明显的硬边。
+        // 旧实现按「左半 + 上半 / 右半 + 下半」用 clipRect 硬切亮环与暗环 ——
+        // 输入框又宽又矮，中线那条切线在右半侧格外显眼，看起来像边框断成两截。
+        // 上一版改用**从光源角到背光角**的斜向渐变做透明度遮罩，硬边没了，但又冒出
+        // x.txt 第 7 条：宽而矮的输入框左右两侧正好落在渐变的两端 —— 左边亮、右边暗，
+        // 看着像左右用了两种样式。
+        //
+        // 现在渐变只沿**竖直方向**走：同一高度上的左右两边取到同一个颜色，左右完全
+        // 对称；上下仍保留明暗过渡，内凹的立体感不丢（光源在上则上亮下暗，反之亦然）。
+        val lightArgb = shadowColorLight.toArgb()
+        val darkArgb = shadowColorDark.toArgb()
+        val topIsLight = lightSource == NeuLightSource.LEFT_TOP ||
+            lightSource == NeuLightSource.RIGHT_TOP
+        // 高度为 0 时两端重合，渐变退化成零长度 —— 给个 1px 兜底，避免构造出退化 shader。
+        val span = if (size.height > 0f) size.height else 1f
+        val startY = if (topIsLight) 0f else span
+        val endY = if (topIsLight) span else 0f
+        fun ringShader(argb: Int, lightSide: Boolean): android.graphics.Shader {
+            val solid = argb and 0x00FFFFFF
+            fun a(alpha: Float) = solid or ((alpha.coerceIn(0f, 1f) * 255).toInt() shl 24)
+            val colors = if (lightSide) {
+                intArrayOf(a(1f), a(0.5f), a(0f))
+            } else {
+                intArrayOf(a(0f), a(0.5f), a(1f))
+            }
+            return android.graphics.LinearGradient(
+                0f, startY, 0f, endY,
+                colors, floatArrayOf(0f, 0.5f, 1f),
+                android.graphics.Shader.TileMode.CLAMP
+            )
         }
-        val lightOffset = when (NeuLightSource.opposite(lightSource)) {
-            NeuLightSource.LEFT_TOP -> Offset(effectiveOffset, effectiveOffset)
-            NeuLightSource.LEFT_BOTTOM -> Offset(effectiveOffset, -effectiveOffset)
-            NeuLightSource.RIGHT_TOP -> Offset(-effectiveOffset, effectiveOffset)
-            NeuLightSource.RIGHT_BOTTOM -> Offset(-effectiveOffset, -effectiveOffset)
-            else -> Offset(0f, 0f)
-        }
+        paintShadowLight.asFrameworkPaint().shader = ringShader(lightArgb, lightSide = true)
+        paintShadowDark.asFrameworkPaint().shader = ringShader(darkArgb, lightSide = false)
 
         // 批次60 收敛：补上 backgroundColor 语义 —— 铺底必须在内容**之前**（内凹描边画在
         // 内容之上，铺底若放在其后会盖住描边与内容）；默认透明 = 不铺底，历史渲染不变。
@@ -301,29 +325,20 @@ fun Modifier.neuInset(
         drawContent()
 
         drawIntoCanvas {
-            it.save()
-            val path = Path().also { p ->
+            val shapePath = Path().also { p ->
                 p.addRoundRect(RoundRect(0f, 0f, size.width, size.height, radius, radius))
             }
-            it.clipPath(path)
-            it.translate(darkOffset.x, darkOffset.y)
+            it.save()
+            it.clipPath(shapePath)
             it.drawRoundRect(
-                -effectiveOffset, -effectiveOffset,
-                size.width + effectiveOffset, size.height + effectiveOffset,
+                0f, 0f,
+                size.width, size.height,
                 radius, radius,
                 paintShadowDark
             )
-            it.restore()
-
-            it.save()
-            val path2 = Path().also { p ->
-                p.addRoundRect(RoundRect(0f, 0f, size.width, size.height, radius, radius))
-            }
-            it.clipPath(path2)
-            it.translate(lightOffset.x, lightOffset.y)
             it.drawRoundRect(
-                -effectiveOffset, -effectiveOffset,
-                size.width + effectiveOffset, size.height + effectiveOffset,
+                0f, 0f,
+                size.width, size.height,
                 radius, radius,
                 paintShadowLight
             )

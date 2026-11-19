@@ -1,0 +1,424 @@
+{
+  "version": 1,
+  "title": {
+    "zh": "插件权限说明",
+    "en": "Plugin permissions"
+  },
+  "intro": {
+    "zh": "插件在 plugin.json 的 permissions 中声明需要的能力。宿主只按声明逐项授权；未声明的能力一律拒绝，撤销（封禁）后即使系统仍授予也会被拒绝。",
+    "en": "Plugins declare required capabilities in permissions inside plugin.json. The host grants only declared items; undeclared capabilities are always denied, and a revoked (blocked) permission stays denied even if the system still grants it."
+  },
+  "notesTitle": {
+    "zh": "注意",
+    "en": "Notes"
+  },
+  "groups": [
+    {
+      "id": "storage",
+      "title": { "zh": "存储与文件", "en": "Storage and files" },
+      "items": [
+        {
+          "permission": "android.permission.READ_EXTERNAL_STORAGE",
+          "name": { "zh": "读取存储", "en": "Read storage" },
+          "description": {
+            "zh": "读取共享外部存储（/storage/emulated/0/）中的文件。授予后插件可以用原路径读取；未授予时只能访问自己的 data/ 沙箱。",
+            "en": "Read files in shared external storage (/storage/emulated/0/). When granted, plugins may read by original path; otherwise only their own data/ sandbox is accessible."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.WRITE_EXTERNAL_STORAGE",
+          "name": { "zh": "写入存储", "en": "Write storage" },
+          "description": {
+            "zh": "在共享外部存储中创建、修改、删除文件。Android 11 及以上由宿主的「所有文件访问」统一授权，请只在信任的插件上开启。",
+            "en": "Create, modify or delete files in shared external storage. On Android 11 and above this is granted through the host all-files access; enable it only for trusted plugins."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "MANAGE_EXTERNAL_STORAGE",
+          "name": { "zh": "所有文件访问", "en": "All files access" },
+          "description": {
+            "zh": "宿主级特殊权限，需在系统设置中手动开启。开启后读写存储的插件才能真正落到 /storage/emulated/0/ 的原路径。",
+            "en": "Host-level special permission that must be enabled manually in system settings. Only after it is enabled can storage plugins really operate on original paths under /storage/emulated/0/."
+          },
+          "level": "special"
+        }
+      ]
+    },
+    {
+      "id": "network",
+      "title": { "zh": "网络", "en": "Network" },
+      "items": [
+        {
+          "permission": "android.permission.INTERNET",
+          "name": { "zh": "访问网络", "en": "Access network" },
+          "description": {
+            "zh": "发起 HTTP 请求、下载文件、解析域名。插件页面的外部资源加载也受此约束。",
+            "en": "Make HTTP requests, download files and resolve domains. Loading external resources in plugin pages is also covered."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.ACCESS_NETWORK_STATE",
+          "name": { "zh": "获取网络状态", "en": "Network state" },
+          "description": {
+            "zh": "判断当前是否联网、连接类型与 IP 地址。",
+            "en": "Check connectivity, connection type and IP address."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.ACCESS_WIFI_STATE",
+          "name": { "zh": "获取 Wi-Fi 状态", "en": "Wi-Fi state" },
+          "description": {
+            "zh": "读取 Wi-Fi 开关、SSID 等状态信息。",
+            "en": "Read Wi-Fi state such as enabled status and SSID."
+          },
+          "level": "normal"
+        }
+      ]
+    },
+    {
+      "id": "media",
+      "title": { "zh": "相机与麦克风", "en": "Camera and microphone" },
+      "items": [
+        {
+          "permission": "android.permission.CAMERA",
+          "name": { "zh": "相机", "en": "Camera" },
+          "description": {
+            "zh": "拍照或录制视频。首次使用时系统会单独弹窗询问。",
+            "en": "Take photos or record video. The system asks separately on first use."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.RECORD_AUDIO",
+          "name": { "zh": "麦克风", "en": "Microphone" },
+          "description": {
+            "zh": "录制音频。授权后插件可在前台或后台录音，请谨慎开启。",
+            "en": "Record audio. Once granted the plugin may record in foreground or background; enable with care."
+          },
+          "level": "dangerous"
+        }
+      ]
+    },
+    {
+      "id": "location",
+      "title": { "zh": "位置", "en": "Location" },
+      "items": [
+        {
+          "permission": "android.permission.ACCESS_FINE_LOCATION",
+          "name": { "zh": "精确位置", "en": "Precise location" },
+          "description": {
+            "zh": "通过 GPS 等获得精确经纬度。",
+            "en": "Obtain precise coordinates through GPS and similar sources."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.ACCESS_COARSE_LOCATION",
+          "name": { "zh": "大致位置", "en": "Approximate location" },
+          "description": {
+            "zh": "通过基站与 Wi-Fi 获得粗略位置。",
+            "en": "Obtain a coarse location from cell towers and Wi-Fi."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.ACCESS_BACKGROUND_LOCATION",
+          "name": { "zh": "后台位置", "en": "Background location" },
+          "description": {
+            "zh": "应用不在前台时也能获取位置，通常需要到系统设置中单独允许。",
+            "en": "Access location while the app is not in the foreground; usually needs a separate system setting."
+          },
+          "level": "special"
+        }
+      ]
+    },
+    {
+      "id": "communication",
+      "title": { "zh": "电话、短信与联系人", "en": "Phone, SMS and contacts" },
+      "items": [
+        {
+          "permission": "android.permission.CALL_PHONE",
+          "name": { "zh": "拨打电话", "en": "Make phone calls" },
+          "description": {
+            "zh": "直接发起通话，不经过拨号界面确认。",
+            "en": "Place calls directly without confirmation in the dialer."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.READ_PHONE_STATE",
+          "name": { "zh": "读取电话状态", "en": "Read phone state" },
+          "description": {
+            "zh": "读取设备标识、运营商、通话状态等信息。",
+            "en": "Read device identifiers, carrier and call state."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.SEND_SMS",
+          "name": { "zh": "发送短信", "en": "Send SMS" },
+          "description": {
+            "zh": "直接发送短信，可能产生费用。",
+            "en": "Send SMS directly; charges may apply."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.READ_SMS",
+          "name": { "zh": "读取短信", "en": "Read SMS" },
+          "description": {
+            "zh": "读取短信内容与验证码，敏感度高。",
+            "en": "Read SMS content and verification codes; highly sensitive."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.RECEIVE_SMS",
+          "name": { "zh": "接收短信", "en": "Receive SMS" },
+          "description": {
+            "zh": "监听新到短信。",
+            "en": "Listen for incoming SMS."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.READ_CONTACTS",
+          "name": { "zh": "读取联系人", "en": "Read contacts" },
+          "description": {
+            "zh": "读取通讯录姓名、电话与邮箱。",
+            "en": "Read contact names, phone numbers and email addresses."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.WRITE_CONTACTS",
+          "name": { "zh": "修改联系人", "en": "Modify contacts" },
+          "description": {
+            "zh": "新增、修改或删除通讯录条目。",
+            "en": "Add, modify or delete contact entries."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.READ_CALENDAR",
+          "name": { "zh": "读取日历", "en": "Read calendar" },
+          "description": {
+            "zh": "读取日历事件与提醒。",
+            "en": "Read calendar events and reminders."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.WRITE_CALENDAR",
+          "name": { "zh": "修改日历", "en": "Modify calendar" },
+          "description": {
+            "zh": "新增、修改或删除日历事件。",
+            "en": "Add, modify or delete calendar events."
+          },
+          "level": "dangerous"
+        }
+      ]
+    },
+    {
+      "id": "system",
+      "title": { "zh": "系统与界面", "en": "System and UI" },
+      "items": [
+        {
+          "permission": "SYSTEM_ALERT_WINDOW",
+          "name": { "zh": "悬浮窗", "en": "Display over other apps" },
+          "description": {
+            "zh": "在其他应用上方绘制内容，需在系统设置中单独允许。",
+            "en": "Draw over other apps; must be allowed separately in system settings."
+          },
+          "level": "special"
+        },
+        {
+          "permission": "WRITE_SETTINGS",
+          "name": { "zh": "修改系统设置", "en": "Modify system settings" },
+          "description": {
+            "zh": "修改亮度、铃声等系统设置，需在系统设置中单独允许。",
+            "en": "Change system settings such as brightness and ringtone; must be allowed separately."
+          },
+          "level": "special"
+        },
+        {
+          "permission": "POST_NOTIFICATIONS",
+          "name": { "zh": "发送通知", "en": "Post notifications" },
+          "description": {
+            "zh": "在通知栏显示消息（Android 13 及以上需要运行时授权）。",
+            "en": "Show notifications (runtime grant required on Android 13 and above)."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.VIBRATE",
+          "name": { "zh": "振动", "en": "Vibrate" },
+          "description": {
+            "zh": "触发振动反馈。",
+            "en": "Trigger vibration feedback."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.WAKE_LOCK",
+          "name": { "zh": "唤醒锁", "en": "Wake lock" },
+          "description": {
+            "zh": "保持 CPU 或屏幕唤醒，可能增加耗电。",
+            "en": "Keep the CPU or screen awake; may increase battery use."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.KILL_BACKGROUND_PROCESSES",
+          "name": { "zh": "结束后台进程", "en": "Kill background processes" },
+          "description": {
+            "zh": "关闭其他应用的后台进程。",
+            "en": "Stop background processes of other apps."
+          },
+          "level": "dangerous"
+        },
+        {
+          "permission": "android.permission.READ_LOGS",
+          "name": { "zh": "读取日志", "en": "Read logs" },
+          "description": {
+            "zh": "读取系统日志，可能包含其他应用的信息。",
+            "en": "Read system logs, which may contain data from other apps."
+          },
+          "level": "special"
+        },
+        {
+          "permission": "REQUEST_INSTALL_PACKAGES",
+          "name": { "zh": "安装应用", "en": "Install apps" },
+          "description": {
+            "zh": "拉起安装界面安装 APK，需在系统设置中单独允许。",
+            "en": "Open the installer for APK files; must be allowed separately in system settings."
+          },
+          "level": "special"
+        },
+        {
+          "permission": "PACKAGE_USAGE_STATS",
+          "name": { "zh": "使用情况访问", "en": "Usage access" },
+          "description": {
+            "zh": "读取各应用的使用时长与启动记录，需在系统设置中单独允许。",
+            "en": "Read app usage time and launch history; must be allowed separately in system settings."
+          },
+          "level": "special"
+        },
+        {
+          "permission": "ACCESSIBILITY",
+          "name": { "zh": "无障碍服务", "en": "Accessibility service" },
+          "description": {
+            "zh": "读取屏幕内容并模拟操作，权限极高，请只授予完全信任的插件。",
+            "en": "Read screen content and simulate actions; extremely powerful, grant only to fully trusted plugins."
+          },
+          "level": "special"
+        }
+      ]
+    },
+    {
+      "id": "misc",
+      "title": { "zh": "其它能力", "en": "Other capabilities" },
+      "items": [
+        {
+          "permission": "READ_CLIPBOARD",
+          "name": { "zh": "读取剪贴板", "en": "Read clipboard" },
+          "description": {
+            "zh": "读取系统剪贴板内容。属于插件自定义权限，只需声明，无需系统授权。",
+            "en": "Read system clipboard content. A plugin-defined permission: declaration is enough, no system grant."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "WRITE_CLIPBOARD",
+          "name": { "zh": "写入剪贴板", "en": "Write clipboard" },
+          "description": {
+            "zh": "向系统剪贴板写入内容。属于插件自定义权限，只需声明，无需系统授权。",
+            "en": "Write to the system clipboard. A plugin-defined permission: declaration is enough, no system grant."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "FLASHLIGHT",
+          "name": { "zh": "闪光灯", "en": "Flashlight" },
+          "description": {
+            "zh": "开关相机闪光灯。",
+            "en": "Turn the camera flashlight on or off."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.BLUETOOTH",
+          "name": { "zh": "蓝牙", "en": "Bluetooth" },
+          "description": {
+            "zh": "连接蓝牙设备。",
+            "en": "Connect to Bluetooth devices."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.BLUETOOTH_ADMIN",
+          "name": { "zh": "蓝牙管理", "en": "Bluetooth management" },
+          "description": {
+            "zh": "扫描并管理蓝牙连接。",
+            "en": "Scan and manage Bluetooth connections."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "android.permission.NFC",
+          "name": { "zh": "NFC", "en": "NFC" },
+          "description": {
+            "zh": "读写 NFC 标签。",
+            "en": "Read and write NFC tags."
+          },
+          "level": "normal"
+        },
+        {
+          "permission": "ROOT",
+          "name": { "zh": "Root 权限", "en": "Root access" },
+          "description": {
+            "zh": "以超级用户身份执行命令，仅对已 Root 的设备有效。",
+            "en": "Run commands as superuser; only effective on rooted devices."
+          },
+          "level": "special"
+        },
+        {
+          "permission": "SHIZUKU",
+          "name": { "zh": "Shizuku", "en": "Shizuku" },
+          "description": {
+            "zh": "通过 Shizuku 借用系统权限执行操作。",
+            "en": "Perform privileged operations through Shizuku."
+          },
+          "level": "special"
+        },
+        {
+          "permission": "DHIZUKU",
+          "name": { "zh": "Dhizuku", "en": "Dhizuku" },
+          "description": {
+            "zh": "通过 Dhizuku 借用设备所有者权限。",
+            "en": "Use device-owner privileges through Dhizuku."
+          },
+          "level": "special"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "zh": "撤销（封禁）只在插件层生效，不会回收系统已授予的权限；需要彻底收回时请到系统设置中关闭。",
+      "en": "Revoking (blocking) takes effect only inside the plugin layer; it does not take back a system-granted permission. Use system settings to revoke completely."
+    },
+    {
+      "zh": "用插件打开外部存储文件时，请确认已授予该插件读取和修改此文件的权限，否则插件可能只能看到路径却读不到内容。",
+      "en": "When opening a file in external storage with a plugin, make sure the plugin has permission to read and modify that file; otherwise it may see the path but fail to read the content."
+    },
+    {
+      "zh": "特殊权限（所有文件访问、悬浮窗、修改系统设置、安装应用、使用情况访问、无障碍等）无法由宿主直接弹窗授予，需要到系统设置中手动开启。",
+      "en": "Special permissions (all files access, display over other apps, modify system settings, install apps, usage access, accessibility and similar) cannot be granted by a host dialog; enable them manually in system settings."
+    }
+  ]
+}

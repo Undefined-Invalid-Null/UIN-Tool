@@ -45,8 +45,11 @@ import com.UIN.Tool.utils.CrashLogUtils
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,7 +76,11 @@ fun LogViewerScreen(
 
     var showCrashMessage by remember { mutableStateOf(CrashLogUtils.shouldNavigateToLogs(context)) }
 
-    fun loadLogs() {
+    /**
+     * 真正的读取：末尾 N 行的文件读取 + 可能 fork 一个 `logcat -d` 子进程，
+     * **必须在 IO 线程跑** —— 入口是 [loadLogs]。
+     */
+    fun loadLogsBody() {
         isLoading = true
         // 6.2.0 批次36/37：logcat 来源。AppLog/Logger 的文件日志**不含**库直接写到
         // logcat 的异常（如 sora 的 AsyncAnalysis），排查编辑器高亮不显示时这正是盲区。
@@ -116,6 +123,14 @@ fun LogViewerScreen(
         isLoading = false
     }
 
+    /**
+     * 主线程入口：把 [loadLogsBody] 整段挪到 IO。原来它在 `LaunchedEffect`、刷新按钮、
+     * 清空日志、来源开关里**同步**跑，日志一多或 logcat 卡住就掉帧（d20 横向排查）。
+     */
+    suspend fun loadLogs() {
+        withContext(Dispatchers.IO) { loadLogsBody() }
+    }
+
     LaunchedEffect(Unit) {
         if (showCrashMessage) {
             CrashLogUtils.clearNavigateFlag(context)
@@ -127,39 +142,51 @@ fun LogViewerScreen(
         // 6.2.0 批次37：按当前来源导出对应文件 —— 应用日志导出 AppLog 的当日文件，
         // logcat 导出 LogcatRecorder 的当日落盘文件（此前固定只导应用日志，logcat
         // 来源下导出的是空的 AppLog 文件，等于"导不出 logcat"）。
-        try {
-            val logFile = if (logcatMode) {
-                File(Constants.LOG_DIR, LogcatRecorder.fileForToday())
-            } else {
-                File(
-                    Constants.LOG_DIR,
-                    "uin_tool_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log"
-                )
+        // 全量拷贝在 ActivityResult 回调（主线程）里跑会卡住整个界面，挪到 IO。
+        scope.launch {
+            try {
+                val logFile = if (logcatMode) {
+                    File(Constants.LOG_DIR, LogcatRecorder.fileForToday())
+                } else {
+                    File(
+                        Constants.LOG_DIR,
+                        "uin_tool_${SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())}.log"
+                    )
+                }
+                val hasContent = withContext(Dispatchers.IO) {
+                    logFile.exists() && logFile.length() > 0L
+                }
+                if (!hasContent) {
+                    AppToast.warning(context, Str.get(R.string.no_logs_to_export))
+                    return@launch
+                }
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        logFile.inputStream().use { input -> input.copyTo(output) }
+                    }
+                }
+                AppToast.success(context, Str.get(R.string.logs_exported))
+                AppLog.success("LogViewer", Str.get(R.string.logs_exported))
+            } catch (e: Exception) {
+                AppToast.error(context, Str.get(R.string.export_failed_e_message, e.message))
             }
-            if (!logFile.exists() || logFile.length() == 0L) {
-                AppToast.warning(context, Str.get(R.string.no_logs_to_export))
-                return
-            }
-            context.contentResolver.openOutputStream(uri)?.use { output ->
-                logFile.inputStream().use { input -> input.copyTo(output) }
-            }
-            AppToast.success(context, Str.get(R.string.logs_exported))
-            AppLog.success("LogViewer", Str.get(R.string.logs_exported))
-        } catch (e: Exception) {
-            AppToast.error(context, Str.get(R.string.export_failed_e_message, e.message))
         }
     }
 
     fun clearAllLogs() {
-        val logDir = File(Constants.LOG_DIR)
-        var count = 0
-        logDir.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".log") && it.delete()) count++ }
-        loadLogs()
-        AppToast.info(context, Str.get(R.string.deleted_count_log_file_s, count))
+        scope.launch {
+            val logDir = File(Constants.LOG_DIR)
+            var count = 0
+            withContext(Dispatchers.IO) {
+                logDir.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".log") && it.delete()) count++ }
+            }
+            loadLogs()
+            AppToast.info(context, Str.get(R.string.deleted_count_log_file_s, count))
+        }
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/plain")
+        InAppFilePicker.CreateDocument("text/plain")
     ) { uri: Uri? ->
         if (uri != null) { exportLogs(uri) }
     }
@@ -176,7 +203,8 @@ fun LogViewerScreen(
                         icon = Icons.Default.Terminal,
                         onClick = {
                             logcatMode = !logcatMode
-                            loadLogs()
+                            // suspend：读取整段在 IO，回调本身不能直接挂起
+                            scope.launch { loadLogs() }
                             AppToast.info(
                                 context,
                                 if (logcatMode) Str.get(R.string.logcat_source)

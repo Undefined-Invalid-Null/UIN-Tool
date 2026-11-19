@@ -7,7 +7,6 @@ import android.Manifest
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -238,7 +237,7 @@ fun PermissionManagerScreen() {
                     .fillMaxSize()
                     .navigationBarsPadding()
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
             ) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item {
@@ -250,8 +249,7 @@ fun PermissionManagerScreen() {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 4.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

@@ -13,6 +13,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -22,6 +23,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -417,11 +419,16 @@ fun NeuFAB(
                 .size(56.dp)
                 .neuFAB(UIConfig.shouldUseDarkTheme(), NeuDefaults.currentIntensity())
                 .clip(RoundedCornerShape(28.dp))
-                .background(MaterialTheme.colorScheme.primary)
+                // k.txt 第 3 条：悬浮按钮同样不铺底色 —— 主色描边 + 主色符号。
+                .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(28.dp))
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            content()
+            CompositionLocalProvider(
+                LocalContentColor provides MaterialTheme.colorScheme.primary
+            ) {
+                content()
+            }
         }
     }
 }

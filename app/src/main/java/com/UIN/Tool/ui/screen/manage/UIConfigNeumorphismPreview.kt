@@ -1,6 +1,7 @@
 package com.UIN.Tool.ui.screen.manage
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,13 +71,18 @@ fun NeumorphismPreviewSection() {
                             modifier = Modifier
                                 .weight(1f)
                                 .neuButton(isDark, neuIntensity)
-                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(AppDimens.buttonCornerRadius))
+                                // k.txt 第 3 条：按钮预览同步成「文字 + 描边」。
+                                .border(
+                                    width = 1.5.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                                )
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "按钮",
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = AppDimens.bodyTextSize.sp
                             )
                         }

@@ -281,7 +281,7 @@ class RepoViewModel : ViewModel() {
         if (sourcesJson.isNotEmpty()) {
             return parseSourcesJson(sourcesJson)
         }
-        val defaultJson = Constants.DEFAULT_SOURCES_JSON
+        val defaultJson = Constants.loadDefaultSourcesJson()
         ServiceLocator.getPreferenceManager().setSourcesJson(defaultJson)
         return parseSourcesJson(defaultJson)
     }

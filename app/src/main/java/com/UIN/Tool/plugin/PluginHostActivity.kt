@@ -17,7 +17,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import android.widget.FrameLayout
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +34,7 @@ import com.UIN.Tool.ui.components.unified.UnifiedConfirmDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.components.unified.UnifiedInfoDialog
+import com.UIN.Tool.ui.components.unified.dialogAutoFocus
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.UINToolTheme
 import com.UIN.Tool.ui.screen.permission.PluginPermissionActivity
@@ -50,6 +50,7 @@ import org.json.JSONObject
 import java.io.File
 import java.net.Proxy
 import java.util.concurrent.TimeUnit
+import com.UIN.Tool.utils.AppToast
 
 class PluginHostActivity : AppCompatActivity() {
 
@@ -158,7 +159,7 @@ private val backendKey: String
 
         if (currentPluginId.isEmpty()) {
             Logger.e(TAG, Str.get(R.string.plugin_id_is_empty))
-            Toast.makeText(this, Str.get(R.string.plugin_id_must_not_be_empty), Toast.LENGTH_SHORT).show()
+            AppToast.show(this, Str.get(R.string.plugin_id_must_not_be_empty))
             finish()
             return
         }
@@ -193,7 +194,7 @@ private val backendKey: String
 
         if (pluginInfo == null) {
             Logger.e(TAG, Str.get(R.string.plugin_not_found_currentpluginid, currentPluginId))
-            Toast.makeText(this, Str.get(R.string.plugin_not_found_currentpluginid_2, currentPluginId), Toast.LENGTH_SHORT).show()
+            AppToast.show(this, Str.get(R.string.plugin_not_found_currentpluginid_2, currentPluginId))
             finish()
             return
         }
@@ -204,11 +205,7 @@ private val backendKey: String
         if (pluginInfo?.isNativePlugin() == true && !pluginManager.isNativeMultiInstanceEnabled()) {
             if (pluginManager.isNativePluginActive(currentPluginId)) {
                 Logger.w(TAG, Str.get(R.string.native_plugin_already_running_single_ins, pluginInfo?.name))
-                Toast.makeText(
-                    this,
-                    Str.get(R.string.native_plugin_already_running_single_ins_2, pluginInfo?.name),
-                    Toast.LENGTH_SHORT
-                ).show()
+                AppToast.show(this, Str.get(R.string.native_plugin_already_running_single_ins_2, pluginInfo?.name))
                 finish()
                 return
             }
@@ -478,7 +475,7 @@ private val backendKey: String
                 heldBackendKey = key
                 sendBackendReadyToWebView(port)
             } else {
-                Toast.makeText(this, Str.get(R.string.backend_start_failed_error_unknown_e, error ?: Str.get(R.string.unknown_error)), Toast.LENGTH_LONG).show()
+                AppToast.showLong(this, Str.get(R.string.backend_start_failed_error_unknown_e, error ?: Str.get(R.string.unknown_error)))
                 maybeShowRealTermuxGuidance()
             }
         }
@@ -787,16 +784,13 @@ private val backendKey: String
                     )
                 },
                 confirmButton = {
-                    Button(
+                    // 反馈 e29：弹窗按钮不铺底色，主色底改主色字
+                    UnifiedDialogTextButton(
                         onClick = {
                             dismissPluginDialog()
                             r.onAck()
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.radiusLarge)
+                        contentColor = MaterialTheme.colorScheme.primary
                     ) { Text(Str.get(R.string.got_it)) }
                 },
                 dismissButton = {
@@ -858,16 +852,13 @@ private val backendKey: String
                     )
                 },
                 confirmButton = {
-                    Button(
+                    // 反馈 e29：弹窗按钮不铺底色，主色底改主色字
+                    UnifiedDialogTextButton(
                         onClick = {
                             dismissPluginDialog()
                             r.onConfirm()
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.radiusLarge)
+                        contentColor = MaterialTheme.colorScheme.primary
                     ) { Text(Str.get(R.string.ok_2)) }
                 },
                 dismissButton = {
@@ -903,16 +894,13 @@ private val backendKey: String
                     )
                 },
                 confirmButton = {
-                    Button(
+                    // 反馈 e29：弹窗按钮不铺底色，主色底改主色字
+                    UnifiedDialogTextButton(
                         onClick = {
                             dismissPluginDialog()
                             r.onConfirm()
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(AppDimens.radiusLarge)
+                        contentColor = MaterialTheme.colorScheme.primary
                     ) { Text(Str.get(R.string.ok_2)) }
                 },
                 dismissButton = {
@@ -949,7 +937,8 @@ private val backendKey: String
                             value = value,
                             onValueChange = { value = it },
                             placeholder = { Text(r.hint) },
-                            modifier = Modifier.fillMaxWidth(),
+                            // j.txt 第 4 条：插件输入请求弹窗打开即聚焦并弹键盘。
+                            modifier = Modifier.fillMaxWidth().dialogAutoFocus(),
                             shape = RoundedCornerShape(AppDimens.inputCornerRadius),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -960,16 +949,13 @@ private val backendKey: String
                         )
                     },
                     confirmButton = {
-                        Button(
+                        // 反馈 e29：弹窗按钮不铺底色，主色底改主色字
+                        UnifiedDialogTextButton(
                             onClick = {
                                 dismissPluginDialog()
                                 r.onConfirm(value)
                             },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = RoundedCornerShape(AppDimens.radiusLarge)
+                            contentColor = MaterialTheme.colorScheme.primary
                         ) { Text(Str.get(R.string.ok_2)) }
                     },
                     dismissButton = {
@@ -1058,7 +1044,7 @@ private val backendKey: String
 
         if (!pluginDir.exists()) {
             Logger.e(TAG, Str.get(R.string.plugin_dir_not_found_plugindir_absol, pluginDir.absolutePath))
-            Toast.makeText(this, Str.get(R.string.plugin_dir_not_found), Toast.LENGTH_SHORT).show()
+            AppToast.show(this, Str.get(R.string.plugin_dir_not_found))
             finish()
             return
         }
@@ -1260,12 +1246,12 @@ private val backendKey: String
                 }
             } else {
                 Logger.e(TAG, Str.get(R.string.native_plugin_load_failed))
-                Toast.makeText(this, Str.get(R.string.native_plugin_load_failed_2), Toast.LENGTH_SHORT).show()
+                AppToast.show(this, Str.get(R.string.native_plugin_load_failed_2))
                 finish()
             }
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.native_plugin_load_error), e)
-            Toast.makeText(this, Str.get(R.string.plugin_load_error_e_message, e.message), Toast.LENGTH_LONG).show()
+            AppToast.showLong(this, Str.get(R.string.plugin_load_error_e_message, e.message))
             finish()
         }
     }
@@ -1395,7 +1381,7 @@ private val backendKey: String
             return true
         } catch (e: Exception) {
             Logger.e(TAG, Str.get(R.string.cui_terminal_start_error_e_message, e.message), e)
-            Toast.makeText(this, Str.get(R.string.cui_terminal_start_failed_e_message, e.message), Toast.LENGTH_LONG).show()
+            AppToast.showLong(this, Str.get(R.string.cui_terminal_start_failed_e_message, e.message))
             return false
         }
     }
@@ -1406,11 +1392,7 @@ private val backendKey: String
      */
     private fun startCuiInRealTermux(info: PluginInfo, pluginDir: File, preCmd: String): Boolean {
         if (!RealTermuxRuntime.isRunCommandPermissionGranted(this)) {
-            Toast.makeText(
-                this,
-                Str.get(R.string.real_termux_run_command_permission_denied),
-                Toast.LENGTH_LONG
-            ).show()
+            AppToast.showLong(this, Str.get(R.string.real_termux_run_command_permission_denied))
             maybeShowRealTermuxGuidance()
             return false
         }
@@ -1453,11 +1435,7 @@ private val backendKey: String
         }
 
         if (!RealTermuxRuntime.startRunCommand(this, intent)) {
-            Toast.makeText(
-                this,
-                Str.get(R.string.real_termux_run_command_permission_denied),
-                Toast.LENGTH_LONG
-            ).show()
+            AppToast.showLong(this, Str.get(R.string.real_termux_run_command_permission_denied))
             maybeShowRealTermuxGuidance()
             return false
         }

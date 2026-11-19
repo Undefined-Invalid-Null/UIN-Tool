@@ -35,6 +35,8 @@ import com.UIN.Tool.utils.PermissionUtils
 import com.UIN.Tool.utils.formatFileSize
 import java.io.File
 import com.UIN.Tool.ui.theme.AppDimens
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
+import com.UIN.Tool.ui.screen.files.FileTypeIcon
 
 private fun loadBitmapFromFile(path: String, maxSize: Int = 512): Bitmap? {
     return try {
@@ -476,7 +478,7 @@ private fun PermissionSelectionDialog(
         },
         text = {
             LazyColumn(
-                modifier = Modifier.heightIn(max = 400.dp)
+                modifier = Modifier.heightIn(max = 320.dp)
             ) {
                 items(KNOWN_PERMISSIONS) { permission ->
                     val displayName = PermissionUtils.getPermissionDisplayName(permission)
@@ -580,7 +582,7 @@ fun PluginIconStep(
     val context = LocalContext.current
 
     val iconPickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         if (uri != null) {
             handleIconSelection(context, uri, onIconSelected)
@@ -751,7 +753,7 @@ fun ResourcesStep(
     val context = LocalContext.current
 
     val resourcePickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
+        InAppFilePicker.OpenFile()
     ) { uri: Uri? ->
         if (uri != null) {
             handleResourceSelection(context, uri, onResourceAdded)
@@ -807,12 +809,7 @@ fun ResourcesStep(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(
-                                    Icons.Default.InsertDriveFile,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                FileTypeIcon(fileName = File(path).name, size = 20.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 UnifiedBodyText(File(path).name)
                             }

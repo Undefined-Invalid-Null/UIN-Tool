@@ -2,6 +2,7 @@ package com.UIN.Tool.ui.components.unified
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.foundation.clickable
@@ -87,6 +88,8 @@ fun SpeedDial(
                             .size(44.dp)
                             .shadow(4.dp, CircleShape)
                             .background(AppColors.cardBackground(), CircleShape)
+                            // h5：圆形按钮，涟漪裁成圆。
+                            .clip(CircleShape)
                             .clickable {
                                 expanded = false
                                 item.onClick()
@@ -103,16 +106,22 @@ fun SpeedDial(
             modifier = Modifier
                 .size(56.dp)
                 .shadow(6.dp, CircleShape)
-                .background(
-                    Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)),
-                    CircleShape
+                // k.txt 第 3 条：悬浮主按钮不再铺渐变底，改为渐变描边 + 主色符号。
+                .border(
+                    width = 1.5.dp,
+                    brush = Brush.linearGradient(
+                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+                    ),
+                    shape = CircleShape
                 )
+                // h5：圆形按钮，涟漪裁成圆。
+                .clip(CircleShape)
                 .clickable { expanded = expanded.not() },
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "+",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 24.sp,
                 modifier = Modifier.graphicsLayer { rotationZ = rotation }
             )
@@ -146,6 +155,8 @@ fun NotificationPanel(
             .fillMaxWidth()
             .shadow(4.dp, shape, ambientColor = NeuColors.shadowDark(), spotColor = NeuColors.shadowDark())
             .background(AppColors.cardBackground(), shape)
+            // h.txt 第 5 条：整块卡片是圆角，行级涟漪必须一起裁掉，否则四个角会露出方形水波
+            .clip(shape)
     ) {
         items.forEachIndexed { index, item ->
             Row(

@@ -143,7 +143,7 @@ fun PluginPermissionDetailScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
             ) {
                 item {
                     LastUpdatedCaption(

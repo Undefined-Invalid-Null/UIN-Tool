@@ -10,7 +10,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
@@ -25,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.UIN.Tool.ui.components.unified.UnifiedDialogTextButton
 import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.ui.theme.dialogBackgroundOf
 import com.UIN.Tool.utils.AppLog
@@ -110,6 +114,9 @@ fun UpdateDialog(
     onManualDownload: () -> Unit,
     onIgnore: () -> Unit
 ) {
+    val maxDialogHeight = (
+        LocalConfiguration.current.screenHeightDp.dp - AppDimens.dialogVerticalMargin * 2
+        ).coerceAtLeast(240.dp)
     Dialog(
         onDismissRequest = { if (!forceUpdate) onDismiss() },
         properties = DialogProperties(
@@ -119,7 +126,11 @@ fun UpdateDialog(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                // e22：更新说明能拖到几十行 —— 宽、高一起封顶，正文区自己滚，
+                // 底下那排「下载 / 手动下载 / 忽略」按钮才不会被顶出屏幕。
+                .widthIn(max = AppDimens.dialogMaxWidth)
+                .heightIn(max = maxDialogHeight)
+                .fillMaxWidth(AppDimens.dialogWidthFraction)
                 .wrapContentHeight()
                 .then(Modifier.dialogBackgroundOf(RoundedCornerShape(AppDimens.cardCornerRadius))),
             shape = RoundedCornerShape(AppDimens.cardCornerRadius),
@@ -210,45 +221,52 @@ fun UpdateContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (!releaseInfo.releaseNotes.isNullOrEmpty()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Description,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = Str.get(R.string.changelog),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colorScheme.onSurface
-                )
+        // e22：变更日志是整张框里唯一能无限长的一块 —— 给它 `weight(1f, fill=false)`
+        // 分走「屏高 − 头信息 − 按钮」剩下的高度，超出就地滚动；下面那排按钮留在
+        // 滚动区外面，长短日志都钉在原地，不会被内容顶到屏幕外头去。
+        Column(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+        ) {
+            if (!releaseInfo.releaseNotes.isNullOrEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = Str.get(R.string.changelog),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onSurface
+                    )
+                }
+
+                ReleaseChangelog(markdown = releaseInfo.releaseNotes ?: "")
             }
 
-            ReleaseChangelog(markdown = releaseInfo.releaseNotes ?: "")
+            Spacer(modifier = Modifier.height(16.dp))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(
+            // e30 补 e29：更新框里的三颗按钮同样只着色文字、不铺底 —— 原先这里是
+            // 主色 / 灰底 / **红底**三种填充，正好是那条反馈点名要收掉的东西。
+            UnifiedDialogTextButton(
                 onClick = onDownload,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorScheme.primary,
-                    contentColor = colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                contentColor = colorScheme.primary
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Download,
@@ -263,16 +281,11 @@ fun UpdateContent(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Button(
+                UnifiedDialogTextButton(
                     onClick = onManualDownload,
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.surfaceVariant,
-                        contentColor = colorScheme.onSurfaceVariant
-                    ),
-                    shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                        .height(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Language,
@@ -284,16 +297,13 @@ fun UpdateContent(
                 }
 
                 if (!forceUpdate) {
-                    Button(
+                    UnifiedDialogTextButton(
                         onClick = onIgnore,
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.errorContainer,
-                            contentColor = colorScheme.onErrorContainer
-                        ),
-                        shape = RoundedCornerShape(AppDimens.buttonCornerRadius)
+                        // 红底那颗降级后拿危险色写字
+                        contentColor = colorScheme.error
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Close,

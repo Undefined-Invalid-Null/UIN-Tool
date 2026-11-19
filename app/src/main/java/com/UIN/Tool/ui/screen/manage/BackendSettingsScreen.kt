@@ -2,7 +2,9 @@
 package com.UIN.Tool.ui.screen.manage
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
@@ -10,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -22,6 +25,7 @@ import com.UIN.Tool.ui.theme.AppColors
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Str
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.UIN.Tool.ui.viewmodel.BackendSettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -251,8 +255,13 @@ fun BackendSettingsScreen(
                                     keepAlive = it
                                     // C-23：开关即写 prefs（并由 BackendConfig 单向同步 keep_alive 文件）
                                     com.UIN.Tool.plugin.BackendConfig.setKeepAliveEnabled(context, it)
+                                    // 用户反馈 d15-②：开关一开就把常驻通知摆出来 ——
+                                    // 描述里写着「配合通知栏保活」，之前却什么都没发。
                                     if (it) {
+                                        com.UIN.Tool.core.keepalive.KeepAliveService.start(context)
                                         requestIgnoreBatteryOptimizations(context)
+                                    } else {
+                                        com.UIN.Tool.core.keepalive.KeepAliveService.stop(context)
                                     }
                                 }
                             )
@@ -279,6 +288,34 @@ fun BackendSettingsScreen(
                             color = if (shizukuOk || dhizukuOk)
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             else MaterialTheme.colorScheme.error
+                        )
+                        // 用户反馈 d15-②：电池豁免**要看得见**。原来申请失败被 catch 吞掉、
+                        // 界面一个字不提，用户以为已经豁免了，实际后台照样被系统回收。
+                        var batteryOk by remember { mutableStateOf(false) }
+                        LifecycleResumeEffect(Unit) {
+                            // 系统弹窗是异步的，点完那一刻问不出结果 —— 回到本页时重读真值
+                            batteryOk = isIgnoringBatteryOptimizations(context)
+                            onPauseOrDispose { }
+                        }
+                        Text(
+                            text = if (batteryOk) Str.get(R.string.keep_alive_battery_ok)
+                            else Str.get(R.string.keep_alive_battery_missing),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (batteryOk) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                // k.txt 第 6 条：文字级点击的涟漪收进 6dp 圆角。
+                                .clip(RoundedCornerShape(6.dp))
+                                // 已授予就不再可点：再点只会白弹一次系统框
+                                .clickable(enabled = !batteryOk) {
+                                    if (requestIgnoreBatteryOptimizations(context)) {
+                                        // 乐观置位，回到本页由上面的 resume 钩子纠正成真值
+                                        batteryOk = true
+                                    } else {
+                                        AppToast.warning(context, Str.get(R.string.keep_alive_battery_failed))
+                                    }
+                                }
                         )
                     }
                 }
@@ -416,9 +453,28 @@ fun BackendSettingsScreen(
     }
 }
 
-/** 请求忽略电池优化（需用户确认；部分厂商机型可能直接返回失败）。 */
-private fun requestIgnoreBatteryOptimizations(context: android.content.Context) {
-    try {
+/** 当前是否已获电池优化豁免；Android 6 以下没有这个概念，一律视为已豁免。 */
+private fun isIgnoringBatteryOptimizations(context: android.content.Context): Boolean {
+    return try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+            pm.isIgnoringBatteryOptimizations(context.packageName)
+        } else {
+            true
+        }
+    } catch (_: Exception) {
+        false
+    }
+}
+
+/**
+ * 请求忽略电池优化（需用户确认；部分厂商机型可能直接拒绝弹窗）。
+ *
+ * @return false = **连请求都没发出去**（异常），调用方必须提示用户；
+ * 发出去了返回 true —— 授予与否是异步的，等回到页面再由 [isIgnoringBatteryOptimizations] 重读。
+ */
+private fun requestIgnoreBatteryOptimizations(context: android.content.Context): Boolean {
+    return try {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
             if (!pm.isIgnoringBatteryOptimizations(context.packageName)) {
@@ -429,6 +485,8 @@ private fun requestIgnoreBatteryOptimizations(context: android.content.Context) 
                 context.startActivity(intent)
             }
         }
+        true
     } catch (_: Exception) {
+        false
     }
 }

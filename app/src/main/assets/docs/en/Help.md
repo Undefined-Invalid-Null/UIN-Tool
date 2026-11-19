@@ -4,9 +4,9 @@
 
 | Item | Info |
 |------|------|
-| Document Version | 6.2.0 |
-| Corresponding App Version | v6.2.0 (Build 26) |
-| Last Updated | October 31, 2026 |
+| Document Version | 7.0.0 |
+| Corresponding App Version | v7.0.0 (Build 28) |
+| Last Updated | November 16, 2026 |
 
 ---
 
@@ -31,7 +31,7 @@
 ### IV. App Shortcuts
 - [4.1 Shortcut List](#41-shortcut-list)
 - [4.2 Usage](#42-usage)
-- [4.3 Dynamic Plugin Shortcuts](#43-dynamic-plugin-shortcuts)
+- [4.3 Dynamic Plugin Shortcuts](#43-plugin-desktop-shortcuts)
 
 ### V. Terminal Features (Based on PRoot)
 - [5.1 Access Method](#51-access-method)
@@ -66,7 +66,7 @@
 - [10.4 Export Plugins](#104-export-plugins)
 - [10.5 Uninstall Plugins](#105-uninstall-plugins)
 - [10.6 Plugin Category Filtering](#106-plugin-category-filtering)
-- [10.7 Add Desktop Shortcut (v5.4.0)](#107-add-desktop-shortcutv540)
+- [10.7 Add Desktop Shortcut (v5.4.0)](#107-add-desktop-shortcut-v540)
 
 ### XI. Plugin Development
 - [11.1 Create Plugin](#111-create-plugin)
@@ -80,9 +80,9 @@
 - [12.2 View Mode](#122-view-mode)
 - [12.3 Search Plugins](#123-search-plugins)
 - [12.4 Long Press Actions](#124-long-press-actions)
-- [12.5 Backend Runtime Settings (Web + Backend / CUI Plugins)](#125-backend-runtime-settingsweb--backend--cui-plugins)
-- [12.6 Plugin Receives External Content (openWith Relay)](#126-plugin-receives-external-contentopenwith-relayv540-new)
-- [12.7 Plugin Multi-Instance](#127-plugin-multi-instancev540-new)
+- [12.5 Backend Runtime Settings (Web + Backend / CUI Plugins)](#125-backend-runtime-settings-web--backend--cui-plugins)
+- [12.6 Plugin Receives External Content (openWith Relay)](#126-plugin-receives-external-content-openwith-relay-new-in-v540)
+- [12.7 Plugin Multi-Instance](#127-plugin-multi-instance-new-in-v540)
 
 ### XIII. Permission Management
 - [13.1 Permission Description](#131-permission-description)
@@ -108,7 +108,7 @@
 - [16.2 1x1 Shortcut](#162-1x1-shortcut)
 
 ### XVII. UI Personalization
-- [17.1 Color Configuration (38+ Color Items)](#171-color-configuration38-color-items)
+- [17.1 Color Configuration (38+ Color Items)](#171-color-configuration-38-color-items)
 - [17.2 Color Picker](#172-color-picker)
 - [17.3 Shape Configuration](#173-shape-configuration)
 - [17.4 Size Configuration](#174-size-configuration)
@@ -132,11 +132,24 @@
 - [18.12 Windowed Mode (Very Large Files)](#1812-windowed-mode-very-large-files)
 - [18.13 Selection Menu: Open Link & Translate](#1813-selection-menu-open-link--translate)
 
-### XIX. FAQ
-- [19.1 FAQ (Q1-Q35)](#191-faqq1-q35)
+### XIX. Files
+- [19.1 Layout](#191-layout)
+- [19.2 Selection & Actions](#192-selection--actions)
+- [19.3 Bookmarks & History](#193-bookmarks--history)
+- [19.4 Left Sidebar](#194-left-sidebar)
+- [19.5 Search](#195-search)
+- [19.6 Archives](#196-archives)
+- [19.7 Image Viewer](#197-image-viewer)
+- [19.8 APK Info](#198-apk-info)
+- [19.9 File Settings](#199-file-settings)
+- [19.10 Open With](#1910-open-with)
+- [19.11 Side-by-Side Compare](#1911-side-by-side-compare)
 
-### XX. Contact Support
-- [20.1 Contact Information](#201-contact-information)
+### XX. FAQ
+- [20.1 FAQ (Q1-Q35)](#201-faq-q1-q35)
+
+### XXI. Contact Support
+- [21.1 Contact Information](#211-contact-information)
 
 ---
 
@@ -163,7 +176,9 @@ UIN Tool is a lightweight plugin framework that lets you dynamically load and ru
 | UI Personalization | 38+ colors, gradient background, neumorphism style, glass effects |
 | Multilingual Support | In-app language switching (Chinese/English) |
 | Desktop Widgets | List widget (3x3) and 1x1 shortcut |
-| External Content | System share/open-with relay (openWith) |
+| External Content | System share/open-with relay (openWith); the file manager's "Open with" can also hand a local file straight to a plugin |
+| File Manager | Dual-pane browsing, in-place archive browse/extract/compress, recursive search, bookmarks and history, image viewer, APK info, side-by-side compare, type-coloured file icons |
+| Open With | One default opener per suffix; built-in capabilities (collapsible grid) / system apps / installed plugins, with an independent plugin search |
 | Multi-Instance | Multiple independent plugin instances simultaneously |
 
 ### 1.2 Plugin Type Comparison
@@ -196,7 +211,7 @@ User clicks icon → permission check → SplashActivity (splash screen) → che
 On first launch, the app requests storage permissions:
 
 1. Displays permission description dialog
-2. Click "Go to Authorize" to jump to system settings
+2. Click "Go to Authorize": on Android 11 and above this opens the "All files access" settings page; on Android 10 and below it shows the runtime storage permission prompt
 3. Automatically returns to the app after granting permissions
 4. If permissions are denied, the app will exit
 
@@ -328,7 +343,6 @@ You can create desktop icon shortcuts for individual plugins via "Manage" > "Plu
 | Text Editors | vim, nano, emacs, etc. |
 | Network Tools | curl, wget, openssh, etc. |
 | Multi-Session | Multiple terminal sessions running simultaneously |
-| Multi-Window | Android 7.0+ multi-window support |
 
 ### 5.3 Common Commands
 
@@ -812,7 +826,7 @@ Real Termux (proot or native mode) uses a **single resident shared supervisor**:
 
 After a plugin is opened, the host selects the execution path based on global settings and uniformly injects `$PORT`, `$PLUGIN_ID`, `$PLUGIN_DIR`, `$WORK_DIR` environment variables:
 
-- **Built-in Debian container**: `proot --link2symlink -0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`
+- **Built-in Debian container**: `proot -L --kill-on-exit --sysvipc --change-id=0:0 -r <debian_rootfs> -b <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`. Whether shared storage is additionally bound into the container is controlled by "Backend Runtime Settings → Shared storage binding" (on by default)
 - **Real Termux + Native**: `bash -lc "<startup command>"` (working directory = plugin directory)
 - **Real Termux + Proot Container**: `proot-distro login <containerName> --bind <pluginDir>:/plugins/<id> -- sh -lc "<startup command>"`
 
@@ -824,12 +838,15 @@ Content **shared** or **opened with other apps** by the system/other apps can be
 
 1. In any app, click "Share" or "Open with other apps", select **UIN Tool**
 2. Enter the "Select Receiving Plugin" relay page, which displays plugins that have declared `openWith` and match the content type
-3. Click a plugin to hand the content to it for processing; when only 1 plugin matches, it opens automatically
+3. Click a plugin to hand the content to it for processing; **even when only 1 plugin matches, the candidate list is shown first** and the user confirms before it opens
 
 - Supports **text / links / files (including multi-select)** three types of content
-- Files are automatically copied into the plugin's `.incoming/` directory, readable by the plugin backend
+- Files prefer the **original path**: when a real file in shared storage can be resolved, the plugin reads and writes it directly through `openData.filePath` with no copy and no size limit; only when no real path is available (a `content://` stream) or the file sits in another app's private directory is it copied into the plugin's `.incoming/` directory as a fallback
+- **Permission reminder**: when opening a file in external storage (an original path under `/storage/emulated/0/`) with a plugin, make sure the plugin has permission to read and modify that file (storage / all files access); otherwise it may receive the path but fail to read or write the content
+- The top of the page is a **grid of built-in capabilities** (the same tiles as the file manager's "Open with"): open in the code editor, locate in the file manager, and viewers that fit the content type; the plugin list and search box sit below it
 - Relay page supports **search**: real-time filtering by plugin display name / plugin ID / description
 - Only plugins whose authors have declared `openWith` in `plugin.json` will appear in the relay page and system share entry
+- The file manager can also use "Open with → Plugins": the file is **not** copied into `.incoming/`; the plugin reads the original through `openData.filePath` (see 19.10)
 
 #### 12.7 Plugin Multi-Instance (New in v5.4.0)
 
@@ -852,6 +869,7 @@ Access method:
 
 1. Click "Manage" > "Permission Management"
 2. Click the "Permission Description" button
+3. Or tap the **info icon** at the top right of the Permission Management page to view the grouped explanation (text comes from `assets/help/plugin_permissions.json` and follows the app language)
 
 ### 13.2 App Permission List
 
@@ -887,6 +905,8 @@ Plugins declare required permissions in plugin.json (**comma-separated strings o
 ```
 
 > The development wizard "Permissions" field uses a popup multi-select, which already includes all common permissions (including pseudo-permissions `READ_CLIPBOARD` / `WRITE_CLIPBOARD`). Pseudo-permissions only need to be declared to take effect, no runtime authorization needed. Chinese display name examples for permissions: `android.permission.READ_EXTERNAL_STORAGE` → Read External Storage.
+
+> **External storage note**: if you choose to open a file in external storage (an original path under `/storage/emulated/0/`) with a plugin, make sure the plugin has permission to read and modify that file (storage / all files access) first. Only then can it read and write by original path; otherwise it can only access its own `data/` sandbox and may see the path without being able to read the content.
 
 Permission interaction flow (v5.5.0):
 
@@ -1170,11 +1190,11 @@ Since 6.2.0 the code editor is no longer just a draft surface inside the plugin 
 | Entry | Description |
 |---|---|
 | Plugin development wizard | Tap "Open code editor" in the wizard; it edits the wizard's draft and writes back on save. In **draft mode** the editor shows only the wizard files (your device-file tabs are hidden, not closed, and come back with the session afterwards), and plugin drafts never enter the session cache or "last opened"; opening a device file during the wizard exits draft mode automatically and re-roots the tree |
-| "Open with" from other apps | File managers, browsers etc. open a file "with UIN Tool" and go straight to the editor |
+| "Open with" from other apps | File managers, browsers etc. open a file "with UIN Tool", land on the plugin relay page, then choose "Open in code editor" |
 
-Supported types: **any type** — the editor declares two complementary `ACTION_VIEW` filters (one with `*/*` MIME, one without MIME that only matches `type == null` callers) plus `content://` and `file://` schemes, so "Open with" launched from file managers / browsers always lists the editor (txt, csv, markdown, json, source files, ... all open directly).
+Supported types: **any type** — since 7.0.0 the whole app keeps **one** external `ACTION_VIEW` entry (the plugin relay page): it declares two complementary filters (one with `*/*` MIME, one with bare `content://` / `file://`), so txt, csv, markdown, json, source files and more all match. Once in the relay page, tap the built-in "Open in code editor" action to hand the file to the editor.
 
-> **Note**: the system "Open with" chooser shows **two** UIN Tool icons. This is an intentional trade-off — the editor and the plugin dispatch page each declare their own `ACTION_VIEW`; both work, and picking the editor entry opens the editor.
+> **Note**: the system "Open with" chooser now shows only **one** UIN Tool icon. Selecting it opens the plugin relay page, where you can choose "Open in code editor" or a matching plugin.
 
 Storage permission is requested on entry:
 
@@ -1385,9 +1405,154 @@ When text is selected, the floating selection popup gains two buttons next to Cu
 
 ---
 
-## XIX. FAQ
+## XIX. Files
 
-### 19.1 FAQ (Q1-Q35)
+The Files entry in the bottom bar is a built-in file manager: two panes side by side, each browsing independently, with copy and move flowing between them.
+
+### 19.1 Layout
+
+| Area | Contents |
+|---|---|
+| Page header | ☰ sidebar toggle, current directory name, ⋮ more actions |
+| Path bar | Breadcrumbs; tap any level to jump there |
+| Panes | One list on each side, with a draggable divider between them |
+| Bottom bar | Forward / back / up, plus paste, create and delete shortcuts |
+
+- Each pane keeps its own browsing stack, so **back** and **forward** only affect the current pane
+- Going up level by level reaches the root directory; the list then appends a "File settings" row at the end
+- The **filter** box at the top of the list only affects the current pane's display
+- Single-pane / dual-pane layout and pane ratio can be switched in settings
+- File icons are coloured by type (images, video, audio, documents, code, archives and more each have their own colour) instead of a wall of grey icons
+
+### 19.2 Selection & Actions
+
+- Long-press any item to enter **selection mode**; the bottom bar becomes a selection bar with select all / invert / same type, and "Exit" in the top-right
+- The long-press menu (outside selection mode) adapts to the item: select / copy / move / rename / compress / extract / add to archive / open with / share / compare / hide or unhide / add bookmark / properties / delete. Actions that do not apply are not shown (for example folders have no "Open with", and entries inside an archive have no "Move")
+- **Copy and move**: in dual-pane mode a short tap sends the selection straight to the other pane's current directory; when the other side is not writable, you are in single-pane mode, or both panes share a directory, it falls back to "pick up → walk to the target and paste" (a paste button appears at the bottom right). Long-pressing copy / move always picks up, so you can choose the destination yourself
+- "Properties" works on a whole selection; long-press any row to copy that value
+- Name collisions offer a three-way choice: skip / overwrite / keep both, with an "apply to all remaining"
+- A source identical to the destination is rejected outright and creates nothing
+- Deleting a system directory adds an extra warning
+- Deletes go to the **recycle bin** by default (can be disabled in settings), so an accidental delete is recoverable
+
+### 19.3 Bookmarks & History
+
+**Swipe up** on the bottom navigation bar to open the Bookmarks and History sheet:
+
+| Tab | Notes |
+|---|---|
+| Bookmarks | Long-press any folder to add it; tap to jump there |
+| History | Records real directories only; tapping one navigates without adding a new entry |
+
+### 19.4 Left Sidebar
+
+The ☰ in the page header opens the sidebar, in three sections from top to bottom:
+
+| Group | Contents |
+|---|---|
+| Storage | Storage usage bar (used / total); tap to open the internal storage root |
+| Open | Code editor, terminal, extract APK |
+| Manage | Background tasks, recycle bin, file settings, remote management |
+
+Bookmarks and history are not in the sidebar; they live in the sheet opened by swiping up from the bottom bar (see 19.3).
+
+### 19.5 Search
+
+⋮ → Search to look recursively inside the current pane's directory:
+
+| Option | Notes |
+|---|---|
+| Keyword | Plain text; with "Regular expression" checked it is treated as a regex |
+| Include subfolders | Off means only the current level |
+| Case sensitive | Off by default |
+| Match file contents | Read line by line, scanning at most the first 8MB of each file — multi-gigabyte videos and logs are never read into memory whole |
+| Min / max size | In bytes; leave blank for no limit |
+
+- Advanced options are collapsed by default
+- Results land in a persistent panel that can be filtered and closed; tapping a result jumps to it
+- The panel can be expanded into a **full-page result list**; its top-right "Search in results" only filters what has already been found and never rescans the disk. It applies after you tap Search / press Enter
+- Secondary filtering runs on a background thread and matches **file names only**; while the search is still running it waits for the result stream to settle first, so a growing list is not re-filtered on the main thread over and over
+- Search can be **stopped** at any time; results cap at 2000 by default (adjustable or unlimited in settings), and exceeding it reports that the limit was reached
+- The search history dropdown can refill the field, capped at 15 entries, repeats move to the front, removable one by one
+
+### 19.6 Archives
+
+Tap a zip / 7z / tar archive, or one of their gzip, bzip2, xz or zstd outer layers, to browse it **in place**; the path bar looks like `archive!/inner/path` and the back key exits layer by layer.
+
+- The real format is detected by **magic bytes**, so a renamed file is still recognised correctly
+- Text files inside an archive can be edited directly; on save you are asked whether to **write back into the archive**. If that fails it falls back to "Save as" and keeps your changes
+- Archives that cannot be written are marked **read-only**, and write actions are greyed out
+- The "in archive" badge means the entry is still packed, not extracted
+- Formats without a central directory (7z, tar) report "indexing… N entries scanned" when opening a large package
+- `cpio` / `ar` are not supported
+
+**Compress**: select items and choose Compress. Formats are zip / tar / tar.gz / tar.bz2 / tar.xz / tar.zst; only zip supports **AES-256 passwords** and **split volumes**, and the others explicitly say they will not be encrypted.
+
+**Extract**: defaults to alongside the archive, changeable to a chosen directory in settings.
+
+### 19.7 Image Viewer
+
+Tap an image to open it: pinch zoom, drag to pan, double-tap zoom, paging within the folder, GIF playback. The top shows "Image N of M".
+
+### 19.8 APK Info
+
+Tap an `.apk` to open its info page: package name, version, version code, size, min / target SDK, permissions, signing certificate (SHA-256 fingerprint and issuer), plus **Install**, **Share file** and **Copy package name**. A package with no signature says so explicitly.
+
+### 19.9 File Settings
+
+The "File settings" row at the end of the root directory's list; changes take effect immediately:
+
+| Group | Options |
+|---|---|
+| Browsing | Default start directory, single / dual pane, pane ratio (variable / locked / reset on entry), row density, search result limit (including "Unlimited"), show hidden files, manually hidden items, multi-line file names, recycle bin, move overwritten files to the recycle bin first |
+| Back behavior | Whether the back key goes up a level first or exits the app, and whether to remember the last directory |
+| Misc | Root scope (panes beyond it jump back), archive read-only hint, back up archives to `.bak` before writing back, default open-with management, cache size display and "Clear cache" |
+
+- Default sort and order, directories first and similar options belong to the **current pane** and live in the sort menu above the list
+- Compression format, level, password and split volumes are chosen in the "Compress" dialog; extraction target and overwrite policy are chosen in the "Extract" dialog
+- "Default open-with management" is the same page as "Manage defaults" in the "Open with" dialog (see 19.10)
+- These settings are exported and imported together with the global UI configuration
+
+### 19.10 Open With
+
+Long-press a file → "Open with" opens the unified dialog. The title sits on the left of the top bar, with search and help on the right; the bottom-left "Type" dropdown switches between **Built-in / Plugins / Suggested / All**, and "Close" is on the right. Each category shows only its own candidates, so they never squeeze each other out of the dialog.
+
+**Built-in capabilities**
+
+- A compact 3-column grid with small icons and short cards; tap the section header to **collapse / expand**
+- Tap a tile to open with that capability; long-press for details (component, MIME, suffix) and to "Set as default for this suffix" or remove the default
+- Capabilities come from `assets/config/file_types.json`: text / code go to the editor, images to the viewer, Markdown to the reader, APKs to the info page, fonts to the font viewer, archives are mounted for in-place browsing, and so on
+- Unknown suffixes still show the full built-in list, so a user who deliberately wants a tool is never blocked
+- Entries inside an archive are extracted to a temporary copy automatically before opening; no manual extraction step is required
+
+**Plugins**
+
+- "Plugins" is its **own category** in the dropdown, no longer nested under the built-in grid; "All" also lists them alongside system apps
+- Only **installed plugins that declare `openWith`, accept files and match the MIME** are listed
+- In the Plugins category the top search box is the plugin search ("All" keeps a separate search box inside the plugin section), filtering by plugin display name / plugin ID / description / `openWith.label`
+- Tapping a row hands the current file to that plugin: `openData` carries `kind=file`, `uri`, `name`, `mime` and `filePath`; the file is **not** copied into `.incoming/`, and the plugin reads the original
+- With no matching plugin the section explains that; when plugins exist but the search has no hit it shows "No matching plugins"
+
+**Suggested / All**
+
+- "Suggested" lists only the apps the system considers suitable for that MIME; "All" lists every app that can handle the file
+- The query runs on a background thread so the first opening does not stutter; the search box filters by app name
+- Each suffix can be bound to one default opener, used the next time the file is opened directly. Bind or remove it in the details dialog, or manage everything under "File settings → Default open with" (search by suffix, switch or remove)
+
+### 19.11 Side-by-Side Compare
+
+Select **exactly two** items in the file list (two files, or two folders) and the long-press menu offers "Compare":
+
+- Two files: shows content differences side by side, useful for comparing two versions of a config, log or source file
+- Two folders: recursively compares the directory trees and lists entries only on the left, only on the right, or with different content
+- One file plus one folder has nothing comparable, so the menu does not offer it
+- Compare is read-only and never modifies either side
+
+---
+
+## XX. FAQ
+
+### 20.1 FAQ (Q1-Q35)
 
 Q1: How to get more plugins?
 A: Install official plugins from the "Repository" page, or develop your own plugins.
@@ -1496,9 +1661,9 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 
 ---
 
-## XX. Contact Support
+## XXI. Contact Support
 
-### 20.1 Contact Information
+### 21.1 Contact Information
 
 | Channel | Contact Info |
 |---|---|
@@ -1511,9 +1676,9 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 
 | Item | Info |
 |---|---|
-| Document Version | 6.2.0 |
-| Last Updated | October 31, 2026 |
-| Corresponding App Version | v6.2.0 (Build 26) |
+| Document Version | 7.0.0 |
+| Last Updated | November 16, 2026 |
+| Corresponding App Version | v7.0.0 (Build 28) |
 
 ---
 

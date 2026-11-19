@@ -6,11 +6,11 @@ import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.widget.Toast
 import com.UIN.Tool.log.Logger
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.UIN.Tool.utils.AppToast
 
 /**
  * Java 源码编译为 DEX 文件
@@ -69,7 +69,7 @@ class JavaToDexCompiler(
 
     private fun showToast(message: String) {
         mainHandler.post {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            AppToast.show(context, message)
         }
     }
 

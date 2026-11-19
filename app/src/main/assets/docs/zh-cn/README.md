@@ -4,9 +4,9 @@
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 6.2.0 |
-| 对应应用版本 | v6.2.0 (Build 26) |
-| 最后更新 | 2026年10月31日 |
+| 文档版本 | 7.0.0 |
+| 对应应用版本 | v7.0.0 (Build 28) |
+| 最后更新 | 2026年11月16日 |
 
 ---
 
@@ -35,7 +35,7 @@
 - [4.2 plugin.json 配置](#42-pluginjson-配置)
 - [4.3 HTML 模板示例](#43-html-模板示例)
 - [4.4 JavaScript 示例](#44-javascript-示例)
-- [4.5 宿主主题同步（CSS 变量）](#45-宿主主题同步css-变量)
+- [4.5 宿主主题同步（CSS 变量）](#45-宿主主题同步css-变量---uin)
 
 ### 五、Web 插件开发（带后端）
 - [5.1 概述](#51-概述)
@@ -101,7 +101,7 @@
 - [12.1 打包方式](#121-打包方式)
 - [12.2 文件结构](#122-文件结构)
 - [12.3 plugin.json 完整字段](#123-pluginjson-完整字段)
-  - [12.3.4 外部内容接收（openWith）](#1234-外部内容接收openwith，v540-新增)
+  - [12.3.4 外部内容接收（openWith）](#1234-外部内容接收openwithv540-新增)
 
 ### 十三、发布到插件仓库
 - [13.1 仓库要求](#131-仓库要求)
@@ -125,7 +125,7 @@
 - [16.3 WebView 远程调试](#163-webview-远程调试)
 
 ### 十七、常见问题
-- [17.1 Q1-Q15](#十七常见问题)
+- [17.1 Q1-Q15](#171-q1-q15)
 
 ### 十八、最佳实践
 - [18.1 命名规范](#181-命名规范)
@@ -134,8 +134,20 @@
 - [18.4 安全性](#184-安全性)
 - [18.5 版本管理](#185-版本管理)
 
-### 十九、技术支持
-- [19.1 联系方式](#191-联系方式)
+### 十九、文件管理器
+- [19.1 界面与导航](#191-界面与导航)
+- [19.2 浏览、排序与过滤](#192-浏览排序与过滤)
+- [19.3 文件操作](#193-文件操作)
+- [19.4 回收站](#194-回收站)
+- [19.5 压缩包与解压](#195-压缩包与解压)
+- [19.6 远程管理](#196-远程管理)
+- [19.7 任务中心](#197-任务中心)
+- [19.8 文件对比](#198-文件对比)
+- [19.9 内置查看器与打开方式](#199-内置查看器与打开方式)
+- [19.10 设置项](#1910-设置项)
+
+### 二十、技术支持
+- [20.1 联系方式](#201-联系方式)
 
 ---
 
@@ -192,8 +204,8 @@
 ### 1.4 编译与打包
 
 **原生插件（当前状态）**
-- 应用内编译功能暂时不可用：向导打包出的 `plugin.dex` 为占位文本，无法加载
-- 建议使用 Web 插件，或使用 PC 端编译出真实 `plugin.dex` 后放入插件目录
+- 应用内编译功能不可用：向导会直接报错并删除旧产物，**不会生成 TPK**
+- 如需原生插件，请在 PC 端编译出真实 `plugin.dex` 后按 12.1 的方式二手动打包
 
 **Web 插件（推荐）**
 - 无需编译：修改 HTML/CSS/JS 后直接生效
@@ -697,19 +709,22 @@ Web 插件可启动 Termux 后端服务，提供计算、数据处理、系统�
 
 ```sh
 mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.properties 2>/dev/null || echo 'allow-external-apps=true' >> ~/.termux/termux.properties; termux-setup-storage; termux-reload-settings 2>/dev/null || true
+# 仅当运行环境为「实体 Termux + Proot 容器」时追加：
+proot-distro install <容器名>
 ```
 
 该命令会依次完成：
 1. 在 `~/.termux/termux.properties` 写入 `allow-external-apps=true`（允许外部应用通过 `RUN_COMMAND` 拉起 Termux）
 2. 执行 `termux-setup-storage` 授权存储访问
 3. `termux-reload-settings` 重载配置
+4. （仅 Proot 环境）执行 `proot-distro install <容器名>` 安装容器
 > 启动失败时宿主会自动探测缺失项并给出对应引导（`allow-external-apps`、`termux-setup-storage`、`RUN_COMMAND` 权限）。
 
 #### 5.2.5 实体 Termux 共享 Supervisor
 
 实体 Termux（proot 或本机模式）改用**单个常驻共享 supervisor**：容器/会话只初始化一次，所有插件后端作为 supervisor 的子进程运行，后续插件启动省掉 proot 初始化开销（冷启动约 5s）。内置 Debian 容器（debian，约 2s）保持不变（每插件独立 proot）。
 
-- 通信协议（控制目录 `<plugins根>/.uin/`）：`cmd/<key>.cmd`（启动命令）、`pid/<key>`（后端 PID）、`stop/<key>`（停止请求）、`idle/<key>`（空闲分钟数）、`idle/<key>.start`（启动时间戳）、`alive`（supervisor 存活标记）、`host_alive`（宿主心跳，每 30s touch，超时 300s supervisor 自退）、`shutdown`（退出标记）、`keep_alive`（后台保活标记）
+- 通信协议（控制目录 `<plugins根>/.uin/`）：`cmd/<key>.cmd`（启动命令）、`pid/<key>`（后端 PID）、`stop/<key>`（停止请求）、`rc/<key>.rc`（退出码/停止原因）、`done/`（已处理命令归档）、`idle/<key>`（空闲分钟数）、`idle/<key>.start`（启动时间戳）、`alive`（supervisor 存活标记）、`host_alive`（宿主心跳，每 30s touch，超时 300s supervisor 自退）、`shutdown`（退出标记）、`keep_alive`（后台保活标记）
 - proot 启动：`proot-distro login <container> --bind '<plugins根>:/plugins' -- sh -lc 'sh /plugins/.uin/supervisor.sh /plugins'`
 - 本机启动：`sh '<plugins根>/.uin/supervisor.sh' '<plugins根>'`
 - 空闲回收：supervisor 按各插件 `idle/<key>.start` 启动时间戳独立超时递归杀进程树；`kill -0 $pid` 检测进程存活
@@ -722,9 +737,9 @@ mkdir -p ~/.termux; grep -q '^allow-external-apps=true' ~/.termux/termux.propert
 
 插件打开后，宿主按全局设置选择执行路径：
 
-- **内置 Debian 容器**：`proot --link2symlink -0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`，插件目录以只读绑定挂载进容器
+- **内置 Debian 容器**：`proot -L --kill-on-exit --sysvipc --change-id=0:0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`，插件目录以**可写**绑定挂载进容器
 - **实体 Termux + Termux 本机**：`/bin/bash -lc "<启动命令>"`（工作目录 = 插件目录）
-- **实体 Termux + Proot 容器**：`proot-distro login <容器名> --bind <pluginDir>:/plugins/<id> -- sh -lc "<启动命令>"`
+- **实体 Termux + Proot 容器**：由共享 supervisor 在容器内执行；容器以 `proot-distro login <容器名> --bind <plugins根>:/plugins -- sh -lc "sh /plugins/.uin/supervisor.sh /plugins"` 启动，单个后端的命令在 `/plugins/<id>` 工作目录中执行
 
 三种路径都会通过 `sh -lc` 注入 `$PORT`、`$PLUGIN_ID`、`$PLUGIN_DIR`、`$WORK_DIR` 环境变量，插件无需感知运行环境。
 
@@ -775,6 +790,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("PORT", "8000"))
 PLUGIN_ID = os.environ.get("PLUGIN_ID", "")
+# 宿主注入的停止令牌；未注入时保持兼容
+UIN_TOKEN = os.environ.get("UIN_TOKEN", "")
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -789,12 +806,18 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0) or 0)
         body = self.rfile.read(length).decode("utf-8", "ignore") if length else ""
         return self._json({"path": self.path, "method": "POST", "body": body})
+    def _authorized(self):
+        if not UIN_TOKEN:
+            return True
+        return self.headers.get("X-UIN-Token", "") == UIN_TOKEN
     def _stop(self):
+        if not self._authorized():
+            return self._json({"status": "forbidden", "error": "bad_token"}, code=403)
         self._json({"status": "stopping"})
         threading.Thread(target=self.server.shutdown, daemon=True).start()
-    def _json(self, data):
+    def _json(self, data, code=200):
         payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        self.send_response(200)
+        self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
@@ -900,17 +923,18 @@ function callBackend() {
 | `PLUGIN_DIR` | 后端所在目录：本机为插件目录，proot 容器内为 `/plugins/{pluginId}` |
 | `WORK_DIR` | 与 `PLUGIN_DIR` 一致（宿主以 `WORK_DIR=$baseDir` 注入）；内置进程级默认 `/storage/emulated/0/UIN_Tool`，但会被容器/命令内联的 `export` 覆盖 |
 | `PYTHONUNBUFFERED` | `1`（Python 输出即时刷新） |
+| `UIN_TOKEN` | 停止令牌；`/stop` 请求需带 `X-UIN-Token` 头，未注入时为空（兼容旧启动方式） |
 
 **环境变量注入方式（按运行环境）**
 
-- **内置 Debian 容器（proot）**：宿主通过 `ProcessBuilder` 进程环境注入（含 `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR`），再以 `proot --link2symlink -0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器；容器继承进程环境。后端实际运行时位于容器内，`PLUGIN_DIR`/`WORK_DIR` 为 `/plugins/{pluginId}`。
+- **内置 Debian 容器（proot）**：宿主通过 `ProcessBuilder` 进程环境注入（含 `PORT`/`PLUGIN_ID`/`PLUGIN_DIR`/`WORK_DIR`），再以 `proot -L --kill-on-exit --sysvipc --change-id=0:0 -r <debian_rootfs> -b /dev -b /proc -b /sys -b <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器；容器继承进程环境。后端实际运行时位于容器内，`PLUGIN_DIR`/`WORK_DIR` 为 `/plugins/{pluginId}`。
 - **实体 Termux 本机**：宿主发起 `com.termux.RUN_COMMAND`，由于 intent **无环境变量通道**，宿主会把环境变量内联进 `sh -lc` 命令字符串（`export PORT=...; export PLUGIN_ID=...; cd <插件目录> && <启动命令>`）。
-- **实体 Termux proot 容器**：同上，在 `sh -lc` 内联注入后由 `proot-distro login <容器> --bind <插件目录>:/plugins/<id> -- sh -lc "..."` 进入容器。
+- **实体 Termux proot 容器**：同上，在 `sh -lc` 内联注入后由共享 supervisor 在容器内执行（容器启动时绑定 `<插件根>:/plugins`，后端命令在 `/plugins/<id>` 下运行）。
 
 **运行环境约束（实体 Termux）**
 
 - 需在实体 Termux 中设置 `allow-external-apps=true`（`.termux/termux.properties`）、执行 `termux-setup-storage` 授予存储权限，并授予 `com.termux.permission.RUN_COMMAND`。插件位于共享存储（`/storage/emulated/0/UIN_Tool/plugins/`），Termux 需能读取该目录。
-- 实体 Termux 的进程**无法被宿主跨应用终止**，停止后端只能靠后端自己响应 `/stop` 端点退出——因此实体 Termux 后端**必须实现 `/stop`**（内置 Debian 容器在 `/stop` 之外还会按进程组 `SIGKILL` 兜底）。
+- 实体 Termux 的进程**无法被宿主跨应用直接终止**，宿主会先请求后端响应 `/stop`；若未响应，则由共享 supervisor 按 PID 递归杀进程树（`SharedSupervisor.requestStop`）。因此 `/stop` 推荐实现，但不再是唯一停止手段（内置 Debian 容器还会按进程组 `SIGKILL` 兜底）。
 - 实体 Termux 后端冷启动较慢（尤其 proot 容器），就绪超时已按 `max(backendTimeout, 60/120)` 放宽，超时未就绪时宿主会提示但**不会自动杀掉已启动的进程**（内置版若进程已退出则会清理）。
 
 **后端生命周期**
@@ -976,12 +1000,12 @@ plugin.tpk
 | `entry` | CUI 插件没有页面入口，留空 |
 | `backendPreCommand` | **启动命令**：插件每次打开时，在插件目录中执行 `bash -lc "<此命令>"`。必须用 `export PLUGIN_ID=... PLUGIN_DIR=$(pwd)` 自行注入环境变量，因为终端会话不会自动注入 |
 | `backend` | 可选。填 `""` 表示纯终端；也可配合后端字段同时启动一个 HTTP 后端 |
-| `backendRuntime` | `"termux"`（默认）或 `"proot"`（在 Debian 容器中执行） |
+| `backendRuntime` | 预留字段，宿主不消费；实际执行环境由「管理 → 后端运行设置」的全局配置决定 |
 
 ### 6.3 创建 CUI 插件（向导）
 
 1. 「开发」→「创建插件」→ 选择「**CUI 终端（命令行界面）**」
-2. 向导共 4 步：基本信息 → **编辑终端脚本** → 生成项目文件 → 完成
+2. 向导共 4 步：基本信息 → 插件图标 → **编辑终端脚本** → 生成项目文件
 3. 在「编辑终端脚本」步骤中，可以点击「打开代码编辑器」修改 `scripts/script.py`
 4. 基本信息步骤中提供「**启动命令**」输入框：
    - 标签：启动命令（插件打开时在终端中执行）
@@ -1046,21 +1070,20 @@ ls -la
 python3 scripts/tool.py
 ```
 
-脚本结束后终端会话自动关闭（脚本不结束则终端保持打开）。
+脚本结束后会话保留在终端页，按回车关闭（脚本未结束时终端保持打开）。
 
 ### 6.5 运行流程与生命周期
 
 1. 用户打开 CUI 插件 → `PluginHostActivity` 显示占位视图：「正在打开全屏终端执行命令...」
-2. 宿主按全局「后端运行设置」选择执行环境：内置 Debian 容器走环境流水线（Debian 就绪，若配置了 `backendRuntime: "proot"`）；实体 Termux 直接调用 `RUN_COMMAND`
+2. 宿主按全局「后端运行设置」选择执行环境：内置 Debian 容器走环境流水线（Debian 就绪后进入容器）；实体 Termux 直接调用 `RUN_COMMAND`
 3. 以 `sh -lc "<启动命令>"`（`backendPreCommand`）在插件目录启动**全屏终端会话**：内置环境拉起 `SimpleTerminalActivity`（PRoot 容器），实体 Termux 走其 `RUN_COMMAND` intent（不再依赖悬浮窗权限）；启动命令留空时以登录 Shell 打开交互式会话
-4. 终端会话独立于插件页存活：脚本/Shell 退出即关闭；插件页关闭**不会**强制杀死终端（会话由内置终端页自身管理；`TermuxService` 已随 6.0.0 移除，应用内不再有该服务）
+4. 终端会话独立于插件页存活：脚本/Shell 退出后会话保留，按回车关闭；插件页关闭**不会**强制杀死终端（会话由内置终端页自身管理；`TermuxService` 已随 6.0.0 移除，应用内不再有该服务）
 
 ### 6.6 CUI 与后端/Proot 的关系
 
 - **纯 CUI**：`backend` 留空，只有终端，无 HTTP 后端
 - **CUI + 后端**：`backend: "other"` + `backendStartCommand` + `backendAutoStart: true`，宿主在拉起终端的同时后台启动后端
-- **CUI + Proot**：`backendRuntime: "proot"`，启动命令在 Debian 容器内执行，适合需要隔离环境的场景
-- **CUI + other**：`backend: "other"` 时宿主不自动启动后端，启动命令通常是常驻服务，由终端自行拉起
+- **CUI + Proot**：把全局后端运行环境设为「实体 Termux + Proot 容器」或内置 Debian，启动命令即在容器内执行，适合需要隔离环境的场景
 
 注意：CUI 的 `backendPreCommand` 是「每次打开都执行的启动命令」，与 Web 插件后端的 `backendStartCommand`（宿主后台 `sh -lc` 执行，用于启动 HTTP 服务）语义不同。
 
@@ -1370,7 +1393,7 @@ v4.2.0 新增功能：插件可在 plugin.json 中声明 notice 字段，首次�
 
 | 按钮 | 行为 |
 |------|------|
-| 知道了 | 关闭弹窗，当前会话不再显示 |
+| 知道了 | 关闭弹窗，并**永久忽略**该插件的说明（与「不再提示」等效） |
 | 不再提示 | 永久关闭该插件的说明 |
 | 稍后提醒 | 关闭弹窗，下次打开再次显示 |
 
@@ -1602,7 +1625,7 @@ if (openData.kind === 'url') {
 }
 ```
 
-字段结构（含 `kind` / `type` / `when` / `mime` / `url` / `text` / `uri` / `name` / `filePath` / `files` / `streamCount` 及「文本 vs 链接」判别、`.incoming/` 命名规则）、宿主各接收 Action/MIME 清单、以及第三方应用**跳过中转页直接唤起插件**（`plugin_id` / `instance_id` / `open_data` extras）的完整说明，见本文档 **12.3.4 外部内容接收（openWith）**。
+字段结构（含 `kind` / `type` / `when` / `mime` / `url` / `text` / `uri` / `name` / `filePath` / `files` / `streamCount` 及「文本 vs 链接」判别、`.incoming/` 命名规则）、宿主各接收 Action/MIME 清单，以及外部应用投递内容的入口说明，见本文档 **12.3.4 外部内容接收（openWith）**。
 
 **向外发送 intent（v4.5.0 起）**
 
@@ -1961,6 +1984,8 @@ UINPlugin.callPlugin('some_method', '{}');      // 预留：跨插件调用，�
 3. 压缩为 ZIP 格式
 4. 重命名为 .tpk 扩展名
 
+> 原生插件例外：应用内没有可用的 DEX 编译器，向导在打包阶段会直接失败并删除旧产物，不会生成占位 `plugin.dex` 或 TPK。原生插件请走「方式二」，并自行放入真实 `plugin.dex`。
+
 ### 12.2 文件结构
 
 原生插件
@@ -1969,12 +1994,12 @@ UINPlugin.callPlugin('some_method', '{}');      // 预留：跨插件调用，�
 plugin.tpk
 ├── plugin.json      # 必需
 ├── icon.png         # 可选
-├── plugin.dex       # 必需（宿主要求；当前向导打包为占位文件，需自行放置真实 DEX）
+├── plugin.dex       # 必需（必须为真实 DEX；应用内不再生成占位文件）
 ├── src/             # 可选
 └── res/             # 可选
 ```
 
-> ⚠️ 当前应用内编译功能已禁用：向导生成的原生插件 TPK 中 `plugin.dex` 是一段占位文本（`// 原生插件编译功能暂时禁用`），并非真实 DEX，安装后无法加载。请使用 PC 端编译出真实的 `plugin.dex` 后替换。
+> ⚠️ 应用内编译功能不可用：向导对原生插件会直接报错并删除旧产物，不会生成 TPK。请使用 PC 端编译出真实 `plugin.dex`，再按 12.1 的方式二手动打包。
 
 Web 插件（无后端）
 
@@ -2014,7 +2039,7 @@ plugin.tpk
     └── script.py    # 终端启动脚本
 ```
 
-> 打包规则（`packageTpk`，v5.2.0 起）：递归整包项目目录——显式添加 `plugin.json`、`icon.png`、`README.md`、原生占位/真实 `plugin.dex`（优先识别真实 DEX 的 `dex\n` magic），再递归打入 `web/`、`scripts/`、`res/`、`src/` 等全部目录；跳过隐藏文件与 `.tpk` 输出物，避免重复条目。Web 插件无 `web/index.html` 时自动写入默认页兜底。
+> 打包规则（`packageTpk`，v5.2.0 起）：递归整包项目目录——显式添加 `plugin.json`、`icon.png`、`README.md`、真实 `plugin.dex`（以 `dex\n` magic 校验；没有真实 DEX 时中止打包），再递归打入 `web/`、`scripts/`、`res/`、`src/` 等全部目录；跳过隐藏文件与 `.tpk` 输出物，避免重复条目。Web 插件无 `web/index.html` 时自动写入默认页兜底。
 
 ### 12.3 plugin.json 完整字段
 
@@ -2071,18 +2096,18 @@ plugin.tpk
 | `name` | string | `""` | ✅ | 插件显示名称，出现在插件列表、终端标题、快捷方式等。 |
 | `author` | string | `""` | ❌ | 插件作者。 |
 | `description` | string | `""` | ❌ | 插件功能描述，显示在插件管理页。 |
-| `notice` | string | `""` | ❌ | 插件说明。首次打开插件时自动弹窗显示（可选「不再提示」「稍后提醒」）。 |
+| `notice` | string | `""` | ❌ | 插件说明。首次打开插件时自动弹窗显示；选择「知道了」或「不再提示」后永久不再弹出，「稍后提醒」则下次打开再显示。 |
 | `icon` | string | `icon.png` | ❌ | 图标文件名，相对插件根目录（建议 128x128 PNG）。 |
 | `mainClass` | string | `""` | 原生✅ | **原生插件入口类完整类名**（如 `com.example.MainPlugin`）。宿主用 `DexClassLoader` 加载后 `loadClass(mainClass).newInstance() as PluginInterface` 实例化。Web/CUI 插件留空。 |
-| `updateUrl` | string | `""` | ❌ | 插件更新检测地址（GitHub Release 页），用于应用内检查更新。 |
-| `apiLevel` | int | `21` | ❌ | 插件要求的宿主 API 等级（最小 21）。 |
+| `updateUrl` | string | `""` | ❌ | 插件更新页地址，仅作元数据展示；宿主不会据此检查更新。 |
+| `apiLevel` | int | `21` | ❌ | 要求的最低设备 Android API 等级（与 `Build.VERSION.SDK_INT` 比较，低于它则拒绝安装）。 |
 | `category` | string | `uncategorized` | ❌ | 插件分类名，用于插件管理页分类展示（缺省键为 `uncategorized`，界面按语言显示为「未分类」等）。 |
 | `sourceId` | string | `""` | ❌ | 宿主写入：该插件**安装来源**的源 ID（配合源管理记录来自哪个仓库/镜像）；手动导入的插件为空。一般由宿主维护，勿手写。 |
 | `signature` | string | `""` | ❌ | **已随 6.2.0 从模型/解析器移除**：写入该字段会被忽略，宿主不再读写它。防篡改改由**安装文件的 SHA-256 指纹（TOFU）**承担 —— 首次安装记录指纹，同版本更新包必须一致（不一致即拒装），版本升级记录新指纹。 |
 | `uiType` | string | `native` | ✅ | 前端类型：`native`（原生 View）、`web`（WebView）、`cui`（全屏终端）。决定宿主的加载分支。 |
 | `entry` | string | `web/index.html` | Web✅ | Web 插件入口页面（相对插件根目录，宿主用 `file://<pluginDir>/<entry>` 加载）。CUI 留空。必须指向 HTML 页面；v5.1.0 向导已正确生成，旧版生成的插件若 `entry` 指向脚本路径需手动改回。 |
 | `permissions` | string | `""` | ❌ | 所需权限列表。**两种格式均可**：逗号分隔字符串（如 `android.permission.INTERNET,android.permission.VIBRATE`）或 JSON 数组。v5.5.0 起 `parseStringList()` 兼容两种格式；旧版只认逗号分隔字符串。含伪权限（`READ_CLIPBOARD`/`WRITE_CLIPBOARD`）。向导「权限」弹窗多选生成。 |
-| `dependencies` | string | `""` | ❌ | 依赖插件 ID 列表。**两种格式均可**（逗号分隔字符串或 JSON 数组）。宿主启动前检查依赖是否存在。 |
+| `dependencies` | string | `""` | ❌ | 依赖插件 ID 列表。**两种格式均可**（逗号分隔字符串或 JSON 数组）。宿主仅在安装时记录缺失项日志，不会阻止安装或启动。 |
 | `frontendConfig` | object | `{}` | ❌ | **预留字段**。随 JSON 正常读写（解析与序列化都已实现），但宿主**没有任何消费者** —— 填写后不产生任何行为，暂不建议使用。 |
 
 #### 12.3.3 后端配置字段
@@ -2128,7 +2153,7 @@ plugin.tpk
 | `acceptUrl` | boolean | `true` | ❌ | 是否接受 URL / 链接（自动识别 `http(s)`、`magnet:` 或 `Patterns.WEB_URL`）。 |
 | `acceptFile` | boolean | `true` | ❌ | 是否接受文件（`content://` / `file://`，含 `SEND_MULTIPLE` 多选）。 |
 
-**匹配规则**：中转页按「内容类型」（`file` / `text` / `url`）先过滤 `enabled` 与 `accept*` 开关，再按 MIME 精确/通配匹配（规则 `*/*` 恒匹配；`xxx/*` 按类别前缀匹配，大小写不敏感；否则精确匹配；传入 MIME 为空、规则列表为空或含 `*/*` 视为接受任意）。仅 1 个匹配插件时**自动打开**；无匹配时中转页提示「没有已安装的插件可以接收该内容」；多个匹配时展示可**实时搜索**（按 `label` / `pluginId` / `description` 过滤）的候选列表，用户点选后打开。
+**匹配规则**：中转页按「内容类型」（`file` / `text` / `url`）先过滤 `enabled` 与 `accept*` 开关，再按 MIME 精确/通配匹配（规则 `*/*` 恒匹配；`xxx/*` 按类别前缀匹配，大小写不敏感；否则精确匹配；传入 MIME 为空、规则列表为空或含 `*/*` 视为接受任意）。始终展示候选列表（即使只有 1 个匹配插件）；无匹配时中转页提示「没有已安装的插件可以接收该内容」；多个匹配时展示可**实时搜索**（按 `label` / `pluginId` / `description` 过滤）的候选列表，用户点选后打开。
 
 **文件落地**：用户点选插件后，宿主才把分享的文件复制进插件目录的 `.incoming/`，并在 openData JSON 中写入 `filePath`（**复制后**本机绝对路径）、`incomingName`（复制后的文件名）与 `containerPath`（proot 容器内挂载路径 `/plugins/<id>/.incoming/<文件名>`），插件后端可挂载后直接读取。
 - **命名规则**：`<时间戳>_<消毒后原文件名>`；非法字符 `\ / : * ? " < > |` 及空白统一替换为 `_`，最长保留 120 字符，避免同名/含路径字符的文件互相覆盖。
@@ -2164,34 +2189,11 @@ plugin.tpk
 | `ACTION_SEND` | `text/*` | 分享纯文本 / 链接 |
 | `ACTION_SEND` | `*/*` | 分享任意单文件 |
 | `ACTION_SEND_MULTIPLE` | `*/*` | 分享多文件 |
-| `ACTION_VIEW` | `application/*`、`audio/*`、`image/*`、`message/*`、`multipart/*`、`text/*`、`video/*` | 「用其他应用打开」文件 |
+| `ACTION_VIEW` | `*/*`（另有一组不带 MIME 的 `content` / `file` scheme） | 「用其他应用打开」任意文件 |
 
-> ⚠️ `ACTION_VIEW` 分支 **没有** `*/*` 通配，也不含 `font/*`、`model/*` 等类别；不属于上述清单的未知类型文件只能通过「分享」（`ACTION_SEND`）或外部显式 intent（见下）投递给 UIN Tool。
+**外部应用直接唤起插件（不支持）**
 
-**外部应用直接唤起插件（跳过中转页）**
-
-`PluginHostActivity` 声明为 `exported="true"`，任何应用都可向其发送显式 intent 直接打开某插件并投递数据，其结果等价于 openWith 中转完成后的打开：
-
-| Extra | 类型 | 说明 |
-|-------|------|------|
-| `plugin_id` | String | **必填**，要打开的插件 ID（`PluginHostActivity.EXTRA_PLUGIN_ID`） |
-| `instance_id` | String | 可选，实例 ID（多开时指定目标实例；缺省自动生成） |
-| `open_data` | String | 可选，openData JSON 字符串（结构见上表），插件侧用 `getOpenData()` / `onHostEvent("host.open")` 读取 |
-
-```kotlin
-// 第三方应用示例：无需中转页，直接把一段文本投递给支持 openWith 的插件
-val intent = Intent(Intent.ACTION_VIEW).apply {
-    setClassName("com.UIN.Tool", "com.UIN.Tool.plugin.PluginHostActivity")
-    putExtra("plugin_id", "com.example.editor")
-    putExtra("open_data",
-        """{"kind":"text","type":"text","when":1700000000000,"text":"来自第三方应用的内容"}"""
-    )
-    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-}
-context.startActivity(intent)
-```
-
-> 第三方应用也可以直接向 `PluginOpenDispatchActivity` 发起 `ACTION_SEND` + `text/*` / `*/*`（或 `SEND_MULTIPLE`），让用户从中转页选择插件，效果与系统分享面板一致。
+`PluginHostActivity` 声明为 `exported="false"`，第三方应用不能直接向其发送显式 intent。外部应用统一通过 `PluginOpenDispatchActivity` 投递内容（`ACTION_SEND` / `ACTION_SEND_MULTIPLE` / `ACTION_VIEW`），由中转页让用户选择插件；`plugin_id` / `instance_id` / `open_data` 这组 extras 仅限应用内部使用。
 
 #### 12.3.5 资源限制字段
 
@@ -2287,21 +2289,23 @@ context.startActivity(intent)
 
 | 要求 | 说明 |
 |------|------|
-| 仓库名称 | 必须为插件 ID（如 `com.example.myplugin`） |
-| 仓库描述 | 必须为插件名称 |
-| Release Tag | 格式：`{版本代码}-{版本名称}`（宿主按第一个 `-` 拆分，如 `1-1.0.0`） |
-| Release 资产 | 必须包含 `.tpk` 文件（宿主取第一个 .tpk 资产，无完整性校验） |
+| 仓库名称 | 建议为插件 ID（如 `com.example.myplugin`） |
+| 仓库描述 | 建议为插件名称 |
+| 索引文件 | 仓库根目录的 `source.json`（宿主按源配置的 owner/repo/branch 拉取，约 5 分钟缓存） |
+| 插件条目 | `plugins` 数组，至少包含 `pluginId`、`name`、`version`、`versionName`、`tpkPath` |
+| TPK 位置 | `tpkPath` 为相对仓库根目录的路径；下载地址 = 源 base URL + `tpkPath` |
 | 仓库可见性 | 必须是公开仓库 |
 
 > 说明：宿主**不再逐仓库分页拉取** —— 插件列表按**源索引**获取（每个源维护自己的 `source.json`，宿主用 `SourceIndexFetcher` 拉取并聚合，约 5 分钟缓存，条目带官方 / 社区信任级别）；只有「应用自身更新检查」才调 GitHub Releases 接口（`per_page=30`）。
 
 ### 13.2 发布步骤
 
-1. 创建 GitHub 仓库（在 UIN-Tool-Plugins 组织中），仓库名 = 插件 ID
-2. 上传插件文件
-3. 创建 Release（Tag: 1-1.0.0）
-4. 上传 .tpk 文件到 Assets
-5. 强制更新：Tag 格式 `{版本代码}-{版本名称}-1`（如 `2-1.0.1-1`；注意宿主按第一个 `-` 拆分，此时版本名会解析为 `1.0.1-1`）
+1. 创建公开 GitHub 仓库（可放在 UIN-Tool-Plugins 组织中），仓库名建议为插件 ID
+2. 上传 `.tpk`（例如 `plugins/<pluginId>/<version>.tpk`）
+3. 在仓库根目录维护 `source.json` 的 `plugins` 数组，填写 `pluginId`、`name`、`version`、`versionName`、`tpkPath`、`iconPath` 等字段
+4. 在「管理 → 插件源」中把该仓库加入源列表（或提交到官方 / 社区源）
+5. 发布新版本时递增 `version` 并更新 `tpkPath`；宿主按 `version` 比较是否有更新
+6. GitHub Release 的 Tag / Assets 只用于**应用自身**的更新检查，不参与插件分发
 
 ---
 
@@ -2321,8 +2325,6 @@ UIN Tool 内置完整的终端环境，核心引擎基于 Termux 改编。
 | 脚本语言 | Python、Node.js、Ruby 等（`apt install` 安装） |
 | 网络工具 | curl、wget、openssh |
 | 多会话 | 支持多个终端会话同时运行 |
-| 多窗口 | Android 7.0+ 多窗口支持（新建窗口按钮） |
-| 安全模式 | 新建会话可开启安全模式 |
 
 终端环境变量（内置 PRoot 容器，见 `ProotRuntime`）：`HOME=/root`、`PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` 等，rootfs 挂载于应用私有目录，会话由 `SimpleTerminalActivity` 持有，页面销毁/重建不会中断。**注意**：`HOME=/data/data/com.UIN.Tool/files/home`、`PREFIX=.../files/usr`、`PATH=$PREFIX/bin` 是**外部 Termux** 后端的遗留变量，内置终端并不使用。
 
@@ -2374,6 +2376,7 @@ uiConfig.saveConfig()
 | 文本色 | text_primary, text_secondary, text_hint, text_primary_inverse |
 | 背景色 | background, surface, surface_variant |
 | 边框色 | divider, glass_background, disabled |
+| 系统栏 / 导航 | status_bar, navigation_bar, nav_selected, nav_unselected |
 
 ### 15.3 形状配置
 
@@ -2446,6 +2449,8 @@ print("调试信息")
 
 ## 十七、常见问题
 
+### 17.1 Q1-Q15
+
 Q1: 插件导入失败？
 
 可能原因：文件不是有效的 .tpk 格式、缺少 plugin.json、JSON 格式错误、签名验证失败。
@@ -2464,7 +2469,7 @@ Q4: 插件无法调用宿主权限？
 
 Q5: 如何调试插件？
 
-使用 Logger 输出日志，在「管理」→「开发工具」中查看。Web 插件可用 Chrome DevTools 调试。
+使用 Logger 输出日志，在「管理」→「运行日志」中查看（含 logcat 来源）。本应用未启用 WebView 远程调试，chrome://inspect 无法发现插件页。
 
 Q6: 插件数据存储在哪里？
 
@@ -2476,7 +2481,7 @@ Q7: 更新插件会丢失数据吗？
 
 Q8: 权限状态会持久化吗？
 
-会。一次授权后，权限状态永久保存，下次打开不再重复弹窗。
+会。权限状态永久保存。Web 插件只提示尚未授予的权限，已授予的不再弹窗；原生插件每次打开仍会列出其声明的权限，除非用户选择「不再显示」。
 
 Q9: Web 插件支持哪些 API？
 
@@ -2541,14 +2546,100 @@ Q15: 导出模板一直显示「导出中...」？
 ### 18.5 版本管理
 
 · 使用语义化版本号
-· 发布时使用正确的 Release Tag 格式
-· 强制更新使用 -1 后缀
+· 在 `source.json` 中维护正确的 `version` 与 `tpkPath`
 
 ---
 
-## 十九、技术支持
+## 十九、文件管理器
 
-### 19.1 联系方式
+文件管理器是内置的独立文件页（侧边栏「文件」入口），支持双窗格、归档内浏览、回收站、远程 FTP/HTTP、后台任务与多种内置查看器。本章描述它的实际行为；插件开发接口见前面的章节。
+
+### 19.1 界面与导航
+
+- **顶栏**：左侧 ☰ 打开侧边栏；标题显示**活动窗格**的完整路径，点按弹出「跳转路径」，长按复制路径。
+- **右上菜单**：刷新、搜索、过滤、排序方式、添加/取消书签、设为首页、交换窗口、设置、退出文件管理器。
+- **底栏**：后退、前进、新建、同步（把当前窗格同步到另一窗格）、上一级。进入多选后切换为全选、反选、退出多选、选择同类型。
+- **侧边栏**：分三段 —— 存储（内部存储卡片，显示已用/总量）、打开（编辑器、终端、提取安装包）、管理（后台任务、回收站、设置、远程管理）。
+- **双窗格**：默认布局可在设置中选单窗格或双窗格；分隔条比例支持固定、可变（拖动后记住）、默认（每次进入复位）。
+- **单窗格**：返回键可设为「先返回上一级」或「直接退出」，并可选择是否记住上次目录。
+
+### 19.2 浏览、排序与过滤
+
+- **排序**：按名称、大小、日期或类型，支持升序/降序、目录优先；可只对当前目录生效，不影响其他目录。
+- **过滤条**：只过滤当前窗格、输入即生效，不递归。纯文本按名称匹配，`/pattern/` 按正则匹配，前缀 `!` 表示取反。
+- **搜索**：可递归子目录、区分大小写、使用正则、匹配文件内容，并限定最小/最大字节数；结果数量有上限（可设为无限制）。结果面板支持「在结果中搜索」二次过滤，二次过滤**只匹配名称**。
+- **隐藏项**：系统隐藏（点开头）与手动隐藏（长按菜单）分别控制是否显示。
+- **书签与历史**：菜单可添加/取消当前目录书签；书签与访问历史都在底栏上滑打开的抽屉里，按分组管理。
+
+### 19.3 文件操作
+
+- **动作菜单**：长按文件或目录打开，包含复制、移动、删除、重命名、属性、选择、分享、打开方式、对比、隐藏、书签，以及按文件类型出现的压缩、解压、添加到归档。
+- **复制 / 移动**：先「拿起」，走到目标目录后再粘贴；右下角浮出粘贴按钮。单窗格与双窗格使用同一套流程。
+- **批量重命名**：支持模板（`#p` 原名、`#e` 后缀、`#n` 序号、`#z` 补零序号、`#f` 全名、`##` 字面井号）或查找替换（可用正则与 `$1` 捕获组），并可统一大小写；执行前有预览，空名、斜杠、重名、已存在都会拦截。
+- **属性**：名称、父目录、类型、大小、修改时间、MIME，长按任意一行复制该值；文本文件额外显示行数与字符数。
+- **覆盖备份**：开启后，被覆盖的文件会先复制到回收站，保留最近 200 份。
+
+### 19.4 回收站
+
+- 默认开启。删除的文件进入 `/sdcard/UIN_Tool/trash/deleted/<id>/`，而不是直接消失。
+- 容量上限为 **500 项 / 4 GB**，超出后按最旧优先清理。
+- 支持还原（原路径被占用时以新名称还原）、彻底删除、清空回收站（同时清掉覆盖备份）。
+- 关闭回收站后，删除默认变为永久删除；已在回收站里的条目仍可还原。
+
+### 19.5 压缩包与解压
+
+- **可写格式**：zip（支持密码、分卷，可向已有包追加条目）与 7z（支持密码与加密文件名，只能新建，不能修改已有包）。
+- **只读格式**：rar 与 tar 系（`.tar`、`.gz`、`.bz2`、`.xz`、`.zst`）。
+- 点开归档进入**归档内浏览**：文本条目可直接用内置编辑器打开并写回原归档；可在写入前保留 `.bak` 备份。加密归档需先输入密码。
+- **解压目标**：另一窗格、解压到新建文件夹、自定义目录；可选择保留时间戳、解压完成后删除源归档。
+- 嵌套归档不能直接进入，需要先解压外层。
+
+### 19.6 远程管理
+
+- 提供 FTP 与 HTTP 两个独立服务，各自启停，可设置端口、共享目录、账号与密码；共享目录留空时跟随文件页根目录。
+- 未设置账号时，同一网络内任何人都能访问共享目录，界面会明确警告。
+- **HTTP**：浏览器可浏览目录、下载文件（支持 `Range`，视频可拖动进度）、勾选后打包为 zip 下载、新建文件夹、通过网页表单上传。
+- **FTP**：可用电脑上的 FTP 客户端连接。
+- 服务运行时会显示常驻通知；连接日志可随时查看。
+
+### 19.7 任务中心
+
+- 复制、移动、压缩、解压等耗时操作可以收起到后台继续执行。
+- 侧边栏「后台任务」列出正在运行的操作，可查看进度与取消。
+- 完成或失败会给出提示；遇到同名冲突时逐个询问处理方式。
+
+### 19.8 文件对比
+
+- 可对比两个文件、两个目录，或两个归档。
+- **模式**：FAST（大小与时间）、NORMAL（分块校验）、EXACT（逐字节/哈希）；超大文件有预算保护，超出会提示。
+- **文本视图**：仅看差异、忽略大小写、忽略空白、上一处/下一处差异跳转。
+- **目录对比**：列出相同、不同、仅左侧、仅右侧的文件。
+- **归档对比**：按条目内容哈希比较，加密归档需先打开并输入密码。
+
+### 19.9 内置查看器与打开方式
+
+- **Markdown**：内置阅读页渲染，磁盘上的 `.md` 可直接打开。
+- **图片**：捏合缩放、双击放大、目录内左右翻页、EXIF 方向校正、GIF/动图播放。
+- **字体**：预览字体家族与样式，按码位浏览字形，可跳转到指定码位。
+- **密钥库**：查看 JKS、PKCS12、BKS，并可在格式之间转换。
+- **十六进制**：分页查看与编辑二进制内容。
+- **APK**：查看包名、版本、SDK、权限、签名证书与校验结果；也可从侧边栏「提取安装包」批量提取。
+- **打开方式**：长按选择「打开方式」，可使用内置查看器、内置编辑器、定位到文件管理器，或交给插件处理；「打开方式管理」可调整候选与默认项。
+
+### 19.10 设置项
+
+| 分组 | 项目 |
+|------|------|
+| 浏览 | 默认起始目录、默认布局（单/双窗格）、窗格比例、默认排序与顺序、行密度、搜索结果上限、显示系统隐藏项、显示手动隐藏项、多行文件名、回收站、覆盖备份 |
+| 返回 | 返回键行为（先上一级 / 直接退出）、记住上次目录 |
+| 杂项 | 根范围（内部存储 / 根 `/`）、只读归档提示、写入前 `.bak` 备份、清理缓存 |
+| 解压 | 速度档位、保留时间戳、解压目标、解压后删除源归档（在解压对话框中设置） |
+
+---
+
+## 二十、技术支持
+
+### 20.1 联系方式
 
 | 渠道 | 联系方式 |
 |------|----------|
@@ -2563,9 +2654,9 @@ Q15: 导出模板一直显示「导出中...」？
 
 | 项目 | 信息 |
 |------|------|
-| 文档版本 | 6.2.0 |
-| 对应应用版本 | v6.2.0 (Build 26) |
-| 最后更新 | 2026年10月31日 |
+| 文档版本 | 7.0.0 |
+| 对应应用版本 | v7.0.0 (Build 28) |
+| 最后更新 | 2026年11月16日 |
 
 ---
 

@@ -11,11 +11,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.UIN.Tool.R
+import com.UIN.Tool.ui.components.unified.UnifiedButton
+import com.UIN.Tool.ui.components.unified.UnifiedDialog
 import com.UIN.Tool.ui.screen.dev.editor.EditorViewModel
 import com.UIN.Tool.ui.screen.dev.editor.FileAccess
 import com.UIN.Tool.ui.theme.UINToolTheme
@@ -23,6 +26,7 @@ import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.utils.Str
 import java.io.File
+import com.UIN.Tool.ui.screen.files.InAppFilePicker
 
 private const val TAG = "CodeEditorActivity"
 
@@ -61,7 +65,7 @@ class CodeEditorActivity : AppCompatActivity() {
     }
 
     private val openFolderLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
+        InAppFilePicker.Directory()
     ) { uri ->
         if (uri == null) return@registerForActivityResult
         val path = FileAccess.resolveRealPath(this, uri)
@@ -79,10 +83,10 @@ class CodeEditorActivity : AppCompatActivity() {
         viewModel.openProject(dir)
     }
 
-    // 6.2.0 批次21：另存为目录选择器 —— 保存失败（无存储权限）时弹出，
-    // 选完把内容写进该 SAF 目录（无需存储权限）。
+    // 另存为目录选择器 —— 保存失败（无存储权限）时弹出，选完把内容写进该目录。
+    // m.txt 第 7 条起改用内置选择器，返回的是 `file://` 目录 Uri。
     private val saveAsLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
+        InAppFilePicker.Directory()
     ) { uri ->
         if (uri == null) {
             viewModel.clearSaveAsRequest()
@@ -92,13 +96,13 @@ class CodeEditorActivity : AppCompatActivity() {
     }
 
     /**
-     * 6.2.0：长按「保存」图标 → 系统级「另存为」文件选择器（ACTION_CREATE_DOCUMENT）。
-     * 与 [saveAsLauncher]（只能选目录、沿用原文件名）不同，这里用户能同时决定**文件名和位置**，
-     * 才是真正的「另存为」。选择器不限定 MIME 类型，任何代码文件后缀都能保存。
-     * 输入=建议文件名（当前标签名），返回=用户选定的可写 Uri。
+     * 长按「保存」图标 → 本应用内置的「另存为」选择器（m.txt 第 7 条：不再调系统
+     * ACTION_CREATE_DOCUMENT）。与 [saveAsLauncher]（只能选目录、沿用原文件名）不同，
+     * 这里用户能同时决定**文件名和位置**，才是真正的「另存为」。
+     * 输入=建议文件名（当前标签名），返回=内置 provider 的可写 content Uri。
      */
     private val saveAsDocLauncher = registerForActivityResult(
-        ActivityResultContracts.CreateDocument()
+        InAppFilePicker.CreateDocument()
     ) { uri ->
         if (uri == null) {
             viewModel.clearSaveAsDocRequest()
@@ -179,6 +183,30 @@ class CodeEditorActivity : AppCompatActivity() {
                     viewModel.clearSaveAsDocRequest()
                 }
             }
+
+            // 文件管理「编辑归档内文本」：副本保存成功后，问要不要顺带写回归档。
+            // 这是**保存之后**的追问，不是失败补救 —— 改动此刻已经在临时副本里了，
+            // 所以「暂不」不丢东西，下次保存还会再问一遍。
+            val writeBack by viewModel.archiveWriteBack.collectAsState()
+            writeBack?.let { wb ->
+                UnifiedDialog(
+                    onDismissRequest = { viewModel.dismissArchiveWriteBack() },
+                    title = Str.get(R.string.files_archive_writeback_title),
+                    content = { Text(Str.get(R.string.files_archive_writeback_ask, wb.tabName)) },
+                    confirmButton = {
+                        UnifiedButton(
+                            text = Str.get(R.string.files_archive_writeback_yes),
+                            onClick = { viewModel.confirmArchiveWriteBack() }
+                        )
+                    },
+                    dismissButton = {
+                        UnifiedButton(
+                            text = Str.get(R.string.files_archive_writeback_no),
+                            onClick = { viewModel.dismissArchiveWriteBack() }
+                        )
+                    }
+                )
+            }
         }
     }
 
@@ -221,7 +249,9 @@ class CodeEditorActivity : AppCompatActivity() {
             // `file://` 拿不到任何授权，权限不申请 → 后续 writeText 必然 EACCES，
             // 保存静默转成「另存为」。故只有 content:// 才跳过申请。
             openedViaActionView = uri.scheme != "file"
-            viewModel.openUri(uri)
+            // q.txt 第 6 条（用户）：显式打开的文件必须显示出来 —— 走带焦点钉子的入口，
+            // 会话恢复的异步收尾不会再把它顶回上一会话的文件。
+            viewModel.openUriExplicit(uri)
             // 6.2.0 修「从多任务窗口回来文件又没了」：进程重建后原 ACTION_VIEW 会被重新
             // 投递，分享方的临时授权此时多半已失效（content:// 读不出、tabs 仍为空）——
             // 回落到「上次打开的文档」恢复，别让编辑器停在空态。仅恢复场景如此：
@@ -275,7 +305,15 @@ class CodeEditorActivity : AppCompatActivity() {
             }
             if (!fromRestore || viewModel.tabs.value.isEmpty()) {
                 if (f.isFile) {
-                    viewModel.openFile(f)
+                    // 归档内条目的编辑副本（文件管理器「编辑归档内文本」）：把写回来源
+                    // 一起交给 VM —— 保存成功后才好额外问「要不要写回归档」。
+                    // 两个 extras 要么都给、要么都不给（VM 侧用 fromArchive 判定）。
+                    // q.txt 第 6 条：显式打开 → 焦点钉子，恢复收尾不得抢焦点。
+                    viewModel.openFileExplicit(
+                        f,
+                        originArchive = intent.getStringExtra("origin_archive"),
+                        originEntry = intent.getStringExtra("origin_entry")
+                    )
                 } else {
                     viewModel.emit("文件不存在: $filePath")
                 }
@@ -283,7 +321,7 @@ class CodeEditorActivity : AppCompatActivity() {
             if (fromRestore && viewModel.tabs.value.isEmpty()) {
                 // 进程重建重投 file_path：真实文件路径无授权时效问题，直接重开本文件；
                 // 文件已不在（被删/移）才回落「上次打开的文档」。
-                if (f.isFile) viewModel.openFile(f) else viewModel.restoreLastOpenedIfAny()
+                if (f.isFile) viewModel.openFileExplicit(f) else viewModel.restoreLastOpenedIfAny()
             }
             return
         }

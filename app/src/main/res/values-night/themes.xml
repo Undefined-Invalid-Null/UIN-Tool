@@ -43,7 +43,10 @@
          夜间启动主题（深灰色背景，非纯黑）
          ============================================================ -->
     <style name="Theme.UIN.Tool.Splash" parent="Theme.UIN.Tool">
-        <item name="android:windowBackground">@color/splash_background</item>
+        <!-- starting window 兜底「深灰底 + 灰色图标」；onCreate 会换成图标 + 名称 + 版本 -->
+        <item name="android:windowBackground">@drawable/bg_splash_window</item>
+        <!-- 启动不要滑入动画（同白天主题） -->
+        <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowTranslucentStatus">true</item>

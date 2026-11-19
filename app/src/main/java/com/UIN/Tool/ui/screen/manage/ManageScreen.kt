@@ -454,6 +454,8 @@ fun ManageSectionItem(
             modifier = modifier
             .fillMaxWidth()
             .scale(scale)
+            // k.txt 第 6 条：列表行涟漪收进 8dp 圆角。
+            .clip(RoundedCornerShape(8.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,

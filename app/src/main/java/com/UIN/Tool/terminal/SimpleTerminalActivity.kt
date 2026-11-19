@@ -18,7 +18,6 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -73,6 +72,7 @@ import com.UIN.Tool.utils.Str
 import com.UIN.Tool.view.TerminalView
 import com.UIN.Tool.view.TerminalViewClient
 import java.io.File
+import com.UIN.Tool.utils.AppToast
 
 class SimpleTerminalActivity : AppCompatActivity() {
 
@@ -448,7 +448,7 @@ class SimpleTerminalActivity : AppCompatActivity() {
                 Logger.e(TAG, "build session plan failed: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     val message = getString(R.string.terminal_session_start_failed, e.message ?: e.toString())
-                    Toast.makeText(this@SimpleTerminalActivity, message, Toast.LENGTH_LONG).show()
+                    AppToast.showLong(this@SimpleTerminalActivity, message)
                 }
                 return@launch
             }

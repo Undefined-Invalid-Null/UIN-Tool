@@ -7,6 +7,7 @@ import android.content.ContextWrapper
 import android.content.SharedPreferences
 import android.content.res.AssetManager
 import android.content.res.Resources
+import android.os.Environment
 import android.os.StatFs
 import android.view.LayoutInflater
 import com.UIN.Tool.log.Logger
@@ -25,7 +26,15 @@ private const val TAG = "PluginContext"
  */
 class PluginContext(
     base: Context,
-    private val pluginDir: String
+    private val pluginDir: String,
+    /**
+     * v.txt 第 3 条（用户）：插件能否按**原路径**读写共享外部存储。
+     *
+     * 默认 false（只有插件自己的 data/ 沙箱）；Web 插件桥按 `storage` 能力
+     * （声明了读写外部存储、且宿主已授予「所有文件访问」）动态传入 true。
+     * 用 lambda 而不是布尔值：权限可能在会话中被授予/撤销，必须每次解析都问一次。
+     */
+    private val allowExternalPaths: () -> Boolean = { false }
 ) : ContextWrapper(base) {
 
     private var pluginAssetManager: AssetManager? = null
@@ -209,7 +218,33 @@ class PluginContext(
     fun resolveSafe(fileName: String): File? = getSafeFile(fileName)
 
     private fun getSafeFile(fileName: String): File? {
-        if (fileName.contains("..") || fileName.contains("/../") || fileName.startsWith("/")) {
+        if (fileName.isBlank()) return null
+
+        // v.txt 第 3 条（用户）：绝对路径 = 共享外部存储原路径（/storage/emulated/0/...）。
+        // 只有插件具备存储能力时才放行，且必须落在外部存储根目录内 —— 不允许借绝对
+        // 路径跳到 /data、/proc 等宿主私有区域。相对路径仍严格限制在插件 data/ 沙箱。
+        if (fileName.startsWith("/")) {
+            if (!allowExternalPaths()) {
+                Logger.w(TAG, Str.get(R.string.invalid_file_path_filename_2, fileName))
+                return null
+            }
+            return try {
+                val root = Environment.getExternalStorageDirectory().canonicalFile
+                val target = File(fileName).canonicalFile
+                val rootPath = root.path.trimEnd(File.separatorChar)
+                if (target.path == rootPath || target.path.startsWith(rootPath + File.separator)) {
+                    target
+                } else {
+                    Logger.w(TAG, "external path outside shared storage: ${target.path}")
+                    null
+                }
+            } catch (e: Exception) {
+                Logger.e(TAG, Str.get(R.string.path_resolution_failed_e_message, e.message))
+                null
+            }
+        }
+
+        if (fileName.contains("..") || fileName.contains("/../")) {
             Logger.w(TAG, Str.get(R.string.invalid_file_path_filename_2, fileName))
             return null
         }

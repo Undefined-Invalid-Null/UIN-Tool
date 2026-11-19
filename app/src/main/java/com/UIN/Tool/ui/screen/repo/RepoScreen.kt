@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/repo/RepoScreen.kt
 package com.UIN.Tool.ui.screen.repo
 
+import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import androidx.compose.foundation.background
@@ -97,7 +98,7 @@ fun RepoScreen() {
         state = repoListState,
         modifier = Modifier.fillMaxSize().elasticOverscroll(repoListState),
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 84.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
     ) {
         item {
             Row(

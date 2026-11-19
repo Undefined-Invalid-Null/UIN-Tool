@@ -12,6 +12,56 @@ This document records all important version updates and feature changes of UIN T
 
 ---
 
+## [7.0.0] - 2026-11-18
+
+> Major release: a fully enabled Files tab and the system "Open with" dialog collapsed into a single entry; the code editor, document reader, home-screen widgets, container management and the overall UI are upgraded alongside it.
+
+### File Management
+
+- Dual-pane file manager: forward / back / up, multi-select with ranges, copy / move / delete / rename / create, name-collision triage with apply-to-all, a seven-layer cancellable progress dialog, recycle bin and background tasks
+- In-place archive browsing and writing: zip / 7z / tar plus gzip, bzip2, xz and zstd wrappers, with magic-number detection; zip supports add / overwrite / rename, AES-256 and split volumes
+- Built-in viewers: image (zoom / paging / GIF), APK info, font, hex, keystore; compare two files or folders side by side
+- Batch rename (regex / template numbering / case), file manager settings, remote management (FTP / HTTP) and APK extraction
+
+### Open With
+
+- The system "Open with" dialog is collapsed into **one** entry: built-in capability grid, plugin list and system candidates, with a per-suffix default opener
+- New `uin://files` deep link that jumps straight to the Files tab and locates the target
+
+### Code Editor
+
+- Full-text search gets a full-page result view with in-results search and determinate progress; nine new built-in syntaxes (96 → 105)
+- Binary AXML can be edited directly and saved back as binary; external file changes prompt a reload
+
+### Document Reader
+
+- Markdown rendering moved to commonmark with GFM tables; heading anchors and hand-written tables of contents work again, and the TOC sidebar collapses level by level
+
+### Widgets and Containers
+
+- The 3x3 widget is now a searchable multi-select list (up to 9 slots, pick order is slot order) and the 1x1 widget a searchable single-select
+- Container import / export use the built-in file picker, and rootfs copies run on an IO thread so the import page no longer freezes
+
+### Plugins
+
+- Plugin permission management is now a two-level page: pick a plugin first, then review its permission list, with grant-all and revoke-all
+- The compression plugin can read and write original shared-storage paths directly
+
+### UI and Interaction
+
+- Neumorphism applied consistently to buttons, dropdowns, dialogs, toasts and the bottom bar; new default start tab and bottom-tab ordering
+- Per-style configuration isolation: switching light/dark or switching styles no longer leaks one style gradient into another
+- The splash screen only appears on first launch, after an upgrade, or when storage permission is missing
+
+### Build
+
+- compileSdk 36 → 37, AGP 9.1.1, Gradle 9.3.1, Kotlin 2.4.21, Compose BOM 2026.09.00
+- sora-editor 0.24.6 → 0.24.7; new dependencies: zip4j, brotli-dec, commonmark-ext-gfm-tables, ARSCLib, BouncyCastle, 7-Zip-JBinding, junrar, Coil 3
+
+### Internationalization
+
+- Chinese and English string keys 1951 → 2797, zero placeholder differences
+
 ## [6.2.0] - 2026-10-31
 
 > Code editor specialization: the wizard's in-memory draft box was rewritten into a full code editor callable on its own (file tree + multi-tab + project-level open + direct disk I/O + an `ACTION_VIEW` entry), together with a Sora capability audit, the Unified component rollout, three rounds of app-wide UI review, and four rounds of root-cause fixes for "syntax highlighting disappearing entirely".
@@ -1178,9 +1228,9 @@ v4.0.0 is a major refactoring, please note before upgrading:
 
 | Item | Info |
 |------|------|
-| Document Version | 6.2.0 |
-| Last Updated | October 31, 2026 |
-| Corresponding App Version | v6.2.0 (Build 26) |
+| Document Version | 7.0.0 |
+| Last Updated | November 18, 2026 |
+| Corresponding App Version | v7.0.0 (Build 28) |
 
 ---
 

@@ -5,7 +5,6 @@ import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.content.Context
 import android.net.Uri
-import android.widget.Toast
 import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.AppToast
 import com.UIN.Tool.constants.AppConstants as Constants
@@ -39,18 +38,18 @@ fun validateCurrentStep(
     return when (currentStep) {
         0 -> {
             if (pluginId.isEmpty() || pluginName.isEmpty()) {
-                Toast.makeText(context, Str.get(R.string.please_fill_in_the_plugin_id_and_name), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.please_fill_in_the_plugin_id_and_name))
                 return false
             }
             if (!pluginId.matches(Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"))) {
-                Toast.makeText(context, Str.get(R.string.invalid_plugin_id_it_should_be_a), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.invalid_plugin_id_it_should_be_a))
                 return false
             }
             true
         }
         2 -> {
             if (mainClass.isNotEmpty() && !mainClass.contains(".")) {
-                Toast.makeText(context, Str.get(R.string.the_main_class_name_must_include_the_2), Toast.LENGTH_SHORT).show()
+                AppToast.show(context, Str.get(R.string.the_main_class_name_must_include_the_2))
                 return false
             }
             true

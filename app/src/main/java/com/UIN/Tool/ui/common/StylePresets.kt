@@ -121,10 +121,10 @@ object StylePresets {
         // 深色配色模仿新拟态深色（用户拍板）：primary/accent/背景对齐 NEUMORPHISM；
         // 新拟态卡片靠阴影与背景区分而默认风格无阴影 → surface/surface_variant/glass
         // 按同色系「背景<输入<卡片」三级提亮（背景 #2A2E34），避免深色下卡片与背景同色无区分
-        primaryColorDark = "#FF7A8490",
+        primaryColorDark = "#FF9AA5B1",
         primaryDarkColorDark = "#FFD0D0D0",
         primaryLightColorDark = "#FFE6E6E6",
-        accentColorDark = "#FF6A9AAE",
+        accentColorDark = "#FF9AA5B1",
         successColorDark = "#FF66BB6A",
         warningColorDark = "#FFFFB74D",
         errorColorDark = "#FFFF6E6E",
@@ -187,10 +187,13 @@ object StylePresets {
         name = "neumorphism",
         displayName = "新拟态",
         themeMode = "system",
-        primaryColor = "#FF1A3A4A",
-        primaryDarkColor = "#FF0F2838",
-        primaryLightColor = "#FF2D5A70",
-        accentColor = "#FF4A8A9E",
+        // o.txt 第 3 条：新拟态原先整页偏绿 —— primary/accent 是青绿系（#1A3A4A/#4A8A9E），
+        // 底色 #E8ECF1 又带蓝绿，两相叠加整页都是冷绿色。新拟态的本质是「同一块中性材质
+        // 上的明暗关系」，所以这里全部换成中性石板灰：不染色，只留深浅。
+        primaryColor = "#FF4A5568",
+        primaryDarkColor = "#FF374151",
+        primaryLightColor = "#FF6B7280",
+        accentColor = "#FF6B7280",
         successColor = "#FF4CAF50",
         warningColor = "#FFFF9800",
         errorColor = "#FFF44336",
@@ -199,16 +202,16 @@ object StylePresets {
         textSecondaryColor = "#FF757575",
         textHintColor = "#FFBDBDBD",
         textPrimaryInverseColor = "#FFFFFFFF",
-        backgroundColor = "#FFE8ECF1",
-        surfaceColor = "#FFE8ECF1",
-        surfaceVariantColor = "#FFDDE3EA",
-        dividerColor = "#FFE0E4E8",
+        backgroundColor = "#FFECECEC",
+        surfaceColor = "#FFECECEC",
+        surfaceVariantColor = "#FFE2E2E2",
+        dividerColor = "#FFDCDCDC",
         glassBackgroundColor = "#B3FFFFFF",
         disabledColor = "#FFBDBDBD",
-        statusBarColor = "#FF0F2838",
+        statusBarColor = "#FF374151",
         navigationBarColor = "#FFFFFFFF",
-        navSelectedColor = "#FF1A3A4A",
-        navUnselectedColor = "#FF9AA6B2",
+        navSelectedColor = "#FF4A5568",
+        navUnselectedColor = "#FF9A9A9A",
         primaryColorDark = "#FF7A8490",
         primaryDarkColorDark = "#FFD0D0D0",
         primaryLightColorDark = "#FFE6E6E6",
@@ -221,9 +224,9 @@ object StylePresets {
         textSecondaryColorDark = "#FFA8A8A8",
         textHintColorDark = "#FF6E6E6E",
         textPrimaryInverseColorDark = "#FF1A1A1A",
-        backgroundColorDark = "#FF2A2E34",
-        surfaceColorDark = "#FF2A2E34",
-        surfaceVariantColorDark = "#FF252930",
+        backgroundColorDark = "#FF2B2B2B",
+        surfaceColorDark = "#FF2B2B2B",
+        surfaceVariantColorDark = "#FF353535",
         dividerColorDark = "#FF484848",
         glassBackgroundColorDark = "#B32A2A2A",
         disabledColorDark = "#FF666666",
@@ -265,10 +268,10 @@ object StylePresets {
         enableNeumorphismGlow = true,
         animationSpeed = "medium",
         gradientMode = "single",
-        gradientColor = "#FFF9F9F9",
+        gradientColor = "#FFF7F7F7",
         gradientFrom = "bottom_right",
         gradientTo = "top_left",
-        gradientColors = listOf("#FFC4D6DF", "#FFD6E8F2", "#FFEAF4FA")
+        gradientColors = listOf("#FFE4E4E4", "#FFEFEFEF", "#FFF9F9F9")
     )
 
     private val presets = mapOf(

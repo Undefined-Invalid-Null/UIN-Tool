@@ -2,24 +2,28 @@
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 打开文档页面 -->
+    <!-- o.txt 第 15 条：原「打开文档浏览器」改为「打开文件管理器」——
+         走 uin://files 深链落到文件页（MainActivity 的 applyDeepLink 负责切页 + 全屏态）。
+         图标颜色由 ThemeShortcuts 在运行时按主题色重新发布动态快捷方式覆盖；
+         这里的 drawable 只是发布失败时的兜底。 -->
     <shortcut
-        android:shortcutId="open_docs"
+        android:shortcutId="open_files"
         android:enabled="true"
-        android:icon="@drawable/ic_document"
-        android:shortcutShortLabel="@string/shortcut_open_docs"
-        android:shortcutLongLabel="@string/shortcut_open_docs_long">
+        android:icon="@drawable/ic_shortcut_files"
+        android:shortcutShortLabel="@string/shortcut_open_files"
+        android:shortcutLongLabel="@string/shortcut_open_files_long">
         <intent
             android:action="android.intent.action.VIEW"
+            android:data="uin://files"
             android:targetPackage="com.UIN.Tool"
-            android:targetClass="com.UIN.Tool.ui.screen.docs.DocBrowserActivity" />
+            android:targetClass="com.UIN.Tool.MainActivity" />
     </shortcut>
 
     <!-- 打开终端会话 -->
     <shortcut
         android:shortcutId="open_terminal"
         android:enabled="true"
-        android:icon="@drawable/ic_terminal_prompt"
+        android:icon="@drawable/ic_shortcut_terminal"
         android:shortcutShortLabel="@string/shortcut_open_terminal"
         android:shortcutLongLabel="@string/shortcut_open_terminal_long">
         <intent
@@ -29,17 +33,18 @@
             android:name="android.shortcut.conversation" />
     </shortcut>
 
-    <!-- 打开后端运行设置 -->
+    <!-- o.txt 第 15 条：原「打开后端设置」改为「打开应用信息」——
+         由无界面的 ShortcutAppInfoActivity 转一手，打开系统设置里的本应用详情页。 -->
     <shortcut
-        android:shortcutId="open_backend_settings"
+        android:shortcutId="open_app_info"
         android:enabled="true"
-        android:icon="@drawable/ic_settings"
-        android:shortcutShortLabel="@string/shortcut_open_backend_settings"
-        android:shortcutLongLabel="@string/shortcut_open_backend_settings_long">
+        android:icon="@drawable/ic_shortcut_appinfo"
+        android:shortcutShortLabel="@string/shortcut_open_app_info"
+        android:shortcutLongLabel="@string/shortcut_open_app_info_long">
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.UIN.Tool"
-            android:targetClass="com.UIN.Tool.ui.screen.manage.BackendSettingsActivity" />
+            android:targetClass="com.UIN.Tool.ShortcutAppInfoActivity" />
     </shortcut>
 
     <!-- 打开代码编辑器（批次61：替换原「打开UI个性化」快捷方式。
@@ -49,7 +54,7 @@
     <shortcut
         android:shortcutId="open_code_editor"
         android:enabled="true"
-        android:icon="@drawable/ic_code"
+        android:icon="@drawable/ic_shortcut_code"
         android:shortcutShortLabel="@string/shortcut_open_editor"
         android:shortcutLongLabel="@string/shortcut_open_editor_long">
         <intent

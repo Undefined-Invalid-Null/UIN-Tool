@@ -10,7 +10,6 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
-import android.widget.Toast
 import com.UIN.Tool.R
 import com.UIN.Tool.data.local.FileManager
 import com.UIN.Tool.data.local.PreferenceManager
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.lang.ref.WeakReference
+import com.UIN.Tool.utils.AppToast
 
 class PluginManager private constructor(
     private val context: Context,
@@ -596,7 +596,7 @@ class PluginManager private constructor(
         Logger.action(TAG, Str.get(R.string.open_plugin), pluginId)
         val info = getPluginInfo(pluginId)
         if (info == null) {
-            Toast.makeText(context, Str.get(R.string.plugin_not_found_pluginid, pluginId), Toast.LENGTH_SHORT).show()
+            AppToast.show(context, Str.get(R.string.plugin_not_found_pluginid, pluginId))
             return
         }
 
@@ -1084,7 +1084,7 @@ class PluginManager private constructor(
                 val success = PluginBackendManager.startBackend(context, info)
                 val elapsed = System.currentTimeMillis() - startTime
                 val port = if (success) PluginBackendManager.getPort(pluginId) else 0
-                val error = if (success) null else Str.get(R.string.start_failed)
+                val error = if (success) null else (SharedSupervisor.lastError ?: Str.get(R.string.start_failed))
                 
                 Logger.d(TAG, Str.get(R.string.start_result_success_success_port_po, success, port, error, elapsed))
                 
@@ -1136,7 +1136,7 @@ class PluginManager private constructor(
                 val success = PluginBackendManager.startBackendInstance(context, info, key)
                 val elapsed = System.currentTimeMillis() - startTime
                 val port = if (success) PluginBackendManager.getPort(key) else 0
-                val error = if (success) null else Str.get(R.string.start_failed)
+                val error = if (success) null else (SharedSupervisor.lastError ?: Str.get(R.string.start_failed))
 
                 Logger.d(TAG, Str.get(R.string.start_result_success_success_port_po, success, port, error, elapsed))
 

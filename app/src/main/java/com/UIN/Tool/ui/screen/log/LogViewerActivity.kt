@@ -1,11 +1,14 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/log/LogViewerActivity.kt
 package com.UIN.Tool.ui.screen.log
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
+import com.UIN.Tool.MainActivity
 import com.UIN.Tool.ui.screen.log.LogViewerScreen
 import com.UIN.Tool.ui.theme.UINToolTheme
+import com.UIN.Tool.utils.AppLog
 import com.UIN.Tool.utils.CrashLogUtils
 
 class LogViewerActivity : AppCompatActivity() {
@@ -19,14 +22,34 @@ class LogViewerActivity : AppCompatActivity() {
         setContent {
             UINToolTheme {
                 LogViewerScreen(
-                    onBack = { finish() }
+                    onBack = { goBackToMainPage() }
                 )
             }
         }
     }
 
+    /**
+     * h.txt 第 8 条：闪退后直接拉起日志页时，崩溃处理里那次「先起 MainActivity」可能
+     * 被系统丢掉，任务栈里就只剩日志页 —— 此时返回会直接退出应用。
+     * 检测到自己就是根页面时，先补一个主界面再结束，保证返回键/左上角按钮都回到主页。
+     */
+    private fun goBackToMainPage() {
+        if (isTaskRoot) {
+            try {
+                startActivity(Intent(this, MainActivity::class.java))
+            } catch (e: Exception) {
+                AppLog.e(TAG, "start main from log page failed", e)
+            }
+        }
+        finish()
+    }
+
     override fun onBackPressed() {
-        super.onBackPressed()
+        goBackToMainPage()
         CrashLogUtils.clearNavigateFlag(this)
+    }
+
+    companion object {
+        private const val TAG = "LogViewerActivity"
     }
 }

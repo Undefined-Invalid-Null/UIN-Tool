@@ -212,18 +212,22 @@ fun UIConfigPreviewScreen(
                 CenterAlignedTopAppBar(
                     title = { Text("新拟态预览", fontSize = 18.sp) },
                     navigationIcon = {
-                        IconButton(onClick = {
+                        UnifiedIconButton(
+                            icon = Icons.Default.Menu,
+                            onClick = {
                             drawerScope.launch {
                                 if (drawerState.isClosed) drawerState.open() else drawerState.close()
                             }
-                        }) {
-                            Icon(Icons.Default.Menu, "菜单")
-                        }
+                        },
+                            contentDescription = "菜单",
+                        )
                     },
                     actions = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, "返回")
-                        }
+                        UnifiedIconButton(
+                            icon = Icons.Default.ArrowBack,
+                            onClick = onBack,
+                            contentDescription = "返回",
+                        )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
@@ -292,16 +296,16 @@ fun UIConfigPreviewContent(
             SectionHeader("按钮", textPrimary)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    NeuButtonDemo("主要", primaryColor, primaryLight, Color.White, neuIntensity, isDark, Modifier.weight(1f)) { }
-                    NeuButtonDemo("次要", surfaceColor.copy(alpha = 0.9f), surfaceColor.copy(alpha = 0.7f), textPrimary, neuIntensity, isDark, Modifier.weight(1f)) { }
+                    NeuButtonDemo("主要", primaryColor, primaryLight, primaryColor, neuIntensity, isDark, Modifier.weight(1f)) { }
+                    NeuButtonDemo("次要", textSecondary, textSecondary, textSecondary, neuIntensity, isDark, Modifier.weight(1f)) { }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlineButtonDemo("线框", primaryLight, textPrimary, Modifier.weight(1f)) { }
                     TextButtonDemo("文本", primaryLight, Modifier.weight(1f)) { }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    NeuButtonDemo("删除", Color(0xFFC0392B), errorColor, Color.White, neuIntensity, isDark, Modifier.weight(1f)) { }
-                    NeuButtonDemo("确认", successColor, Color(0xFF2ECC71), Color.White, neuIntensity, isDark, Modifier.weight(1f)) { }
+                    NeuButtonDemo("删除", Color(0xFFC0392B), errorColor, Color(0xFFC0392B), neuIntensity, isDark, Modifier.weight(1f)) { }
+                    NeuButtonDemo("确认", successColor, Color(0xFF2ECC71), successColor, neuIntensity, isDark, Modifier.weight(1f)) { }
                 }
             }
 
@@ -481,7 +485,14 @@ fun UIConfigPreviewContent(
                                 .graphicsLayer { scaleX = chipScale; scaleY = chipScale }
                                 .clip(RoundedCornerShape(20.dp))
                                 .then(
-                                    if (isActive) Modifier.background(diagonalGradient(listOf(primaryColor, primaryLight)))
+                                    if (isActive) Modifier
+                                        // k.txt 第 3 条：预览芯片也不铺底色，主色描边 + 主色文字。
+                                        .border(
+                                            width = 1.5.dp,
+                                            brush = diagonalGradient(listOf(primaryColor, primaryLight)),
+                                            shape = RoundedCornerShape(20.dp)
+                                        )
+                                        .background(surfaceColor, RoundedCornerShape(20.dp))
                                     else Modifier.neuRaised(RoundedCornerShape(20.dp), isDark, neuIntensity, backgroundColor = surfaceColor)
                                         .background(surfaceColor, RoundedCornerShape(20.dp))
                                 )
@@ -529,7 +540,7 @@ fun UIConfigPreviewContent(
                 var expanded1 by remember { mutableStateOf(false) }
                 Box {
                     DropdownTrigger("排序 ▾", surfaceColor, textPrimary, isDark, neuIntensity) { expanded1 = true }
-                    DropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
+                    UnifiedDropdownMenu(expanded = expanded1, onDismissRequest = { expanded1 = false }) {
                         listOf("名称 (A-Z)", "名称 (Z-A)", "修改日期").forEach {
                             DropdownMenuItem(text = { Text(it) }, onClick = { expanded1 = false })
                         }
@@ -539,7 +550,7 @@ fun UIConfigPreviewContent(
                 var expanded2 by remember { mutableStateOf(false) }
                 Box {
                     DropdownTrigger("操作 ▾", surfaceColor, textPrimary, isDark, neuIntensity) { expanded2 = true }
-                    DropdownMenu(expanded = expanded2, onDismissRequest = { expanded2 = false }) {
+                    UnifiedDropdownMenu(expanded = expanded2, onDismissRequest = { expanded2 = false }) {
                         listOf("备份", "恢复", "清除数据", "全部删除").forEach {
                             DropdownMenuItem(text = { Text(it) }, onClick = { expanded2 = false })
                         }
@@ -636,13 +647,13 @@ fun UIConfigPreviewContent(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ToastButton("成功 Toast", successColor, Color.White) {
+                    ToastButton("成功 Toast", successColor) {
                         AppToast.success(context, Str.get(R.string.plugin_install_success))
                     }
-                    ToastButton("错误 Toast", errorColor, Color.White) {
+                    ToastButton("错误 Toast", errorColor) {
                         AppToast.error(context, Str.get(R.string.connection_failed))
                     }
-                    ToastButton("信息 Toast", infoColor, Color.White) {
+                    ToastButton("信息 Toast", infoColor) {
                         AppToast.info(context, Str.get(R.string.update_available))
                     }
                 }
@@ -785,11 +796,16 @@ fun UIConfigPreviewContent(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(diagonalGradient(listOf(primaryColor, primaryLight)))
+                        // k.txt 第 3 条：预览也按全局口径 —— 文字 + 描边，不铺底色。
+                        .border(
+                            width = 1.5.dp,
+                            brush = diagonalGradient(listOf(primaryColor, primaryLight)),
+                            shape = RoundedCornerShape(12.dp)
+                        )
                         .clickable { }
                         .padding(horizontal = 24.dp, vertical = 10.dp)
                 ) {
-                    Text("浏览仓库", color = Color.White, fontSize = 14.sp)
+                    Text("浏览仓库", color = primaryColor, fontSize = 14.sp)
                 }
             }
 
@@ -874,6 +890,8 @@ fun UIConfigPreviewContent(
                     .fillMaxWidth()
                     .neuRaised(RoundedCornerShape(14.dp), isDark, neuIntensity, backgroundColor = surfaceColor)
                     .background(surfaceColor, RoundedCornerShape(14.dp))
+                    // h5：涟漪要跟着圆角，先 clip 再 clickable。
+                    .clip(RoundedCornerShape(14.dp))
                     .clickable { showBottomSheet = true }
                     .padding(14.dp),
                 contentAlignment = Alignment.Center
@@ -1228,12 +1246,17 @@ fun UIConfigPreviewContent(
                         .zIndex(3f)
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(diagonalGradient(listOf(primaryColor, primaryLight)))
+                        // k.txt 第 3 条：悬浮按钮预览同步成描边 + 主色符号。
+                        .border(
+                            width = 1.5.dp,
+                            brush = diagonalGradient(listOf(primaryColor, primaryLight)),
+                            shape = CircleShape
+                        )
                         .graphicsLayer { rotationZ = rotation }
                         .clickable { fabExpanded = !fabExpanded },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("⚙", color = Color.White, fontSize = 24.sp)
+                    Text("⚙", color = primaryColor, fontSize = 24.sp)
                 }
             }
 
@@ -1245,6 +1268,8 @@ fun UIConfigPreviewContent(
                     .fillMaxWidth()
                     .neuRaised(RoundedCornerShape(14.dp), isDark, neuIntensity, backgroundColor = surfaceColor)
                     .background(surfaceColor, RoundedCornerShape(14.dp))
+                    // h5：涟漪跟着圆角走。
+                    .clip(RoundedCornerShape(14.dp))
                     .clickable { showDialog = true }
                     .padding(14.dp),
                 contentAlignment = Alignment.Center
@@ -1320,7 +1345,12 @@ fun UIConfigPreviewContent(
                                         .graphicsLayer { scaleX = confirmScale; scaleY = confirmScale }
                                         .neuRaised(RoundedCornerShape(10.dp), isDark, neuIntensity, backgroundColor = Color.Transparent)
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(diagonalGradient(listOf(primaryColor, primaryLight)))
+                                        // k.txt 第 3 条：确认按钮同样只描边不着色。
+                                        .border(
+                                            width = 1.5.dp,
+                                            brush = diagonalGradient(listOf(primaryColor, primaryLight)),
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
                                         .pointerInput(Unit) {
                                             awaitEachGesture {
                                                 awaitFirstDown(requireUnconsumed = false)
@@ -1332,7 +1362,7 @@ fun UIConfigPreviewContent(
                                         .clickable { showDialog = false }
                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                 ) {
-                                    Text("确认", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                    Text("确认", color = primaryColor, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                                 }
                             }
                         }
@@ -1431,7 +1461,12 @@ private fun NeuButtonDemo(
                 else Modifier.neuRaised(RoundedCornerShape(12.dp), isDark, intensity, backgroundColor = Color.Transparent)
             )
             .clip(RoundedCornerShape(12.dp))
-            .background(diagonalGradient(listOf(startColor, endColor)))
+            // k.txt 第 3 条：预览按钮与真实 NeuButton 同步 —— 同色描边 + 同色文字。
+            .border(
+                width = 1.5.dp,
+                brush = diagonalGradient(listOf(startColor, endColor)),
+                shape = RoundedCornerShape(12.dp)
+            )
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -1742,7 +1777,7 @@ private fun ProgressDemo(
 }
 
 @Composable
-private fun ToastButton(text: String, bgColor: Color, textColor: Color, onClick: () -> Unit) {
+private fun ToastButton(text: String, color: Color, onClick: () -> Unit) {
     var isPressed by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val scale by animateFloatAsState(
@@ -1764,10 +1799,11 @@ private fun ToastButton(text: String, bgColor: Color, textColor: Color, onClick:
             }
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .clip(RoundedCornerShape(10.dp))
-            .background(bgColor)
+            // k.txt 第 3 条：预览 Toast 按钮也只描边 + 同色文字，不铺实心色块。
+            .border(1.5.dp, color, RoundedCornerShape(10.dp))
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        Text(text, color = textColor, fontSize = 13.sp)
+        Text(text, color = color, fontSize = 13.sp)
     }
 }
 
@@ -2068,9 +2104,14 @@ private fun PaginationBtn(
                 else Modifier.neuRaised(RoundedCornerShape(10.dp), isDark, intensity, backgroundColor = surfaceColor)
             )
             .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (active) diagonalGradient(listOf(primaryColor, primaryLight))
-                else Brush.linearGradient(listOf(surfaceColor, surfaceColor))
+            .background(surfaceColor, RoundedCornerShape(10.dp))
+            // k.txt 第 3 条：页码按钮选中态同样只描边不着色。
+            .then(
+                if (active) Modifier.border(
+                    width = 1.5.dp,
+                    brush = diagonalGradient(listOf(primaryColor, primaryLight)),
+                    shape = RoundedCornerShape(10.dp)
+                ) else Modifier
             )
             .pointerInput(isBtnEnabled) {
                 if (isBtnEnabled) {
@@ -2087,7 +2128,7 @@ private fun PaginationBtn(
     ) {
         Text(
             text,
-            color = if (active) Color.White else textColor,
+            color = if (active) primaryColor else textColor,
             fontSize = 12.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
         )

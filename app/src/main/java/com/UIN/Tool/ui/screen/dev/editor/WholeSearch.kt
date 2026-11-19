@@ -39,6 +39,13 @@ object WholeSearch {
     /** 结果收集上限：GB 级文件可能有百万匹配，面板列表只保留前 N 条带预览的行（总数照常全量统计）。 */
     const val MAX_RESULTS = 500
 
+    /**
+     * k.txt 第 9 条起「全部结果」页原本封顶 5 万条；m.txt 第 11 条（用户）要求把
+     * **所有**匹配都摆出来，因此上限已移除：调用方传 `fullLimit = Int.MAX_VALUE`
+     * 做一趟无界收集，结果页不再截断、也不再显示「已载入 N / 共 M」里的截断提示。
+     * 内存由行内预览按需加载与列表懒组合分摊，见 EditorViewModel 的预览节流。
+     */
+
     /** 批次53：**有界**收集窗口的并行护栏 —— workers×窗口上限超过该值就退回串行，防有界
      *  窗口被各块冗余收集撑爆（紧凑匹配 ≈ 40 字节/条）。批次57（用户）起结果页改为一趟
      *  无界全量收集 —— 各块只收自己分块、合并恰为全局总数、无冗余，不触发本护栏（见 scan）。 */
@@ -59,7 +66,15 @@ object WholeSearch {
         /** 选中长度（跨行匹配已夹到本行内；0 = 只定位不选中）。 */
         val length: Int,
         /** 行内上下文预览（控制字符压成空格，单行）。 */
-        val preview: String
+        val preview: String,
+        /**
+         * k.txt 第 9 条：该行行首在**页文本内的字符偏移**。
+         *
+         * 全量结果页按需生成预览时，旧实现从页首逐字符走到目标行 —— 整读单页的
+         * 大文件里每行都要走完整份文本，滚动一次几十行就是把整档扫几十遍，界面
+         * 因此长时间停在「…」。记下行首偏移后预览是 O(行内容) 而不是 O(页大小)。
+         */
+        val lineOffset: Int = 0
     )
 
     /** 扫描结果：matches 仅在 collect=true 时收集；boundary = 跨页界匹配数（不进列表）。 */
@@ -68,7 +83,7 @@ object WholeSearch {
         val total: Int,
         val truncated: Boolean,
         val boundary: Int,
-        /** 批次53：全量结果窗口的紧凑匹配（[WholeMatch.preview] 留空；fullLimit=0 时恒空）。 */
+        /** 批次53：全量结果窗口的匹配（k.txt 第 9 条起随扫描生成行内预览；fullLimit=0 时恒空）。 */
         val full: List<WholeMatch> = emptyList()
     )
 
@@ -149,7 +164,15 @@ object WholeSearch {
         onProgress: (Int, Int) -> Unit,
         previewLimit: Int = MAX_RESULTS,
         fullFrom: Int = 0,
-        fullLimit: Int = 0
+        fullLimit: Int = 0,
+        /**
+         * k.txt 第 9 条：全量窗口条目在扫描时**一并生成行内预览**。
+         *
+         * m.txt 第 11 条起结果页不再封顶，但调用方仍传 `false`：全部匹配可能有
+         * 几十万条，逐条生成预览会在搜索结束时堆出大片内存。预览改为结果页按
+         * 可见窗口按需生成（EditorViewModel 的节流发布），滑动到哪补到哪。
+         */
+        withFullPreview: Boolean = true
     ): ScanResult {
         if (query.isEmpty() || pageCount <= 0) return ScanResult(emptyList(), 0, false, 0)
         val rx = compile(query, caseSensitive, wholeWord, regex)
@@ -168,18 +191,28 @@ object WholeSearch {
             (fullFrom.toLong() + fullLimit.toLong()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         else 0
         val parts = if (workers <= 1) {
-            // 单线程路径：进度口径与旧版一致（每页最多一次、百分比变化才触发）。
+            // 单线程路径：进度口径 = 已完成页 + 当前页扫描到的字符比例。
+            // k.txt 第 9 条：普通文件是「整读单页」（pageCount=1），旧口径只有页
+            // 完成时才会回调一次 → 进度从 0 直接跳到 100。现在匹配扫到哪就报到哪。
             var lastPercent = -1
             var acc = 0
+            var pagesDone = 0
             listOf(
-                scanRange(0, pageCount, pageCount, pageText, lineBase, query, caseSensitive, literal, rx, collect, previewLimit, fullCap) { done, found ->
+                scanRange(0, pageCount, pageCount, pageText, lineBase, query, caseSensitive, literal, rx, collect, previewLimit, fullCap, withFullPreview, { fraction ->
+                    val pct = ((pagesDone.toLong() * 100L + fraction) / pageCount).toInt()
+                    if (pct != lastPercent) {
+                        lastPercent = pct
+                        onProgress(pct, acc)
+                    }
+                }, { done, found ->
                     acc += found
+                    pagesDone = done
                     val pct = done * 100 / pageCount
                     if (pct != lastPercent) {
                         lastPercent = pct
                         onProgress(pct, acc)
                     }
-                }
+                })
             )
         } else {
             val chunk = (pageCount + workers - 1) / workers
@@ -193,7 +226,7 @@ object WholeSearch {
                     val to = minOf(pageCount, from + chunk)
                     if (from >= to) null
                     else async(Dispatchers.IO) {
-                        scanRange(from, to, pageCount, pageText, lineBase, query, caseSensitive, literal, rx, collect, previewLimit, fullCap) { _, found ->
+                        scanRange(from, to, pageCount, pageText, lineBase, query, caseSensitive, literal, rx, collect, previewLimit, fullCap, withFullPreview) { _, found ->
                             val done = pagesDone.incrementAndGet()
                             val sum = foundSoFar.addAndGet(found)
                             val pct = done * 100 / pageCount
@@ -219,7 +252,14 @@ object WholeSearch {
         // 百万级列表上是白白翻三倍的瞬时堆。
         val fullResult = if (fullLimit <= 0) emptyList()
         else if (fullFrom == 0 && fullLimit >= fullMerged.size) fullMerged
-        else fullMerged.drop(fullFrom).take(fullLimit)
+        else {
+            // 一次 subList + 复制，避免 drop(0).take(N) 连续复制两份（结果上限生效时
+            // 合并列表可能远大于 N，那两次复制正是「搜索完成瞬间」的堆尖峰）。
+            val end = (fullFrom.toLong() + fullLimit.toLong())
+                .coerceAtMost(fullMerged.size.toLong()).toInt()
+            val start = fullFrom.coerceIn(0, end)
+            ArrayList(fullMerged.subList(start, end))
+        }
         return ScanResult(result, total, total > result.size, parts.sumOf { it.boundary }, fullResult)
     }
 
@@ -229,8 +269,8 @@ object WholeSearch {
      * **每页只取一次**：next 复用为下一轮的 cur（旧实现每页读两遍、解码两遍）。
      * [onPageDone] 在每页扫完后回调 (全局已完页数, 本页新命中数)。
      *
-     * 批次53：同时维护两个收集窗口 —— 面板预览（前 previewLimit 条带预览）与全量紧凑
-     * （前 fullCap 条 preview 留空）；行内回溯游标两者共用，只前进一次。
+     * 批次53：同时维护两个收集窗口 —— 面板预览（前 previewLimit 条带预览）与全量窗口
+     *（前 fullCap 条，[withFullPreview] 决定是否同时生成行内预览）；行内回溯游标两者共用，只前进一次。
      */
     private suspend fun scanRange(
         from: Int,
@@ -245,6 +285,11 @@ object WholeSearch {
         collect: Boolean,
         previewLimit: Int,
         fullCap: Int,
+        withFullPreview: Boolean,
+        /** 当前页扫描到的字符比例（0..100）；仅单线程路径需要，用于页内实时进度。 */
+        onPageFraction: ((Int) -> Unit)? = null,
+        /** 每页扫完后回调 (全局已完页数, 本页新命中数)。**必须是最后一个参数**：
+         *  并行路径用尾随 lambda 传它，若它后面还有无默认值的参数会编译不过。 */
         onPageDone: (Int, Int) -> Unit
     ): RangeScan {
         val matches = ArrayList<WholeMatch>()
@@ -252,8 +297,20 @@ object WholeSearch {
         var total = 0
         var boundary = 0
         var cur = pageText(from)
+        var lastFraction = -1
+        fun reportFraction(pos: Int) {
+            val cb = onPageFraction ?: return
+            if (cur.isEmpty()) return
+            val frac = (pos.toLong() * 100L / cur.length).toInt().coerceIn(0, 100)
+            if (frac != lastFraction) {
+                lastFraction = frac
+                cb(frac)
+            }
+        }
         for (i in from until to) {
             currentCoroutineContext().ensureActive()
+            lastFraction = -1
+            reportFraction(0)
             val pageBefore = total
             val next = if (i + 1 < pageCount) pageText(i + 1) else ""
             // 页内行号回溯游标（只前进：匹配按起点有序）。
@@ -282,6 +339,7 @@ object WholeSearch {
             if (literal) {
                 var idx = extended.indexOf(query, 0, !caseSensitive)
                 while (idx >= 0) {
+                    reportFraction(idx)
                     if (idx < cur.length) {
                         val end = idx + query.length
                         if (end > cur.length) {
@@ -294,7 +352,7 @@ object WholeSearch {
                                     matches.add(makeMatch(cur, i, walkLine, idx, lineStart, query.length, lineBase = lineBase))
                                 }
                                 if (full.size < fullCap) {
-                                    full.add(makeMatch(cur, i, walkLine, idx, lineStart, query.length, withPreview = false, lineBase = lineBase))
+                                    full.add(makeMatch(cur, i, walkLine, idx, lineStart, query.length, withPreview = withFullPreview, lineBase = lineBase))
                                 }
                             }
                         }
@@ -304,6 +362,7 @@ object WholeSearch {
             } else {
                 for (m in rx!!.findAll(extended)) {
                     val start = m.range.first
+                    reportFraction(start)
                     if (start >= cur.length) break // 后续起点都在下一页，由下一轮负责
                     val end = m.range.last + 1
                     if (end > cur.length) {
@@ -318,7 +377,7 @@ object WholeSearch {
                             matches.add(makeMatch(cur, i, walkLine, start, lineStart, len, lineBase = lineBase))
                         }
                         if (full.size < fullCap) {
-                            full.add(makeMatch(cur, i, walkLine, start, lineStart, len, withPreview = false, lineBase = lineBase))
+                            full.add(makeMatch(cur, i, walkLine, start, lineStart, len, withPreview = withFullPreview, lineBase = lineBase))
                         }
                     }
                 }
@@ -625,7 +684,8 @@ object WholeSearch {
     }
 
     /** 生成结果项：行内预览 = 匹配前后各 ≤24 字符，控制字符压成空格，截断侧补省略号。
-     *  批次53：[withPreview]=false 时预览留空（全量窗口的紧凑项，预览由结果页按需 [previewFor] 生成）。 */
+     *  k.txt 第 9 条：[withPreview]=false 仅用于不需要预览的内部路径；全量结果窗口
+     *  默认一并生成预览，避免结果页按需读页追不上滚动。 */
     private fun makeMatch(
         cur: String,
         page0: Int,
@@ -643,7 +703,8 @@ object WholeSearch {
             absLine = lineBase(page0) + inPageLine + 1,
             column = start - lineStart,
             length = length,
-            preview = if (withPreview) buildPreview(cur, lineStart, start, length) else ""
+            preview = if (withPreview) buildPreview(cur, lineStart, start, length) else "",
+            lineOffset = lineStart
         )
     }
 
@@ -673,11 +734,39 @@ object WholeSearch {
             } else i++
         }
         if (line < inPageLine) return "" // 文档已变小，行不存在
+        return previewAt(text, lineStart, column, length)
+    }
+
+    /**
+     * k.txt 第 9 条：已知行首偏移时**直接**取预览，不再从页首逐行走到目标行。
+     *
+     * 全量结果页一次可见几十行，整读单页的大文件旧实现每行都要 O(整档)；改成
+     * O(行内容) 后滚动翻结果不再卡成「…」。
+     */
+    fun previewAt(text: String, lineOffset: Int, column: Int, length: Int): String {
+        if (text.isEmpty() || lineOffset < 0 || column < 0) return ""
+        var lineStart = lineOffset.coerceIn(0, text.length)
+        // 偏移来自同一份页快照；万一文档已变短，夹回最后一个可用位置。
+        if (lineStart > 0 && lineStart >= text.length) lineStart = text.length
         var lineEnd = lineStart
         while (lineEnd < text.length && text[lineEnd] != '\n' && text[lineEnd] != '\r') lineEnd++
         val start = (lineStart + column).coerceAtMost(lineEnd)
         val len = length.coerceIn(0, lineEnd - start)
         return buildPreview(text, lineStart, start, len)
+    }
+
+    /**
+     * l.txt 第 13 条：已知行首偏移时取**完整一行**（不截断）。
+     *
+     * 全量结果页每行可横向滑动查看整行、长按复制整行 —— 预览用的 24 字符上下文
+     * 不够，这里直接取到行尾；控制字符压成空格，保证复制出来不是一堆不可见字符。
+     */
+    fun lineAt(text: String, lineOffset: Int): String {
+        if (text.isEmpty() || lineOffset < 0) return ""
+        val lineStart = lineOffset.coerceIn(0, text.length)
+        var lineEnd = lineStart
+        while (lineEnd < text.length && text[lineEnd] != '\n' && text[lineEnd] != '\r') lineEnd++
+        return text.substring(lineStart, lineEnd).replace(CONTROL, " ")
     }
 
     /** 行内预览的共用构建（匹配前后各 ≤24 字符，控制字符压空格，截断侧补省略号）。 */

@@ -3,157 +3,285 @@
     {
       "grammar": "textmate/bat/syntaxes/batchfile.tmLanguage.json",
       "name": "bat",
-      "scopeName": "source.batch"
+      "scopeName": "source.batch",
+      "extensions": [
+        "bat",
+        "cmd"
+      ]
     },
     {
       "grammar": "textmate/clojure/syntaxes/clojure.tmLanguage.json",
       "name": "clojure",
-      "scopeName": "source.clojure"
+      "scopeName": "source.clojure",
+      "extensions": [
+        "clj",
+        "cljs",
+        "cljc",
+        "edn"
+      ]
     },
     {
       "grammar": "textmate/coffeescript/syntaxes/coffeescript.tmLanguage.json",
       "name": "coffeescript",
-      "scopeName": "source.coffee"
+      "scopeName": "source.coffee",
+      "extensions": [
+        "coffee",
+        "litcoffee"
+      ]
     },
     {
       "grammar": "textmate/cpp/syntaxes/cpp.tmLanguage.json",
       "name": "cpp",
-      "scopeName": "source.cpp"
+      "scopeName": "source.cpp",
+      "extensions": [
+        "cpp",
+        "cc",
+        "cxx",
+        "hpp",
+        "hh",
+        "hxx"
+      ]
     },
     {
       "grammar": "textmate/csharp/syntaxes/csharp.tmLanguage.json",
       "name": "csharp",
-      "scopeName": "source.cs"
+      "scopeName": "source.cs",
+      "extensions": [
+        "cs",
+        "csx"
+      ]
     },
     {
       "grammar": "textmate/css/syntaxes/css.tmLanguage.json",
       "name": "css",
-      "scopeName": "source.css"
+      "scopeName": "source.css",
+      "extensions": [
+        "css"
+      ]
     },
     {
       "grammar": "textmate/dart/syntaxes/dart.tmLanguage.json",
       "name": "dart",
-      "scopeName": "source.dart"
+      "scopeName": "source.dart",
+      "extensions": [
+        "dart"
+      ]
     },
     {
       "grammar": "textmate/diff/syntaxes/diff.tmLanguage.json",
       "name": "diff",
-      "scopeName": "source.diff"
+      "scopeName": "source.diff",
+      "extensions": [
+        "diff",
+        "patch"
+      ]
     },
     {
       "grammar": "textmate/dockerfile/syntaxes/dockerfile.tmLanguage.json",
       "name": "dockerfile",
-      "scopeName": "source.dockerfile"
+      "scopeName": "source.dockerfile",
+      "extensions": [
+        "dockerfile"
+      ]
     },
     {
       "grammar": "textmate/dotenv/syntaxes/dotenv.tmLanguage.json",
       "name": "dotenv",
-      "scopeName": "source.dotenv"
+      "scopeName": "source.dotenv",
+      "extensions": [
+        "env",
+        "dotenv"
+      ]
     },
     {
       "grammar": "textmate/fsharp/syntaxes/fsharp.tmLanguage.json",
       "name": "fsharp",
-      "scopeName": "source.fsharp"
+      "scopeName": "source.fsharp",
+      "extensions": [
+        "fs",
+        "fsx",
+        "fsi"
+      ]
     },
     {
       "grammar": "textmate/go/syntaxes/go.tmLanguage.json",
       "name": "go",
-      "scopeName": "source.go"
+      "scopeName": "source.go",
+      "extensions": [
+        "go"
+      ]
     },
     {
       "grammar": "textmate/groovy/syntaxes/groovy.tmLanguage.json",
       "name": "groovy",
-      "scopeName": "source.groovy"
+      "scopeName": "source.groovy",
+      "extensions": [
+        "groovy",
+        "gradle",
+        "gvy"
+      ]
     },
     {
       "grammar": "textmate/handlebars/syntaxes/Handlebars.tmLanguage.json",
       "name": "handlebars",
-      "scopeName": "text.html.handlebars"
+      "scopeName": "text.html.handlebars",
+      "extensions": [
+        "hbs",
+        "handlebars"
+      ]
     },
     {
       "grammar": "textmate/hlsl/syntaxes/hlsl.tmLanguage.json",
       "name": "hlsl",
-      "scopeName": "source.hlsl"
+      "scopeName": "source.hlsl",
+      "extensions": [
+        "hlsl"
+      ]
     },
     {
       "grammar": "textmate/html/syntaxes/html.tmLanguage.json",
       "name": "html",
-      "scopeName": "text.html.basic"
+      "scopeName": "text.html.basic",
+      "extensions": [
+        "html",
+        "htm",
+        "xhtml",
+        "shtml"
+      ]
     },
     {
       "grammar": "textmate/ini/syntaxes/ini.tmLanguage.json",
       "name": "ini",
-      "scopeName": "source.ini"
+      "scopeName": "source.ini",
+      "extensions": [
+        "ini",
+        "cfg",
+        "properties"
+      ]
     },
     {
       "grammar": "textmate/java/syntaxes/java.tmLanguage.json",
       "name": "java",
-      "scopeName": "source.java"
+      "scopeName": "source.java",
+      "extensions": [
+        "java"
+      ]
     },
     {
       "grammar": "textmate/javascript/syntaxes/JavaScript.tmLanguage.json",
       "name": "javascript",
-      "scopeName": "source.js"
+      "scopeName": "source.js",
+      "extensions": [
+        "js",
+        "mjs",
+        "cjs"
+      ]
     },
     {
       "grammar": "textmate/json/syntaxes/JSON.tmLanguage.json",
       "name": "json",
-      "scopeName": "source.json"
+      "scopeName": "source.json",
+      "extensions": [
+        "json"
+      ]
     },
     {
       "grammar": "textmate/julia/syntaxes/julia.tmLanguage.json",
       "name": "julia",
-      "scopeName": "source.julia"
+      "scopeName": "source.julia",
+      "extensions": [
+        "jl"
+      ]
     },
     {
       "grammar": "textmate/latex/syntaxes/LaTeX.tmLanguage.json",
       "name": "latex",
-      "scopeName": "text.tex.latex"
+      "scopeName": "text.tex.latex",
+      "extensions": [
+        "tex",
+        "latex",
+        "ltx"
+      ]
     },
     {
       "grammar": "textmate/less/syntaxes/less.tmLanguage.json",
       "name": "less",
-      "scopeName": "source.less"
+      "scopeName": "source.less",
+      "extensions": [
+        "less"
+      ]
     },
     {
       "grammar": "textmate/log/syntaxes/log.tmLanguage.json",
       "name": "log",
-      "scopeName": "source.log"
+      "scopeName": "source.log",
+      "extensions": [
+        "log"
+      ]
     },
     {
       "grammar": "textmate/lua/syntaxes/lua.tmLanguage.json",
       "name": "lua",
-      "scopeName": "source.lua"
+      "scopeName": "source.lua",
+      "extensions": [
+        "lua"
+      ]
     },
     {
       "grammar": "textmate/make/syntaxes/make.tmLanguage.json",
       "name": "make",
-      "scopeName": "source.makefile"
+      "scopeName": "source.makefile",
+      "extensions": [
+        "mk",
+        "makefile"
+      ]
     },
     {
       "grammar": "textmate/markdown/syntaxes/markdown.tmLanguage.json",
       "name": "markdown",
-      "scopeName": "text.html.markdown"
+      "scopeName": "text.html.markdown",
+      "extensions": [
+        "md",
+        "markdown",
+        "mdown",
+        "mkd"
+      ]
     },
     {
       "grammar": "textmate/objective-c/syntaxes/objective-c.tmLanguage.json",
       "name": "objective-c",
-      "scopeName": "source.objc"
+      "scopeName": "source.objc",
+      "extensions": [
+        "m"
+      ]
     },
     {
       "grammar": "textmate/perl/syntaxes/perl.tmLanguage.json",
       "name": "perl",
-      "scopeName": "source.perl"
+      "scopeName": "source.perl",
+      "extensions": [
+        "pl",
+        "pm"
+      ]
     },
     {
       "grammar": "textmate/php/syntaxes/php.tmLanguage.json",
       "name": "php",
-      "scopeName": "source.php"
+      "scopeName": "source.php",
+      "extensions": [
+        "php",
+        "phtml"
+      ]
     },
     {
       "grammar": "textmate/powershell/syntaxes/powershell.tmLanguage.json",
       "name": "powershell",
-      "scopeName": "source.powershell"
+      "scopeName": "source.powershell",
+      "extensions": [
+        "ps1",
+        "psm1",
+        "psd1"
+      ]
     },
     {
       "grammar": "textmate/prompt-basics/syntaxes/prompt.tmLanguage.json",
@@ -163,42 +291,72 @@
     {
       "grammar": "textmate/pug/syntaxes/pug.tmLanguage.json",
       "name": "pug",
-      "scopeName": "source.pug"
+      "scopeName": "source.pug",
+      "extensions": [
+        "pug",
+        "jade"
+      ]
     },
     {
       "grammar": "textmate/python/syntaxes/Python.tmLanguage.json",
       "name": "python",
-      "scopeName": "source.python"
+      "scopeName": "source.python",
+      "extensions": [
+        "py",
+        "pyw",
+        "pyi"
+      ]
     },
     {
       "grammar": "textmate/r/syntaxes/r.tmLanguage.json",
       "name": "r",
-      "scopeName": "source.r"
+      "scopeName": "source.r",
+      "extensions": [
+        "r"
+      ]
     },
     {
       "grammar": "textmate/razor/syntaxes/cshtml.tmLanguage.json",
       "name": "razor",
-      "scopeName": "source.razor"
+      "scopeName": "source.razor",
+      "extensions": [
+        "razor",
+        "cshtml"
+      ]
     },
     {
       "grammar": "textmate/restructuredtext/syntaxes/rst.tmLanguage.json",
       "name": "restructuredtext",
-      "scopeName": "source.rst"
+      "scopeName": "source.rst",
+      "extensions": [
+        "rst"
+      ]
     },
     {
       "grammar": "textmate/ruby/syntaxes/ruby.tmLanguage.json",
       "name": "ruby",
-      "scopeName": "source.ruby"
+      "scopeName": "source.ruby",
+      "extensions": [
+        "rb",
+        "rake",
+        "gemspec"
+      ]
     },
     {
       "grammar": "textmate/rust/syntaxes/rust.tmLanguage.json",
       "name": "rust",
-      "scopeName": "source.rust"
+      "scopeName": "source.rust",
+      "extensions": [
+        "rs"
+      ]
     },
     {
       "grammar": "textmate/scss/syntaxes/scss.tmLanguage.json",
       "name": "scss",
-      "scopeName": "source.scss"
+      "scopeName": "source.scss",
+      "extensions": [
+        "scss"
+      ]
     },
     {
       "grammar": "textmate/search-result/syntaxes/searchResult.tmLanguage.json",
@@ -208,42 +366,76 @@
     {
       "grammar": "textmate/shaderlab/syntaxes/shaderlab.tmLanguage.json",
       "name": "shaderlab",
-      "scopeName": "source.shaderlab"
+      "scopeName": "source.shaderlab",
+      "extensions": [
+        "shader"
+      ]
     },
     {
       "grammar": "textmate/shellscript/syntaxes/shell-unix-bash.tmLanguage.json",
       "name": "shellscript",
-      "scopeName": "source.shell"
+      "scopeName": "source.shell",
+      "extensions": [
+        "sh",
+        "bash",
+        "zsh",
+        "fish",
+        "ksh"
+      ]
     },
     {
       "grammar": "textmate/sql/syntaxes/sql.tmLanguage.json",
       "name": "sql",
-      "scopeName": "source.sql"
+      "scopeName": "source.sql",
+      "extensions": [
+        "sql"
+      ]
     },
     {
       "grammar": "textmate/swift/syntaxes/swift.tmLanguage.json",
       "name": "swift",
-      "scopeName": "source.swift"
+      "scopeName": "source.swift",
+      "extensions": [
+        "swift"
+      ]
     },
     {
       "grammar": "textmate/typescript-basics/syntaxes/TypeScript.tmLanguage.json",
       "name": "typescript-basics",
-      "scopeName": "source.ts"
+      "scopeName": "source.ts",
+      "extensions": [
+        "ts",
+        "mts",
+        "cts"
+      ]
     },
     {
       "grammar": "textmate/vb/syntaxes/asp-vb-net.tmLanguage.json",
       "name": "vb",
-      "scopeName": "source.vb"
+      "scopeName": "source.vb",
+      "extensions": [
+        "vb",
+        "vbs"
+      ]
     },
     {
       "grammar": "textmate/xml/syntaxes/xml.tmLanguage.json",
       "name": "xml",
-      "scopeName": "text.xml"
+      "scopeName": "text.xml",
+      "extensions": [
+        "xml",
+        "xsd",
+        "dtd"
+      ]
     },
     {
       "grammar": "textmate/yaml/syntaxes/yaml-1.2.tmLanguage.json",
       "name": "yaml",
-      "scopeName": "source.yaml"
+      "scopeName": "source.yaml",
+      "extensions": [
+        "yaml",
+        "yml"
+      ]
     },
     {
       "grammar": "textmate/brainfuck/syntaxes/brainfuck.tmLanguage.json",
@@ -257,7 +449,10 @@
     {
       "grammar": "textmate/cpp/syntaxes/c.tmLanguage.json",
       "name": "cpp",
-      "scopeName": "source.c"
+      "scopeName": "source.c",
+      "extensions": [
+        "c"
+      ]
     },
     {
       "grammar": "textmate/cpp/syntaxes/cpp.embedded.macro.tmLanguage.json",
@@ -286,12 +481,20 @@
     {
       "grammar": "textmate/elixir/syntaxes/elixir.tmLanguage.json",
       "name": "elixir",
-      "scopeName": "source.elixir"
+      "scopeName": "source.elixir",
+      "extensions": [
+        "ex",
+        "exs"
+      ]
     },
     {
       "grammar": "textmate/erlang/syntaxes/erlang.tmLanguage.json",
       "name": "erlang",
-      "scopeName": "source.erlang"
+      "scopeName": "source.erlang",
+      "extensions": [
+        "erl",
+        "hrl"
+      ]
     },
     {
       "grammar": "textmate/gitignore/syntaxes/ignore.tmLanguage.json",
@@ -299,7 +502,8 @@
       "scopeName": "text.ignore",
       "extensions": [
         "gitignore",
-        "npmignore"
+        "npmignore",
+        "dockerignore"
       ]
     },
     {
@@ -315,7 +519,11 @@
     {
       "grammar": "textmate/haskell/syntaxes/haskell.tmLanguage.json",
       "name": "haskell",
-      "scopeName": "source.haskell"
+      "scopeName": "source.haskell",
+      "extensions": [
+        "hs",
+        "lhs"
+      ]
     },
     {
       "grammar": "textmate/html/syntaxes/html-derivative.tmLanguage.json",
@@ -350,7 +558,11 @@
     {
       "grammar": "textmate/kotlin/syntaxes/Kotlin.tmLanguage",
       "name": "kotlin",
-      "scopeName": "source.kotlin"
+      "scopeName": "source.kotlin",
+      "extensions": [
+        "kt",
+        "kts"
+      ]
     },
     {
       "grammar": "textmate/latex/syntaxes/Bibtex.tmLanguage.json",
@@ -421,7 +633,10 @@
     {
       "grammar": "textmate/objective-c/syntaxes/objective-c++.tmLanguage.json",
       "name": "objective-c",
-      "scopeName": "source.objcpp"
+      "scopeName": "source.objcpp",
+      "extensions": [
+        "mm"
+      ]
     },
     {
       "grammar": "textmate/perl/syntaxes/perl6.tmLanguage.json",
@@ -474,7 +689,10 @@
     {
       "grammar": "textmate/typescript-basics/syntaxes/TypeScriptReact.tmLanguage.json",
       "name": "typescript-basics",
-      "scopeName": "source.tsx"
+      "scopeName": "source.tsx",
+      "extensions": [
+        "tsx"
+      ]
     },
     {
       "grammar": "textmate/viml/syntaxes/viml.tmLanguage.json",
@@ -491,7 +709,11 @@
     {
       "grammar": "textmate/xml/syntaxes/xsl.tmLanguage.json",
       "name": "xml",
-      "scopeName": "text.xml.xsl"
+      "scopeName": "text.xml.xsl",
+      "extensions": [
+        "xsl",
+        "xslt"
+      ]
     },
     {
       "grammar": "textmate/yaml/syntaxes/yaml-1.0.tmLanguage.json",
@@ -525,6 +747,92 @@
       "extensions": [
         "zig",
         "zon"
+      ]
+    },
+    {
+      "grammar": "textmate/csv/syntaxes/csv.tmLanguage.json",
+      "name": "csv",
+      "scopeName": "text.csv",
+      "extensions": [
+        "csv",
+        "tsv"
+      ]
+    },
+    {
+      "grammar": "textmate/lrc/syntaxes/lrc.tmLanguage.json",
+      "name": "lrc",
+      "scopeName": "text.lrc",
+      "extensions": [
+        "lrc"
+      ]
+    },
+    {
+      "grammar": "textmate/cmake/syntaxes/cmake.tmLanguage.json",
+      "name": "cmake",
+      "scopeName": "source.cmake",
+      "extensions": [
+        "cmake"
+      ]
+    },
+    {
+      "grammar": "textmate/nginx/syntaxes/nginx.tmLanguage.json",
+      "name": "nginx",
+      "scopeName": "source.nginx",
+      "extensions": [
+        "nginx",
+        "ngx"
+      ]
+    },
+    {
+      "grammar": "textmate/asm/syntaxes/asm.tmLanguage.json",
+      "name": "asm",
+      "scopeName": "source.asm.x86_64",
+      "extensions": [
+        "asm",
+        "nasm",
+        "yasm",
+        "s"
+      ]
+    },
+    {
+      "grammar": "textmate/glsl/syntaxes/glsl.tmLanguage.json",
+      "name": "glsl",
+      "scopeName": "source.glsl",
+      "extensions": [
+        "glsl",
+        "vert",
+        "frag",
+        "geom",
+        "vsh",
+        "fsh",
+        "gsh",
+        "vshader",
+        "fshader",
+        "gshader"
+      ]
+    },
+    {
+      "grammar": "textmate/vue/syntaxes/vue.tmLanguage.json",
+      "name": "vue",
+      "scopeName": "text.html.vue",
+      "extensions": [
+        "vue"
+      ]
+    },
+    {
+      "grammar": "textmate/qml/syntaxes/qml.tmLanguage.json",
+      "name": "qml",
+      "scopeName": "source.qml",
+      "extensions": [
+        "qml"
+      ]
+    },
+    {
+      "grammar": "textmate/svelte/syntaxes/svelte.tmLanguage.json",
+      "name": "svelte",
+      "scopeName": "source.svelte",
+      "extensions": [
+        "svelte"
       ]
     }
   ]

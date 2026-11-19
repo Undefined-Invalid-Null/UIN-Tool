@@ -25,6 +25,10 @@
     <!-- ==================== 下载相关权限 ==================== -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 后台保活页「未授予，点此申请」要发 ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS。
+         这是 normal 权限，装机即给；**没声明时系统直接不理会这个 intent**，
+         表现就是点了没有任何反应（反馈 e26）。 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- ==================== 相机/麦克风权限 ==================== -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -132,6 +136,21 @@
             android:exported="true"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
+        <!-- ==================== 内置文件选择器（m.txt 第 7 条） ==================== -->
+        <!-- 只在本应用内部用：导入/导出/另存为一律走它，不再调系统 GetContent /
+             OpenDocument / CreateDocument。返回的 content:// 由下面的 provider
+             提供真实读写，URI 里带着绝对路径，进程重启后仍可用。 -->
+        <activity
+            android:name=".ui.screen.files.InAppFilePickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/file_picker_pick_file" />
+        <provider
+            android:name=".ui.screen.files.InAppPickerProvider"
+            android:authorities="${applicationId}.inapppicker"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <!-- ==================== 启动Activity ==================== -->
         <activity
             android:name=".SplashActivity"
@@ -167,9 +186,10 @@
             android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.UIN.Tool"
+            android:theme="@style/Theme.UIN.Tool.Launch"
             android:launchMode="singleTask"
-            android:alwaysRetainTaskState="true">
+            android:alwaysRetainTaskState="true"
+            android:configChanges="uiMode|locale|layoutDirection">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -182,7 +202,25 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="uin" android:host="check_update" />
             </intent-filter>
+            <!-- 4.16 / N8：定位到所在位置。BROWSABLE = 浏览器里点链接也能进（安全面，
+                 不带 OPENABLE、不碰权限），落到本 Activity 后由 applyDeepLink 解析
+                 `?path=<目录>&file=<文件绝对路径>` 再切文件页跳转高亮。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="uin" android:host="files" />
+            </intent-filter>
         </activity>
+
+        <!-- o.txt 第 15 条：快捷方式「打开应用信息」的中转页。无界面，拉起系统设置里的
+             本应用详情页后立刻 finish；由系统 LauncherAppsService 代为启动，无需 exported。 -->
+        <activity
+            android:name=".ShortcutAppInfoActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- ==================== 分享 / 「用其他应用打开」中转页（C-11） ==================== -->
         <!-- 该页 584 行实现完整、文档（docs/*/README.md）也已宣称下列 Intent-filter，
@@ -215,17 +253,36 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
-            <!-- 「用其他应用打开」文件（与文档一致，不含 */* 通配） -->
+            <!-- 「用其他应用打开」文件 —— **6.3.0 M5 §4.6：这里现在是全应用唯一的对外 VIEW 入口**。
+                 原本「打开方式」里有**两个** UIN Tool 图标（本中转页 + 代码编辑器），因为编辑器
+                 另挂了两组隐式 VIEW filter。现把那两组**原样迁到这里**（编辑器侧已删），
+                 并按批次53 验证过的结构**互补覆盖**：
+                 ① 带 `*/*` —— 文件管理器发起的 VIEW 几乎总带 MIME（text/plain、
+                    application/octet-stream…），通配部分能命中任意非空 type；
+                 ② 裸 scheme（不声明 mimeType）—— 兜 type == null 的 VIEW。
+                 两组都补 `scheme=content/file` + `OPENABLE`：本页原本**只声明 mimeType、
+                 未声明 scheme**，带 `content://` 的 VIEW 会因缺 scheme 而匹配不上，
+                 实际只有 SEND / SEND_MULTIPLE 命中 —— 这正是批次53 同款坑。
+                 OPENABLE 是文件管理器常附带的类别；多声明类别无副作用（Intent 的类别集
+                 是过滤器类别集的子集即可匹配）。 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/*" />
-                <data android:mimeType="audio/*" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="message/*" />
-                <data android:mimeType="multipart/*" />
-                <data android:mimeType="text/*" />
-                <data android:mimeType="video/*" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.OPENABLE" />
+
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <category android:name="android.intent.category.OPENABLE" />
+
+                <data android:scheme="content" />
+                <data android:scheme="file" />
             </intent-filter>
         </activity>
 
@@ -249,6 +306,12 @@
             android:exported="false"
             android:theme="@style/Theme.UIN.Tool"
             android:label="@string/title_log_viewer" />
+
+        <!-- 崩溃兜底：进程被杀后由 AlarmManager 拉起日志页
+             （见 CrashLogUtils.scheduleLogPageFallback）；同应用发起，不需要对外导出 -->
+        <receiver
+            android:name=".utils.CrashRestartReceiver"
+            android:exported="false" />
 
         <!-- ==================== 开发工具 ==================== -->
         <activity
@@ -280,38 +343,69 @@
             android:theme="@style/Theme.UIN.Tool"
             android:windowSoftInputMode="adjustResize"
             android:label="@string/title_code_editor">
-            <!-- 6.2.0 批次53（修「打开方式里看不到代码编辑器」）：
-                 AOSP IntentFilter.matchData 的规则是 —— **过滤器未声明 mimeType 时，只匹配
-                 type == null 的 Intent**（types==null 分支里 `if (type != null) return NO_MATCH_TYPE`）。
-                 文件管理器发起 VIEW 几乎总带 MIME（按后缀解析出 text/plain、*/*、
-                 application/octet-stream…），只声明 scheme 的过滤器全部被 NO_MATCH_TYPE 拒掉 →
-                 编辑器从「打开方式」列表消失。故拆成两个过滤器互补覆盖：
-                 ① 带 `*/*`（findMimeType 里通配部分类型 t.contains("*") 命中任意非空 type）
-                 ② 不带 MIME（只兜 type == null 的 VIEW）。
-                 OPENABLE 类别：文件管理器常附带；过滤器多声明类别无副作用（Intent 的类别集
-                 是过滤器类别集的子集即可匹配）。 -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.OPENABLE" />
-
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.OPENABLE" />
-
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-            </intent-filter>
+            <!-- **VIEW filter 已迁移**（6.3.0 M5「单一对外入口」）：
+                 原先这里挂两组隐式 VIEW filter（`*/*` + 裸 scheme 互补，6.2.0 批次53 为
+                 「打开方式里看不到代码编辑器」所加），导致系统「打开方式」里出现**两个**
+                 UIN Tool 入口（本编辑器 + 中转页）。
+                 现按 §4.6 拍板把这两组的覆盖能力**整体搬到 PluginOpenDispatchActivity**，
+                 本页只留隐式不可达的显式跳转 ——
+                 全仓调用点（BasePluginWizardScreen / FilesScreen ×2 / shortcuts.xml）
+                 **全部是显式 Intent 或 targetClass**，filter 只管隐式解析，删了不受影响；
+                 而 CodeEditorActivity 自己的 `intent.action == ACTION_VIEW && intent.data != null`
+                 处理分支照旧工作，只是改由中转页显式带进来。 -->
         </activity>
 
         <!-- ==================== 文档中心 ==================== -->
+        <!-- 内置图片查看器（4.6）：不对外导出 —— 来源只有文件页里那一个真实路径，
+             也**不做相册扫描**。主题必须同 Theme.UIN.Tool，否则会在系统深色模式下闪白底。 -->
+        <activity
+            android:name=".ui.screen.files.ImagePagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/app_name" />
+        <!-- APK 信息页（4.6）：包名/版本/权限/签名 + 安装/分享。同样不对外导出 ——
+             信息全部由 PackageManager 从 APK 清单里读，不需要任何存储权限。 -->
+        <activity
+            android:name=".ui.screen.files.ApkInfoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool.Dialog"
+            android:label="@string/apk_info_package" />
+        <!-- 提取安装包（6.3.0，b26/c18）：把已装应用的 APK 复制到指定目录。源文件
+             （/data/app 下）本身全局可读，所以不需要 root、不需要存储权限，也就不需要
+             任何额外声明；入口只有文件页侧边栏一处，故不对外导出。 -->
+        <activity
+            android:name=".ui.screen.files.ApkExtractActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/apk_extract_title" />
+        <!-- 字体查看页（6.3.0）：试看 + 码位表 + name 表元信息。不对外导出，
+             也不做任何存储读写之外的事 —— 只读用户点开的那个字体文件。 -->
+        <activity
+            android:name=".ui.screen.files.FontViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/font_viewer_title" />
+        <!-- 十六进制编辑页（6.3.0）：偏移 + 16 字节 hex + ASCII，点格改字节。不对外导出；
+             只碰用户点开的那一个文件，保存走同目录临时文件 + rename 原子替换。 -->
+        <activity
+            android:name=".ui.screen.files.HexEditorActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/hex_open" />
+        <!-- 内置密钥库查看/转换页（6.3.0）：只读源文件；转换时在同目录另写
+             `<原名>_converted.<扩展名>`，绝不覆盖源密钥库。不对外导出。 -->
+        <activity
+            android:name=".ui.screen.files.KeystoreViewerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/keystore_title" />
+        <!-- 并排文件对比（6.3.0）：多选两条后的长按菜单进入。只读，不改任何文件；
+             diff 自己实现（公共前后缀 + LCS / 唯一行锚点）。不对外导出。 -->
+        <activity
+            android:name=".ui.screen.files.CompareActivity"
+            android:exported="false"
+            android:theme="@style/Theme.UIN.Tool"
+            android:label="@string/cmp_title" />
         <activity
             android:name=".ui.screen.docs.DocBrowserActivity"
             android:exported="false"
@@ -360,7 +454,8 @@
             android:name=".ui.screen.manage.UIConfigActivity"
             android:exported="false"
             android:theme="@style/Theme.UIN.Tool"
-            android:label="@string/title_ui_config" />
+            android:label="@string/title_ui_config"
+            android:configChanges="uiMode|locale|layoutDirection" />
 
         <!-- ==================== GitHub镜像 ==================== -->
         <activity
@@ -480,6 +575,16 @@
         <!-- B-61：更新下载前台服务——下载期间保持前台优先级，避免后台被回收导致静默中断 -->
         <service
             android:name=".core.update.UpdateDownloadService"
+            android:exported="false" />
+
+        <!-- 远程服务（FTP / HTTP）的前台通知：只持有前台优先级，起停归远程管理页 -->
+        <service
+            android:name=".core.remote.RemoteServerService"
+            android:exported="false" />
+
+        <!-- 后台保活的常驻通知：只持有前台优先级，起停归「后台保活」开关 -->
+        <service
+            android:name=".core.keepalive.KeepAliveService"
             android:exported="false" />
 
         <!-- ==================== 无障碍服务 ==================== -->

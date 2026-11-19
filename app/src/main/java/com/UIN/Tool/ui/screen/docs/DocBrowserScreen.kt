@@ -1,6 +1,7 @@
 // app/src/main/java/com/UIN/Tool/ui/screen/docs/DocBrowserScreen.kt
 package com.UIN.Tool.ui.screen.docs
 
+import com.UIN.Tool.ui.theme.AppDimens
 import com.UIN.Tool.R
 import com.UIN.Tool.utils.Str
 import android.content.Intent
@@ -59,7 +60,7 @@ fun DocBrowserScreen() {
                 .fillMaxSize()
                 .padding(paddingValues),
             contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(AppDimens.cardSpacing)
         ) {
             items(docs) { doc ->
                 UnifiedCard(

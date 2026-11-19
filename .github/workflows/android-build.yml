@@ -5,7 +5,8 @@
 #
 # 环境:
 #   - Ubuntu Latest
-#   - Java 17 (AGP 8.9.1 要求 JDK 17+；与根 build.gradle 版本口径保持一致)
+#   - Java 17 (AGP 9.1.1 / Gradle 9.3.1 均要求 JDK 17+：AGP 9.0 起最低 17、
+#     Gradle 9.x 要求 17–27；与根 build.gradle 版本口径保持一致)
 #   - Gradle 缓存加速
 
 name: Android CI
@@ -68,6 +69,20 @@ jobs:
 
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      # compileSdk 37 是硬约束（zstd-jni AAR 元数据 minCompileSdk=37，Compose foundation 1.12.1 同样要求）。
+      # AGP 在 license 已接受时会自动下载缺的平台，但显式装一次有两个好处：
+      # 装不上立刻看到明确报错，而不是拖到 :app:checkDebugAarMetadata 才炸。
+      - name: Install compileSdk platform (best effort)
+        run: |
+          api=$(sed -n 's/^compileSdkVersion=//p' gradle.properties)
+          echo "pinned compileSdkVersion=$api"
+          if [ -z "$api" ] || [ -d "$ANDROID_HOME/platforms/android-$api" ]; then
+            echo "already satisfied"
+          else
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-$api" \
+              || echo "::warning::platforms;android-$api install failed (AGP 会尝试自动下载)"
+          fi
 
       # terminal-emulator 走 ndkBuild，ndkVersion 被 gradle.properties 钉死；
       # runner 自带的 NDK 版本未必对得上，先尽力装好对应版本（装不上只告警不失败，
@@ -149,6 +164,20 @@ jobs:
 
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      # compileSdk 37 是硬约束（zstd-jni AAR 元数据 minCompileSdk=37，Compose foundation 1.12.1 同样要求）。
+      # AGP 在 license 已接受时会自动下载缺的平台，但显式装一次有两个好处：
+      # 装不上立刻看到明确报错，而不是拖到 :app:checkDebugAarMetadata 才炸。
+      - name: Install compileSdk platform (best effort)
+        run: |
+          api=$(sed -n 's/^compileSdkVersion=//p' gradle.properties)
+          echo "pinned compileSdkVersion=$api"
+          if [ -z "$api" ] || [ -d "$ANDROID_HOME/platforms/android-$api" ]; then
+            echo "already satisfied"
+          else
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-$api" \
+              || echo "::warning::platforms;android-$api install failed (AGP 会尝试自动下载)"
+          fi
 
       # terminal-emulator 走 ndkBuild，ndkVersion 被 gradle.properties 钉死；
       # runner 自带的 NDK 版本未必对得上，先尽力装好对应版本（装不上只告警不失败，

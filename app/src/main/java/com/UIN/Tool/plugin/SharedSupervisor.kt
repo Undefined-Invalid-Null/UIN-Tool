@@ -76,6 +76,16 @@ object SharedSupervisor {
 
     private var hostAliveStarted = false
 
+    /**
+     * 最近一次失败原因，**直接给 UI 用**。
+     *
+     * 原来失败只写日志，界面永远显示一句笼统的「启动失败」，
+     * 用户看不到「Termux 权限没开 / 调度器没起来 / 命令投不进去」这种能动手的线索。
+     * 每轮启动尝试开始时由调用方清空，成功路径也会清。
+     */
+    @Volatile
+    var lastError: String? = null
+
     // ==================== 目录 ====================
 
     private fun ctrlDir(): File = File(AppConstants.PLUGIN_DIR, CTRL_DIR)
@@ -97,6 +107,47 @@ object SharedSupervisor {
     private fun shutdownFile(): File = File(ctrlDir(), SHUTDOWN_FILE)
 
     private fun keepAliveFile(): File = File(ctrlDir(), KEEP_ALIVE_FILE)
+
+    /**
+     * 后端键 → 通信文件名。
+     *
+     * 实例键是 `<插件ID>:inst-<时间戳>-<序号>`，**冒号在共享存储上写不进去**
+     * （`requestStart` 每次都 `EPERM`，supervisor 日志永远 `cmd=0`，后端自然起不来）。
+     * supervisor 那侧是 `basename $f .cmd` 取键、完全不解析文件名内容，
+     * 所以宿主单方面改名是安全的：两边都以**文件名**为准，pid/idle/rc 自动对齐。
+     *
+     * 改过名就追加一段 hash —— 两个只在非法字符上不同的键不能撞成同一个文件，
+     * 否则 pid 文件互相覆盖，杀进程会杀错对象。`String.hashCode` 是规范固定的，
+     * 每次进程起来算出来的值都一样，不会跨启动漂移。
+     */
+    private fun fileKey(key: String): String {
+        val cleaned = key.map { c ->
+            if (c.isLetterOrDigit() || c == '.' || c == '-' || c == '_') c else '_'
+        }.joinToString("")
+        return if (cleaned == key) cleaned else cleaned + "_" + Integer.toHexString(key.hashCode())
+    }
+
+    /**
+     * 通信目录在**拉起 supervisor 之前**由宿主先建好，并放开给其他应用读写。
+     *
+     * 原来只靠 supervisor.sh 里的 `mkdir -p`：那时建出来的目录归 Termux、
+     * 默认 `0700`，宿主往里写命令文件会被拒。先建 + `set*Permission(ownerOnly=false)`
+     * 之后，supervisor 的 `mkdir -p` 只会命中「已存在」，不会再以它的 umask 重建。
+     * 权限位在 FUSE 上由系统裁剪，失败也不影响主流程，所以一律 `runCatching`。
+     */
+    private fun ensureCtrlDirs() {
+        val dirs = listOf(ctrlDir(), cmdDir(), pidDir(), stopDir(), rcDir(), idleDir(), File(ctrlDir(), "done"), File(ctrlDir(), "logs"))
+        for (d in dirs) {
+            runCatching {
+                if (!d.exists()) d.mkdirs()
+                d.setReadable(true, false)
+                d.setWritable(true, false)
+                d.setExecutable(true, false)
+            }.onFailure {
+                Logger.w(TAG, "ensureCtrlDirs ${d.name}: ${it.message}")
+            }
+        }
+    }
 
     // ==================== supervisor 脚本 ====================
 
@@ -299,6 +350,7 @@ object SharedSupervisor {
      */
     fun ensureSupervisor(context: Context): Boolean {
         val t0 = System.currentTimeMillis()
+        lastError = null
         if (isSupervisorAlive()) {
             startHostAliveTicker()
             perfLog("ensureSupervisor: already alive, ${System.currentTimeMillis() - t0}ms")
@@ -308,16 +360,23 @@ object SharedSupervisor {
         killStaleSupervisor()
         val t1 = System.currentTimeMillis()
         if (!RealTermuxRuntime.isTermuxInstalled(context)) {
-            Logger.e(TAG, Str.get(R.string.real_termux_not_installed))
+            val msg = Str.get(R.string.real_termux_not_installed)
+            Logger.e(TAG, msg)
+            lastError = msg
             return false
         }
         if (!RealTermuxRuntime.isRunCommandPermissionGranted(context)) {
-            Logger.e(TAG, Str.get(R.string.real_termux_run_command_permission_denied))
+            val msg = Str.get(R.string.real_termux_run_command_permission_denied)
+            Logger.e(TAG, msg)
+            lastError = msg
             return false
         }
 
         val root = if (BackendConfig.isProotEnv(context)) "/plugins" else AppConstants.PLUGIN_DIR
         ensureScriptWritten(context, root)
+        // 必须在 RUN_COMMAND **之前**：目录先归宿主、且放开读写，
+        // supervisor 的 `mkdir -p` 才不会再以 Termux 的 umask(0700) 建一遍。
+        ensureCtrlDirs()
         val t2 = System.currentTimeMillis()
         perfLog("ensureSupervisor: not alive, writing script took ${t2 - t1}ms")
 
@@ -384,6 +443,7 @@ object SharedSupervisor {
             }
         }
         perfLog("supervisor did not become ready in ${SUPERVISOR_READY_TIMEOUT_MS}ms (attempts=$attempts)")
+        lastError = Str.get(R.string.real_termux_supervisor_not_ready)
         return false
     }
 
@@ -395,23 +455,26 @@ object SharedSupervisor {
      * @param script  后端启动命令体（含环境变量 export 与启动命令）
      * @param idleMin 空闲回收分钟数（0 = 无限不回收）
      */
-    fun requestStart(key: String, script: String, idleMin: Int) {
-        try {
-            cmdDir().mkdirs()
-            idleDir().mkdirs()
-            File(cmdDir(), "$key.cmd").writeText(script)
-            File(idleDir(), key).writeText(idleMin.toString())
-            Logger.d(TAG, "start requested for $key (idle=$idleMin)")
+    fun requestStart(key: String, script: String, idleMin: Int): Boolean {
+        return try {
+            ensureCtrlDirs()
+            val fk = fileKey(key)
+            File(cmdDir(), "$fk.cmd").writeText(script)
+            File(idleDir(), fk).writeText(idleMin.toString())
+            Logger.d(TAG, "start requested for $key (file=$fk.cmd, idle=$idleMin)")
+            true
         } catch (e: Exception) {
             Logger.e(TAG, "failed to request start for $key: ${e.message}", e)
+            lastError = Str.get(R.string.backend_cmd_dispatch_failed, e.message ?: e.javaClass.simpleName)
+            false
         }
     }
 
     /** 投放后端停止请求（supervisor 按 PID 递归杀进程树）。 */
     fun requestStop(key: String) {
         try {
-            stopDir().mkdirs()
-            File(stopDir(), key).writeText("1")
+            ensureCtrlDirs()
+            File(stopDir(), fileKey(key)).writeText("1")
             Logger.d(TAG, "stop requested for $key")
         } catch (e: Exception) {
             Logger.e(TAG, "failed to request stop for $key: ${e.message}", e)
@@ -423,7 +486,7 @@ object SharedSupervisor {
      * 无记录返回 null。宿主据此在「端口就绪超时」时给出具体失败原因，而不只是轮询失败。
      */
     fun readExitCode(key: String): String? = try {
-        val f = File(rcDir(), "$key.rc")
+        val f = File(rcDir(), "${fileKey(key)}.rc")
         if (f.isFile) f.readText().substringBefore(' ').trim().takeIf { it.isNotEmpty() } else null
     } catch (_: Exception) {
         null
@@ -432,9 +495,10 @@ object SharedSupervisor {
     /** 直接清除某后端的 pid/idle/rc 记录（端口已死时清理残留）。 */
     fun clearBackendRecord(key: String) {
         try {
-            File(pidDir(), key).delete()
-            File(idleDir(), key).delete()
-            File(rcDir(), "$key.rc").delete()
+            val fk = fileKey(key)
+            File(pidDir(), fk).delete()
+            File(idleDir(), fk).delete()
+            File(rcDir(), "$fk.rc").delete()
         } catch (_: Exception) {
         }
     }

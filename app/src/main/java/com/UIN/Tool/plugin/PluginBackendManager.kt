@@ -544,6 +544,8 @@ object PluginBackendManager {
         Logger.d(TAG, "📄 backendEntry: ${info.backendEntry}")
         Logger.d(TAG, "🔌 backendPort: ${info.backendPort}")
         Logger.d(TAG, Str.get(R.string.time_system_currenttimemillis, System.currentTimeMillis()))
+        // 每轮启动尝试先清空上一次的失败原因，避免把旧错误显示成这次的结果
+        SharedSupervisor.lastError = null
 
         // 确保消息服务已启动
         if (!isMessageServiceRunning) {
@@ -641,9 +643,12 @@ object PluginBackendManager {
             buildScriptCommand(info, pluginDir.absolutePath, port, startCmd)
         }
         val t4 = System.currentTimeMillis()
-        SharedSupervisor.requestStart(key, inner, idleMinutes)
+        val dispatched = SharedSupervisor.requestStart(key, inner, idleMin = idleMinutes)
         val t5 = System.currentTimeMillis()
-        perfLog("requestStart: ${t5 - t4}ms")
+        perfLog("requestStart: ${t5 - t4}ms (dispatched=$dispatched)")
+        // 命令投不进去就别再干等端口就绪：原来照样轮询 60 秒，
+        // 最后只回一句「后端启动超时」，把真正能动手的原因（EPERM / 权限）冲掉了。
+        if (!dispatched) return false
 
         val result = waitForRealTermuxReady(context, info, port, key)
         val t6 = System.currentTimeMillis()

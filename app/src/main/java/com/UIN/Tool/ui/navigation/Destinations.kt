@@ -6,9 +6,10 @@ sealed class Destinations(val route: String) {
     object Onboarding : Destinations("onboarding")
     object Main : Destinations("main")
     
-    // ==================== 四大主页面 ====================
+    // ==================== 五大主页面 ====================
     object Dev : Destinations("dev")
     object Tools : Destinations("tools")
+    object Files : Destinations("files")
     object Repo : Destinations("repo")
     object Manage : Destinations("manage")
     

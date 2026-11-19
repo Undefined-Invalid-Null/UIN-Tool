@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  开屏 Activity 的窗口背景兜底：**底色 + 居中的主题色图标**。
+
+  从点图标到进程起来之间，系统先画这份 windowBackground（starting window）。
+  windowBackground 画不了文字，所以这里只有图标；进程起来后
+  `LaunchScreenBackground` 会立刻换上同一份静态画面（图标 + 应用名 + 版本号），
+  再往后 Compose 开的也是同一份内容，全程没有白屏、也没有放大动画。
+
+  图标颜色用 `@color/splash_icon`（UIConfig 默认 primary 的日/夜值），与运行时
+  换上来的主题色一致；用户自定义主题色时，starting window 这一小段会是默认色。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/background" />
+    <item
+        android:drawable="@drawable/ic_splash_window"
+        android:gravity="center"
+        android:width="120dp"
+        android:height="120dp" />
+</layer-list>

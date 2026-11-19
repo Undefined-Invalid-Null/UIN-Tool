@@ -1,0 +1,12 @@
+[
+  {
+    "sourceId": "official",
+    "name": "Official Source",
+    "owner": "UIN-Tool-Plugins",
+    "repo": "Official",
+    "branch": "dist",
+    "description": "UIN Tool official plugin repository",
+    "trustLevel": "official",
+    "addedAt": "2026-08-30T14:07:27+08:00"
+  }
+]

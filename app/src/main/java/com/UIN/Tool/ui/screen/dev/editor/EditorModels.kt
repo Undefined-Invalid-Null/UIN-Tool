@@ -67,9 +67,35 @@ data class EditorTab(
      * 6.2.0 批次46：内容版本号。同标签页内换页时 [content] 被整体替换，而 EditorCanvas
      * 只在 tab.id 变化时重设 sora 文本 —— 这里加一个单调版本号，翻页 +1 触发 setText。
      */
-    val contentRev: Int = 0
+    val contentRev: Int = 0,
+    /**
+     * 通用**只读**标记（分页索引重建失败等场景）。k.txt 第 10 条起 AXML 不再走这条：
+     * 解码后的 AXML 标签用 [axml] 标记，保存时重新编码回二进制，用户可正常编辑。
+     */
+    val readOnly: Boolean = false,
+    /**
+     * k.txt 第 10 条：本签是**二进制 AXML** 的解码视图 —— 保存时必须重新编码回二进制，
+     * 不能把文本 XML 直接写进文件。与 [readOnly] 互斥：AXML 现在可编辑。
+     */
+    val axml: Boolean = false,
+    /**
+     * 归档写回来源（文件管理「编辑归档内文本」）：非空 = 本签是把归档里
+     * [originArchive]（归档真实路径）内的 [originEntry]（归档内条目名）**解成临时副本**
+     * 打开的 —— 临时副本落盘在 app 缓存区，[file] 指向它，所以普通保存只能改到副本。
+     *
+     * 保存成功后编辑器据此**额外询问**是否把内容写回归档（走 `ZipWrite.replaceEntry`）。
+     * 两者要么都非空、要么都空，用 [fromArchive] 判定。
+     *
+     * 为什么不直接把 [file] 指向归档：编辑器整套读写都建立在「一个真实文件路径」上
+     * （分页窗口模式更是按字节偏移取页），往归档里塞虚拟路径会让每个入口都得特判。
+     * 先落临时副本 = 复用全部现有能力，写回归档只是一次独立的收尾动作。
+     */
+    val originArchive: String? = null,
+    val originEntry: String? = null
 ) {
     val isModified: Boolean get() = edited
+    /** 是否是归档内条目的临时副本（见 [originArchive]）。 */
+    val fromArchive: Boolean get() = originArchive != null && originEntry != null
     /** 批次46：是否处于分页窗口模式（= [window] 非空）。 */
     val windowed: Boolean get() = window != null
     val isBackedByFile: Boolean get() = file != null || uri != null
