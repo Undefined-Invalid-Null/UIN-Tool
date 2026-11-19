@@ -83,13 +83,13 @@ File icons are coloured by type (images, video, audio, documents, code, archives
 
 ## Version Information
 
-### Current Version: v7.0.0 (Build 28)
+### Current Version: v7.0.0 (Build 27)
 
 | Item | Info |
 |------|------|
 | Version Name | 7.0.0 |
 | Version Code | 27 |
-| Update Date | November 18, 2026 |
+| Update Date | November 19, 2026 |
 | Minimum Android | 6.0 (API 23) |
 | Target Android | 9 (API 28) |
 | Compile SDK | 37 |
@@ -99,7 +99,7 @@ File icons are coloured by type (images, video, audio, documents, code, archives
 
 | Version | Build | Date | Highlights |
 |---------|-------|------|------------|
-| v7.0.0 | 27 | 2026-11-18 | Dual-pane file manager (in-place archive browse and write, image viewer, APK info, compress/extract, bookmarks/history/search, deep links, side-by-side compare), Open With merged into a single entry; full-text search reworked with nine new syntaxes; plugin permissions moved to a two-level page; per-style configuration isolation; toolchain raised to AGP 9.1.1 / Kotlin 2.4.21 / Gradle 9.3.1 / compileSdk 37 / Compose BOM 2026.09.00 / Coil 3.6.3 |
+| v7.0.0 | 27 | 2026-11-19 | Dual-pane file manager (in-place archive browse and write, image viewer, APK info, compress/extract, bookmarks/history/search, deep links, side-by-side compare), Open With merged into a single entry; full-text search reworked with nine new syntaxes; plugin permissions moved to a two-level page; per-style configuration isolation; toolchain raised to AGP 9.1.1 / Kotlin 2.4.21 / Gradle 9.3.1 / compileSdk 37 / Compose BOM 2026.09.00 / Coil 3.6.3 |
 | v6.2.0 | 26 | 2026-10-31 | Code editor focus (file tree / tabs / direct disk access / ACTION_VIEW external entry, Unified UI, four rounds of syntax-highlighting root-cause fixes, sora 0.24.6 + Kotlin 2.3.10) |
 | v6.1.0 | 25 | 2026-10-07 | Full defect sweep (startup / permissions / main-thread jank / dark theme / plugin host security / backup rollback / error visibility / build deduplication) |
 | v6.0.0 | 24 | 2026-09-26 | Removed the Termux dependency, PRoot container system, container management UI, rootfs export compression level |
@@ -119,6 +119,8 @@ File icons are coloured by type (images, video, audio, documents, code, archives
 > For the full changelog see [CHANGELOG](CHANGELOG.md).
 
 ---
+
+> **Signing key change (from 7.0.0)**: this release uses a new signing key. Installing over an older build will be rejected ("App not installed" or a signature mismatch); uninstall the old version first. Uninstalling clears app data, so back it up beforehand.
 
 ## Feature List
 

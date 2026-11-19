@@ -5,8 +5,10 @@
 | Item | Info |
 |------|------|
 | Document Version | 7.0.0 |
-| Corresponding App Version | v7.0.0 (Build 28) |
-| Last Updated | November 16, 2026 |
+| Corresponding App Version | v7.0.0 (Build 27) |
+| Last Updated | November 19, 2026 |
+
+> **Signing key change (from 7.0.0)**: this release uses a new signing key. Installing over an older build will be rejected ("App not installed" or a signature mismatch); uninstall the old version first. Uninstalling clears app data, so back it up beforehand.
 
 ---
 
@@ -2657,8 +2659,8 @@ Document Information
 | Item | Info |
 |------|------|
 | Document Version | 7.0.0 |
-| Corresponding App Version | v7.0.0 (Build 28) |
-| Last Updated | November 16, 2026 |
+| Corresponding App Version | v7.0.0 (Build 27) |
+| Last Updated | November 19, 2026 |
 
 ---
 

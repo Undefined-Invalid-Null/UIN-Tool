@@ -356,7 +356,8 @@ Closes #123
 versionName versionCode 说明
 1.0.0 1 正式版，主版本 1，次版本 0，修订 0
 6.1.0 25 全量缺陷修复
-6.2.0 26 代码编辑器专项（当前版本）
+6.2.0 26 代码编辑器专项
+7.0.0 27 文件页全面启用、打开方式合并为单一入口（当前版本）
 
 5.3 发布 Tag
 
@@ -365,13 +366,39 @@ versionName versionCode 说明
 ```
 {versionCode}-{versionName}-{强制标志}
 
-26-6.2.0-0   # 普通更新
-26-6.2.0-1   # 强制更新（用户无法跳过）
+27-7.0.0-0   # 普通更新
+27-7.0.0-1   # 强制更新（用户无法跳过）
 ```
 
 - 第 1 段：`versionCode`（对应 `app/build.gradle`）
 - 第 2 段：`versionName`
 - 第 3 段：强制标志，`1` = 强更，其余 = 普通更新
+
+5.4 自动构建与发布（GitHub Actions）
+
+推一个符合上面格式的 tag，`.github/workflows/release.yml` 会自动完成：校验 tag 与
+`app/build.gradle` 的 `versionCode`/`versionName` 是否一致 → 字符串对齐检查 →
+还原签名密钥库 → `assembleRelease` → `apksigner` 校验签名 → 生成 `UIN-Tool-{版本}-{构建号}.apk`
+与 `.sha256` → 建 GitHub Release 并上传。
+
+一次性准备（仓库 Settings → Secrets and variables → Actions）：
+
+```
+RELEASE_KEYSTORE_BASE64   # base64 -w0 your.jks 的输出
+RELEASE_STORE_PASSWORD
+RELEASE_KEY_PASSWORD      # 与库口令相同可留空
+RELEASE_KEY_ALIAS         # 本仓库当前是 uin_tool（不填时 workflow 默认也用它）
+RELEASE_CERT_SHA256       # 可选：期望的证书 SHA-256，填了就强校验
+```
+
+- Release 正文：有 `release-notes/{versionName}.md` 就整份使用（自己写标题与分节），
+  否则自动从 `app/src/main/assets/docs/zh-cn/CHANGELOG.md` 摘出 `## [x.y.z]` 小节。
+- 正文末尾会自动追加一行 `SHA-256: <hex>`；`UpdateChecker` 只认 64 位十六进制串，
+  所以这行同时也是客户端下载后的校验依据。
+- 本地不配密钥库时 `release` 仍是未签名包（历史行为），`assembleDebug` / `lint` 不受影响。
+- 想先干跑一次：`workflow_dispatch` 填一个已存在的 tag，产物与日志照样生成，
+  区别只是会更新同名 Release。
+- 7.0.0 起签名密钥已更换，且 `versionCode` 回退到 27：跨这条线升级必须先卸载旧版，覆盖安装会被系统以「签名不一致」或「降级」拒绝。
 
 ---
 

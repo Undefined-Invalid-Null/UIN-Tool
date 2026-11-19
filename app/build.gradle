@@ -37,6 +37,31 @@ def loadSigningSecret = { String envName, String propName ->
 def signingStorePassword = loadSigningSecret("UIN_STORE_PASSWORD", "storePassword")
 def signingKeyPassword = loadSigningSecret("UIN_KEY_PASSWORD", "keyPassword")
 
+// ===== 发布签名（CI 自动发布用） =====
+// 本地默认仍出**未签名** release（历史行为不变，不配也能 assembleDebug / lint）。
+// CI 由 .github/workflows/release.yml 提供：
+//   UIN_RELEASE_KEYSTORE         密钥库文件路径（本地直用）
+//   UIN_RELEASE_KEYSTORE_BASE64  密钥库整份文件的 base64（CI 用，还原到 build/ci/）
+//   UIN_RELEASE_STORE_PASSWORD / UIN_RELEASE_KEY_PASSWORD / UIN_RELEASE_KEY_ALIAS
+// 密钥库还原到 build/ 下：那里已被 .gitignore 忽略，不会被误提交。
+def releaseStorePath = System.getenv("UIN_RELEASE_KEYSTORE")
+def releaseStoreBase64 = System.getenv("UIN_RELEASE_KEYSTORE_BASE64")
+def releaseStoreFile = null
+if (releaseStorePath) {
+    releaseStoreFile = file(releaseStorePath)
+} else if (releaseStoreBase64) {
+    def out = new File(rootProject.projectDir, "build/ci/release-keystore.jks")
+    out.parentFile.mkdirs()
+    // MIME 解码器：Secrets 里带换行也能还原
+    out.bytes = java.util.Base64.getMimeDecoder().decode(releaseStoreBase64.trim())
+    releaseStoreFile = out
+}
+def releaseStorePassword = System.getenv("UIN_RELEASE_STORE_PASSWORD")
+def releaseKeyPassword = System.getenv("UIN_RELEASE_KEY_PASSWORD") ?: releaseStorePassword
+def releaseKeyAlias = System.getenv("UIN_RELEASE_KEY_ALIAS") ?: "uin"
+def hasReleaseSigning = releaseStoreFile != null && releaseStoreFile.exists() &&
+        releaseStorePassword && releaseKeyPassword
+
 android {
     namespace "com.UIN.Tool"
     // 2026-10-31：36 → 37。N1 的 zstd-jni AAR 带 minCompileSdk=37，checkDebugAarMetadata 卡死。
@@ -73,10 +98,25 @@ android {
             storePassword signingStorePassword
             keyPassword signingKeyPassword
         }
+        // 只有拿到密钥库才注册：没配的机器上 signingConfigs.release 不存在，
+        // buildTypes 那边也就不会去引用它。
+        if (hasReleaseSigning) {
+            release {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyPassword releaseKeyPassword
+                keyAlias releaseKeyAlias
+            }
+        }
     }
 
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.info("[UIN] 未提供 UIN_RELEASE_KEYSTORE(_BASE64)：release 产物为未签名 APK")
+            }
             minifyEnabled true
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'app-keep.pro'

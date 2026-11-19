@@ -12,7 +12,7 @@ This document records all important version updates and feature changes of UIN T
 
 ---
 
-## [7.0.0] - 2026-11-18
+## [7.0.0] - 2026-11-19
 
 > Major release: a fully enabled Files tab and the system "Open with" dialog collapsed into a single entry; the code editor, document reader, home-screen widgets, container management and the overall UI are upgraded alongside it.
 
@@ -61,6 +61,10 @@ This document records all important version updates and feature changes of UIN T
 ### Internationalization
 
 - Chinese and English string keys 1951 → 2797, zero placeholder differences
+
+### Upgrade Note
+
+- This release uses a new signing key: installing over a build older than 7.0.0 is rejected ("App not installed" or a signature mismatch). Uninstall the old version first; uninstalling clears app data, so back it up beforehand
 
 ## [6.2.0] - 2026-10-31
 
@@ -1229,8 +1233,8 @@ v4.0.0 is a major refactoring, please note before upgrading:
 | Item | Info |
 |------|------|
 | Document Version | 7.0.0 |
-| Last Updated | November 18, 2026 |
-| Corresponding App Version | v7.0.0 (Build 28) |
+| Last Updated | November 19, 2026 |
+| Corresponding App Version | v7.0.0 (Build 27) |
 
 ---
 

@@ -5,8 +5,8 @@
 | Item | Info |
 |------|------|
 | Document Version | 7.0.0 |
-| Corresponding App Version | v7.0.0 (Build 28) |
-| Last Updated | November 16, 2026 |
+| Corresponding App Version | v7.0.0 (Build 27) |
+| Last Updated | November 19, 2026 |
 
 ---
 
@@ -404,6 +404,8 @@ Force update characteristics:
 | Manual Download | Open browser to GitHub Releases page |
 | Skip Update | Close dialog (available for normal updates) |
 | Ignore This Version | Record the ignored version, no longer prompt next time |
+
+> **Signing key change (from 7.0.0)**: this release uses a new signing key. Installing over an older build will be rejected ("App not installed" or a signature mismatch); uninstall the old version first. Uninstalling clears app data, so back it up beforehand.
 
 ---
 
@@ -1659,6 +1661,9 @@ A: In "Manage" > "UI Personalization" > "Language" page, you can directly switch
 Q35: How to adjust the transparency of glass effect or neumorphism?
 A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass effect or neumorphism, a transparency slider appears; drag it to preview and adjust the effect in real-time.
 
+Q36: Installing a new version fails with "App not installed" or a signature mismatch?
+A: From 7.0.0 on the app uses a new signing key, which differs from older builds, so the system refuses to install over them. Uninstall the old version first; uninstalling clears app data, so back it up beforehand.
+
 ---
 
 ## XXI. Contact Support
@@ -1677,8 +1682,8 @@ A: In "Manage" > "UI Personalization" > "Effects" page, after enabling glass eff
 | Item | Info |
 |---|---|
 | Document Version | 7.0.0 |
-| Last Updated | November 16, 2026 |
-| Corresponding App Version | v7.0.0 (Build 28) |
+| Last Updated | November 19, 2026 |
+| Corresponding App Version | v7.0.0 (Build 27) |
 
 ---
 

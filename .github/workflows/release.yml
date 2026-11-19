@@ -1,0 +1,261 @@
+# UIN Tool — Release 构建与发布
+#
+# 触发：push 形如 `27-7.0.0-0` 的 tag（`{versionCode}-{versionName}-{强制标志}`），
+#       或手动 workflow_dispatch 指定一个已存在的 tag。
+#
+# 流程：校验 tag 与 app/build.gradle 一致 → 还原签名密钥库 → assembleRelease
+#       → apksigner 校验 → 改名 + SHA-256 → 建 GitHub Release 并上传 APK / .sha256。
+#
+# 需要的仓库 Secrets（Settings → Secrets and variables → Actions）：
+#   RELEASE_KEYSTORE_BASE64   密钥库文件整份的 base64（`base64 -w0 your.jks`）
+#   RELEASE_STORE_PASSWORD    密钥库口令
+#   RELEASE_KEY_PASSWORD      密钥口令（与库口令相同可留空）
+#   RELEASE_KEY_ALIAS         密钥别名
+# 可选：
+#   RELEASE_CERT_SHA256       期望的签名证书 SHA-256 指纹，填了就强校验（防签错 key）
+#
+# 缺 Secrets 会在构建前就失败并给出提示，不会白跑二十分钟。
+
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]*-*-*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '已存在的 tag，例如 27-7.0.0-0'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      # 配置期 app/build.gradle 会取 debug 签名口令，缺了直接抛异常；
+      # 这里给 release 用的那份，只为让配置阶段过得去（本 job 不产 debug 包）。
+      UIN_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      UIN_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
+      UIN_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      UIN_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || secrets.RELEASE_STORE_PASSWORD }}
+      UIN_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'uin_tool' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          # .gitattributes 声明 *.tar.xz 走 LFS，不加 lfs:true 只会拿到指针文件，
+          # 打出来的 APK 内 rootfs 是坏的且不报错
+          lfs: true
+          fetch-depth: 1
+
+      # ---- 前置校验：不通过就别浪费一次完整构建 ----
+      - name: Validate tag format
+        run: |
+          if ! [[ "$TAG" =~ ^([0-9]+)-([0-9]+\.[0-9]+\.[0-9]+)-([01])$ ]]; then
+            echo "::error::tag '$TAG' 不符合 {versionCode}-{versionName}-{强制标志}，例如 27-7.0.0-0"
+            exit 1
+          fi
+          echo "VERSION_CODE=${BASH_REMATCH[1]}" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=${BASH_REMATCH[2]}" >> "$GITHUB_ENV"
+          echo "FORCE_UPDATE=${BASH_REMATCH[3]}" >> "$GITHUB_ENV"
+          echo "tag=$TAG code=${BASH_REMATCH[1]} name=${BASH_REMATCH[2]} force=${BASH_REMATCH[3]}"
+
+      # tag 与 build.gradle 不一致是最常见的发布事故：客户端按 tag 的 versionCode
+      # 判断更新，装上的包却是另一个号，升级链就断了。
+      - name: Check tag matches app/build.gradle
+        run: |
+          gradle_code=$(sed -n 's/^ *versionCode *\([0-9]\+\).*/\1/p' app/build.gradle | head -1)
+          gradle_name=$(sed -n 's/^ *versionName *"\([^"]*\)".*/\1/p' app/build.gradle | head -1)
+          echo "build.gradle: code=$gradle_code name=$gradle_name"
+          if [ "$gradle_code" != "$VERSION_CODE" ] || [ "$gradle_name" != "$VERSION_NAME" ]; then
+            echo "::error::tag 与 app/build.gradle 不一致（tag=$VERSION_CODE/$VERSION_NAME，gradle=$gradle_code/$gradle_name）"
+            exit 1
+          fi
+
+      - name: Check strings.xml parity
+        run: python3 scripts/check_strings_parity.py
+
+      - name: Restore release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::缺少 secret RELEASE_KEYSTORE_BASE64。本地执行 base64 -w0 your.jks 后粘贴到仓库 Secrets。"
+            exit 1
+          fi
+          if [ -z "$UIN_RELEASE_STORE_PASSWORD" ]; then
+            echo "::error::缺少 secret RELEASE_STORE_PASSWORD"
+            exit 1
+          fi
+          ks="$RUNNER_TEMP/release-keystore.jks"
+          echo "$KEYSTORE_B64" | base64 -d > "$ks"
+          test -s "$ks" || { echo "::error::密钥库还原为空"; exit 1; }
+          echo "keystore restored: $(stat -c %s "$ks") bytes"
+          # 供后续 gradle 步骤使用（job 级 env 拿不到 runner 上下文）
+          echo "UIN_RELEASE_KEYSTORE=$ks" >> "$GITHUB_ENV"
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Install compileSdk platform (best effort)
+        run: |
+          api=$(sed -n 's/^compileSdkVersion=//p' gradle.properties)
+          echo "pinned compileSdkVersion=$api"
+          if [ -z "$api" ] || [ -d "$ANDROID_HOME/platforms/android-$api" ]; then
+            echo "already satisfied"
+          else
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-$api" \
+              || echo "::warning::platforms;android-$api install failed (AGP 会尝试自动下载)"
+          fi
+
+      - name: Install pinned NDK (best effort)
+        run: |
+          ndkver=$(sed -n 's/^ndkVersion=//p' gradle.properties)
+          echo "pinned ndkVersion=$ndkver"
+          if [ -z "$ndkver" ] || [ -d "$ANDROID_HOME/ndk/$ndkver" ]; then
+            echo "already satisfied"
+          else
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;$ndkver" \
+              || echo "::warning::NDK $ndkver install failed (terminal-emulator 的 ndkBuild 需要它)"
+          fi
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Verify LFS assets are real files (not pointers)
+        run: |
+          f=app/src/main/assets/debian-rootfs.tar.xz
+          size=$(stat -c %s "$f")
+          echo "debian-rootfs.tar.xz = $size bytes"
+          if [ "$size" -lt 10000000 ]; then
+            echo "::error::$f is $size bytes - looks like an LFS pointer, check lfs:true"
+            exit 1
+          fi
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+
+      - name: Verify APK signature
+        env:
+          EXPECTED_CERT: ${{ secrets.RELEASE_CERT_SHA256 }}
+        run: |
+          apk=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1)
+          if [ -z "$apk" ]; then
+            echo "::error::没有找到 release APK"
+            exit 1
+          fi
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          echo "apk=$apk"
+          echo "apksigner=$apksigner"
+          "$apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/certs.txt"
+          if [ -n "$EXPECTED_CERT" ]; then
+            if ! grep -qi "$EXPECTED_CERT" "$RUNNER_TEMP/certs.txt"; then
+              echo "::error::签名证书指纹与 RELEASE_CERT_SHA256 不符"
+              exit 1
+            fi
+          fi
+
+      # 产物名与 GitHub Release 里的资产名保持一致，用户下载下来就能认出是哪个版本
+      - name: Package artifacts
+        run: |
+          src=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1)
+          out="UIN-Tool-${VERSION_NAME}-${VERSION_CODE}.apk"
+          cp "$src" "$RUNNER_TEMP/$out"
+          cd "$RUNNER_TEMP"
+          sha256sum "$out" | tee "$out.sha256"
+          echo "APK_NAME=$out" >> "$GITHUB_ENV"
+          echo "SHA=$(sha256sum "$out" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "size=$(stat -c %s "$out") bytes"
+
+      # 正文优先取 release-notes/<versionName>.md（想单独排版就放一份），
+      # 否则从中文 CHANGELOG 里摘出对应版本的小节 —— 不额外维护第二份清单。
+      - name: Compose release body
+        run: |
+          python3 - <<'PY'
+          import os, re, pathlib
+
+          ver = os.environ["VERSION_NAME"]
+          code = os.environ["VERSION_CODE"]
+          tag = os.environ["TAG"]
+          forced = os.environ["FORCE_UPDATE"] == "1"
+
+          sha = os.environ["SHA"]
+          override = pathlib.Path(f"release-notes/{ver}.md")
+          if override.exists():
+              # 有专门排版的更新说明就整份用它（自己写标题与分节），只补一行校验值
+              body = override.read_text(encoding="utf-8").strip()
+              if not body.endswith("---"):
+                  body += "\n\n---\n"
+              body += f"\nSHA-256: {sha}\n"
+          else:
+              # 否则从中文 CHANGELOG 摘出该版本小节，不额外维护第二份清单
+              text = pathlib.Path("app/src/main/assets/docs/zh-cn/CHANGELOG.md").read_text(encoding="utf-8")
+              m = re.search(
+                  rf"^## \[{re.escape(ver)}\][^\n]*\n(.*?)(?=^## \[|\Z)",
+                  text, re.S | re.M)
+              section = m.group(1).strip() if m else ""
+              if not section:
+                  print("::warning::没有找到该版本的更新说明，正文只保留版本信息")
+              head = [
+                  f"# UIN Tool {ver}",
+                  "",
+                  f"> 版本代码 {code} · {'强制更新' if forced else '普通更新'} · Tag `{tag}`",
+                  "",
+              ]
+              tail = ["", "---", "", f"SHA-256: {sha}", ""]
+              body = "\n".join(head + ([section, ""] if section else []) + tail)
+          pathlib.Path(os.environ["RUNNER_TEMP"], "body.md").write_text(body, encoding="utf-8")
+          print(body)
+          PY
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: UIN Tool ${{ env.VERSION_NAME }}（${{ env.TAG }}）
+          body_path: ${{ runner.temp }}/body.md
+          files: |
+            ${{ runner.temp }}/${{ env.APK_NAME }}
+            ${{ runner.temp }}/${{ env.APK_NAME }}.sha256
+          fail_on_unmatched_files: true
+          make_latest: true
+          draft: false
+          prerelease: false
+
+      # 构建日志里保留 mapping，方便事后解混淆线上崩溃栈
+      - name: Upload mapping
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-${{ env.TAG }}
+          path: app/build/outputs/mapping/release/mapping.txt
+          retention-days: 90
+          if-no-files-found: warn
